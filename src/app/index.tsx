@@ -28,7 +28,10 @@ import {
   InlineMarketplaceMapCard,
   MarketplaceMapSearchModal,
 } from '../components/MarketplaceMapSearch';
-import { TechnicianPostCard } from '../components/TechnicianPostCard';
+import {
+  TechnicianPostCard,
+  TechnicianPostComposer,
+} from '../components/TechnicianPostCard';
 import {
   filterTechnicians,
   formatRupiah,
@@ -44,7 +47,13 @@ import {
   loadSelectedArea,
   saveSelectedArea,
 } from '../data/marketplaceStore';
-import { loadMarketplacePublishedPosts } from '../data/postsStore';
+import {
+  createTechnicianPost,
+  deleteTechnicianPost,
+  loadMarketplacePublishedPosts,
+  suspendTechnicianPost,
+  updateTechnicianPost,
+} from '../data/postsStore';
 import { categoryName, localizeArea, useLanguage } from '../i18n/locale';
 import { colors, radii, spacing } from '../theme/tokens';
 import type {
@@ -68,7 +77,7 @@ interface PopularTaskItem {
 export default function MarketplaceScreen() {
   const { language, t } = useLanguage();
   const { palette } = useAppearance();
-  const { user } = useAuth();
+  const { user, roles, effectiveRole } = useAuth();
   const [categories, setCategories] = useState<ServiceCategory[]>([]);
   const [technicians, setTechnicians] = useState<Technician[]>([]);
   const [publishedPosts, setPublishedPosts] = useState<TechnicianPost[]>([]);
@@ -242,6 +251,73 @@ export default function MarketplaceScreen() {
 
   const previewReason = getMarketplacePreviewReason();
 
+  const handleCreatePost = async (input: {
+    caption: string;
+    imageUri?: string;
+    mediaUrls?: string[];
+  }) => {
+    if (!user) {
+      router.push('/login');
+      return;
+    }
+    const actorId = user.id;
+    const authorName =
+      (typeof user.user_metadata?.display_name === 'string' &&
+        user.user_metadata.display_name.trim()) ||
+      user.email?.split('@')[0] ||
+      'Pengguna Cepat';
+    const authorAvatar =
+      typeof user.user_metadata?.avatar_url === 'string'
+        ? user.user_metadata.avatar_url
+        : undefined;
+
+    await createTechnicianPost({
+      actorUserId: actorId,
+      technicianId: actorId,
+      technicianName: authorName,
+      technicianAvatarUri: authorAvatar,
+      technicianVerified: roles.includes('admin') || roles.includes('technician'),
+      caption: input.caption,
+      imageUri: input.imageUri,
+      mediaUrls: input.mediaUrls,
+      serviceArea: area !== 'Semua area' ? area : 'Jakarta Selatan',
+      categorySlug: 'plumbing',
+      published: true,
+    });
+    const refreshed = await loadMarketplacePublishedPosts();
+    setPublishedPosts(refreshed);
+  };
+
+  const handleEditPost = async (
+    post: TechnicianPost,
+    newCaption: string,
+    newImageUri?: string,
+  ) => {
+    if (!user) return;
+    await updateTechnicianPost({
+      actorUserId: user.id,
+      postId: post.id,
+      caption: newCaption,
+      imageUri: newImageUri,
+    });
+    const refreshed = await loadMarketplacePublishedPosts();
+    setPublishedPosts(refreshed);
+  };
+
+  const handleDeletePost = async (postId: string) => {
+    if (!user) return;
+    await deleteTechnicianPost({ actorUserId: user.id, postId });
+    const refreshed = await loadMarketplacePublishedPosts();
+    setPublishedPosts(refreshed);
+  };
+
+  const handleSuspendPost = async (postId: string, suspended: boolean) => {
+    if (!user) return;
+    await suspendTechnicianPost({ actorUserId: user.id, postId, suspended });
+    const refreshed = await loadMarketplacePublishedPosts();
+    setPublishedPosts(refreshed);
+  };
+
   const Header = (
     <View style={styles.contentWidth}>
       {/* Unified Clean Marketplace Search & Location Card */}
@@ -303,6 +379,27 @@ export default function MarketplaceScreen() {
 
         {pinNotice ? <Text style={styles.pinNoticeText}>{pinNotice}</Text> : null}
       </View>
+
+      {/* Inline Post Creator under search input */}
+      {user && (
+        <View style={styles.marketplaceComposerWrap} testID="marketplace-composer-section">
+          <TechnicianPostComposer
+            onCreatePost={handleCreatePost}
+            technicianProfile={{
+              id: user.id,
+              displayName:
+                (typeof user.user_metadata?.display_name === 'string' &&
+                  user.user_metadata.display_name.trim()) ||
+                user.email?.split('@')[0] ||
+                'Pengguna Cepat',
+              avatarUri:
+                typeof user.user_metadata?.avatar_url === 'string'
+                  ? user.user_metadata.avatar_url
+                  : undefined,
+            }}
+          />
+        </View>
+      )}
 
       {/* Clean Area & City Strip */}
       <InlineMarketplaceMapCard
@@ -461,8 +558,21 @@ export default function MarketplaceScreen() {
             }
             trailing={`${publishedPosts.length}`}
           />
-          {publishedPosts.slice(0, 3).map((post) => (
-            <TechnicianPostCard key={post.id} post={post} />
+          {publishedPosts.slice(0, 5).map((post) => (
+            <TechnicianPostCard
+              key={post.id}
+              post={post}
+              isOwner={Boolean(
+                user?.id &&
+                  (user.id === post.technicianId ||
+                    (user.id === 'demo-rizky' && post.technicianId === 'demo-rizky') ||
+                    (user.id === 'demo-customer' && post.technicianId === 'demo-customer')),
+              )}
+              isAdmin={roles.includes('admin') || effectiveRole === 'admin'}
+              onEdit={handleEditPost}
+              onDelete={handleDeletePost}
+              onSuspend={handleSuspendPost}
+            />
           ))}
         </View>
       )}
@@ -720,6 +830,10 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontWeight: '600',
     marginTop: spacing.xs,
+  },
+  marketplaceComposerWrap: {
+    marginTop: spacing.md,
+    width: '100%',
   },
   previewBanner: {
     backgroundColor: '#FFFBF2',

@@ -195,6 +195,8 @@ export interface TechnicianPost {
   imageUri?: string;
   mediaUrls?: string[];
   published: boolean;
+  suspended?: boolean;
+  suspendedAt?: string;
   accountStatus?: 'active' | 'restricted' | 'suspended' | 'blocked';
   createdAt: string;
   updatedAt?: string;

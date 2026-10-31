@@ -1,207 +1,142 @@
-Cepat — Unified Profile (Facebook / X Architecture), Jobs Hub & Critical Bug Fixes
+Here is the complete, production-ready feature prompt you can copy and give directly to your coding agent:
 
-MANDATORY AGENT DIRECTIVE:
-STOP running or writing tests right now. Focus 100% on fixing the runtime bugs, removing every single piece of hardcoded mock data, unifying the Profile & Jobs architecture like Facebook / X.com, and wiring up the broken settings toggles.
+---
 
-1. Fix ExponentImagePicker.launchImageLibraryAsync Rejection Crash
+# Feature Specification: Modern Profile Redesign (X.com & Facebook Style Architecture)
 
-Root Cause
+## 1. Objective
 
-ImagePicker.launchImageLibraryAsync and launchCameraAsync reject when permissions are not explicitly requested beforehand, when deprecated MediaTypeOptions are misused in newer Expo SDKs, or when simultaneous picker calls occur before a Modal finishes closing on Android.
+Refactor and redesign the Technician Profile (`src/app/technician/[id].tsx` and `src/profile/`) to follow the visual polish and modular architecture of modern social platforms like X.com and Facebook.
 
-Exact Implementation Pattern (src/components/profile/ProfileAvatar.tsx & TechnicianPostComposer.tsx)
+Replace the outdated vertical stack of empty text sections with a sticky horizontal tab system, an elevated cover and avatar header, an inline X-style post composer, and a discreet ellipsis (`...`) post-action menu.
 
-Always close the action sheet / dropdown modal first and wait 150ms before invoking the native picker on Android/Xiaomi devices.
+---
 
-Explicitly request permissions and handle errors safely:
+## 2. Core Layout & Visual Specifications
 
-import * as ImagePicker from 'expo-image-picker';
-import { Alert, Platform } from 'react-native';
+### 2.1 Cover Banner & Header Navigation
 
-export async function pickImageSafely(source: 'camera' | 'gallery'): Promise<string | null> {
-try {
-if (source === 'camera') {
-const { status } = await ImagePicker.requestCameraPermissionsAsync();
-if (status !== 'granted') {
-Alert.alert('Izin Kamera Diperlukan', 'Aktifkan izin kamera di pengaturan perangkat Anda.');
-return null;
-}
-const result = await ImagePicker.launchCameraAsync({
-mediaTypes: ['images'],
-allowsEditing: true,
-aspect: [1, 1],
-quality: 0.8,
-});
-if (result.canceled || !result.assets?.length) return null;
-return result.assets[0].uri;
-} else {
-const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-if (status !== 'granted') {
-Alert.alert('Izin Galeri Diperlukan', 'Aktifkan izin galeri untuk memilih foto.');
-return null;
-}
-const result = await ImagePicker.launchImageLibraryAsync({
-mediaTypes: ['images'],
-allowsEditing: true,
-aspect: [1, 1],
-quality: 0.8,
-});
-if (result.canceled || !result.assets?.length) return null;
-return result.assets[0].uri;
-}
-} catch (error) {
-console.warn('ImagePicker error:', error);
-Alert.alert('Gagal Memuat Foto', 'Terjadi kesalahan saat membuka galeri atau kamera. Coba lagi.');
-return null;
-}
-}
+- **Gradient / Custom Cover:** Replace the flat background with an emerald-and-slate gradient cover (`h-44`, `bg-gradient-to-br from-emerald-900 to-slate-900`) with safe-area top padding.
+- **Header Actions:**
+- **Top-Left:** Minimal circular frosted-glass Back button (`<`) navigating to previous route.
+- **Top-Right (Owner only):** Frosted-glass pill button **"Edit Cover"** with camera icon, triggering image selection.
 
-Security & Validation on Selected Images
+### 2.2 Avatar & Identity Row
 
-Validate file extension (jpg, jpeg, png, webp).
+- **Overlapping Avatar:** Circular profile avatar overlapping the bottom edge of the cover banner (`-mt-14`).
+- If `isOwner === true`: Avatar displays a camera badge on the bottom-right. Tapping triggers a sleek bottom sheet menu (**Ambil Foto dari Kamera**, **Pilih dari Galeri Perangkat**, **Batal**).
+- If `isOwner === false`: Avatar is read-only with no badge or tap popup.
 
-Enforce maximum file size (<= 5 MB) before uploading to Supabase Storage.
+- **Top Action Buttons (Aligned right of avatar):**
+- **Owner:** Outlined pill button **"Edit Profile"** (`border-slate-300`) and optional dark pill **"Admin Console"**.
+- **Public Visitor:** Solid emerald pill button **"Book Service"** (`bg-emerald-700 text-white`).
 
-Never trust client-side paths without uploading to the authenticated user's folder ({user_id}/avatar.jpg or {user_id}/{post_id}.jpg).
+- **Name & Badges:**
+- Display name in bold (`text-xl font-bold text-slate-900`) with a green verified partner badge.
+- Specialty subtitle (e.g., _"Spesialis Servis Rumah Tangga & AC"_).
+- Short professional bio with line-clamp/expand support.
 
-2. Unified Facebook / X.com Profile Architecture (src/profile/)
+### 2.3 Consolidated Stats Strip
 
-Why the Agent Was Struggling
+- **Replace the "No reviews yet" block:** Introduce a compact horizontal info strip:
+- Star rating with count: `★ 5.0 (12 Ulasan)`
+- Jobs completed: `24 Selesai`
+- Primary location: `Jakarta Selatan`
 
-Previously, the app treated "Public Technician Profile", "Customer Profile", and "Technician Workspace" as disconnected screens with hardcoded fallback fixtures (Rizky Pratama, 136 jobs completed, etc.).
+- Render honest zero states when counts are zero (`★ 0.0 (0 Ulasan) • 0 Selesai`), never fake numbers.
 
-The Facebook / X.com Model (Single Unified Profile)
+---
 
-Every user (Customer or Technician) has a single unified profile screen structure:
+## 3. Horizontal Sticky Tab Architecture
 
-isOwner = currentUser?.id === profileUserId
+> **CRITICAL REFACTOR:**
+> Eliminate the tall vertical stack of 5 empty sections (_About, Services, Coverage, Past Work, Customer Experience_). Replace them with sticky horizontal tabs.
 
-When isOwner === true (Viewing Your Own Profile):
+Create sticky tab navigation (`sticky top-0 bg-white/95 backdrop-blur-md z-20 border-b border-slate-200`):
 
-Avatar has editable={true} (tapping opens the sleek Camera / Gallery bottom sheet).
+1. **Postingan (Posts)**
+2. **Layanan (Services)**
+3. **Portofolio (Portfolio)**
+4. **Ulasan (Reviews)**
+5. **Tentang (About)**
 
-Edit Profile button is visible.
+### Tab 1: Postingan (Posts)
 
-Inline X.com Post Composer (TechnicianPostComposer) is visible right above the Posts feed.
+- **Inline Composer (Owner Only):**
+- Mini technician avatar on left (`w-9 h-9 rounded-full`).
+- Auto-expanding multiline input: _"Bagikan info pekerjaan atau tips servis terbaru..."_.
+- Bottom bar: Image attachment icon, character counter (`0/500`), and rounded **"Posting"** button with disabled/active states.
+- Pre-upload image preview strip with remove (`×`) button.
 
-Each post card displays a Delete menu option for the owner.
+- **Post Feed:**
+- Render posts chronologically.
+- Header shows avatar, author name, timestamp (e.g., _"2 jam yang lalu"_), and a subtle **3-dot menu (`...`)** on top-right.
+- **Ellipsis Menu:** Contains **"Hapus Post"** (Delete) for the owner. **Do NOT use a full-width red "Delete" button.**
+- Optional heart/like and comment counter footer.
 
-Technician sees their Jobs / Pesanan management tabs directly integrated or accessible without dummy banners.
+### Tab 2: Layanan (Services)
 
-When isOwner === false (Public Visitor Viewing Profile):
+- Cards showing service title, short description, estimated duration, and starting price in IDR (`Rp 85.000 / unit`).
+- If `isOwner === true`, include an **"+ Tambah Layanan"** action button.
+- If empty, display a clean empty-state card instead of plain text.
 
-Exact same visual header, bio, stats, and chronological Posts feed.
+### Tab 3: Portofolio (Portfolio)
 
-Avatar has editable={false} (tapping does NOT open upload menu).
+- Responsive 2-column photo grid of verified work with rounded corners (`rounded-xl`).
+- Tapping a photo opens full-screen image viewer.
+- If `isOwner === true`, include an **"+ Upload Foto"** action button.
 
-Post composer is completely hidden.
+### Tab 4: Ulasan (Reviews)
 
-Edit/Delete buttons are completely hidden.
+- Top rating breakdown card (average score, star distribution bar, total review count).
+- List of verified customer review cards with reviewer name, star count, date, and review text.
 
-Sticky "Book Now" bar is shown at the bottom (only when a customer views an approved technician).
+### Tab 5: Tentang (About)
 
-Top Header Cleanup on Profile (src/app/technician/[id].tsx & src/profile/)
+- Structured chips for supported service areas (`Jakarta Selatan`, `Kebayoran Baru`, `Cilandak`, etc.).
+- Operational hours and working days.
+- Verification and warranty policies.
 
-Remove "Technician profile" title from the top header bar.
+---
 
-Remove "Save technician" button from the top header bar.
-
-Top bar must ONLY show the Back Button (<) when navigated to from Marketplace/Search.
-
-Delete all preview/sample banners:
-
-Delete PREVIEW · SAMPLE DATA badge.
-
-Delete "This is a development example. Ratings, services, and availability are not real."
-
-Delete "Sample status · availability is not confirmed".
-
-3. Complete Removal of All Hardcoded Data
-
-Remove 100% of hardcoded demo/fixture data across the entire runtime app:
-
-Delete hardcoded technician profiles (Rizky Pratama, Rizky Plumbing, Pipe and leak specialist, 4.9 (48 reviews), 8 years of experience, 136 jobs completed).
-
-Delete hardcoded job requests (Saboor, Perbaikan pipa, IDR 125,000, 2026-11-02 09:00 WIB).
-
-Delete hardcoded services (Pipe repair, Blocked drain, IDR 100,000 by Rizky Plumbing) from the Marketplace homepage if they do not come from real Supabase rows.
-
-Rule: Query real Supabase tables (profiles, technician_profiles, technician_posts, bookings, services). When a table has 0 rows or a user is brand new, render honest values (0 reviews, 0 jobs completed, or a clean empty state like "Belum ada postingan" / "No posts yet"). Never fall back to fake demo records in the app UI.
-
-4. Replace "Workspace" with Modular src/jobs/ Architecture
-
-Rename & Reorganize
-
-Rename "Workspace" in the navigation bar and screens to "Jobs" (EN) / "Pekerjaan" (ID).
-
-Create a dedicated folder src/jobs/ with separated components (strictly under 1,000 lines per file):
-
-src/jobs/
-├── JobsContainer.tsx # Main Jobs screen with unified pill tabs
-├── components/
-│ ├── JobsTabBar.tsx # Uses the EXACT same tab styling as Settings
-│ ├── JobRequestCard.tsx # Incoming customer job request (Accept / Decline / Propose Time)
-│ ├── JobActiveCard.tsx # Accepted & ongoing jobs with chat & completion actions
-│ ├── JobHistoryCard.tsx # Completed or cancelled jobs
-│ └── JobProposeTimeModal.tsx # Clean date/time proposal modal
-└── index.ts
-
-Unify Tab Styling between Jobs and Settings:
-
-Remove the boxed outer border container around the tabs on the Jobs screen (Requests, Accepted Jobs, History).
-
-Use the exact same horizontal pill-tab component and spacing used in SettingContainer.tsx so switching between Jobs and Settings feels identical and cohesive.
-
-Remove "Posts (1)" Tab from Jobs:
-
-Posts belong on the Profile screen (just like X.com / Facebook), NOT inside the Jobs management screen. Keep Jobs strictly focused on work requests (Requests, Active Jobs, History).
-
-5. Fix Themes, Accessibility Toggles & Localization Glitches
-
-5.1 Make Theme, Larger Text & Reduce Motion Actually Work
-
-Create or update src/context/AppearanceContext.tsx (persisted via AsyncStorage):
-
-themeMode: 'light' | 'dark' | 'system'
-
-Resolve effective theme using React Native's useColorScheme() when set to 'system'.
-
-Apply dark/light background, surface, text, and border tokens dynamically across all screens (SafeAreaView, cards, headers, inputs).
-
-largeText: boolean
-
-Multiply base font sizes by 1.15 (or apply scaled typography classes) across text components when enabled.
-
-reduceMotion: boolean
-
-Disable layout/screen transition animations and animated spinners/effects when reduceMotion === true.
-
-5.2 Fix Raw Localization Keys on Password Tab (SettingPassword.tsx)
-
-Replace raw key settings.passwordTitle with localized title:
-
-EN: "Change Password"
-
-ID: "Ubah Kata Sandi"
-
-Replace raw key auth.newPassword with localized label & placeholder:
-
-EN: "New Password" / "Enter new password"
-
-ID: "Kata Sandi Baru" / "Masukkan kata sandi baru"
-
-5.3 Remove Floating Blue Gear Button (FAB)
-
-Locate and delete the floating circular gear button (⚙️) appearing at the bottom-right of Marketplace, Bookings, Jobs, and Profile screens.
-
-6. Verification Checklist (On-Device Manual Check Before Any Tests)
-
-Tap Avatar on own Profile → Bottom sheet opens → Select Gallery or Camera → Image loads cleanly with zero ExponentImagePicker rejection error.
-
-Open Technician Profile → Only the < back button is in the header; zero Save technician, zero Technician profile title, zero PREVIEW · SAMPLE DATA banners, zero Rizky Pratama fake data.
-
-Compare Jobs tabs and Settings tabs → Identical pill-tab layout with no mismatched outer border box.
-
-Toggle Dark, Light, System, Larger readable text, and Reduce screen motion in Settings → UI immediately reflects the changes and persists across app reloads.
-
-Open Settings → Password → All labels render clean human text (Change Password, New Password), with zero raw translation keys.
+## 4. UI Cleanups & Removals
+
+- **Remove Floating Gear Icon (FAB):** Completely delete the floating blue gear button from the screen.
+- **Remove Preview Banners:** Delete `PREVIEW · SAMPLE DATA` and `"This is a development example..."` notices.
+- **Remove "Save Technician":** The top header must have only the `<` back arrow.
+- **Zero Hardcoded Data:** Remove hardcoded mock names (`Rizky Pratama`, `Saboor`, etc.). Query real Supabase records or render clean empty states.
+
+---
+
+## 5. Component Breakdown (Keep all files < 1,000 lines)
+
+```
+src/components/profile/
+├── ProfileCoverBanner.tsx       # Cover image, back arrow, edit cover button
+├── ProfileIdentityHeader.tsx    # Avatar with camera badge, name, badges, Edit Profile button
+├── ProfileStatsStrip.tsx        # Rating, completed jobs, location strip
+├── ProfileTabBar.tsx            # Sticky horizontal tabs (Posts, Services, Portfolio, Reviews, About)
+├── ProfileAvatarModal.tsx       # Sleek bottom sheet for Camera / Gallery selection
+├── tabs/
+│   ├── ProfilePostsTab.tsx      # X-style composer + feed with 3-dot dropdown
+│   ├── ProfileServicesTab.tsx   # Service cards + add service action
+│   ├── ProfilePortfolioTab.tsx  # 2-column photo grid + preview modal
+│   ├── ProfileReviewsTab.tsx    # Summary score + review cards
+│   └── ProfileAboutTab.tsx      # Coverage chips + working schedule
+
+```
+
+---
+
+## 6. Acceptance Criteria
+
+- [ ] Top header has clean gradient cover, Back button, and Edit Cover button (owner only).
+- [ ] Tapping the avatar on own profile opens the sleek bottom sheet menu; public view has no popup.
+- [ ] Horizontal tabs switch views smoothly without page reload or layout shift.
+- [ ] Post composer allows typing, attaching images with pre-upload preview, and posting to feed.
+- [ ] Post cards use a subtle 3-dot menu (`...`) for deletion; no raw red Delete buttons.
+- [ ] All 5 tabs render clean cards or elegant empty states without long vertical stacks of text.
+- [ ] Floating blue gear button and sample data banners are 100% removed.
+- [ ] TypeScript check (`npx tsc --noEmit`) passes with 0 errors.
+
+---

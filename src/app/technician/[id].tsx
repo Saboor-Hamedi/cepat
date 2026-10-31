@@ -38,6 +38,8 @@ import {
   createTechnicianPost,
   deleteTechnicianPost,
   loadTechnicianPosts,
+  suspendTechnicianPost,
+  updateTechnicianPost,
 } from '../../data/postsStore';
 import { categoryName, localizeArea, useLanguage } from '../../i18n/locale';
 import { useAppearance } from '../../context/AppearanceContext';
@@ -209,6 +211,9 @@ export default function TechnicianProfileScreen() {
 
   const handleAvatarSelected = async (newUri: string) => {
     setLoadedTechnician((prev) => (prev ? { ...prev, avatarUri: newUri } : prev));
+    setPosts((prevPosts) =>
+      prevPosts.map((p) => ({ ...p, technicianAvatarUri: newUri })),
+    );
     if (isProfileOwner) {
       await updateUserProfile({ avatarUrl: newUri });
       if (user) {
@@ -282,7 +287,34 @@ export default function TechnicianProfileScreen() {
   const handleDeletePost = async (postId: string) => {
     const ownerId = user?.id || technician.id;
     await deleteTechnicianPost({ actorUserId: ownerId, postId });
-    const nextPosts = await loadTechnicianPosts(ownerId, isProfileOwner);
+    const nextPosts = await loadTechnicianPosts(technician.id, isProfileOwner);
+    setPosts(nextPosts);
+  };
+
+  const handleEditPost = async (
+    post: TechnicianPost,
+    newCaption: string,
+    newImageUri?: string,
+  ) => {
+    const ownerId = user?.id || technician.id;
+    await updateTechnicianPost({
+      actorUserId: ownerId,
+      postId: post.id,
+      caption: newCaption,
+      imageUri: newImageUri,
+    });
+    const nextPosts = await loadTechnicianPosts(technician.id, isProfileOwner);
+    setPosts(nextPosts);
+  };
+
+  const handleSuspendPost = async (postId: string, suspended: boolean) => {
+    const actorId = user?.id || 'admin';
+    await suspendTechnicianPost({
+      actorUserId: actorId,
+      postId,
+      suspended,
+    });
+    const nextPosts = await loadTechnicianPosts(technician.id, isProfileOwner);
     setPosts(nextPosts);
   };
 
@@ -351,12 +383,11 @@ export default function TechnicianProfileScreen() {
                     <View style={styles.verifiedTag}>
                       <Text style={styles.verifiedTagText}>{t('profile.verified')}</Text>
                     </View>
-                  ) : (
-                    <View style={styles.partnerTag}>
-                      <Text style={styles.partnerTagText}>{t('profile.unverifiedBadge')}</Text>
-                    </View>
-                  )}
+                  ) : null}
                 </View>
+                <Text style={styles.profileHandle}>
+                  {technician.displayName.toLowerCase().replace(/[^a-z0-9]/g, '')}
+                </Text>
                 {technician.businessName &&
                   technician.businessName !== technician.displayName && (
                     <Text style={styles.businessName}>{technician.businessName}</Text>
@@ -369,15 +400,13 @@ export default function TechnicianProfileScreen() {
 
             <View style={styles.statsBar}>
               <View style={styles.statCell}>
+                <Text style={styles.statValue}>
+                  {posts.length} {language === 'en' ? 'Posts' : 'Postingan'}
+                </Text>
+              </View>
+              <View style={styles.statCell}>
                 <Rating value={technician.averageRating} count={technician.reviewCount} />
               </View>
-              {technician.yearsExperience !== undefined && (
-                <View style={styles.statCell}>
-                  <Text style={styles.statValue}>
-                    {t('profile.yearsExperience', { years: technician.yearsExperience })}
-                  </Text>
-                </View>
-              )}
               {technician.completedJobsCount > 0 && (
                 <View style={styles.statCell}>
                   <Text style={styles.statValue}>
@@ -460,8 +489,11 @@ export default function TechnicianProfileScreen() {
                     key={post.id}
                     post={post}
                     showAuthorHeader={false}
-                    isOwner={canDeletePost}
+                    isOwner={isProfileOwner}
+                    isAdmin={isAdminUser}
+                    onEdit={handleEditPost}
                     onDelete={handleDeletePost}
+                    onSuspend={handleSuspendPost}
                   />
                 ))}
               </>
@@ -881,8 +913,7 @@ const styles = StyleSheet.create({
   profileName: { color: colors.ink, fontSize: 22, fontWeight: '800', letterSpacing: -0.4 },
   verifiedTag: { backgroundColor: '#fff', borderRadius: radii.pill, paddingHorizontal: 8, paddingVertical: 4 },
   verifiedTagText: { color: colors.greenDark, fontSize: 10, fontWeight: '800' },
-  partnerTag: { backgroundColor: 'rgba(255,255,255,0.75)', borderRadius: radii.pill, paddingHorizontal: 8, paddingVertical: 4 },
-  partnerTagText: { color: colors.muted, fontSize: 10, fontWeight: '700' },
+  profileHandle: { color: colors.muted, fontSize: 13, fontWeight: '600', marginTop: 1 },
   businessName: { color: colors.muted, fontSize: 12, fontWeight: '600', marginTop: 3 },
   profileHeadline: { fontSize: 13, fontWeight: '700', lineHeight: 18, marginTop: 5 },
   statsBar: { alignItems: 'center', backgroundColor: 'rgba(255,255,255,0.68)', borderRadius: radii.md, flexDirection: 'row', flexWrap: 'wrap', gap: spacing.md, marginTop: spacing.lg, paddingHorizontal: spacing.md, paddingVertical: spacing.sm },
@@ -893,10 +924,6 @@ const styles = StyleSheet.create({
   availabilityText: { color: colors.ink, fontSize: 12, fontWeight: '600' },
   ownerEditBtn: { alignItems: 'center', backgroundColor: colors.greenDark, borderRadius: radii.pill, marginTop: spacing.md, paddingVertical: 10 },
   ownerEditBtnText: { color: '#FFFFFF', fontSize: 12, fontWeight: '800' },
-  sectionHeading: { alignItems: 'flex-end', flexDirection: 'row', justifyContent: 'space-between', marginBottom: spacing.md, marginTop: spacing.xxl },
-  sectionEyebrow: { color: colors.green, fontSize: 9, fontWeight: '800', letterSpacing: 1.2, marginBottom: 4 },
-  sectionTitle: { color: colors.ink, fontSize: 20, fontWeight: '800', letterSpacing: -0.4 },
-  sectionTrailing: { color: colors.muted, fontSize: 12, paddingBottom: 2 },
   bio: { color: '#4B5B55', fontSize: 14, lineHeight: 22 },
   serviceCard: { backgroundColor: '#fff', borderColor: colors.line, borderRadius: radii.md, borderWidth: 1, marginBottom: spacing.sm, padding: spacing.md },
   serviceRow: { alignItems: 'flex-start', flexDirection: 'row', gap: spacing.md },
@@ -923,10 +950,6 @@ const styles = StyleSheet.create({
   scheduleHoursClosed: { color: colors.muted, fontWeight: '500' },
   portfolioGrid: { flexDirection: 'row', flexWrap: 'wrap', marginHorizontal: -6 },
   portfolioCard: { marginBottom: spacing.md, paddingHorizontal: 6, width: '50%' },
-  portfolioImage: { borderRadius: radii.md, height: 148, overflow: 'hidden', width: '100%' },
-  portfolioImageLarge: { height: 240 },
-  portfolioFallback: { alignItems: 'center', flex: 1, justifyContent: 'center' },
-  portfolioFallbackLabel: { color: colors.muted, fontSize: 10, marginTop: 4 },
   portfolioTitle: { color: colors.ink, fontSize: 13, fontWeight: '700', marginTop: 8 },
   portfolioDescription: { color: colors.muted, fontSize: 11, lineHeight: 16, marginTop: 3 },
   reviewCard: { backgroundColor: '#fff', borderColor: colors.line, borderRadius: radii.md, borderWidth: 1, marginBottom: spacing.sm, padding: spacing.lg },
@@ -942,11 +965,6 @@ const styles = StyleSheet.create({
   reportButtonText: { color: colors.muted, fontSize: 12, fontWeight: '600' },
   profileFooterSpace: { height: 16 },
   bookingFooter: { alignItems: 'center', backgroundColor: '#fff', borderTopColor: colors.line, borderTopWidth: 1, flexDirection: 'row', gap: spacing.md, paddingHorizontal: spacing.xl, paddingVertical: spacing.md },
-  ownerFooterBar: { alignItems: 'center', backgroundColor: '#F8FAF8', borderTopColor: colors.line, borderTopWidth: 1, flexDirection: 'row', gap: spacing.md, paddingHorizontal: spacing.xl, paddingVertical: spacing.md },
-  ownerFooterTitle: { color: colors.ink, fontSize: 13, fontWeight: '800' },
-  ownerFooterDesc: { color: colors.muted, fontSize: 11, marginTop: 2 },
-  ownerWorkspaceActionBtn: { backgroundColor: colors.greenDark, borderRadius: radii.pill, paddingHorizontal: spacing.lg, paddingVertical: 10 },
-  ownerWorkspaceActionText: { color: '#FFFFFF', fontSize: 12, fontWeight: '700' },
   footerPrice: { flex: 1, minWidth: 0 },
   footerPriceLabel: { color: colors.muted, fontSize: 9, fontWeight: '800', letterSpacing: 0.7 },
   footerPriceValue: { color: colors.ink, fontSize: 13, fontWeight: '800', marginTop: 3 },

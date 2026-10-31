@@ -10,6 +10,7 @@ import {
   View,
 } from 'react-native';
 
+import { useAuth } from '../../auth/AuthProvider';
 import { localizeArea, useLanguage } from '../../i18n/locale';
 import { colors, radii, spacing } from '../../theme/tokens';
 import type { TechnicianPost } from '../../types/post';
@@ -18,8 +19,10 @@ import { Avatar } from '../marketplace-ui';
 export interface TechnicianPostCardProps {
   post: TechnicianPost;
   isOwner?: boolean;
+  isAdmin?: boolean;
   onEdit?: (post: TechnicianPost, newCaption: string, newImageUri?: string) => Promise<void>;
   onDelete?: (postId: string) => Promise<void>;
+  onSuspend?: (postId: string, suspended: boolean) => Promise<void>;
   showAuthorHeader?: boolean;
 }
 
@@ -50,17 +53,31 @@ function formatPostTime(dateString: string, language: 'id' | 'en'): string {
 export function TechnicianPostCard({
   post,
   isOwner = false,
+  isAdmin = false,
   onEdit,
   onDelete,
+  onSuspend,
   showAuthorHeader = true,
 }: TechnicianPostCardProps) {
   const { language } = useLanguage();
+  const { user, roles, effectiveRole } = useAuth();
   const [isEditing, setIsEditing] = useState(false);
   const [draftCaption, setDraftCaption] = useState(post.content || post.caption || '');
   const [draftImageUri, setDraftImageUri] = useState<string | undefined>(post.imageUri);
   const [busy, setBusy] = useState(false);
   const [imageError, setImageError] = useState(false);
   const [confirmDeleteVisible, setConfirmDeleteVisible] = useState(false);
+
+  const isAdminUser = Boolean(isAdmin || roles.includes('admin') || effectiveRole === 'admin');
+  const isSelfPost = Boolean(
+    user?.id && (
+      user.id === post.technicianId ||
+      (user.id === 'demo-rizky' && post.technicianId === 'demo-rizky') ||
+      (user.id === 'demo-customer' && post.technicianId === 'demo-customer')
+    ),
+  );
+  const isActualOwner = Boolean(isOwner || isSelfPost);
+  const canBook = !isSelfPost && !isOwner;
 
   const images = post.mediaUrls && post.mediaUrls.length > 0
     ? post.mediaUrls
@@ -244,10 +261,10 @@ export function TechnicianPostCard({
         </View>
       )}
 
-      {/* Owner Management Row */}
-      {isOwner && !isEditing && (
+      {/* Owner & Admin Management Actions */}
+      {!isEditing && (
         <View style={styles.ownerActionsRow}>
-          {onEdit && (
+          {isActualOwner && onEdit && (
             <Pressable
               accessibilityRole="button"
               onPress={() => {
@@ -264,7 +281,7 @@ export function TechnicianPostCard({
             </Pressable>
           )}
 
-          {onDelete && (
+          {isActualOwner && onDelete && (
             <Pressable
               accessibilityRole="button"
               onPress={handleDeletePress}
@@ -276,18 +293,51 @@ export function TechnicianPostCard({
               </Text>
             </Pressable>
           )}
+
+          {/* Admin Soft-Delete (Suspend / Return) — Admin CANNOT hard delete technician posts */}
+          {isAdminUser && !isActualOwner && onSuspend && (
+            <Pressable
+              accessibilityRole="button"
+              onPress={() => onSuspend(post.id, !post.suspended)}
+              style={[
+                styles.ownerActionBtn,
+                post.suspended ? styles.adminUnsuspendBtn : styles.adminSuspendBtn,
+              ]}
+              testID={post.suspended ? `unsuspend-post-btn-${post.id}` : `suspend-post-btn-${post.id}`}
+            >
+              <Text
+                style={[
+                  styles.ownerActionBtnText,
+                  post.suspended ? styles.adminUnsuspendBtnText : styles.adminSuspendBtnText,
+                ]}
+              >
+                {post.suspended
+                  ? language === 'en'
+                    ? 'Return Post'
+                    : 'Pulihkan Postingan'
+                  : language === 'en'
+                    ? 'Suspend Post'
+                    : 'Tangguhkan'}
+              </Text>
+            </Pressable>
+          )}
         </View>
       )}
 
-      {/* Direct Booking Shortcut for Customers & Admin */}
-      {showAuthorHeader && !isOwner && (
+      {/* Direct Booking Shortcut for other users (Never show for self-technician post) */}
+      {showAuthorHeader && canBook && (
         <View style={styles.postBookingRow}>
           <Pressable
             accessibilityRole="button"
             onPress={() =>
               router.push({
                 pathname: '/booking/[id]',
-                params: { id: post.technicianId },
+                params: {
+                  id: post.technicianId,
+                  postId: post.id,
+                  postCaption: post.caption || post.content || '',
+                  categorySlug: post.categorySlug || 'plumbing',
+                },
               })
             }
             style={styles.postBookBtn}
@@ -506,6 +556,24 @@ const styles = StyleSheet.create({
   },
   ownerDeleteBtnText: {
     color: colors.danger,
+    fontSize: 12,
+    fontWeight: '800',
+  },
+  adminSuspendBtn: {
+    backgroundColor: '#FEF3C7',
+    borderColor: '#FDE68A',
+  },
+  adminSuspendBtnText: {
+    color: '#B45309',
+    fontSize: 12,
+    fontWeight: '800',
+  },
+  adminUnsuspendBtn: {
+    backgroundColor: '#DEF7EC',
+    borderColor: '#BCF0DA',
+  },
+  adminUnsuspendBtnText: {
+    color: '#03543F',
     fontSize: 12,
     fontWeight: '800',
   },

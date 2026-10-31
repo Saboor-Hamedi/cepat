@@ -14,6 +14,7 @@ import type { PropsWithChildren } from 'react';
 import type { User } from '@supabase/supabase-js';
 
 import { supabase } from '../data/marketplaceRepository';
+import { updateTechnicianProfileOnPosts } from '../data/postsStore';
 import { handleIncomingAuthDeepLink } from './deepLinking';
 import {
   deriveMetadataRoles,
@@ -392,6 +393,16 @@ export function AuthProvider({ children }: PropsWithChildren) {
         } catch {
           // Local update applied
         }
+      }
+      const targetUserId = user?.id || previewAuthState.user?.id;
+      if (targetUserId) {
+        try {
+          await updateTechnicianProfileOnPosts({
+            technicianId: targetUserId,
+            technicianName: details.displayName,
+            technicianAvatarUri: details.avatarUrl,
+          });
+        } catch {}
       }
     },
     [user],
