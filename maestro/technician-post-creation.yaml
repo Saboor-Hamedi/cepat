@@ -1,0 +1,18 @@
+appId: id.cepat.app
+---
+# Journey: Technician Post Creation (quick.md Section 7.3)
+- launchApp
+- tapOn: "Profile"
+- tapOn: "Workspace"
+- assertVisible:
+    id: "technician-post-composer"
+- tapOn:
+    id: "create-post-caption-input"
+- inputText: "Selesai servis AC Panasonic 1 PK di BSD. Dingin maksimal!"
+- tapOn:
+    id: "add-image-btn"
+- assertVisible:
+    id: "submit-new-post-btn"
+- tapOn:
+    id: "submit-new-post-btn"
+- assertVisible: "Selesai servis AC Panasonic 1 PK di BSD. Dingin maksimal!"

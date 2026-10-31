@@ -1,0 +1,17 @@
+appId: ${APP_ID}
+---
+- launchApp
+- tapOn:
+    id: "account-entry"
+- tapOn:
+    id: "account-register"
+- assertVisible: "Buat akun Cepat"
+- tapOn:
+    id: "register-submit"
+- assertVisible: "Bagian ini wajib diisi."
+- tapOn:
+    id: "login-link"
+- assertVisible: "Selamat datang kembali"
+- tapOn:
+    id: "login-submit"
+- assertVisible: "Bagian ini wajib diisi."

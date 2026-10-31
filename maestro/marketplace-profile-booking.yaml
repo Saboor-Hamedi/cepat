@@ -1,0 +1,21 @@
+appId: ${APP_ID}
+---
+- launchApp
+- assertVisible:
+    text: "Ada yang perlu"
+- tapOn:
+    id: "technician-card-demo-rizky"
+- assertVisible:
+    text: "Kenali teknisinya"
+- assertVisible:
+    text: "Instalasi pipa dapur"
+- tapOn:
+    id: "book-now"
+- assertVisible:
+    text: "Pesan jadwal teknisi"
+- assertVisible:
+    id: "selected-technician-id"
+- tapOn:
+    id: "submit-booking-request"
+- assertVisible:
+    id: "booking-status-view"

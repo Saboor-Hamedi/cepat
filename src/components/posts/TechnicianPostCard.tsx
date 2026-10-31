@@ -1,0 +1,565 @@
+import { router } from 'expo-router';
+import { useState } from 'react';
+import {
+  Image,
+  Modal,
+  Pressable,
+  StyleSheet,
+  Text,
+  TextInput,
+  View,
+} from 'react-native';
+
+import { localizeArea, useLanguage } from '../../i18n/locale';
+import { colors, radii, spacing } from '../../theme/tokens';
+import type { TechnicianPost } from '../../types/post';
+import { Avatar } from '../marketplace-ui';
+
+export interface TechnicianPostCardProps {
+  post: TechnicianPost;
+  isOwner?: boolean;
+  onEdit?: (post: TechnicianPost, newCaption: string, newImageUri?: string) => Promise<void>;
+  onDelete?: (postId: string) => Promise<void>;
+  showAuthorHeader?: boolean;
+}
+
+function formatPostTime(dateString: string, language: 'id' | 'en'): string {
+  try {
+    const diffMs = Date.now() - new Date(dateString).getTime();
+    const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
+    if (diffHours < 1) {
+      const diffMins = Math.max(1, Math.floor(diffMs / (1000 * 60)));
+      return language === 'en' ? `${diffMins}m ago` : `${diffMins}m yang lalu`;
+    }
+    if (diffHours < 24) {
+      return language === 'en' ? `${diffHours}h ago` : `${diffHours} jam yang lalu`;
+    }
+    const diffDays = Math.floor(diffHours / 24);
+    if (diffDays < 7) {
+      return language === 'en' ? `${diffDays}d ago` : `${diffDays} hari yang lalu`;
+    }
+    return new Date(dateString).toLocaleDateString(language === 'en' ? 'en-US' : 'id-ID', {
+      day: 'numeric',
+      month: 'short',
+    });
+  } catch {
+    return language === 'en' ? 'Recently' : 'Baru saja';
+  }
+}
+
+export function TechnicianPostCard({
+  post,
+  isOwner = false,
+  onEdit,
+  onDelete,
+  showAuthorHeader = true,
+}: TechnicianPostCardProps) {
+  const { language } = useLanguage();
+  const [isEditing, setIsEditing] = useState(false);
+  const [draftCaption, setDraftCaption] = useState(post.content || post.caption || '');
+  const [draftImageUri, setDraftImageUri] = useState<string | undefined>(post.imageUri);
+  const [busy, setBusy] = useState(false);
+  const [imageError, setImageError] = useState(false);
+  const [confirmDeleteVisible, setConfirmDeleteVisible] = useState(false);
+
+  const images = post.mediaUrls && post.mediaUrls.length > 0
+    ? post.mediaUrls
+    : post.imageUri
+      ? [post.imageUri]
+      : [];
+
+  const handleSaveEdit = async () => {
+    if (!onEdit || !draftCaption.trim()) return;
+    setBusy(true);
+    try {
+      await onEdit(post, draftCaption.trim(), draftImageUri);
+      setIsEditing(false);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!onDelete) return;
+    setConfirmDeleteVisible(false);
+    await onDelete(post.id);
+  };
+
+  const handleDeletePress = () => {
+    // Show confirmation modal
+    setConfirmDeleteVisible(true);
+  };
+
+  return (
+    <View style={styles.card} testID={`technician-post-card-${post.id}`}>
+      {/* Post Header */}
+      {showAuthorHeader && (
+        <View style={styles.headerRow}>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={`View profile of ${post.technicianName}`}
+            onPress={() => router.push(`/technician/${post.technicianId}`)}
+            style={styles.authorTouchArea}
+            testID={`post-author-link-${post.id}`}
+          >
+            <Avatar
+              uri={post.technicianAvatarUri}
+              name={post.technicianName}
+              size={42}
+            />
+            <View style={styles.authorMeta}>
+              <View style={styles.nameRow}>
+                <Text numberOfLines={1} style={styles.authorName}>
+                  {post.technicianName}
+                </Text>
+                {post.technicianVerified && (
+                  <View style={styles.verifiedBadge}>
+                    <Text style={styles.verifiedBadgeText}>✓</Text>
+                  </View>
+                )}
+              </View>
+              <Text numberOfLines={1} style={styles.authorSub}>
+                {post.technicianBusinessName ? `${post.technicianBusinessName} · ` : ''}
+                {post.serviceArea ? `${localizeArea(post.serviceArea, language)} · ` : ''}
+                {formatPostTime(post.createdAt, language)}
+              </Text>
+            </View>
+          </Pressable>
+
+          {/* Publication Status Pill for Owner */}
+          {isOwner && (
+            <View
+              style={[
+                styles.statusPill,
+                post.published ? styles.statusPillPublished : styles.statusPillDraft,
+              ]}
+            >
+              <Text
+                style={[
+                  styles.statusPillText,
+                  post.published ? styles.statusPillTextPublished : styles.statusPillTextDraft,
+                ]}
+              >
+                {post.published
+                  ? language === 'en'
+                    ? 'Published'
+                    : 'Tayang'
+                  : language === 'en'
+                    ? 'Draft'
+                    : 'Draf'}
+              </Text>
+            </View>
+          )}
+        </View>
+      )}
+
+      {/* Editing State or Content Body */}
+      {isEditing ? (
+        <View style={styles.editForm} testID={`edit-post-form-${post.id}`}>
+          <TextInput
+            multiline
+            onChangeText={setDraftCaption}
+            placeholder={
+              language === 'en'
+                ? 'Update your post caption...'
+                : 'Perbarui keterangan postingan...'
+            }
+            placeholderTextColor={colors.muted}
+            style={styles.captionInput}
+            testID={`edit-post-caption-input-${post.id}`}
+            value={draftCaption}
+          />
+          <View style={styles.editActions}>
+            <Pressable
+              accessibilityRole="button"
+              disabled={busy}
+              onPress={() => {
+                setDraftCaption(post.content || post.caption || '');
+                setDraftImageUri(post.imageUri);
+                setIsEditing(false);
+              }}
+              style={styles.actionBtn}
+              testID={`cancel-edit-post-btn-${post.id}`}
+            >
+              <Text style={styles.actionBtnText}>
+                {language === 'en' ? 'Cancel' : 'Batal'}
+              </Text>
+            </Pressable>
+
+            <Pressable
+              accessibilityRole="button"
+              disabled={busy || !draftCaption.trim()}
+              onPress={() => {
+                void handleSaveEdit();
+              }}
+              style={[styles.actionBtn, styles.actionPrimaryBtn]}
+              testID={`save-edited-post-btn-${post.id}`}
+            >
+              <Text style={styles.actionPrimaryBtnText}>
+                {busy
+                  ? language === 'en'
+                    ? 'Saving...'
+                    : 'Menyimpan...'
+                  : language === 'en'
+                    ? 'Save'
+                    : 'Simpan'}
+              </Text>
+            </Pressable>
+          </View>
+        </View>
+      ) : (
+        <View style={styles.bodyContent}>
+          {Boolean(post.content || post.caption) && (
+            <Text style={styles.caption}>{post.content || post.caption}</Text>
+          )}
+
+          {/* Media Grid / Images */}
+          {images.length > 0 && !imageError ? (
+            <View style={styles.mediaContainer}>
+              {images.length === 1 ? (
+                <View style={styles.singleImageFrame}>
+                  <Image
+                    source={{ uri: images[0] }}
+                    style={styles.postImage}
+                    resizeMode="cover"
+                    onError={() => setImageError(true)}
+                  />
+                </View>
+              ) : (
+                <View style={styles.gridContainer}>
+                  {images.map((imgUri, idx) => (
+                    <View key={`${imgUri}-${idx}`} style={styles.gridImageFrame}>
+                      <Image
+                        source={{ uri: imgUri }}
+                        style={styles.postImage}
+                        resizeMode="cover"
+                        onError={() => setImageError(true)}
+                      />
+                    </View>
+                  ))}
+                </View>
+              )}
+            </View>
+          ) : null}
+        </View>
+      )}
+
+      {/* Owner Management Row */}
+      {isOwner && !isEditing && (
+        <View style={styles.ownerActionsRow}>
+          {onEdit && (
+            <Pressable
+              accessibilityRole="button"
+              onPress={() => {
+                setDraftCaption(post.content || post.caption || '');
+                setDraftImageUri(post.imageUri);
+                setIsEditing(true);
+              }}
+              style={styles.ownerActionBtn}
+              testID={`edit-post-btn-${post.id}`}
+            >
+              <Text style={styles.ownerActionBtnText}>
+                {language === 'en' ? 'Edit Post' : 'Edit Postingan'}
+              </Text>
+            </Pressable>
+          )}
+
+          {onDelete && (
+            <Pressable
+              accessibilityRole="button"
+              onPress={handleDeletePress}
+              style={[styles.ownerActionBtn, styles.ownerDeleteBtn]}
+              testID={`delete-post-btn-${post.id}`}
+            >
+              <Text style={styles.ownerDeleteBtnText}>
+                {language === 'en' ? 'Delete' : 'Hapus'}
+              </Text>
+            </Pressable>
+          )}
+        </View>
+      )}
+
+      {/* Confirmation Modal for Post Deletion */}
+      <Modal
+        animationType="fade"
+        transparent
+        visible={confirmDeleteVisible}
+        onRequestClose={() => setConfirmDeleteVisible(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.confirmDialog}>
+            <Text style={styles.confirmDialogTitle}>
+              {language === 'en' ? 'Delete Post?' : 'Hapus Postingan?'}
+            </Text>
+            <Text style={styles.confirmDialogMessage}>
+              {language === 'en'
+                ? 'This post will be permanently removed from your profile and the Marketplace feed.'
+                : 'Postingan ini akan dihapus permanen dari profil Anda dan beranda Marketplace.'}
+            </Text>
+            <View style={styles.confirmDialogActions}>
+              <Pressable
+                accessibilityRole="button"
+                onPress={() => setConfirmDeleteVisible(false)}
+                style={styles.confirmDialogCancelBtn}
+              >
+                <Text style={styles.confirmDialogCancelText}>
+                  {language === 'en' ? 'Cancel' : 'Batal'}
+                </Text>
+              </Pressable>
+              <Pressable
+                accessibilityRole="button"
+                onPress={() => {
+                  void handleConfirmDelete();
+                }}
+                style={styles.confirmDialogDeleteBtn}
+              >
+                <Text style={styles.confirmDialogDeleteText}>
+                  {language === 'en' ? 'Delete' : 'Hapus'}
+                </Text>
+              </Pressable>
+            </View>
+          </View>
+        </View>
+      </Modal>
+    </View>
+  );
+}
+
+const styles = StyleSheet.create({
+  card: {
+    backgroundColor: colors.surface,
+    borderColor: '#E2E8F0',
+    borderRadius: radii.md,
+    borderWidth: 1,
+    marginBottom: spacing.md,
+    padding: spacing.md,
+    width: '100%',
+  },
+  headerRow: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: spacing.xs,
+  },
+  authorTouchArea: {
+    alignItems: 'center',
+    flex: 1,
+    flexDirection: 'row',
+    gap: spacing.sm,
+  },
+  authorMeta: {
+    flex: 1,
+    minWidth: 0,
+  },
+  nameRow: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    gap: 4,
+  },
+  authorName: {
+    color: colors.ink,
+    fontSize: 14,
+    fontWeight: '800',
+  },
+  verifiedBadge: {
+    alignItems: 'center',
+    backgroundColor: colors.greenSoft,
+    borderRadius: 5,
+    height: 18,
+    justifyContent: 'center',
+    width: 18,
+  },
+  verifiedBadgeText: {
+    color: colors.greenDark,
+    fontSize: 10,
+    fontWeight: '900',
+  },
+  authorSub: {
+    color: colors.muted,
+    fontSize: 11,
+    marginTop: 2,
+  },
+  statusPill: {
+    borderRadius: radii.sm,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+  },
+  statusPillPublished: {
+    backgroundColor: colors.greenSoft,
+  },
+  statusPillDraft: {
+    backgroundColor: colors.paper,
+  },
+  statusPillText: {
+    fontSize: 10,
+    fontWeight: '800',
+  },
+  statusPillTextPublished: {
+    color: colors.greenDark,
+  },
+  statusPillTextDraft: {
+    color: colors.muted,
+  },
+  bodyContent: {
+    marginTop: spacing.xs,
+  },
+  caption: {
+    color: colors.ink,
+    fontSize: 14,
+    lineHeight: 22,
+  },
+  mediaContainer: {
+    marginTop: spacing.sm,
+    width: '100%',
+  },
+  singleImageFrame: {
+    backgroundColor: colors.paper,
+    borderRadius: radii.md,
+    height: 220,
+    overflow: 'hidden',
+    width: '100%',
+  },
+  gridContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  gridImageFrame: {
+    backgroundColor: colors.paper,
+    borderRadius: radii.sm,
+    height: 140,
+    overflow: 'hidden',
+    width: '48%',
+  },
+  postImage: {
+    height: '100%',
+    width: '100%',
+  },
+  ownerActionsRow: {
+    borderTopColor: '#F1F5F9',
+    borderTopWidth: 1,
+    flexDirection: 'row',
+    gap: spacing.sm,
+    justifyContent: 'flex-end',
+    marginTop: spacing.sm,
+    paddingTop: spacing.xs,
+  },
+  ownerActionBtn: {
+    backgroundColor: colors.paper,
+    borderColor: colors.line,
+    borderRadius: radii.sm,
+    borderWidth: 1,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+  },
+  ownerActionBtnText: {
+    color: colors.ink,
+    fontSize: 12,
+    fontWeight: '700',
+  },
+  ownerDeleteBtn: {
+    backgroundColor: '#FCE9E7',
+    borderColor: '#F5C4BE',
+  },
+  ownerDeleteBtnText: {
+    color: colors.danger,
+    fontSize: 12,
+    fontWeight: '800',
+  },
+  editForm: {
+    marginTop: spacing.xs,
+  },
+  captionInput: {
+    backgroundColor: colors.paper,
+    borderColor: colors.line,
+    borderRadius: radii.sm,
+    borderWidth: 1,
+    color: colors.ink,
+    fontSize: 13,
+    minHeight: 78,
+    padding: spacing.md,
+    textAlignVertical: 'top',
+  },
+  editActions: {
+    flexDirection: 'row',
+    gap: spacing.sm,
+    justifyContent: 'flex-end',
+    marginTop: spacing.sm,
+  },
+  actionBtn: {
+    alignItems: 'center',
+    backgroundColor: colors.paper,
+    borderColor: colors.line,
+    borderRadius: radii.sm,
+    borderWidth: 1,
+    justifyContent: 'center',
+    paddingHorizontal: 14,
+    paddingVertical: 6,
+  },
+  actionBtnText: {
+    color: colors.ink,
+    fontSize: 12,
+    fontWeight: '700',
+  },
+  actionPrimaryBtn: {
+    backgroundColor: colors.greenDark,
+    borderColor: colors.greenDark,
+  },
+  actionPrimaryBtnText: {
+    color: '#FFFFFF',
+    fontSize: 12,
+    fontWeight: '800',
+  },
+  modalOverlay: {
+    alignItems: 'center',
+    backgroundColor: 'rgba(15, 23, 42, 0.5)',
+    flex: 1,
+    justifyContent: 'center',
+    padding: spacing.lg,
+  },
+  confirmDialog: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    maxWidth: 380,
+    padding: spacing.lg,
+    width: '100%',
+  },
+  confirmDialogTitle: {
+    color: colors.ink,
+    fontSize: 16,
+    fontWeight: '800',
+  },
+  confirmDialogMessage: {
+    color: colors.muted,
+    fontSize: 13,
+    lineHeight: 18,
+    marginTop: spacing.xs,
+  },
+  confirmDialogActions: {
+    flexDirection: 'row',
+    gap: spacing.sm,
+    justifyContent: 'flex-end',
+    marginTop: spacing.lg,
+  },
+  confirmDialogCancelBtn: {
+    borderRadius: radii.sm,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+  },
+  confirmDialogCancelText: {
+    color: colors.ink,
+    fontSize: 13,
+    fontWeight: '600',
+  },
+  confirmDialogDeleteBtn: {
+    backgroundColor: colors.danger,
+    borderRadius: radii.sm,
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+  },
+  confirmDialogDeleteText: {
+    color: '#FFFFFF',
+    fontSize: 13,
+    fontWeight: '800',
+  },
+});

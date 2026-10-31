@@ -1,0 +1,567 @@
+import { router } from 'expo-router';
+import { Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+
+import { useAuth } from '../auth/AuthProvider';
+import { useLanguage } from '../i18n/locale';
+import { colors, radii, spacing } from '../theme/tokens';
+import { Avatar } from './marketplace-ui';
+
+export interface SidebarProps {
+  visible: boolean;
+  onClose: () => void;
+  avatarUri?: string;
+}
+
+export type ProfileSidebarModalProps = SidebarProps;
+
+function LucideLogoutIcon({ color = colors.danger }: { color?: string }) {
+  return (
+    <View style={styles.lucideLogoutCanvas}>
+      {/* Door frame left bracket */}
+      <View style={[styles.lucideLogoutFrame, { borderColor: color }]} />
+      {/* Arrow shaft */}
+      <View style={[styles.lucideLogoutShaft, { backgroundColor: color }]} />
+      {/* Arrow chevron head */}
+      <View style={[styles.lucideLogoutHead, { borderColor: color }]} />
+    </View>
+  );
+}
+
+function SidebarItemIcon({
+  kind,
+}: {
+  kind: 'profile' | 'settings' | 'preferences' | 'bookings' | 'workspace' | 'admin';
+}) {
+  const stroke = '#0F1419';
+  if (kind === 'profile') {
+    return (
+      <View style={styles.itemIconCanvas}>
+        <View style={[styles.iconUserHead, { borderColor: stroke }]} />
+        <View style={[styles.iconUserShoulders, { borderColor: stroke }]} />
+      </View>
+    );
+  }
+  if (kind === 'settings') {
+    return (
+      <View style={styles.itemIconCanvas}>
+        <View style={[styles.iconGearOuter, { borderColor: stroke }]}>
+          <View style={[styles.iconGearInner, { backgroundColor: stroke }]} />
+        </View>
+      </View>
+    );
+  }
+  if (kind === 'preferences') {
+    return (
+      <View style={styles.itemIconCanvas}>
+        <View style={[styles.iconSliderLine, { backgroundColor: stroke }]} />
+        <View style={[styles.iconSliderLine, { backgroundColor: stroke }]} />
+      </View>
+    );
+  }
+  if (kind === 'workspace') {
+    return (
+      <View style={styles.itemIconCanvas}>
+        <View style={[styles.iconBriefcaseTop, { borderColor: stroke }]} />
+        <View style={[styles.iconBriefcaseBox, { borderColor: stroke }]} />
+      </View>
+    );
+  }
+  if (kind === 'admin') {
+    return (
+      <View style={styles.itemIconCanvas}>
+        <View style={[styles.iconShield, { borderColor: stroke }]} />
+      </View>
+    );
+  }
+  return (
+    <View style={styles.itemIconCanvas}>
+      <View style={[styles.iconCalendarBox, { borderColor: stroke }]} />
+    </View>
+  );
+}
+
+export function Sidebar({
+  visible,
+  onClose,
+  avatarUri,
+}: SidebarProps) {
+  const { language } = useLanguage();
+  const { user, roles, effectiveRole, signOut } = useAuth();
+
+  const isAuthenticated = Boolean(user);
+  const isVerifiedAdmin = isAuthenticated && roles.includes('admin');
+  const isTechnician =
+    isAuthenticated && (effectiveRole === 'technician' || roles.includes('technician'));
+
+  const displayName = isAuthenticated
+    ? (typeof user?.user_metadata?.display_name === 'string' &&
+        user.user_metadata.display_name.trim()) ||
+      user?.email?.split('@')[0] ||
+      'Cepat User'
+    : language === 'en'
+      ? 'Guest Visitor'
+      : 'Pengunjung Tamu';
+
+  const accountIdentifier = isAuthenticated
+    ? `@${(user?.email?.split('@')[0] || 'cepat_member')
+        .toLowerCase()
+        .replace(/[^a-z0-9_]/g, '_')}`
+    : language === 'en'
+      ? 'Not signed in'
+      : 'Belum masuk';
+
+  const navigateAndClose = (
+    target:
+      | '/'
+      | '/account'
+      | '/bookings'
+      | '/technician-dashboard'
+      | '/admin'
+      | '/login'
+      | '/register'
+      | `/technician/${string}`
+      | { pathname: '/account'; params: { tab: string } },
+  ) => {
+    onClose();
+    try {
+      router.push(target as never);
+    } catch {
+      // Router may not be mounted in isolated unit component tests.
+    }
+  };
+
+  const handleLogout = async () => {
+    await signOut();
+    onClose();
+    try {
+      router.replace('/login');
+    } catch {
+      // Router may not be mounted in isolated unit component tests.
+    }
+  };
+
+  return (
+    <Modal
+      animationType="fade"
+      onRequestClose={onClose}
+      transparent
+      visible={visible}
+    >
+      <View style={styles.backdrop} testID="profile-sidebar-modal">
+        {/* Left Twitter/X-style Drawer Panel */}
+        <View style={styles.drawer}>
+          <View style={styles.profileHeader}>
+            <View style={styles.avatarTopRow}>
+              <Avatar
+                uri={isAuthenticated ? avatarUri : undefined}
+                name={displayName}
+                size={48}
+              />
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel={language === 'en' ? 'Close menu' : 'Tutup menu'}
+                onPress={onClose}
+                style={styles.closeBtn}
+                testID="sidebar-close-button"
+              >
+                <Text style={styles.closeBtnText}>×</Text>
+              </Pressable>
+            </View>
+
+            <Text numberOfLines={1} style={styles.displayName} testID="sidebar-display-name">
+              {displayName}
+            </Text>
+            <Text numberOfLines={1} style={styles.handleText} testID="sidebar-handle">
+              {accountIdentifier}
+            </Text>
+
+            {isAuthenticated && (
+              <View style={styles.roleBadge}>
+                <Text style={styles.roleBadgeText}>
+                  {isVerifiedAdmin
+                    ? 'Administrator'
+                    : isTechnician
+                      ? language === 'en'
+                        ? 'Professional Technician'
+                        : 'Mitra Teknisi'
+                      : language === 'en'
+                        ? 'Customer'
+                        : 'Pelanggan'}
+                </Text>
+              </View>
+            )}
+          </View>
+
+          <View style={styles.divider} />
+
+          <ScrollView style={styles.menuList}>
+            <Pressable
+              accessibilityRole="button"
+              onPress={() =>
+                navigateAndClose(
+                  !isAuthenticated
+                    ? '/login'
+                    : `/technician/${user?.id || (isTechnician ? 'demo-rizky' : 'demo-customer')}`,
+                )
+              }
+              style={styles.menuItem}
+              testID="sidebar-view-profile"
+            >
+              <SidebarItemIcon kind="profile" />
+              <Text style={styles.menuItemText}>
+                {language === 'en' ? 'View Profile' : 'Lihat Profil'}
+              </Text>
+            </Pressable>
+
+            <Pressable
+              accessibilityRole="button"
+              onPress={() => navigateAndClose('/account')}
+              style={styles.menuItem}
+              testID="sidebar-settings"
+            >
+              <SidebarItemIcon kind="settings" />
+              <Text style={styles.menuItemText}>
+                {language === 'en' ? 'Settings' : 'Pengaturan'}
+              </Text>
+            </Pressable>
+
+            <Pressable
+              accessibilityRole="button"
+              onPress={() =>
+                navigateAndClose({ pathname: '/account', params: { tab: 'appearance' } })
+              }
+              style={styles.menuItem}
+              testID="sidebar-preferences"
+            >
+              <SidebarItemIcon kind="preferences" />
+              <Text style={styles.menuItemText}>
+                {language === 'en' ? 'Account preferences' : 'Preferensi akun'}
+              </Text>
+            </Pressable>
+
+            {isTechnician ? (
+              <Pressable
+                accessibilityRole="button"
+                onPress={() => navigateAndClose('/technician-dashboard')}
+                style={styles.menuItem}
+                testID="sidebar-workspace"
+              >
+                <SidebarItemIcon kind="workspace" />
+                <Text style={styles.menuItemText}>
+                  {language === 'en' ? 'Professional Profile & Requests' : 'Profil & Permintaan'}
+                </Text>
+              </Pressable>
+            ) : (
+              <Pressable
+                accessibilityRole="button"
+                onPress={() => navigateAndClose('/bookings')}
+                style={styles.menuItem}
+                testID="sidebar-bookings"
+              >
+                <SidebarItemIcon kind="bookings" />
+                <Text style={styles.menuItemText}>
+                  {language === 'en' ? 'Bookings & Messages' : 'Pesanan & Pesan'}
+                </Text>
+              </Pressable>
+            )}
+
+            {isVerifiedAdmin && (
+              <Pressable
+                accessibilityRole="button"
+                onPress={() => navigateAndClose('/admin')}
+                style={styles.menuItem}
+                testID="sidebar-admin"
+              >
+                <SidebarItemIcon kind="admin" />
+                <Text style={styles.menuItemText}>
+                  {language === 'en' ? 'Admin Control Center' : 'Pusat Kontrol Admin'}
+                </Text>
+              </Pressable>
+            )}
+          </ScrollView>
+
+          <View style={styles.bottomFooter}>
+            {isAuthenticated ? (
+              <Pressable
+                accessibilityRole="button"
+                onPress={() => {
+                  void handleLogout();
+                }}
+                style={styles.logoutBtn}
+                testID="sidebar-logout"
+              >
+                <LucideLogoutIcon color={colors.danger} />
+                <Text style={styles.logoutBtnText}>Log out</Text>
+              </Pressable>
+            ) : (
+              <View style={styles.guestAuthActions}>
+                <Pressable
+                  accessibilityRole="button"
+                  onPress={() => navigateAndClose('/login')}
+                  style={styles.loginBtn}
+                  testID="sidebar-login"
+                >
+                  <Text style={styles.loginBtnText}>
+                    {language === 'en' ? 'Sign in' : 'Masuk'}
+                  </Text>
+                </Pressable>
+                <Pressable
+                  accessibilityRole="button"
+                  onPress={() => navigateAndClose('/register')}
+                  style={styles.registerBtn}
+                  testID="sidebar-register"
+                >
+                  <Text style={styles.registerBtnText}>
+                    {language === 'en' ? 'Create account' : 'Buat akun'}
+                  </Text>
+                </Pressable>
+              </View>
+            )}
+          </View>
+        </View>
+
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="Dismiss sidebar"
+          onPress={onClose}
+          style={styles.scrimTapArea}
+        />
+      </View>
+    </Modal>
+  );
+}
+
+export const ProfileSidebarModal = Sidebar;
+
+const styles = StyleSheet.create({
+  backdrop: {
+    backgroundColor: 'rgba(15, 20, 25, 0.45)',
+    flex: 1,
+    flexDirection: 'row',
+  },
+  drawer: {
+    backgroundColor: '#FFFFFF',
+    borderRightColor: '#EFF3F4',
+    borderRightWidth: 1,
+    flexDirection: 'column',
+    height: '100%',
+    justifyContent: 'space-between',
+    maxWidth: 310,
+    paddingTop: spacing.xl,
+    width: '82%',
+  },
+  scrimTapArea: {
+    flex: 1,
+  },
+  profileHeader: {
+    paddingHorizontal: spacing.xl,
+    paddingBottom: spacing.md,
+  },
+  avatarTopRow: {
+    alignItems: 'flex-start',
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: spacing.sm,
+  },
+  closeBtn: {
+    alignItems: 'center',
+    backgroundColor: '#EFF3F4',
+    borderRadius: 16,
+    height: 32,
+    justifyContent: 'center',
+    width: 32,
+  },
+  closeBtnText: {
+    color: '#0F1419',
+    fontSize: 20,
+    fontWeight: '600',
+    lineHeight: 22,
+  },
+  displayName: {
+    color: '#0F1419',
+    fontSize: 18,
+    fontWeight: '800',
+    letterSpacing: -0.3,
+  },
+  handleText: {
+    color: '#536471',
+    fontSize: 14,
+    marginTop: 2,
+  },
+  roleBadge: {
+    alignSelf: 'flex-start',
+    backgroundColor: colors.greenSoft,
+    borderRadius: radii.pill,
+    marginTop: spacing.xs,
+    paddingHorizontal: 10,
+    paddingVertical: 3,
+  },
+  roleBadgeText: {
+    color: colors.greenDark,
+    fontSize: 11,
+    fontWeight: '800',
+  },
+  divider: {
+    backgroundColor: '#EFF3F4',
+    height: 1,
+    width: '100%',
+  },
+  menuList: {
+    flex: 1,
+    paddingVertical: spacing.sm,
+  },
+  menuItem: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    gap: spacing.lg,
+    paddingHorizontal: spacing.xl,
+    paddingVertical: 14,
+  },
+  menuItemText: {
+    color: '#0F1419',
+    fontSize: 17,
+    fontWeight: '700',
+  },
+  itemIconCanvas: {
+    alignItems: 'center',
+    height: 22,
+    justifyContent: 'center',
+    width: 22,
+  },
+  iconUserHead: {
+    borderRadius: 5,
+    borderWidth: 2,
+    height: 9,
+    marginBottom: 2,
+    width: 9,
+  },
+  iconUserShoulders: {
+    borderTopLeftRadius: 6,
+    borderTopRightRadius: 6,
+    borderTopWidth: 2,
+    borderLeftWidth: 2,
+    borderRightWidth: 2,
+    height: 6,
+    width: 15,
+  },
+  iconGearOuter: {
+    alignItems: 'center',
+    borderRadius: 8,
+    borderWidth: 2,
+    height: 16,
+    justifyContent: 'center',
+    width: 16,
+  },
+  iconGearInner: {
+    borderRadius: 2.5,
+    height: 5,
+    width: 5,
+  },
+  iconSliderLine: {
+    borderRadius: 1,
+    height: 2,
+    marginVertical: 2.5,
+    width: 16,
+  },
+  iconBriefcaseTop: {
+    borderLeftWidth: 2,
+    borderRightWidth: 2,
+    borderTopWidth: 2,
+    height: 4,
+    width: 8,
+  },
+  iconBriefcaseBox: {
+    borderRadius: 2,
+    borderWidth: 2,
+    height: 12,
+    width: 17,
+  },
+  iconShield: {
+    borderBottomLeftRadius: 8,
+    borderBottomRightRadius: 8,
+    borderTopLeftRadius: 2,
+    borderTopRightRadius: 2,
+    borderWidth: 2,
+    height: 17,
+    width: 15,
+  },
+  iconCalendarBox: {
+    borderRadius: 3,
+    borderWidth: 2,
+    height: 16,
+    width: 16,
+  },
+  bottomFooter: {
+    borderTopColor: '#EFF3F4',
+    borderTopWidth: 1,
+    paddingHorizontal: spacing.xl,
+    paddingVertical: spacing.lg,
+  },
+  logoutBtn: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    gap: spacing.md,
+    paddingVertical: 8,
+  },
+  logoutBtnText: {
+    color: colors.danger,
+    fontSize: 16,
+    fontWeight: '800',
+  },
+  lucideLogoutCanvas: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    height: 20,
+    width: 20,
+  },
+  lucideLogoutFrame: {
+    borderBottomLeftRadius: 3,
+    borderBottomWidth: 2,
+    borderLeftWidth: 2,
+    borderTopLeftRadius: 3,
+    borderTopWidth: 2,
+    height: 16,
+    width: 8,
+  },
+  lucideLogoutShaft: {
+    height: 2,
+    marginLeft: -2,
+    width: 9,
+  },
+  lucideLogoutHead: {
+    borderRightWidth: 2,
+    borderTopWidth: 2,
+    height: 6,
+    marginLeft: -5,
+    transform: [{ rotate: '45deg' }],
+    width: 6,
+  },
+  guestAuthActions: {
+    gap: spacing.xs,
+  },
+  loginBtn: {
+    alignItems: 'center',
+    backgroundColor: colors.greenDark,
+    borderRadius: radii.pill,
+    justifyContent: 'center',
+    minHeight: 42,
+  },
+  loginBtnText: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: '800',
+  },
+  registerBtn: {
+    alignItems: 'center',
+    borderColor: '#CFD9DE',
+    borderRadius: radii.pill,
+    borderWidth: 1,
+    justifyContent: 'center',
+    minHeight: 42,
+  },
+  registerBtnText: {
+    color: '#0F1419',
+    fontSize: 14,
+    fontWeight: '800',
+  },
+});
