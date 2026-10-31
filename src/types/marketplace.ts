@@ -194,6 +194,7 @@ export interface TechnicianPost {
   content?: string;
   imageUri?: string;
   mediaUrls?: string[];
+  isServicePost?: boolean;
   published: boolean;
   suspended?: boolean;
   suspendedAt?: string;

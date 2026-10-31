@@ -252,6 +252,65 @@ create table public.technician_applications (
 create index technician_applications_user_status_idx
   on public.technician_applications (technician_user_id, status);
 
+-- Backfill and expose application status through a user-scoped RPC.
+insert into public.technician_applications (technician_user_id, status, submitted_at)
+select u.id, 'pending_review', now()
+from auth.users as u
+where u.raw_user_meta_data ->> 'requested_account_type' = 'technician'
+  and not exists (
+    select 1
+    from public.technician_applications as a
+    where a.technician_user_id = u.id
+  );
+
+create or replace function public.get_or_create_my_technician_application()
+returns public.technician_application_status
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_uid uuid := auth.uid();
+  v_status public.technician_application_status;
+  v_requested text;
+begin
+  if v_uid is null then
+    return null;
+  end if;
+
+  if public.has_role('technician'::public.app_role) then
+    return 'approved'::public.technician_application_status;
+  end if;
+
+  select a.status
+    into v_status
+    from public.technician_applications as a
+   where a.technician_user_id = v_uid
+   order by a.created_at desc
+   limit 1;
+
+  if v_status is not null then
+    return v_status;
+  end if;
+
+  select u.raw_user_meta_data ->> 'requested_account_type'
+    into v_requested
+    from auth.users as u
+   where u.id = v_uid;
+
+  if v_requested = 'technician' then
+    insert into public.technician_applications (technician_user_id, status, submitted_at)
+    values (v_uid, 'pending_review', now())
+    returning status into v_status;
+    return v_status;
+  end if;
+
+  return null;
+end;
+$$;
+
+grant execute on function public.get_or_create_my_technician_application() to authenticated;
+
 -- Service catalogue.
 create table public.service_categories (
   id uuid primary key default gen_random_uuid(),
@@ -808,8 +867,8 @@ with check (user_id = auth.uid() or public.is_admin());
 
 -- Technician Posts (Twitter/X style feed)
 create table if not exists public.technician_posts (
-  id uuid primary key default gen_random_uuid(),
-  technician_id uuid not null references public.profiles(id) on delete cascade,
+  id text primary key,
+  technician_id uuid not null references auth.users(id) on delete cascade,
   technician_name text not null default 'Teknisi Cepat',
   technician_business_name text,
   technician_avatar_uri text,
@@ -819,11 +878,21 @@ create table if not exists public.technician_posts (
   caption text not null default '',
   content text not null default '',
   image_uri text,
-  media_urls text[] default array[]::text[],
+  media_urls text[] not null default array[]::text[],
+  is_service_post boolean not null default false,
   published boolean not null default true,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
-  constraint technician_posts_content_check check (char_length(trim(content)) > 0 or char_length(trim(caption)) > 0 or cardinality(media_urls) > 0 or image_uri is not null)
+  constraint technician_posts_content_check check (
+    char_length(caption) <= 1200
+    and char_length(content) <= 1200
+    and (
+      char_length(trim(content)) > 0
+      or char_length(trim(caption)) > 0
+      or cardinality(media_urls) > 0
+      or image_uri is not null
+    )
+  )
 );
 
 create index if not exists idx_technician_posts_feed
@@ -831,8 +900,13 @@ create index if not exists idx_technician_posts_feed
 
 create index if not exists idx_technician_posts_tech_created
   on public.technician_posts (technician_id, created_at desc);
+create index if not exists idx_technician_posts_created_id
+  on public.technician_posts (created_at desc, id desc);
 
 alter table public.technician_posts enable row level security;
+
+create trigger technician_posts_updated_at before update on public.technician_posts
+for each row execute procedure public.set_updated_at();
 
 create policy "technician_posts_public_read"
   on public.technician_posts
@@ -840,7 +914,7 @@ create policy "technician_posts_public_read"
   using (
     published = true
     or auth.uid() = technician_id
-    or public.has_role(auth.uid(), 'admin')
+    or public.is_admin()
   );
 
 create policy "technician_posts_owner_insert"
@@ -849,7 +923,10 @@ create policy "technician_posts_owner_insert"
   to authenticated
   with check (
     auth.uid() = technician_id
-    and public.has_role(auth.uid(), 'technician')
+    and (
+      public.has_role('technician'::public.app_role)
+      or public.is_admin()
+    )
   );
 
 create policy "technician_posts_owner_update"
@@ -858,11 +935,11 @@ create policy "technician_posts_owner_update"
   to authenticated
   using (
     auth.uid() = technician_id
-    or public.has_role(auth.uid(), 'admin')
+    or public.is_admin()
   )
   with check (
     auth.uid() = technician_id
-    or public.has_role(auth.uid(), 'admin')
+    or public.is_admin()
   );
 
 create policy "technician_posts_owner_delete"
@@ -871,8 +948,74 @@ create policy "technician_posts_owner_delete"
   to authenticated
   using (
     auth.uid() = technician_id
-    or public.has_role(auth.uid(), 'admin')
+    or public.is_admin()
   );
 
 grant select on public.technician_posts to anon, authenticated;
 grant insert, update, delete on public.technician_posts to authenticated;
+grant usage on schema public to anon, authenticated, service_role;
+
+-- Table privileges required by PostgREST; row access remains constrained by RLS.
+grant select on public.service_categories to anon, authenticated;
+grant select on public.services to anon, authenticated;
+grant select on public.service_areas to anon, authenticated;
+grant select on public.profiles to anon, authenticated;
+grant select on public.technician_profiles to anon, authenticated;
+grant select on public.technician_services to anon, authenticated;
+grant select on public.technician_service_areas to anon, authenticated;
+grant select on public.technician_availability to anon, authenticated;
+grant select on public.technician_portfolio_items to anon, authenticated;
+grant select on public.reviews to anon, authenticated;
+
+grant select, insert, update on public.profiles to authenticated;
+grant select on public.user_roles to authenticated;
+grant select, update on public.user_account_status to authenticated;
+grant select, insert, update on public.technician_applications to authenticated;
+grant select, insert, update on public.technician_profiles to authenticated;
+grant select, insert, update, delete on public.technician_services to authenticated;
+grant select, insert, update, delete on public.technician_service_areas to authenticated;
+grant select, insert, update, delete on public.technician_availability to authenticated;
+grant select, insert, update, delete on public.technician_portfolio_items to authenticated;
+grant select, insert, update on public.bookings to authenticated;
+grant select, insert on public.booking_status_history to authenticated;
+grant select, insert, update on public.conversations to authenticated;
+grant select, insert, update on public.messages to authenticated;
+grant select, insert, update on public.reviews to authenticated;
+grant select, insert, update on public.reports to authenticated;
+grant select, update on public.notifications to authenticated;
+grant select, insert on public.admin_actions to authenticated;
+grant select, insert, update on public.service_categories to authenticated;
+grant select, insert, update on public.service_areas to authenticated;
+
+insert into storage.buckets (id, name, public)
+values ('technician-posts', 'technician-posts', true)
+on conflict (id) do nothing;
+
+drop policy if exists "technician_posts_storage_public_read" on storage.objects;
+create policy "technician_posts_storage_public_read"
+  on storage.objects
+  for select
+  using (bucket_id = 'technician-posts');
+
+drop policy if exists "technician_posts_storage_tech_upload" on storage.objects;
+create policy "technician_posts_storage_tech_upload"
+  on storage.objects
+  for insert
+  to authenticated
+  with check (
+    bucket_id = 'technician-posts'
+    and (storage.foldername(name))[1] = auth.uid()::text
+    and public.has_role('technician'::public.app_role)
+  );
+
+drop policy if exists "technician_posts_storage_tech_delete" on storage.objects;
+create policy "technician_posts_storage_tech_delete"
+  on storage.objects
+  for delete
+  to authenticated
+  using (
+    bucket_id = 'technician-posts'
+    and (storage.foldername(name))[1] = auth.uid()::text
+  );
+
+notify pgrst, 'reload schema';

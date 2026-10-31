@@ -2,6 +2,7 @@ import { useMemo } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { getIndonesianRegions } from '../data/marketplaceRepository';
+import { useAppearance } from '../context/AppearanceContext';
 import { localizeArea, useLanguage } from '../i18n/locale';
 import { colors, radii, spacing } from '../theme/tokens';
 import type { IndonesianRegion, Technician } from '../types/marketplace';
@@ -20,6 +21,7 @@ export function InlineMarketplaceMapCard({
   technicians: Technician[];
 }) {
   const { language, t } = useLanguage();
+  const { palette } = useAppearance();
 
   const regionChips = useMemo(() => {
     const dynamicAreas = Array.from(new Set(technicians.flatMap((tech) => tech.serviceAreas)));
@@ -56,14 +58,23 @@ export function InlineMarketplaceMapCard({
   }, [regions, technicians]);
 
   return (
-    <View style={styles.container} testID="inline-marketplace-map">
+    <View
+      style={[
+        styles.container,
+        { backgroundColor: palette.surface, borderColor: palette.border },
+      ]}
+      testID="inline-marketplace-map"
+    >
       <View style={styles.headerRow}>
         <View style={styles.locationSummary}>
           <View style={styles.pinIconWrap}>
-            <View style={styles.pinHead} />
-            <View style={styles.pinTail} />
+            <View style={[styles.pinHead, { borderColor: palette.primary }]} />
+            <View style={[styles.pinTail, { backgroundColor: palette.primary }]} />
           </View>
-          <Text numberOfLines={1} style={styles.activeAreaText}>
+          <Text
+            numberOfLines={1}
+            style={[styles.activeAreaText, { color: palette.text }]}
+          >
             {selectedArea === 'Semua area'
               ? t('home.allAreasOption')
               : localizeArea(selectedArea, language)}
@@ -75,19 +86,24 @@ export function InlineMarketplaceMapCard({
             <Pressable
               accessibilityRole="button"
               onPress={() => onSelectArea('Semua area')}
-              style={styles.resetChip}
+              style={[styles.resetChip, { backgroundColor: palette.pillBg }]}
               testID="inline-map-reset-all"
             >
-              <Text style={styles.resetChipText}>{t('home.allAreasOption')}</Text>
+              <Text style={[styles.resetChipText, { color: palette.textMuted }]}>
+                {t('home.allAreasOption')}
+              </Text>
             </Pressable>
           )}
           <Pressable
             accessibilityRole="button"
             onPress={onOpenFullMap}
-            style={styles.changeAreaBtn}
+            style={[
+              styles.changeAreaBtn,
+              { backgroundColor: palette.primarySoft },
+            ]}
             testID="open-full-map-button"
           >
-            <Text style={styles.changeAreaBtnText}>
+            <Text style={[styles.changeAreaBtnText, { color: palette.primary }]}>
               {language === 'en' ? 'Choose Location' : 'Pilih Lokasi'}
             </Text>
           </Pressable>
@@ -107,18 +123,44 @@ export function InlineMarketplaceMapCard({
               accessibilityRole="button"
               accessibilityState={{ selected }}
               onPress={() => onSelectArea(region.name)}
-              style={[styles.areaChip, selected && styles.areaChipSelected]}
+              style={[
+                styles.areaChip,
+                {
+                  backgroundColor: palette.surfaceElevated,
+                  borderColor: palette.border,
+                },
+                selected && {
+                  backgroundColor: palette.primary,
+                  borderColor: palette.primary,
+                },
+              ]}
               testID={`inline-map-pin-${region.id}`}
             >
               <Text
                 numberOfLines={1}
-                style={[styles.areaChipLabel, selected && styles.areaChipLabelSelected]}
+                style={[
+                  styles.areaChipLabel,
+                  { color: palette.text },
+                  selected && styles.areaChipLabelSelected,
+                ]}
               >
                 {localizeArea(region.name, language)}
               </Text>
               {count > 0 && (
-                <View style={[styles.countBadge, selected && styles.countBadgeSelected]}>
-                  <Text style={[styles.countText, selected && styles.countTextSelected]}>
+                <View
+                  style={[
+                    styles.countBadge,
+                    { backgroundColor: palette.pillBg },
+                    selected && styles.countBadgeSelected,
+                  ]}
+                >
+                  <Text
+                    style={[
+                      styles.countText,
+                      { color: palette.text },
+                      selected && styles.countTextSelected,
+                    ]}
+                  >
                     {count}
                   </Text>
                 </View>

@@ -1,11 +1,11 @@
-import { useLocalSearchParams } from 'expo-router';
-import { useEffect, useState } from 'react';
-import { ScrollView, StyleSheet, View } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { useLocalSearchParams } from "expo-router";
+import { useEffect, useState } from "react";
+import { ScrollView, StyleSheet, View } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 
-import { useAuth } from '../auth/AuthProvider';
-import { AppNavigationBar } from '../components/marketplace-ui';
-import { useAppearance } from '../context/AppearanceContext';
+import { useAuth } from "../auth/AuthProvider";
+import { AppNavigationBar } from "../components/marketplace-ui";
+import { useAppearance } from "../context/AppearanceContext";
 import {
   DEFAULT_PREFERENCES,
   deleteCustomerAddress,
@@ -20,46 +20,60 @@ import {
   saveUserPreferences,
   setDefaultCustomerAddress,
   submitAccountDeletionRequest,
-} from '../data/marketplaceStore';
-import { useLanguage } from '../i18n/locale';
-import { colors, spacing } from '../theme/tokens';
-import type { SavedAddress, Technician, UserPreferences } from '../types/marketplace';
-import { SettingAccount } from './account/SettingAccount';
-import { SettingPassword } from './account/SettingPassword';
-import { SettingAppearance } from './appearance/SettingAppearance';
-import { SettingHeader, type SettingSectionKey } from './components/SettingHeader';
-import { SettingLanguage } from './language/SettingLanguage';
-import { SettingNotifications } from './notifications/SettingNotifications';
-import { SettingSecurity } from './security/SettingSecurity';
+} from "../data/marketplaceStore";
+import { useLanguage } from "../i18n/locale";
+import { colors, spacing } from "../theme/tokens";
+import type {
+  SavedAddress,
+  Technician,
+  UserPreferences,
+} from "../types/marketplace";
+import { SettingAccount } from "./account/SettingAccount";
+import { SettingPassword } from "./account/SettingPassword";
+import { SettingProfile } from "./account/SettingProfile";
+import { SettingAppearance } from "./appearance/SettingAppearance";
+import {
+  SettingHeader,
+  type SettingSectionKey,
+} from "./components/SettingHeader";
+import { SettingLanguage } from "./language/SettingLanguage";
+import { SettingNotifications } from "./notifications/SettingNotifications";
+import { SettingSecurity } from "./security/SettingSecurity";
 
 export function SettingContainer() {
   const { language, t } = useLanguage();
-  const { palette } = useAppearance();
+  const { palette, setThemeMode, setLargeText, setReduceMotion } =
+    useAppearance();
   const { user, effectiveRole, updateUserProfile } = useAuth();
   const params = useLocalSearchParams<{ tab?: string }>();
   const initialTab: SettingSectionKey =
-    params.tab === 'password' ||
-    params.tab === 'notifications' ||
-    params.tab === 'language' ||
-    params.tab === 'appearance' ||
-    params.tab === 'security'
+    params.tab === "password" ||
+    params.tab === "notifications" ||
+    params.tab === "language" ||
+    params.tab === "appearance" ||
+    params.tab === "security" ||
+    params.tab === "profile"
       ? params.tab
-      : 'account';
-  const [selectedSection, setSelectedSection] = useState<SettingSectionKey | null>(null);
+      : "account";
+  const [selectedSection, setSelectedSection] =
+    useState<SettingSectionKey | null>(null);
   const activeSection = selectedSection ?? initialTab;
 
   const isAuthenticated = Boolean(user);
-  const isCustomerRole = effectiveRole === 'customer';
-  const isTechnicianRole = effectiveRole === 'technician';
+  const isCustomerRole = effectiveRole === "customer";
+  const isTechnicianRole = effectiveRole === "technician";
 
-  const [displayName, setDisplayName] = useState('');
-  const [email, setEmail] = useState('');
-  const [phoneNumber, setPhoneNumber] = useState('');
-  const [avatarUri, setAvatarUri] = useState('');
-  const [addressNotes, setAddressNotes] = useState('');
+  const [displayName, setDisplayName] = useState("");
+  const [email, setEmail] = useState("");
+  const [phoneNumber, setPhoneNumber] = useState("");
+  const [avatarUri, setAvatarUri] = useState("");
+  const [addressNotes, setAddressNotes] = useState("");
   const [profileFeedback, setProfileFeedback] = useState<string | null>(null);
+  const [profileError, setProfileError] = useState<string | null>(null);
+  const [isSavingProfile, setIsSavingProfile] = useState(false);
 
-  const [preferences, setPreferences] = useState<UserPreferences>(DEFAULT_PREFERENCES);
+  const [preferences, setPreferences] =
+    useState<UserPreferences>(DEFAULT_PREFERENCES);
 
   const [savedAddresses, setSavedAddresses] = useState<SavedAddress[]>([]);
   const [addressFeedback, setAddressFeedback] = useState<string | null>(null);
@@ -74,10 +88,10 @@ export function SettingContainer() {
 
   const visibleSection: SettingSectionKey =
     !isAuthenticated &&
-    activeSection !== 'account' &&
-    activeSection !== 'language' &&
-    activeSection !== 'appearance'
-      ? 'account'
+    activeSection !== "account" &&
+    activeSection !== "language" &&
+    activeSection !== "appearance"
+      ? "account"
       : activeSection;
 
   useEffect(() => {
@@ -85,7 +99,11 @@ export function SettingContainer() {
 
     let active = true;
     void Promise.all([
-      loadAccountProfileDetails(user.id, user.email ?? '', user.user_metadata?.display_name),
+      loadAccountProfileDetails(
+        user.id,
+        user.email ?? "",
+        user.user_metadata?.display_name,
+      ),
       loadUserPreferences(user.id),
       loadSavedAddresses(user.id),
       loadTechnicianWorkspaceProfile(user.id),
@@ -96,9 +114,23 @@ export function SettingContainer() {
         setDisplayName(acct.displayName);
         setEmail(user.email ?? acct.email);
         setPhoneNumber(acct.phoneNumber);
-        setAvatarUri(acct.avatarUri);
+        setAvatarUri(
+          acct.avatarUri ||
+            (typeof user.user_metadata?.avatar_url === "string"
+              ? user.user_metadata.avatar_url
+              : ""),
+        );
         setAddressNotes(acct.addressNotes);
         setPreferences(prefs);
+        if (
+          prefs.appearance === "light" ||
+          prefs.appearance === "dark" ||
+          prefs.appearance === "system"
+        ) {
+          void setThemeMode(prefs.appearance);
+        }
+        void setLargeText(prefs.accessibility.largeText);
+        void setReduceMotion(prefs.accessibility.reduceMotion);
         setSavedAddresses(addresses);
         setTechProfile(tech);
         setDeletionRequest(delReq);
@@ -107,25 +139,41 @@ export function SettingContainer() {
     return () => {
       active = false;
     };
-  }, [user]);
+  }, [setLargeText, setReduceMotion, setThemeMode, user]);
 
   const handleSavePublicProfile = async () => {
     if (!user) return;
     setProfileFeedback(null);
-    const updated = await saveAccountProfileDetails(user.id, {
-      displayName,
-      email,
-      phoneNumber,
-      avatarUri,
-      addressNotes,
-    });
-    setDisplayName(updated.displayName);
-    setAvatarUri(updated.avatarUri);
-    void updateUserProfile({
-      displayName: updated.displayName,
-      avatarUrl: updated.avatarUri,
-    });
-    setProfileFeedback(t('settings.profileSaved'));
+    setProfileError(null);
+    setIsSavingProfile(true);
+    try {
+      const updated = await saveAccountProfileDetails(user.id, {
+        displayName,
+        email,
+        phoneNumber,
+        avatarUri:
+          avatarUri ||
+          (typeof user.user_metadata?.avatar_url === "string"
+            ? user.user_metadata.avatar_url
+            : ""),
+        addressNotes,
+      });
+      setDisplayName(updated.displayName);
+      setAvatarUri(updated.avatarUri);
+      await updateUserProfile({
+        displayName: updated.displayName,
+        ...(updated.avatarUri ? { avatarUrl: updated.avatarUri } : {}),
+      });
+      setProfileFeedback(t("settings.profileSaved"));
+    } catch {
+      setProfileError(
+        language === "en"
+          ? "Unable to save profile. Please review the name and try again."
+          : "Profil tidak dapat disimpan. Periksa nama dan coba lagi.",
+      );
+    } finally {
+      setIsSavingProfile(false);
+    }
   };
 
   const handleSavePrivateContact = async () => {
@@ -161,11 +209,13 @@ export function SettingContainer() {
       });
       setSavedAddresses(updated);
       setAddressFeedback(
-        language === 'en' ? 'Address saved.' : 'Alamat berhasil disimpan.',
+        language === "en" ? "Address saved." : "Alamat berhasil disimpan.",
       );
     } catch {
       setAddressFeedback(
-        language === 'en' ? 'Complete address fields.' : 'Lengkapi kolom alamat.',
+        language === "en"
+          ? "Complete address fields."
+          : "Lengkapi kolom alamat.",
       );
     }
   };
@@ -188,9 +238,9 @@ export function SettingContainer() {
     const saved = await saveTechnicianWorkspaceProfile(user.id, next);
     setTechProfile(saved);
     setTechFeedback(
-      language === 'en'
-        ? 'Technician profile updated.'
-        : 'Profil teknisi berhasil diperbarui.',
+      language === "en"
+        ? "Technician profile updated."
+        : "Profil teknisi berhasil diperbarui.",
     );
   };
 
@@ -207,16 +257,19 @@ export function SettingContainer() {
   };
 
   const activeBg =
-    preferences.appearance === 'dark' || palette.background === '#18191A'
+    preferences.appearance === "dark" || palette.background === "#18191A"
       ? palette.background
-      : preferences.appearance === 'warm'
-        ? '#F4EFE6'
-        : preferences.appearance === 'highContrast'
-          ? '#FFFFFF'
+      : preferences.appearance === "warm"
+        ? "#F4EFE6"
+        : preferences.appearance === "highContrast"
+          ? "#FFFFFF"
           : palette.background;
 
   return (
-    <SafeAreaView style={[styles.safeArea, { backgroundColor: activeBg }]} edges={['top', 'bottom']}>
+    <SafeAreaView
+      style={[styles.safeArea, { backgroundColor: activeBg }]}
+      edges={["top", "bottom"]}
+    >
       <AppNavigationBar activeTab="settings" />
       <ScrollView contentContainerStyle={styles.scrollContent}>
         <View style={styles.content}>
@@ -226,14 +279,14 @@ export function SettingContainer() {
             isAuthenticated={isAuthenticated}
           />
 
-          {visibleSection === 'account' && (
+          {visibleSection === "account" && (
             <>
               <SettingAccount
                 isCustomerRole={isCustomerRole}
                 isTechnicianAvailable={techProfile?.available ?? true}
                 onToggleTechnicianAvailability={handleToggleTechAvailability}
-                email={isAuthenticated ? email : ''}
-                phoneNumber={isAuthenticated ? phoneNumber : ''}
+                email={isAuthenticated ? email : ""}
+                phoneNumber={isAuthenticated ? phoneNumber : ""}
                 onChangePhoneNumber={setPhoneNumber}
                 onSavePrivateContact={handleSavePrivateContact}
                 savedAddresses={isAuthenticated ? savedAddresses : []}
@@ -243,15 +296,35 @@ export function SettingContainer() {
                 addressFeedback={addressFeedback}
                 preferences={preferences}
                 onUpdateBookingPrefs={(bookingPreferences) => {
-                  void handleUpdatePrefs({ ...preferences, bookingPreferences });
+                  void handleUpdatePrefs({
+                    ...preferences,
+                    bookingPreferences,
+                  });
                 }}
               />
             </>
           )}
 
-          {visibleSection === 'language' && <SettingLanguage />}
+          {visibleSection === "language" && <SettingLanguage />}
 
-          {isAuthenticated && visibleSection === 'notifications' && (
+          {isAuthenticated && visibleSection === "profile" && (
+            <SettingProfile
+              displayName={displayName}
+              avatarUri={avatarUri}
+              onChangeDisplayName={setDisplayName}
+              onChangeAvatarUri={setAvatarUri}
+              onSavePublicProfile={handleSavePublicProfile}
+              profileFeedback={profileFeedback}
+              profileError={profileError}
+              isSaving={isSavingProfile}
+              isTechnicianRole={isTechnicianRole}
+              techProfile={techProfile}
+              onSaveTechProfile={handleSaveTechProfile}
+              techFeedback={techFeedback}
+            />
+          )}
+
+          {isAuthenticated && visibleSection === "notifications" && (
             <SettingNotifications
               preferences={preferences}
               onUpdateNotifications={(notifications) => {
@@ -260,7 +333,7 @@ export function SettingContainer() {
             />
           )}
 
-          {visibleSection === 'appearance' && (
+          {visibleSection === "appearance" && (
             <SettingAppearance
               preferences={preferences}
               onUpdateAppearance={(appearance) => {
@@ -272,9 +345,11 @@ export function SettingContainer() {
             />
           )}
 
-          {isAuthenticated && visibleSection === 'password' && <SettingPassword />}
+          {isAuthenticated && visibleSection === "password" && (
+            <SettingPassword />
+          )}
 
-          {isAuthenticated && visibleSection === 'security' && (
+          {isAuthenticated && visibleSection === "security" && (
             <SettingSecurity
               deletionRequest={deletionRequest}
               onSubmitDeletionRequest={handleDeletionRequest}
@@ -299,10 +374,10 @@ const styles = StyleSheet.create({
     paddingBottom: spacing.xxl,
   },
   content: {
-    alignSelf: 'center',
+    alignSelf: "center",
     maxWidth: 820,
     paddingHorizontal: spacing.md,
     paddingTop: spacing.sm,
-    width: '100%',
+    width: "100%",
   },
 });

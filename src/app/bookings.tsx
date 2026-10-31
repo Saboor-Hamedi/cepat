@@ -1,46 +1,42 @@
-import { router } from 'expo-router';
-import { useEffect, useMemo, useState } from 'react';
-import {
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Text,
-  View,
-} from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { router } from "expo-router";
+import { useEffect, useMemo, useState } from "react";
+import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 
 import {
   AppNavigationBar,
   EmptyState,
   LoadingState,
   TechnicianCard,
-} from '../components/marketplace-ui';
-import { useAppearance } from '../context/AppearanceContext';
-import { formatRupiah, loadTechnicians } from '../data/marketplaceRepository';
+} from "../components/marketplace-ui";
+import { SegmentedTabs } from "../components/SegmentedTabs";
+import { useAppearance } from "../context/AppearanceContext";
+import { formatRupiah, loadTechnicians } from "../data/marketplaceRepository";
 import {
   isChatEnabledForStatus,
   loadBookings,
   loadSavedTechnicianIds,
   loadSubmittedReports,
   loadSubmittedReviews,
-} from '../data/marketplaceStore';
-import { localizeArea, useLanguage } from '../i18n/locale';
-import { useAuth } from '../auth/AuthProvider';
+} from "../data/marketplaceStore";
+import { localizeArea, useLanguage } from "../i18n/locale";
+import { useAuth } from "../auth/AuthProvider";
 import type {
   BookingRecord,
   Technician,
   TechnicianReport,
   TechnicianReview,
-} from '../types/marketplace';
-import { colors, radii, spacing } from '../theme/tokens';
+} from "../types/marketplace";
+import { colors, radii, spacing } from "../theme/tokens";
 
-type CustomerHubTab = 'current' | 'history' | 'messages' | 'saved' | 'reviews_reports';
+type CustomerHubTab =
+  "current" | "history" | "messages" | "saved" | "reviews_reports";
 
 export default function CustomerBookingsScreen() {
   const { language, t } = useLanguage();
   const { palette } = useAppearance();
-  const { user, effectiveRole } = useAuth();
-  const [tab, setTab] = useState<CustomerHubTab>('current');
+  const { user } = useAuth();
+  const [tab, setTab] = useState<CustomerHubTab>("current");
   const [loading, setLoading] = useState(true);
   const [bookings, setBookings] = useState<BookingRecord[]>([]);
   const [savedTechnicians, setSavedTechnicians] = useState<Technician[]>([]);
@@ -62,7 +58,9 @@ export default function CustomerBookingsScreen() {
           ? allBookings.filter((b) => b.customerUserId === user.id)
           : [];
         setBookings(userBookings);
-        setSavedTechnicians(techPage.items.filter((item) => savedIds.includes(item.id)));
+        setSavedTechnicians(
+          techPage.items.filter((item) => savedIds.includes(item.id)),
+        );
         setReviews(subReviews);
         setReports(subReports);
       })
@@ -80,14 +78,21 @@ export default function CustomerBookingsScreen() {
   const currentBookings = useMemo(
     () =>
       bookings.filter((b) =>
-        ['requested', 'alternative_proposed', 'confirmed', 'in_progress'].includes(b.status),
+        [
+          "requested",
+          "alternative_proposed",
+          "confirmed",
+          "in_progress",
+        ].includes(b.status),
       ),
     [bookings],
   );
 
   const historyBookings = useMemo(
     () =>
-      bookings.filter((b) => ['completed', 'cancelled', 'declined'].includes(b.status)),
+      bookings.filter((b) =>
+        ["completed", "cancelled", "declined"].includes(b.status),
+      ),
     [bookings],
   );
 
@@ -117,48 +122,59 @@ export default function CustomerBookingsScreen() {
   return (
     <SafeAreaView
       style={[styles.safeArea, { backgroundColor: palette.background }]}
-      edges={['top', 'bottom']}
+      edges={["top", "bottom"]}
     >
       <AppNavigationBar activeTab="bookings" />
       <ScrollView contentContainerStyle={styles.scrollContent}>
         <View style={styles.container}>
           {/* Hidden semantic tag to preserve test compatibility */}
           <Text style={styles.srOnly} testID="bookings-heading">
-            {t('dashboard.customerTitle')}
+            {t("dashboard.customerTitle")}
           </Text>
 
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={styles.tabsRow}
-          >
-            {(
-              [
-                ['current', language === 'en' ? `Current (${currentBookings.length})` : `Aktif (${currentBookings.length})`],
-                ['history', language === 'en' ? `History (${historyBookings.length})` : `Riwayat (${historyBookings.length})`],
-                ['messages', language === 'en' ? `Messages (${activeChatBookings.length})` : `Pesan (${activeChatBookings.length})`],
-                ['saved', language === 'en' ? `Saved (${savedTechnicians.length})` : `Tersimpan (${savedTechnicians.length})`],
-                ['reviews_reports', language === 'en' ? 'Reviews & Reports' : 'Ulasan & Laporan'],
-              ] as const
-            ).map(([key, label]) => (
-              <Pressable
-                key={key}
-                accessibilityRole="tab"
-                accessibilityState={{ selected: tab === key }}
-                onPress={() => setTab(key)}
-                style={[styles.tabPill, tab === key && styles.tabPillActive]}
-                testID={`customer-tab-${key}`}
-              >
-                <Text style={[styles.tabPillText, tab === key && styles.tabPillTextActive]}>
-                  {label}
-                </Text>
-              </Pressable>
-            ))}
-          </ScrollView>
+          <SegmentedTabs<CustomerHubTab>
+            activeTab={tab}
+            onSelectTab={setTab}
+            testIDPrefix="customer-tab"
+            tabs={[
+              {
+                key: "current",
+                label:
+                  language === "en"
+                    ? `Current (${currentBookings.length})`
+                    : `Aktif (${currentBookings.length})`,
+              },
+              {
+                key: "history",
+                label:
+                  language === "en"
+                    ? `History (${historyBookings.length})`
+                    : `Riwayat (${historyBookings.length})`,
+              },
+              {
+                key: "messages",
+                label:
+                  language === "en"
+                    ? `Messages (${activeChatBookings.length})`
+                    : `Pesan (${activeChatBookings.length})`,
+              },
+              {
+                key: "saved",
+                label:
+                  language === "en"
+                    ? `Saved (${savedTechnicians.length})`
+                    : `Tersimpan (${savedTechnicians.length})`,
+              },
+              {
+                key: "reviews_reports",
+                label: language === "en" ? "Reviews & Reports" : "Ulasan & Laporan",
+              },
+            ]}
+          />
 
           {loading ? (
-            <LoadingState label={t('home.loading')} />
-          ) : tab === 'current' ? (
+            <LoadingState label={t("home.loading")} />
+          ) : tab === "current" ? (
             currentBookings.length > 0 ? (
               currentBookings.map((booking) => (
                 <BookingListItem
@@ -170,17 +186,21 @@ export default function CustomerBookingsScreen() {
               ))
             ) : (
               <EmptyState
-                title={language === 'en' ? 'No active bookings' : 'Belum ada pesanan aktif'}
-                description={
-                  language === 'en'
-                    ? 'Explore the marketplace to book a technician.'
-                    : 'Jelajahi marketplace untuk memesan jadwal teknisi.'
+                title={
+                  language === "en"
+                    ? "No active bookings"
+                    : "Belum ada pesanan aktif"
                 }
-                actionLabel={t('nav.marketplace')}
-                onAction={() => router.push('/')}
+                description={
+                  language === "en"
+                    ? "Explore the marketplace to book a technician."
+                    : "Jelajahi marketplace untuk memesan jadwal teknisi."
+                }
+                actionLabel={t("nav.marketplace")}
+                onAction={() => router.push("/")}
               />
             )
-          ) : tab === 'history' ? (
+          ) : tab === "history" ? (
             historyBookings.length > 0 ? (
               historyBookings.map((booking) => (
                 <BookingListItem
@@ -192,48 +212,64 @@ export default function CustomerBookingsScreen() {
               ))
             ) : (
               <EmptyState
-                title={language === 'en' ? 'No past bookings yet' : 'Belum ada riwayat pesanan'}
+                title={
+                  language === "en"
+                    ? "No past bookings yet"
+                    : "Belum ada riwayat pesanan"
+                }
                 description={
-                  language === 'en'
-                    ? 'Completed and cancelled bookings will appear here.'
-                    : 'Pesanan yang telah selesai atau dibatalkan akan tampil di sini.'
+                  language === "en"
+                    ? "Completed and cancelled bookings will appear here."
+                    : "Pesanan yang telah selesai atau dibatalkan akan tampil di sini."
                 }
               />
             )
-          ) : tab === 'messages' ? (
+          ) : tab === "messages" ? (
             activeChatBookings.length > 0 ? (
               activeChatBookings.map((booking) => (
                 <Pressable
                   key={booking.id}
                   accessibilityRole="button"
                   onPress={() =>
-                    router.push({ pathname: '/booking/[id]', params: { id: booking.id } })
+                    router.push({
+                      pathname: "/booking/[id]",
+                      params: { id: booking.id },
+                    })
                   }
-                  style={styles.card}
+                  style={[
+                    styles.card,
+                    {
+                      backgroundColor: palette.surface,
+                      borderColor: palette.border,
+                    },
+                  ]}
                   testID={`chat-thread-${booking.id}`}
                 >
                   <View style={styles.cardTop}>
-                    <Text style={styles.cardTitle}>
+                    <Text style={[styles.cardTitle, { color: palette.text }]}>
                       {booking.technicianBusinessName || booking.technicianName}
                     </Text>
                     <Text style={styles.chatOpenBadge}>
-                      {language === 'en' ? 'Open Chat' : 'Buka Chat'}
+                      {language === "en" ? "Open Chat" : "Buka Chat"}
                     </Text>
                   </View>
-                  <Text style={styles.cardSub}>
-                    {booking.serviceNameSnapshot} · {localizeArea(booking.serviceArea, language)}
+                  <Text style={[styles.cardSub, { color: palette.textMuted }]}>
+                    {booking.serviceNameSnapshot} ·{" "}
+                    {localizeArea(booking.serviceArea, language)}
                   </Text>
                 </Pressable>
               ))
             ) : (
               <EmptyState
                 title={
-                  language === 'en' ? 'No open conversations' : 'Belum ada percakapan aktif'
+                  language === "en"
+                    ? "No open conversations"
+                    : "Belum ada percakapan aktif"
                 }
-                description={t('booking.chatLocked')}
+                description={t("booking.chatLocked")}
               />
             )
-          ) : tab === 'saved' ? (
+          ) : tab === "saved" ? (
             savedTechnicians.length > 0 ? (
               savedTechnicians.map((tech) => (
                 <TechnicianCard
@@ -241,66 +277,109 @@ export default function CustomerBookingsScreen() {
                   technician={tech}
                   source="fixtures"
                   onPress={() =>
-                    router.push({ pathname: '/technician/[id]', params: { id: tech.id } })
+                    router.push({
+                      pathname: "/technician/[id]",
+                      params: { id: tech.id },
+                    })
                   }
                 />
               ))
             ) : (
               <EmptyState
-                title={language === 'en' ? 'No saved technicians' : 'Belum ada teknisi tersimpan'}
+                title={
+                  language === "en"
+                    ? "No saved technicians"
+                    : "Belum ada teknisi tersimpan"
+                }
                 description={
-                  language === 'en'
-                    ? 'Bookmark technicians from their profile page.'
-                    : 'Simpan teknisi dari halaman profil mereka untuk akses cepat.'
+                  language === "en"
+                    ? "Bookmark technicians from their profile page."
+                    : "Simpan teknisi dari halaman profil mereka untuk akses cepat."
                 }
               />
             )
+          ) : uniqueReviews.length === 0 && uniqueReports.length === 0 ? (
+            <EmptyState
+              title={
+                language === "en"
+                  ? "No reviews or reports yet"
+                  : "Belum ada ulasan atau laporan"
+              }
+              description={
+                language === "en"
+                  ? "Your submitted service reviews and dispute reports will appear here."
+                  : "Ulasan layanan dan laporan pengaduan yang Anda kirim akan muncul di sini."
+              }
+            />
           ) : (
-            uniqueReviews.length === 0 && uniqueReports.length === 0 ? (
-              <EmptyState
-                title={language === 'en' ? 'No reviews or reports yet' : 'Belum ada ulasan atau laporan'}
-                description={
-                  language === 'en'
-                    ? 'Your submitted service reviews and dispute reports will appear here.'
-                    : 'Ulasan layanan dan laporan pengaduan yang Anda kirim akan muncul di sini.'
-                }
-              />
-            ) : (
-              <View style={styles.sectionList}>
-                {uniqueReviews.length > 0 && (
-                  <>
-                    <Text style={styles.sectionSubheading}>
-                      {language === 'en' ? 'Your Submitted Reviews' : 'Ulasan yang Kamu Kirim'} (
-                      {uniqueReviews.length})
-                    </Text>
-                    {uniqueReviews.map((rev) => (
-                      <View key={rev.id} style={styles.card}>
-                        <Text style={styles.cardTitle}>★ {rev.rating.toFixed(1)}</Text>
-                        <Text style={styles.cardSub}>{rev.comment}</Text>
-                      </View>
-                    ))}
-                  </>
-                )}
+            <View style={styles.sectionList}>
+              {uniqueReviews.length > 0 && (
+                <>
+                  <Text style={styles.sectionSubheading}>
+                    {language === "en"
+                      ? "Your Submitted Reviews"
+                      : "Ulasan yang Kamu Kirim"}{" "}
+                    ({uniqueReviews.length})
+                  </Text>
+                  {uniqueReviews.map((rev) => (
+                    <View
+                      key={rev.id}
+                      style={[
+                        styles.card,
+                        {
+                          backgroundColor: palette.surface,
+                          borderColor: palette.border,
+                        },
+                      ]}
+                    >
+                      <Text style={[styles.cardTitle, { color: palette.text }]}>
+                        ★ {rev.rating.toFixed(1)}
+                      </Text>
+                      <Text
+                        style={[styles.cardSub, { color: palette.textMuted }]}
+                      >
+                        {rev.comment}
+                      </Text>
+                    </View>
+                  ))}
+                </>
+              )}
 
-                {uniqueReports.length > 0 && (
-                  <>
-                    <Text style={styles.sectionSubheading}>
-                      {language === 'en' ? 'Your Submitted Reports' : 'Laporan Kendala'} (
-                      {uniqueReports.length})
-                    </Text>
-                    {uniqueReports.map((rep) => (
-                      <View key={rep.id} style={styles.card}>
-                        <Text style={styles.cardTitle}>
-                          {rep.technicianName} · {rep.category}
-                        </Text>
-                        <Text style={styles.cardSub}>{rep.description}</Text>
-                        <Text style={styles.reportStatusBadge}>{rep.status.toUpperCase()}</Text>
-                      </View>
-                    ))}
-                  </>
-                )}
-              </View>
-            )
+              {uniqueReports.length > 0 && (
+                <>
+                  <Text style={styles.sectionSubheading}>
+                    {language === "en"
+                      ? "Your Submitted Reports"
+                      : "Laporan Kendala"}{" "}
+                    ({uniqueReports.length})
+                  </Text>
+                  {uniqueReports.map((rep) => (
+                    <View
+                      key={rep.id}
+                      style={[
+                        styles.card,
+                        {
+                          backgroundColor: palette.surface,
+                          borderColor: palette.border,
+                        },
+                      ]}
+                    >
+                      <Text style={[styles.cardTitle, { color: palette.text }]}>
+                        {rep.technicianName} · {rep.category}
+                      </Text>
+                      <Text
+                        style={[styles.cardSub, { color: palette.textMuted }]}
+                      >
+                        {rep.description}
+                      </Text>
+                      <Text style={styles.reportStatusBadge}>
+                        {rep.status.toUpperCase()}
+                      </Text>
+                    </View>
+                  ))}
+                </>
+              )}
+            </View>
           )}
         </View>
       </ScrollView>
@@ -314,38 +393,57 @@ function BookingListItem({
   t,
 }: {
   booking: BookingRecord;
-  language: 'id' | 'en';
+  language: "id" | "en";
   t: (key: string) => string;
 }) {
-  const isCompleted = booking.status === 'completed';
+  const isCompleted = booking.status === "completed";
+  const { palette } = useAppearance();
 
   return (
     <Pressable
       accessibilityRole="button"
-      onPress={() => router.push({ pathname: '/booking/[id]', params: { id: booking.id } })}
-      style={styles.card}
+      onPress={() =>
+        router.push({ pathname: "/booking/[id]", params: { id: booking.id } })
+      }
+      style={[
+        styles.card,
+        { backgroundColor: palette.surface, borderColor: palette.border },
+      ]}
       testID={`customer-booking-card-${booking.id}`}
     >
       <View style={styles.cardTop}>
-        <Text style={styles.cardTitle}>{booking.serviceNameSnapshot}</Text>
-        <View style={[styles.statusChip, isCompleted && styles.statusChipCompleted]}>
-          <Text style={[styles.statusChipText, isCompleted && styles.statusChipCompletedText]}>
-            {isCompleted ? '✓ ' : ''}{t(`booking.status.${booking.status}`)}
+        <Text style={[styles.cardTitle, { color: palette.text }]}>
+          {booking.serviceNameSnapshot}
+        </Text>
+        <View
+          style={[styles.statusChip, isCompleted && styles.statusChipCompleted]}
+        >
+          <Text
+            style={[
+              styles.statusChipText,
+              isCompleted && styles.statusChipCompletedText,
+            ]}
+          >
+            {isCompleted ? "✓ " : ""}
+            {t(`booking.status.${booking.status}`)}
           </Text>
         </View>
       </View>
-      <Text style={styles.cardProvider}>
+      <Text style={[styles.cardProvider, { color: palette.text }]}>
         {booking.technicianBusinessName || booking.technicianName}
       </Text>
-      <Text style={styles.cardSub}>
-        {booking.customerAddress} · {localizeArea(booking.serviceArea, language)}
+      <Text style={[styles.cardSub, { color: palette.textMuted }]}>
+        {booking.customerAddress} ·{" "}
+        {localizeArea(booking.serviceArea, language)}
       </Text>
       <View style={styles.cardFooter}>
-        <Text style={styles.cardDate}>
-          {booking.requestedStartAt.slice(0, 16).replace('T', ' ')} WIB
+        <Text style={[styles.cardDate, { color: palette.textMuted }]}>
+          {booking.requestedStartAt.slice(0, 16).replace("T", " ")} WIB
         </Text>
         {booking.agreedPrice !== undefined && (
-          <Text style={styles.cardPrice}>{formatRupiah(booking.agreedPrice, language)}</Text>
+          <Text style={styles.cardPrice}>
+            {formatRupiah(booking.agreedPrice, language)}
+          </Text>
         )}
       </View>
     </Pressable>
@@ -354,39 +452,41 @@ function BookingListItem({
 
 const styles = StyleSheet.create({
   safeArea: { backgroundColor: colors.paper, flex: 1 },
-  srOnly: { height: 0, opacity: 0, position: 'absolute', width: 0 },
+  srOnly: { height: 0, opacity: 0, position: "absolute", width: 0 },
   scrollContent: { paddingBottom: spacing.xxxl },
   container: {
-    alignSelf: 'center',
+    alignSelf: "center",
     maxWidth: 820,
     paddingHorizontal: spacing.md,
     paddingTop: spacing.sm,
-    width: '100%',
+    width: "100%",
   },
   headerRow: {
-    alignItems: 'flex-start',
-    flexDirection: 'row',
-    justifyContent: 'space-between',
+    alignItems: "flex-start",
+    flexDirection: "row",
+    justifyContent: "space-between",
     marginBottom: spacing.lg,
   },
-  eyebrow: { color: colors.orange, fontSize: 10, fontWeight: '800', letterSpacing: 1.2 },
-  title: { color: colors.ink, fontSize: 28, fontWeight: '800', letterSpacing: -0.7, marginTop: 4 },
-  subtitle: { color: colors.muted, fontSize: 13, lineHeight: 19, marginTop: 4, maxWidth: 520 },
-  tabsRow: { gap: spacing.xs, paddingBottom: spacing.lg },
-  tabPill: {
-    backgroundColor: colors.surface,
-    borderColor: colors.line,
-    borderRadius: radii.pill,
-    borderWidth: 1,
-    paddingHorizontal: 14,
-    paddingVertical: 8,
+  eyebrow: {
+    color: colors.orange,
+    fontSize: 10,
+    fontWeight: "800",
+    letterSpacing: 1.2,
   },
-  tabPillActive: {
-    backgroundColor: colors.greenDark,
-    borderColor: colors.greenDark,
+  title: {
+    color: colors.ink,
+    fontSize: 28,
+    fontWeight: "800",
+    letterSpacing: -0.7,
+    marginTop: 4,
   },
-  tabPillText: { color: colors.ink, fontSize: 12, fontWeight: '700' },
-  tabPillTextActive: { color: '#FFFFFF' },
+  subtitle: {
+    color: colors.muted,
+    fontSize: 13,
+    lineHeight: 19,
+    marginTop: 4,
+    maxWidth: 520,
+  },
   card: {
     backgroundColor: colors.surface,
     borderColor: colors.line,
@@ -396,12 +496,12 @@ const styles = StyleSheet.create({
     padding: spacing.lg,
   },
   cardTop: {
-    alignItems: 'center',
-    flexDirection: 'row',
-    justifyContent: 'space-between',
+    alignItems: "center",
+    flexDirection: "row",
+    justifyContent: "space-between",
     gap: spacing.sm,
   },
-  cardTitle: { color: colors.ink, flex: 1, fontSize: 16, fontWeight: '800' },
+  cardTitle: { color: colors.ink, flex: 1, fontSize: 16, fontWeight: "800" },
   statusChip: {
     backgroundColor: colors.greenSoft,
     borderRadius: radii.pill,
@@ -409,34 +509,39 @@ const styles = StyleSheet.create({
     paddingVertical: 4,
   },
   statusChipCompleted: {
-    backgroundColor: '#E6F4EA',
-    borderColor: '#34A853',
+    backgroundColor: "#E6F4EA",
+    borderColor: "#34A853",
     borderWidth: 1,
   },
-  statusChipText: { color: colors.greenDark, fontSize: 10, fontWeight: '800' },
+  statusChipText: { color: colors.greenDark, fontSize: 10, fontWeight: "800" },
   statusChipCompletedText: {
-    color: '#137333',
-    fontWeight: '800',
+    color: "#137333",
+    fontWeight: "800",
   },
-  cardProvider: { color: colors.greenDark, fontSize: 13, fontWeight: '700', marginTop: 4 },
+  cardProvider: {
+    color: colors.greenDark,
+    fontSize: 13,
+    fontWeight: "700",
+    marginTop: 4,
+  },
   cardSub: { color: colors.muted, fontSize: 12, marginTop: 4 },
   cardFooter: {
-    alignItems: 'center',
+    alignItems: "center",
     borderTopColor: colors.line,
     borderTopWidth: 1,
-    flexDirection: 'row',
-    justifyContent: 'space-between',
+    flexDirection: "row",
+    justifyContent: "space-between",
     marginTop: spacing.md,
     paddingTop: spacing.sm,
   },
-  cardDate: { color: colors.muted, fontSize: 11, fontWeight: '600' },
-  cardPrice: { color: colors.greenDark, fontSize: 13, fontWeight: '800' },
+  cardDate: { color: colors.muted, fontSize: 11, fontWeight: "600" },
+  cardPrice: { color: colors.greenDark, fontSize: 13, fontWeight: "800" },
   chatOpenBadge: {
     backgroundColor: colors.greenDark,
     borderRadius: radii.pill,
-    color: '#FFFFFF',
+    color: "#FFFFFF",
     fontSize: 11,
-    fontWeight: '800',
+    fontWeight: "800",
     paddingHorizontal: 10,
     paddingVertical: 4,
   },
@@ -444,16 +549,16 @@ const styles = StyleSheet.create({
   sectionSubheading: {
     color: colors.ink,
     fontSize: 15,
-    fontWeight: '800',
+    fontWeight: "800",
     marginTop: spacing.md,
   },
   reportStatusBadge: {
-    alignSelf: 'flex-start',
+    alignSelf: "flex-start",
     backgroundColor: colors.orangeSoft,
     borderRadius: radii.sm,
     color: colors.orange,
     fontSize: 10,
-    fontWeight: '800',
+    fontWeight: "800",
     marginTop: 6,
     paddingHorizontal: 8,
     paddingVertical: 3,

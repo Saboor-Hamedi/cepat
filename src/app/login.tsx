@@ -4,7 +4,6 @@ import { View } from 'react-native';
 
 import { signInPreviewAccount, useAuth } from '../auth/AuthProvider';
 import { isAuthServiceUnavailable } from '../auth/errors';
-import { deriveMetadataRoles } from '../auth/technicianApplication';
 import { AuthField, AuthLink, AuthNotice, AuthShell, AuthSubmit } from '../components/auth-ui';
 import { supabase } from '../data/marketplaceRepository';
 import { useLanguage } from '../i18n/locale';
@@ -28,7 +27,7 @@ export default function LoginScreen() {
     redirect?: string;
     technicianId?: string;
   }>();
-  const { configurationReady, loading: sessionLoading, user, effectiveRole } = useAuth();
+  const { configurationReady, loading: sessionLoading, user } = useAuth();
   const initialEmail = typeof params.email === 'string' ? params.email.trim() : '';
   const [emailInput, setEmailInput] = useState<string | null>(null);
   const email = emailInput ?? initialEmail;
@@ -45,11 +44,9 @@ export default function LoginScreen() {
         router.replace(safeRedirect as never);
         return;
       }
-      if (effectiveRole === 'admin') router.replace('/admin');
-      else if (effectiveRole === 'technician') router.replace('/technician-dashboard');
-      else router.replace('/account');
+      router.replace('/');
     }
-  }, [effectiveRole, params.registered, safeRedirect, sessionLoading, user]);
+  }, [params.registered, safeRedirect, sessionLoading, user]);
 
   const submit = async () => {
     setError('');
@@ -68,21 +65,16 @@ export default function LoginScreen() {
       const cleanEmail = email.trim().toLowerCase();
       if (!supabase) {
         const previewRole = params.role === 'technician' ? 'technician' : 'customer';
-        const signedIn = signInPreviewAccount(cleanEmail, previewRole);
+        signInPreviewAccount(cleanEmail, previewRole);
         if (safeRedirect) {
           router.replace(safeRedirect as never);
           return;
         }
-        const metaRoles = deriveMetadataRoles(signedIn);
-        if (metaRoles.includes('technician')) {
-          router.replace('/technician-dashboard');
-          return;
-        }
-        router.replace('/account');
+        router.replace('/');
         return;
       }
 
-      const { data, error: authError } = await supabase.auth.signInWithPassword({
+      const { error: authError } = await supabase.auth.signInWithPassword({
         email: cleanEmail,
         password,
       });
@@ -96,15 +88,7 @@ export default function LoginScreen() {
         router.replace(safeRedirect as never);
         return;
       }
-      const signedInUser = data?.user;
-      if (signedInUser) {
-        const metaRoles = deriveMetadataRoles(signedInUser);
-        if (metaRoles.includes('technician')) {
-          router.replace('/technician-dashboard');
-          return;
-        }
-      }
-      router.replace('/account');
+      router.replace('/');
     } catch {
       setError(t('auth.serviceUnavailable'));
     } finally {

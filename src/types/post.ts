@@ -19,6 +19,7 @@ export interface TechnicianPost {
   content?: string;
   imageUri?: string;
   mediaUrls?: string[];
+  isServicePost?: boolean;
   published: boolean;
   suspended?: boolean;
   suspendedAt?: string;
@@ -40,6 +41,7 @@ export interface CreatePostInput {
   content?: string;
   imageUri?: string;
   mediaUrls?: string[];
+  isServicePost?: boolean;
   published?: boolean;
 }
 
@@ -51,6 +53,7 @@ export interface UpdatePostInput {
   published?: boolean;
   imageUri?: string;
   mediaUrls?: string[];
+  isServicePost?: boolean;
 }
 
 export interface FetchPostsOptions {
@@ -66,4 +69,10 @@ export interface PaginatedPostsResult {
   pageSize: number;
   hasMore: boolean;
   total: number;
+}
+
+export interface CursorPage<T> {
+  items: T[];
+  nextCursor: string | null;
+  hasMore: boolean;
 }

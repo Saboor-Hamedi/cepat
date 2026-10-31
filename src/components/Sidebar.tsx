@@ -1,10 +1,18 @@
-import { router } from 'expo-router';
-import { Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { router } from "expo-router";
+import {
+  Modal,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
+} from "react-native";
 
-import { useAuth } from '../auth/AuthProvider';
-import { useLanguage } from '../i18n/locale';
-import { colors, radii, spacing } from '../theme/tokens';
-import { Avatar } from './Avatar';
+import { useAuth } from "../auth/AuthProvider";
+import { useAppearance } from "../context/AppearanceContext";
+import { useLanguage } from "../i18n/locale";
+import { colors, radii, spacing } from "../theme/tokens";
+import { Avatar } from "./Avatar";
 
 export interface SidebarProps {
   visible: boolean;
@@ -29,11 +37,14 @@ function LucideLogoutIcon({ color = colors.danger }: { color?: string }) {
 
 function SidebarItemIcon({
   kind,
+  color = "#0F1419",
 }: {
-  kind: 'profile' | 'settings' | 'preferences' | 'bookings' | 'workspace' | 'admin';
+  kind:
+    "profile" | "settings" | "preferences" | "bookings" | "workspace" | "admin";
+  color?: string;
 }) {
-  const stroke = '#0F1419';
-  if (kind === 'profile') {
+  const stroke = color;
+  if (kind === "profile") {
     return (
       <View style={styles.itemIconCanvas}>
         <View style={[styles.iconUserHead, { borderColor: stroke }]} />
@@ -41,7 +52,7 @@ function SidebarItemIcon({
       </View>
     );
   }
-  if (kind === 'settings') {
+  if (kind === "settings") {
     return (
       <View style={styles.itemIconCanvas}>
         <View style={[styles.iconGearOuter, { borderColor: stroke }]}>
@@ -50,7 +61,7 @@ function SidebarItemIcon({
       </View>
     );
   }
-  if (kind === 'preferences') {
+  if (kind === "preferences") {
     return (
       <View style={styles.itemIconCanvas}>
         <View style={[styles.iconSliderLine, { backgroundColor: stroke }]} />
@@ -58,7 +69,7 @@ function SidebarItemIcon({
       </View>
     );
   }
-  if (kind === 'workspace') {
+  if (kind === "workspace") {
     return (
       <View style={styles.itemIconCanvas}>
         <View style={[styles.iconBriefcaseTop, { borderColor: stroke }]} />
@@ -66,7 +77,7 @@ function SidebarItemIcon({
       </View>
     );
   }
-  if (kind === 'admin') {
+  if (kind === "admin") {
     return (
       <View style={styles.itemIconCanvas}>
         <View style={[styles.iconShield, { borderColor: stroke }]} />
@@ -80,48 +91,48 @@ function SidebarItemIcon({
   );
 }
 
-export function Sidebar({
-  visible,
-  onClose,
-  avatarUri,
-}: SidebarProps) {
+export function Sidebar({ visible, onClose, avatarUri }: SidebarProps) {
   const { language } = useLanguage();
   const { user, roles, effectiveRole, signOut } = useAuth();
+  const { palette } = useAppearance();
 
   const isAuthenticated = Boolean(user);
   const isVerifiedAdmin =
-    isAuthenticated && (roles.includes('admin') || effectiveRole === 'admin');
+    isAuthenticated && (roles.includes("admin") || effectiveRole === "admin");
   const isTechnician =
-    isAuthenticated && (effectiveRole === 'technician' || roles.includes('technician'));
+    isAuthenticated &&
+    (effectiveRole === "technician" || roles.includes("technician"));
 
   const displayName = isAuthenticated
-    ? (typeof user?.user_metadata?.display_name === 'string' &&
+    ? (typeof user?.user_metadata?.display_name === "string" &&
         user.user_metadata.display_name.trim()) ||
-      user?.email?.split('@')[0] ||
-      'Cepat User'
-    : language === 'en'
-      ? 'Guest Visitor'
-      : 'Pengunjung Tamu';
+      user?.email?.split("@")[0] ||
+      "Cepat User"
+    : language === "en"
+      ? "Guest Visitor"
+      : "Pengunjung Tamu";
 
-  const rawEmailPart = (user?.email?.split('@')[0] || 'cepat_member').toLowerCase();
-  const strippedUsername = rawEmailPart.replace(/\d+/g, '');
+  const rawEmailPart = (
+    user?.email?.split("@")[0] || "cepat_member"
+  ).toLowerCase();
+  const strippedUsername = rawEmailPart.replace(/\d+/g, "");
   const accountIdentifier = isAuthenticated
     ? strippedUsername || rawEmailPart
-    : language === 'en'
-      ? 'Not signed in'
-      : 'Belum masuk';
+    : language === "en"
+      ? "Not signed in"
+      : "Belum masuk";
 
   const navigateAndClose = (
     target:
-      | '/'
-      | '/account'
-      | '/bookings'
-      | '/technician-dashboard'
-      | '/admin'
-      | '/login'
-      | '/register'
+      | "/"
+      | "/account"
+      | "/bookings"
+      | "/technician-dashboard"
+      | "/admin"
+      | "/login"
+      | "/register"
       | `/technician/${string}`
-      | { pathname: '/account'; params: { tab: string } },
+      | { pathname: "/account"; params: { tab: string } },
   ) => {
     onClose();
     try {
@@ -135,7 +146,7 @@ export function Sidebar({
     await signOut();
     onClose();
     try {
-      router.replace('/login');
+      router.replace("/login");
     } catch {
       // Router may not be mounted in isolated unit component tests.
     }
@@ -150,7 +161,15 @@ export function Sidebar({
     >
       <View style={styles.backdrop} testID="profile-sidebar-modal">
         {/* Left Twitter/X-style Drawer Panel */}
-        <View style={styles.drawer}>
+        <View
+          style={[
+            styles.drawer,
+            {
+              backgroundColor: palette.surface,
+              borderRightColor: palette.border,
+            },
+          ]}
+        >
           <View style={styles.profileHeader}>
             <View style={styles.avatarTopRow}>
               <Avatar
@@ -160,40 +179,62 @@ export function Sidebar({
               />
               <Pressable
                 accessibilityRole="button"
-                accessibilityLabel={language === 'en' ? 'Close menu' : 'Tutup menu'}
+                accessibilityLabel={
+                  language === "en" ? "Close menu" : "Tutup menu"
+                }
                 onPress={onClose}
-                style={styles.closeBtn}
+                style={[
+                  styles.closeBtn,
+                  { backgroundColor: palette.surfaceElevated },
+                ]}
                 testID="sidebar-close-button"
               >
-                <Text style={styles.closeBtnText}>×</Text>
+                <Text style={[styles.closeBtnText, { color: palette.text }]}>
+                  ×
+                </Text>
               </Pressable>
             </View>
 
-            <Text numberOfLines={1} style={styles.displayName} testID="sidebar-display-name">
+            <Text
+              numberOfLines={1}
+              style={[styles.displayName, { color: palette.text }]}
+              testID="sidebar-display-name"
+            >
               {displayName}
             </Text>
-            <Text numberOfLines={1} style={styles.handleText} testID="sidebar-handle">
+            <Text
+              numberOfLines={1}
+              style={[styles.handleText, { color: palette.textMuted }]}
+              testID="sidebar-handle"
+            >
               {accountIdentifier}
             </Text>
 
             {isAuthenticated && (
-              <View style={styles.roleBadge}>
-                <Text style={styles.roleBadgeText}>
+              <View
+                style={[
+                  styles.roleBadge,
+                  { backgroundColor: palette.primarySoft },
+                ]}
+              >
+                <Text
+                  style={[styles.roleBadgeText, { color: palette.primary }]}
+                >
                   {isVerifiedAdmin
-                    ? 'Administrator'
+                    ? "Administrator"
                     : isTechnician
-                      ? language === 'en'
-                        ? 'Professional Technician'
-                        : 'Mitra Teknisi'
-                      : language === 'en'
-                        ? 'Customer'
-                        : 'Pelanggan'}
+                      ? language === "en"
+                        ? "Professional Technician"
+                        : "Mitra Teknisi"
+                      : language === "en"
+                        ? "Customer"
+                        : "Pelanggan"}
                 </Text>
               </View>
             )}
           </View>
 
-          <View style={styles.divider} />
+          <View style={[styles.divider, { backgroundColor: palette.border }]} />
 
           <ScrollView style={styles.menuList}>
             <Pressable
@@ -201,67 +242,74 @@ export function Sidebar({
               onPress={() =>
                 navigateAndClose(
                   !isAuthenticated
-                    ? '/login'
-                    : `/technician/${user?.id || (isTechnician ? 'demo-rizky' : 'demo-customer')}`,
+                    ? "/login"
+                    : `/technician/${user?.id || (isTechnician ? "demo-rizky" : "demo-customer")}`,
                 )
               }
               style={styles.menuItem}
               testID="sidebar-view-profile"
             >
-              <SidebarItemIcon kind="profile" />
-              <Text style={styles.menuItemText}>
-                {language === 'en' ? 'View Profile' : 'Lihat Profil'}
+              <SidebarItemIcon kind="profile" color={palette.text} />
+              <Text style={[styles.menuItemText, { color: palette.text }]}>
+                {language === "en" ? "View Profile" : "Lihat Profil"}
               </Text>
             </Pressable>
 
             <Pressable
               accessibilityRole="button"
-              onPress={() => navigateAndClose('/account')}
+              onPress={() => navigateAndClose("/account")}
               style={styles.menuItem}
               testID="sidebar-settings"
             >
-              <SidebarItemIcon kind="settings" />
-              <Text style={styles.menuItemText}>
-                {language === 'en' ? 'Settings' : 'Pengaturan'}
+              <SidebarItemIcon kind="settings" color={palette.text} />
+              <Text style={[styles.menuItemText, { color: palette.text }]}>
+                {language === "en" ? "Settings" : "Pengaturan"}
               </Text>
             </Pressable>
 
             <Pressable
               accessibilityRole="button"
               onPress={() =>
-                navigateAndClose({ pathname: '/account', params: { tab: 'appearance' } })
+                navigateAndClose({
+                  pathname: "/account",
+                  params: { tab: "appearance" },
+                })
               }
               style={styles.menuItem}
               testID="sidebar-preferences"
             >
-              <SidebarItemIcon kind="preferences" />
-              <Text style={styles.menuItemText}>
-                {language === 'en' ? 'Account preferences' : 'Preferensi akun'}
+              <SidebarItemIcon kind="preferences" color={palette.text} />
+              <Text style={[styles.menuItemText, { color: palette.text }]}>
+                {language === "en" ? "Account preferences" : "Preferensi akun"}
               </Text>
             </Pressable>
 
             {isTechnician ? (
               <Pressable
                 accessibilityRole="button"
-                onPress={() => navigateAndClose('/technician-dashboard')}
+                onPress={() => navigateAndClose("/technician-dashboard")}
                 style={styles.menuItem}
                 testID="sidebar-workspace"
               >
-                <SidebarItemIcon kind="workspace" />
-                <Text style={styles.menuItemText}>
-                  {language === 'en' ? 'Professional Profile & Requests' : 'Profil & Permintaan'}
+                <SidebarItemIcon kind="workspace" color={palette.text} />
+                <Text style={[styles.menuItemText, { color: palette.text }]}>
+                  {language === "en"
+                    ? "Professional Profile & Requests"
+                    : "Profil & Permintaan"}
                 </Text>
               </Pressable>
             ) : (
               <Pressable
                 accessibilityRole="button"
-                onPress={() => navigateAndClose('/bookings')}
+                onPress={() => navigateAndClose("/bookings")}
                 style={styles.menuItem}
                 testID="sidebar-bookings"
               >
-                <SidebarItemIcon kind="bookings" />
-                <Text style={styles.menuItemText}>
-                  {language === 'en' ? 'Bookings & Messages' : 'Pesanan & Pesan'}
+                <SidebarItemIcon kind="bookings" color={palette.text} />
+                <Text style={[styles.menuItemText, { color: palette.text }]}>
+                  {language === "en"
+                    ? "Bookings & Messages"
+                    : "Pesanan & Pesan"}
                 </Text>
               </Pressable>
             )}
@@ -269,19 +317,23 @@ export function Sidebar({
             {isVerifiedAdmin && (
               <Pressable
                 accessibilityRole="button"
-                onPress={() => navigateAndClose('/admin')}
+                onPress={() => navigateAndClose("/admin")}
                 style={styles.menuItem}
                 testID="sidebar-admin"
               >
-                <SidebarItemIcon kind="admin" />
-                <Text style={styles.menuItemText}>
-                  {language === 'en' ? 'Admin Control Center' : 'Pusat Kontrol Admin'}
+                <SidebarItemIcon kind="admin" color={palette.text} />
+                <Text style={[styles.menuItemText, { color: palette.text }]}>
+                  {language === "en"
+                    ? "Admin Control Center"
+                    : "Pusat Kontrol Admin"}
                 </Text>
               </Pressable>
             )}
           </ScrollView>
 
-          <View style={styles.bottomFooter}>
+          <View
+            style={[styles.bottomFooter, { borderTopColor: palette.border }]}
+          >
             {isAuthenticated ? (
               <Pressable
                 accessibilityRole="button"
@@ -298,22 +350,24 @@ export function Sidebar({
               <View style={styles.guestAuthActions}>
                 <Pressable
                   accessibilityRole="button"
-                  onPress={() => navigateAndClose('/login')}
+                  onPress={() => navigateAndClose("/login")}
                   style={styles.loginBtn}
                   testID="sidebar-login"
                 >
                   <Text style={styles.loginBtnText}>
-                    {language === 'en' ? 'Sign in' : 'Masuk'}
+                    {language === "en" ? "Sign in" : "Masuk"}
                   </Text>
                 </Pressable>
                 <Pressable
                   accessibilityRole="button"
-                  onPress={() => navigateAndClose('/register')}
-                  style={styles.registerBtn}
+                  onPress={() => navigateAndClose("/register")}
+                  style={[styles.registerBtn, { borderColor: palette.border }]}
                   testID="sidebar-register"
                 >
-                  <Text style={styles.registerBtnText}>
-                    {language === 'en' ? 'Create account' : 'Buat akun'}
+                  <Text
+                    style={[styles.registerBtnText, { color: palette.text }]}
+                  >
+                    {language === "en" ? "Create account" : "Buat akun"}
                   </Text>
                 </Pressable>
               </View>
@@ -336,20 +390,18 @@ export const ProfileSidebarModal = Sidebar;
 
 const styles = StyleSheet.create({
   backdrop: {
-    backgroundColor: 'rgba(15, 20, 25, 0.45)',
+    backgroundColor: "rgba(15, 20, 25, 0.45)",
     flex: 1,
-    flexDirection: 'row',
+    flexDirection: "row",
   },
   drawer: {
-    backgroundColor: '#FFFFFF',
-    borderRightColor: '#EFF3F4',
     borderRightWidth: 1,
-    flexDirection: 'column',
-    height: '100%',
-    justifyContent: 'space-between',
+    flexDirection: "column",
+    height: "100%",
+    justifyContent: "space-between",
     maxWidth: 310,
     paddingTop: spacing.xl,
-    width: '82%',
+    width: "82%",
   },
   scrimTapArea: {
     flex: 1,
@@ -359,74 +411,66 @@ const styles = StyleSheet.create({
     paddingBottom: spacing.md,
   },
   avatarTopRow: {
-    alignItems: 'flex-start',
-    flexDirection: 'row',
-    justifyContent: 'space-between',
+    alignItems: "flex-start",
+    flexDirection: "row",
+    justifyContent: "space-between",
     marginBottom: spacing.sm,
   },
   closeBtn: {
-    alignItems: 'center',
-    backgroundColor: '#EFF3F4',
+    alignItems: "center",
     borderRadius: 16,
     height: 32,
-    justifyContent: 'center',
+    justifyContent: "center",
     width: 32,
   },
   closeBtnText: {
-    color: '#0F1419',
     fontSize: 20,
-    fontWeight: '600',
+    fontWeight: "600",
     lineHeight: 22,
   },
   displayName: {
-    color: '#0F1419',
     fontSize: 18,
-    fontWeight: '800',
+    fontWeight: "800",
     letterSpacing: -0.3,
   },
   handleText: {
-    color: '#536471',
     fontSize: 14,
     marginTop: 2,
   },
   roleBadge: {
-    alignSelf: 'flex-start',
-    backgroundColor: colors.greenSoft,
+    alignSelf: "flex-start",
     borderRadius: radii.pill,
     marginTop: spacing.xs,
     paddingHorizontal: 10,
     paddingVertical: 3,
   },
   roleBadgeText: {
-    color: colors.greenDark,
     fontSize: 11,
-    fontWeight: '800',
+    fontWeight: "800",
   },
   divider: {
-    backgroundColor: '#EFF3F4',
     height: 1,
-    width: '100%',
+    width: "100%",
   },
   menuList: {
     flex: 1,
     paddingVertical: spacing.sm,
   },
   menuItem: {
-    alignItems: 'center',
-    flexDirection: 'row',
+    alignItems: "center",
+    flexDirection: "row",
     gap: spacing.lg,
     paddingHorizontal: spacing.xl,
     paddingVertical: 14,
   },
   menuItemText: {
-    color: '#0F1419',
     fontSize: 17,
-    fontWeight: '700',
+    fontWeight: "700",
   },
   itemIconCanvas: {
-    alignItems: 'center',
+    alignItems: "center",
     height: 22,
-    justifyContent: 'center',
+    justifyContent: "center",
     width: 22,
   },
   iconUserHead: {
@@ -446,11 +490,11 @@ const styles = StyleSheet.create({
     width: 15,
   },
   iconGearOuter: {
-    alignItems: 'center',
+    alignItems: "center",
     borderRadius: 8,
     borderWidth: 2,
     height: 16,
-    justifyContent: 'center',
+    justifyContent: "center",
     width: 16,
   },
   iconGearInner: {
@@ -493,25 +537,24 @@ const styles = StyleSheet.create({
     width: 16,
   },
   bottomFooter: {
-    borderTopColor: '#EFF3F4',
     borderTopWidth: 1,
     paddingHorizontal: spacing.xl,
     paddingVertical: spacing.lg,
   },
   logoutBtn: {
-    alignItems: 'center',
-    flexDirection: 'row',
+    alignItems: "center",
+    flexDirection: "row",
     gap: spacing.md,
     paddingVertical: 8,
   },
   logoutBtnText: {
     color: colors.danger,
     fontSize: 16,
-    fontWeight: '800',
+    fontWeight: "800",
   },
   lucideLogoutCanvas: {
-    alignItems: 'center',
-    flexDirection: 'row',
+    alignItems: "center",
+    flexDirection: "row",
     height: 20,
     width: 20,
   },
@@ -534,35 +577,33 @@ const styles = StyleSheet.create({
     borderTopWidth: 2,
     height: 6,
     marginLeft: -5,
-    transform: [{ rotate: '45deg' }],
+    transform: [{ rotate: "45deg" }],
     width: 6,
   },
   guestAuthActions: {
     gap: spacing.xs,
   },
   loginBtn: {
-    alignItems: 'center',
+    alignItems: "center",
     backgroundColor: colors.greenDark,
     borderRadius: radii.pill,
-    justifyContent: 'center',
+    justifyContent: "center",
     minHeight: 42,
   },
   loginBtnText: {
-    color: '#FFFFFF',
+    color: "#FFFFFF",
     fontSize: 14,
-    fontWeight: '800',
+    fontWeight: "800",
   },
   registerBtn: {
-    alignItems: 'center',
-    borderColor: '#CFD9DE',
+    alignItems: "center",
     borderRadius: radii.pill,
     borderWidth: 1,
-    justifyContent: 'center',
+    justifyContent: "center",
     minHeight: 42,
   },
   registerBtnText: {
-    color: '#0F1419',
     fontSize: 14,
-    fontWeight: '800',
+    fontWeight: "800",
   },
 });

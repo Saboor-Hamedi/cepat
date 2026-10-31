@@ -1,13 +1,12 @@
-import { useState } from 'react';
 import {
   ActivityIndicator,
-  Image,
   Pressable,
   StyleSheet,
   Text,
   View,
 } from 'react-native';
 
+import { useAppearance } from '../context/AppearanceContext';
 import { colors, radii, spacing } from '../theme/tokens';
 import { localizeArea, useLanguage } from '../i18n/locale';
 import type { DataSource, Technician } from '../types/marketplace';
@@ -18,10 +17,21 @@ export { Avatar, AppNavigationBar, Header };
 
 export function SourceBadge({ source }: { source: DataSource }) {
   const { t } = useLanguage();
+  const { palette } = useAppearance();
   if (source === 'supabase') return null;
   return (
-    <View style={styles.sampleBadge}>
-      <Text style={styles.sampleBadgeText}>{t('data.previewBadge')}</Text>
+    <View
+      style={[
+        styles.sampleBadge,
+        {
+          backgroundColor: palette.primarySoft,
+          borderColor: palette.border,
+        },
+      ]}
+    >
+      <Text style={[styles.sampleBadgeText, { color: palette.primary }]}>
+        {t('data.previewBadge')}
+      </Text>
     </View>
   );
 }
@@ -31,6 +41,7 @@ export function ServiceCategoryGlyph({
   icon,
   selected = false,
   size = 38,
+  color,
 }: {
   iconKey?: string;
   icon?: string;
@@ -38,8 +49,26 @@ export function ServiceCategoryGlyph({
   size?: number;
   color?: string;
 }) {
+  const { palette: appearancePalette, isDark } = useAppearance();
   const normalized = (iconKey ?? icon ?? 'home-maintenance').toLowerCase();
-  const palette = getGlyphPalette(normalized, selected);
+  const basePalette = getGlyphPalette(normalized, selected);
+  const palette = selected
+    ? {
+        bg: appearancePalette.primary,
+        fg: '#FFFFFF',
+        accent: '#FFFFFF',
+        border: appearancePalette.primary,
+      }
+    : isDark
+      ? {
+          bg: appearancePalette.surfaceElevated,
+          fg: color ?? appearancePalette.text,
+          accent: appearancePalette.primary,
+          border: appearancePalette.border,
+        }
+      : color
+        ? { ...basePalette, fg: color }
+        : basePalette;
 
   return (
     <View
@@ -116,14 +145,21 @@ function getGlyphPalette(key: string, selected: boolean) {
 
 export function Rating({ value, count }: { value: number; count: number }) {
   const { language, t } = useLanguage();
+  const { palette } = useAppearance();
   if (count < 1) {
-    return <Text style={styles.mutedText}>{t('rating.none')}</Text>;
+    return (
+      <Text style={[styles.mutedText, { color: palette.textMuted }]}>
+        {t('rating.none')}
+      </Text>
+    );
   }
   return (
     <View style={styles.inline}>
       <Text style={styles.star}>★</Text>
-      <Text style={styles.ratingText}>{value.toFixed(1)}</Text>
-      <Text style={styles.mutedText}>
+      <Text style={[styles.ratingText, { color: palette.text }]}>
+        {value.toFixed(1)}
+      </Text>
+      <Text style={[styles.mutedText, { color: palette.textMuted }]}>
         ({count} {language === 'en' ? 'reviews' : 'ulasan'})
       </Text>
     </View>
@@ -140,6 +176,7 @@ export function TechnicianCard({
   onPress: () => void;
 }) {
   const { language, t } = useLanguage();
+  const { palette } = useAppearance();
   const firstService = technician.services[0];
   const lowestPrice = technician.services
     .map((service) => service.startingPrice)
@@ -159,7 +196,11 @@ export function TechnicianCard({
       accessibilityLabel={`Lihat profil ${name}`}
       testID={`technician-card-${technician.id}`}
       onPress={onPress}
-      style={({ pressed }) => [styles.technicianCard, pressed && styles.pressed]}
+      style={({ pressed }) => [
+        styles.technicianCard,
+        { backgroundColor: palette.surface, borderColor: palette.border },
+        pressed && styles.pressed,
+      ]}
     >
       <View style={styles.avatarColumn}>
         <Avatar uri={technician.avatarUri} name={technician.displayName} size={74} />
@@ -167,15 +208,24 @@ export function TechnicianCard({
           style={[
             styles.statusPill,
             technician.available ? styles.statusPillOpen : styles.statusPillBusy,
+            {
+              backgroundColor: technician.available
+                ? palette.primarySoft
+                : palette.surfaceElevated,
+            },
           ]}
         >
           <View
             style={[
               styles.statusDot,
-              { backgroundColor: technician.available ? colors.green : colors.muted },
+              {
+                backgroundColor: technician.available
+                  ? palette.primary
+                  : palette.textMuted,
+              },
             ]}
           />
-          <Text style={styles.statusPillText}>
+          <Text style={[styles.statusPillText, { color: palette.text }]}>
             {technician.available
               ? language === 'en'
                 ? 'Active'
@@ -189,7 +239,10 @@ export function TechnicianCard({
 
       <View style={styles.cardCopy}>
         <View style={styles.nameRow}>
-          <Text numberOfLines={1} style={styles.technicianName}>
+          <Text
+            numberOfLines={1}
+            style={[styles.technicianName, { color: palette.text }]}
+          >
             {name}
           </Text>
           {technician.verified && (
@@ -199,19 +252,25 @@ export function TechnicianCard({
           )}
         </View>
         {technician.businessName && technician.businessName !== technician.displayName && (
-          <Text numberOfLines={1} style={styles.personSubname}>
+          <Text
+            numberOfLines={1}
+            style={[styles.personSubname, { color: palette.textMuted }]}
+          >
             {technician.displayName}
             {technician.yearsExperience ? ` · ${technician.yearsExperience} thn` : ''}
           </Text>
         )}
-        <Text numberOfLines={1} style={styles.cardHeadline}>
+        <Text
+          numberOfLines={1}
+          style={[styles.cardHeadline, { color: palette.textMuted }]}
+        >
           {localizedHeadline || localizedServiceName || t('technician.serviceFallback')}
         </Text>
 
         <View style={styles.metricsRow}>
           <Rating value={technician.averageRating} count={technician.reviewCount} />
           {technician.completedJobsCount > 0 && (
-            <Text style={styles.jobsCountBadge}>
+            <Text style={[styles.jobsCountBadge, { color: palette.textMuted }]}>
               • {technician.completedJobsCount} {language === 'en' ? 'jobs' : 'pekerjaan'}
             </Text>
           )}
@@ -220,8 +279,17 @@ export function TechnicianCard({
         {technician.services.length > 0 && (
           <View style={styles.serviceTagsRow}>
             {technician.services.slice(0, 2).map((service) => (
-              <View key={service.id} style={styles.serviceMiniTag}>
-                <Text numberOfLines={1} style={styles.serviceMiniTagText}>
+              <View
+                key={service.id}
+                style={[
+                  styles.serviceMiniTag,
+                  { backgroundColor: palette.surfaceElevated, borderColor: palette.border },
+                ]}
+              >
+                <Text
+                  numberOfLines={1}
+                  style={[styles.serviceMiniTagText, { color: palette.text }]}
+                >
                   {language === 'en' ? service.nameEn || service.name : service.name}
                 </Text>
               </View>
@@ -229,15 +297,20 @@ export function TechnicianCard({
           </View>
         )}
 
-        <View style={styles.cardFooter}>
-          <Text numberOfLines={1} style={styles.cardArea}>
+        <View style={[styles.cardFooter, { borderTopColor: palette.border }]}>
+          <Text
+            numberOfLines={1}
+            style={[styles.cardArea, { color: palette.textMuted }]}
+          >
             {technician.serviceAreas[0]
               ? localizeArea(technician.serviceAreas[0], language)
               : t('technician.areaFallback')}
             {technician.serviceAreas.length > 1 ? ` +${technician.serviceAreas.length - 1}` : ''}
           </Text>
-          <View style={styles.priceBadge}>
-            <Text style={styles.cardPrice}>
+          <View
+            style={[styles.priceBadge, { backgroundColor: palette.primarySoft }]}
+          >
+            <Text style={[styles.cardPrice, { color: palette.primary }]}>
               {lowestPrice !== undefined
                 ? t('technician.startingPrice', { price: formatMoney(lowestPrice, language) })
                 : t('technician.askPrice')}
@@ -260,6 +333,7 @@ export function FeaturedProfessionalCard({
   onPress: () => void;
 }) {
   const { language, t } = useLanguage();
+  const { palette } = useAppearance();
   const lowestPrice = technician.services
     .map((service) => service.startingPrice)
     .filter((price): price is number => price !== undefined)
@@ -272,15 +346,25 @@ export function FeaturedProfessionalCard({
       accessibilityRole="button"
       onPress={onPress}
       testID={`featured-pro-${technician.id}`}
-      style={({ pressed }) => [styles.featuredCard, pressed && styles.pressed]}
+      style={({ pressed }) => [
+        styles.featuredCard,
+        { backgroundColor: palette.surface, borderColor: palette.border },
+        pressed && styles.pressed,
+      ]}
     >
       <View style={styles.featuredTop}>
         <Avatar uri={technician.avatarUri} name={technician.displayName} size={54} />
         <View style={styles.featuredIdentity}>
-          <Text numberOfLines={1} style={styles.featuredName}>
+          <Text
+            numberOfLines={1}
+            style={[styles.featuredName, { color: palette.text }]}
+          >
             {technician.displayName}
           </Text>
-          <Text numberOfLines={1} style={styles.featuredHeadline}>
+          <Text
+            numberOfLines={1}
+            style={[styles.featuredHeadline, { color: palette.primary }]}
+          >
             {headline || t('technician.serviceFallback')}
           </Text>
         </View>
@@ -288,20 +372,25 @@ export function FeaturedProfessionalCard({
       <View style={styles.featuredStats}>
         <Rating value={technician.averageRating} count={technician.reviewCount} />
         {technician.yearsExperience !== undefined && (
-          <Text style={styles.featuredExp}>
+          <Text style={[styles.featuredExp, { color: palette.textMuted }]}>
             {technician.yearsExperience} {language === 'en' ? 'yrs exp' : 'thn pengalaman'}
           </Text>
         )}
       </View>
-      <View style={styles.featuredBottom}>
-        <Text numberOfLines={1} style={styles.featuredArea}>
+      <View style={[styles.featuredBottom, { borderTopColor: palette.border }]}>
+        <Text
+          numberOfLines={1}
+          style={[styles.featuredArea, { color: palette.textMuted }]}
+        >
           {technician.serviceAreas
             .slice(0, 2)
             .map((a) => localizeArea(a, language))
             .join(', ')}
         </Text>
         {lowestPrice !== undefined && (
-          <Text style={styles.featuredPrice}>{formatMoney(lowestPrice, language)}</Text>
+          <Text style={[styles.featuredPrice, { color: palette.primary }]}>
+            {formatMoney(lowestPrice, language)}
+          </Text>
         )}
       </View>
     </Pressable>
@@ -321,6 +410,7 @@ export function CategoryPill({
   onPress: () => void;
   testID?: string;
 }) {
+  const { palette } = useAppearance();
   return (
     <Pressable
       accessibilityRole="button"
@@ -329,12 +419,23 @@ export function CategoryPill({
       testID={testID}
       style={({ pressed }) => [
         styles.categoryPill,
-        selected && styles.categoryPillSelected,
+        { backgroundColor: palette.surface, borderColor: palette.border },
+        selected && {
+          backgroundColor: palette.primarySoft,
+          borderColor: palette.primary,
+        },
         pressed && styles.pressed,
       ]}
     >
       <ServiceCategoryGlyph iconKey={icon} selected={Boolean(selected)} size={40} />
-      <Text numberOfLines={2} style={[styles.categoryName, selected && styles.categoryNameSelected]}>
+      <Text
+        numberOfLines={2}
+        style={[
+          styles.categoryName,
+          { color: palette.text },
+          selected && { color: palette.primary },
+        ]}
+      >
         {name}
       </Text>
     </Pressable>
@@ -364,14 +465,17 @@ export function EmptyState({
   actionLabel?: string;
   onAction?: () => void;
 }) {
+  const { palette } = useAppearance();
   return (
     <View style={styles.emptyState}>
-      <View style={styles.emptyIcon}>
+      <View style={[styles.emptyIcon, { backgroundColor: palette.primarySoft }]}>
         <View style={styles.searchLensCircle} />
         <View style={styles.searchLensHandle} />
       </View>
-      <Text style={styles.emptyTitle}>{title}</Text>
-      <Text style={styles.emptyDescription}>{description}</Text>
+      <Text style={[styles.emptyTitle, { color: palette.text }]}>{title}</Text>
+      <Text style={[styles.emptyDescription, { color: palette.textMuted }]}>
+        {description}
+      </Text>
       {actionLabel && onAction && (
         <Pressable accessibilityRole="button" onPress={onAction} style={styles.textAction}>
           <Text style={styles.textActionLabel}>{actionLabel}</Text>
@@ -392,19 +496,30 @@ export function SectionTitle({
   trailing?: string;
   onTrailingPress?: () => void;
 }) {
+  const { palette } = useAppearance();
   return (
     <View style={styles.sectionTitle}>
       <View style={styles.sectionTitleCopy}>
-        {eyebrow && <Text style={styles.eyebrow}>{eyebrow}</Text>}
-        <Text style={styles.sectionHeading}>{title}</Text>
+        {eyebrow && (
+          <Text style={[styles.eyebrow, { color: palette.primary }]}>
+            {eyebrow}
+          </Text>
+        )}
+        <Text style={[styles.sectionHeading, { color: palette.text }]}>
+          {title}
+        </Text>
       </View>
       {trailing &&
         (onTrailingPress ? (
           <Pressable accessibilityRole="button" onPress={onTrailingPress}>
-            <Text style={styles.sectionTrailingAction}>{trailing}</Text>
+            <Text style={[styles.sectionTrailingAction, { color: palette.primary }]}>
+              {trailing}
+            </Text>
           </Pressable>
         ) : (
-          <Text style={styles.sectionTrailing}>{trailing}</Text>
+          <Text style={[styles.sectionTrailing, { color: palette.textMuted }]}>
+            {trailing}
+          </Text>
         ))}
     </View>
   );

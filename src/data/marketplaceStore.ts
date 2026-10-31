@@ -329,7 +329,7 @@ export async function loadAccountProfileDetails(
           (stored.displayName === 'Andi Wijaya' ? fallbackName : stored.displayName),
         email: fallbackEmail || (stored.email === 'andi.wijaya@cepat.id' ? '' : stored.email),
         phoneNumber: cleanPhone,
-        avatarUri: pub?.avatar_path ?? stored.avatarUri,
+        avatarUri: pub?.avatar_path || stored.avatarUri,
         addressNotes: cleanAddress,
       };
     } catch {
@@ -351,27 +351,38 @@ export async function saveAccountProfileDetails(
     displayName: trimmedName,
     email: details.email.trim(),
     phoneNumber: details.phoneNumber.trim().slice(0, 32),
-    avatarUri: details.avatarUri.trim(),
+    avatarUri:
+      details.avatarUri.trim() ||
+      (
+        await getStoredJson<AccountProfileDetails>(
+          scopeKey(ACCOUNT_PROFILE_KEY, userId),
+          {
+            displayName: trimmedName,
+            email: details.email.trim(),
+            phoneNumber: '',
+            avatarUri: '',
+            addressNotes: '',
+          },
+        )
+      ).avatarUri,
     addressNotes: details.addressNotes.trim().slice(0, 240),
   };
   await setStoredJson(scopeKey(ACCOUNT_PROFILE_KEY, userId), normalized);
 
   if (supabase && userId) {
-    try {
-      await Promise.all([
-        supabase.from('profiles').update({
+    const [profileResult, privateProfileResult] = await Promise.all([
+      supabase.from('profiles').update({
           display_name: normalized.displayName,
-          avatar_path: normalized.avatarUri || null,
+          ...(normalized.avatarUri ? { avatar_path: normalized.avatarUri } : {}),
         }).eq('id', userId),
-        supabase.from('private_profiles').upsert({
+      supabase.from('private_profiles').upsert({
           user_id: userId,
           phone_number: normalized.phoneNumber || null,
           address_notes: normalized.addressNotes || null,
         }),
-      ]);
-    } catch {
-      // Local copy is preserved.
-    }
+    ]);
+    if (profileResult.error) throw profileResult.error;
+    if (privateProfileResult.error) throw privateProfileResult.error;
   }
   return normalized;
 }

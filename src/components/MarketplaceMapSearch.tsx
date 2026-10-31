@@ -10,6 +10,7 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { useAppearance } from '../context/AppearanceContext';
 import { localizeArea, useLanguage } from '../i18n/locale';
 import { colors, radii, spacing } from '../theme/tokens';
 import type { IndonesianRegion, SavedAddress, Technician } from '../types/marketplace';
@@ -52,6 +53,7 @@ export function MarketplaceMapSearchModal({
   technicians,
 }: MarketplaceMapSearchProps) {
   const { language, t } = useLanguage();
+  const { palette } = useAppearance();
   const insets = useSafeAreaInsets();
   const [areaQuery, setAreaQuery] = useState('');
   const [customAddressText, setCustomAddressText] = useState('');
@@ -120,6 +122,14 @@ export function MarketplaceMapSearchModal({
     () => findNearestRegion(currentLat, currentLng, regions),
     [currentLat, currentLng, regions],
   );
+  const themedAreaOption = {
+    backgroundColor: palette.surface,
+    borderColor: palette.border,
+  };
+  const themedSelectedAreaOption = {
+    backgroundColor: palette.primarySoft,
+    borderColor: palette.primary,
+  };
 
   const moveMapPin = (dLat: number, dLng: number) => {
     const stepMultiplier = Math.max(0.25, 1 / zoomLevel);
@@ -174,6 +184,7 @@ export function MarketplaceMapSearchModal({
         <Pressable
           style={[
             styles.areaSheet,
+            { backgroundColor: palette.surface },
             { paddingBottom: Math.max(insets.bottom + spacing.md, spacing.xxl) },
           ]}
           onPress={(event) => event.stopPropagation()}
@@ -182,21 +193,35 @@ export function MarketplaceMapSearchModal({
           <View style={styles.sheetHandle} />
           <View style={styles.sheetHeaderRow}>
             <View style={styles.sheetHeaderCopy}>
-              <Text style={styles.sheetEyebrow}>{t('home.areaSheetEyebrow')}</Text>
-              <Text style={styles.sheetTitle}>{t('home.areaSheetTitle')}</Text>
+              <Text style={[styles.sheetEyebrow, { color: palette.primary }]}>
+                {t('home.areaSheetEyebrow')}
+              </Text>
+              <Text style={[styles.sheetTitle, { color: palette.text }]}>
+                {t('home.areaSheetTitle')}
+              </Text>
             </View>
             <Pressable
               accessibilityRole="button"
               onPress={onClose}
-              style={styles.closeBtn}
+              style={[
+                styles.closeBtn,
+                { backgroundColor: palette.surfaceElevated, borderColor: palette.border },
+              ]}
               testID="close-location-modal"
             >
-              <Text style={styles.closeBtnText}>×</Text>
+              <Text style={[styles.closeBtnText, { color: palette.text }]}>×</Text>
             </Pressable>
           </View>
-          <Text style={styles.sheetBody}>{t('home.areaSheetBody')}</Text>
+          <Text style={[styles.sheetBody, { color: palette.textMuted }]}>
+            {t('home.areaSheetBody')}
+          </Text>
 
-          <View style={styles.areaSearchBox}>
+          <View
+            style={[
+              styles.areaSearchBox,
+              { backgroundColor: palette.inputBg, borderColor: palette.border },
+            ]}
+          >
             <TextInput
               accessibilityLabel={t('home.areaSearchPlaceholder')}
               autoCapitalize="none"
@@ -219,8 +244,8 @@ export function MarketplaceMapSearchModal({
                 }
               }}
               placeholder={t('home.areaSearchPlaceholder')}
-              placeholderTextColor={colors.muted}
-              style={styles.areaSearchInput}
+              placeholderTextColor={palette.textMuted}
+              style={[styles.areaSearchInput, { color: palette.text }]}
               testID="area-search-input"
               value={areaQuery}
             />
@@ -242,38 +267,54 @@ export function MarketplaceMapSearchModal({
             keyboardShouldPersistTaps="handled"
           >
             {/* Interactive Map Surface */}
-            <Text style={styles.sheetSectionLabel}>
+            <Text style={[styles.sheetSectionLabel, { color: palette.textMuted }]}>
               {language === 'en'
                 ? 'INTERACTIVE MAP & AREA SELECTION'
                 : 'PETA INTERAKTIF & PEMILIHAN TITIK LOKASI'}
             </Text>
-            <View style={styles.interactiveMapBox} testID="interactive-map-surface">
+            <View
+              style={[
+                styles.interactiveMapBox,
+                { backgroundColor: palette.primarySoft, borderColor: palette.border },
+              ]}
+              testID="interactive-map-surface"
+            >
               <View style={styles.mapSurfaceTopRow}>
                 <View>
-                  <Text style={styles.mapNearestLabel}>
+                  <Text style={[styles.mapNearestLabel, { color: palette.primary }]}>
                     {language === 'en' ? 'ACTIVE MAP CENTER' : 'TITIK PUSAT PETA AKTIF'}
                   </Text>
-                  <Text style={styles.mapNearestName} testID="map-nearest-region-name">
+                  <Text
+                    style={[styles.mapNearestName, { color: palette.text }]}
+                    testID="map-nearest-region-name"
+                  >
                     {localizeArea(nearestRegion.name, language)} ({nearestRegion.province})
                   </Text>
                 </View>
-                <View style={styles.zoomControlGroup}>
+                <View
+                  style={[
+                    styles.zoomControlGroup,
+                    { backgroundColor: palette.surface, borderColor: palette.border },
+                  ]}
+                >
                   <Pressable
                     accessibilityRole="button"
                     onPress={() => setZoomLevel((z) => Math.max(1, z - 1))}
                     style={styles.zoomBtn}
                     testID="map-zoom-out"
                   >
-                    <Text style={styles.zoomBtnText}>−</Text>
+                    <Text style={[styles.zoomBtnText, { color: palette.primary }]}>−</Text>
                   </Pressable>
-                  <Text style={styles.zoomLabel}>{zoomLevel}x</Text>
+                  <Text style={[styles.zoomLabel, { color: palette.text }]}>
+                    {zoomLevel}x
+                  </Text>
                   <Pressable
                     accessibilityRole="button"
                     onPress={() => setZoomLevel((z) => Math.min(4, z + 1))}
                     style={styles.zoomBtn}
                     testID="map-zoom-in"
                   >
-                    <Text style={styles.zoomBtnText}>+</Text>
+                    <Text style={[styles.zoomBtnText, { color: palette.primary }]}>+</Text>
                   </Pressable>
                 </View>
               </View>
@@ -308,13 +349,24 @@ export function MarketplaceMapSearchModal({
                           moveMapPin(cell.dLat, cell.dLng);
                         }
                       }}
-                      style={[styles.mapGridCell, isCenter && styles.mapGridCellCenter]}
+                      style={[
+                        styles.mapGridCell,
+                        {
+                          backgroundColor: palette.surface,
+                          borderColor: palette.border,
+                        },
+                        isCenter && {
+                          backgroundColor: palette.primary,
+                          borderColor: palette.primary,
+                        },
+                      ]}
                       testID={`map-grid-${cell.id}`}
                     >
                       <Text
                         numberOfLines={1}
                         style={[
                           styles.mapGridCellText,
+                          { color: palette.text },
                           isCenter && styles.mapGridCellCenterText,
                         ]}
                       >
@@ -346,13 +398,18 @@ export function MarketplaceMapSearchModal({
                       }}
                       style={[
                         styles.mapJumpChip,
-                        isCurrentNearest && styles.mapJumpChipActive,
+                        { backgroundColor: palette.surface, borderColor: palette.border },
+                        isCurrentNearest && {
+                          backgroundColor: palette.primary,
+                          borderColor: palette.primary,
+                        },
                       ]}
                       testID={`map-jump-${reg.id}`}
                     >
                       <Text
                         style={[
                           styles.mapJumpChipText,
+                          { color: palette.text },
                           isCurrentNearest && styles.mapJumpChipTextActive,
                         ]}
                       >
@@ -370,8 +427,15 @@ export function MarketplaceMapSearchModal({
                     ? 'Optional street address or landmark at this map pin…'
                     : 'Alamat jalan atau patokan di titik peta ini (opsional)…'
                 }
-                placeholderTextColor={colors.muted}
-                style={styles.customAddressInput}
+                placeholderTextColor={palette.textMuted}
+                style={[
+                  styles.customAddressInput,
+                  {
+                    backgroundColor: palette.inputBg,
+                    borderColor: palette.border,
+                    color: palette.text,
+                  },
+                ]}
                 testID="map-custom-address-input"
                 value={customAddressText}
               />
@@ -382,7 +446,14 @@ export function MarketplaceMapSearchModal({
                   <TextInput
                     keyboardType="numeric"
                     onChangeText={setPinLatitude}
-                    style={styles.coordInput}
+                    style={[
+                      styles.coordInput,
+                      {
+                        backgroundColor: palette.inputBg,
+                        borderColor: palette.border,
+                        color: palette.text,
+                      },
+                    ]}
                     testID="pin-latitude-input"
                     value={pinLatitude}
                   />
@@ -392,7 +463,14 @@ export function MarketplaceMapSearchModal({
                   <TextInput
                     keyboardType="numeric"
                     onChangeText={setPinLongitude}
-                    style={styles.coordInput}
+                    style={[
+                      styles.coordInput,
+                      {
+                        backgroundColor: palette.inputBg,
+                        borderColor: palette.border,
+                        color: palette.text,
+                      },
+                    ]}
                     testID="pin-longitude-input"
                     value={pinLongitude}
                   />
@@ -400,7 +478,7 @@ export function MarketplaceMapSearchModal({
                 <Pressable
                   accessibilityRole="button"
                   onPress={handleApplyPinCoordinates}
-                  style={styles.applyPinBtn}
+                  style={[styles.applyPinBtn, { backgroundColor: palette.primary }]}
                   testID="apply-pin-button"
                 >
                   <Text style={styles.applyPinBtnText}>
@@ -409,7 +487,7 @@ export function MarketplaceMapSearchModal({
                 </Pressable>
               </View>
 
-              <Text style={styles.providerNote}>
+              <Text style={[styles.providerNote, { color: palette.textMuted }]}>
                 {language === 'en'
                   ? 'Note: Map coordinates and administrative regions use Cepat’s Indonesian region index. External map tiles and live street geocoding API are not yet configured.'
                   : 'Catatan: Koordinat peta dan wilayah administratif menggunakan indeks wilayah Indonesia Cepat. Tile peta eksternal dan API geocoding jalan live belum dikonfigurasi.'}
@@ -426,7 +504,8 @@ export function MarketplaceMapSearchModal({
               }}
               style={[
                 styles.areaOption,
-                selectedArea === 'Semua area' && styles.areaOptionSelected,
+                themedAreaOption,
+                selectedArea === 'Semua area' && themedSelectedAreaOption,
               ]}
               testID="area-option-all"
             >
@@ -434,20 +513,24 @@ export function MarketplaceMapSearchModal({
                 <View style={styles.areaPinDot} />
               </View>
               <View style={styles.areaOptionCopy}>
-                <Text style={styles.areaOptionText}>{t('home.allAreasOption')}</Text>
-                <Text style={styles.areaOptionSub}>
+                <Text style={[styles.areaOptionText, { color: palette.text }]}>
+                  {t('home.allAreasOption')}
+                </Text>
+                <Text style={[styles.areaOptionSub, { color: palette.textMuted }]}>
                   {language === 'en'
                     ? `Browse all ${regions.length}+ supported Indonesian regions`
                     : `Tampilkan seluruh ${regions.length}+ wilayah layanan di Indonesia`}
                 </Text>
               </View>
-              {selectedArea === 'Semua area' && <Text style={styles.areaCheck}>✓</Text>}
+              {selectedArea === 'Semua area' && (
+                <Text style={[styles.areaCheck, { color: palette.primary }]}>✓</Text>
+              )}
             </Pressable>
 
             {/* Matching Districts & Neighborhoods when searching */}
             {matchingDistricts.length > 0 && (
               <>
-                <Text style={styles.sheetSectionLabel}>
+                <Text style={[styles.sheetSectionLabel, { color: palette.textMuted }]}>
                   {language === 'en'
                     ? 'MATCHING DISTRICTS & NEIGHBORHOODS'
                     : 'KECAMATAN & KAWASAN YANG COCOK'}
@@ -457,15 +540,17 @@ export function MarketplaceMapSearchModal({
                     key={`${item.parentRegion.id}-${item.label}`}
                     accessibilityRole="button"
                     onPress={() => applyMapSelection(item.parentRegion, item.label)}
-                    style={styles.areaOption}
+                    style={[styles.areaOption, themedAreaOption]}
                     testID={`district-option-${item.label}`}
                   >
                     <View style={styles.areaPinCircle}>
                       <View style={styles.areaPinDot} />
                     </View>
                     <View style={styles.areaOptionCopy}>
-                      <Text style={styles.areaOptionText}>{item.label}</Text>
-                      <Text style={styles.areaOptionSub}>
+                      <Text style={[styles.areaOptionText, { color: palette.text }]}>
+                        {item.label}
+                      </Text>
+                      <Text style={[styles.areaOptionSub, { color: palette.textMuted }]}>
                         {item.kind} · {localizeArea(item.parentRegion.name, language)},{' '}
                         {item.parentRegion.province}
                       </Text>
@@ -478,7 +563,9 @@ export function MarketplaceMapSearchModal({
             {/* Saved Customer Addresses */}
             {savedAddresses.length > 0 && (
               <>
-                <Text style={styles.sheetSectionLabel}>{t('home.savedAddressesLabel')}</Text>
+                <Text style={[styles.sheetSectionLabel, { color: palette.textMuted }]}>
+                  {t('home.savedAddressesLabel')}
+                </Text>
                 {savedAddresses.map((addr) => {
                   const isSelected = selectedArea === addr.area;
                   return (
@@ -492,22 +579,31 @@ export function MarketplaceMapSearchModal({
                         );
                         onClose();
                       }}
-                      style={[styles.areaOption, isSelected && styles.areaOptionSelected]}
+                      style={[
+                        styles.areaOption,
+                        themedAreaOption,
+                        isSelected && themedSelectedAreaOption,
+                      ]}
                       testID={`saved-address-option-${addr.id}`}
                     >
                       <View style={styles.savedAddrBadge}>
                         <Text style={styles.savedAddrBadgeText}>{addr.label}</Text>
                       </View>
                       <View style={styles.areaOptionCopy}>
-                        <Text numberOfLines={1} style={styles.areaOptionText}>
+                        <Text
+                          numberOfLines={1}
+                          style={[styles.areaOptionText, { color: palette.text }]}
+                        >
                           {addr.streetAddress}
                         </Text>
-                        <Text style={styles.areaOptionSub}>
+                        <Text style={[styles.areaOptionSub, { color: palette.textMuted }]}>
                           {localizeArea(addr.area, language)}
                           {addr.district ? ` · ${addr.district}` : ''}
                         </Text>
                       </View>
-                      {isSelected && <Text style={styles.areaCheck}>✓</Text>}
+                      {isSelected && (
+                        <Text style={[styles.areaCheck, { color: palette.primary }]}>✓</Text>
+                      )}
                     </Pressable>
                   );
                 })}
@@ -515,7 +611,7 @@ export function MarketplaceMapSearchModal({
             )}
 
             {/* Indonesian Administrative Regions */}
-            <Text style={styles.sheetSectionLabel}>
+            <Text style={[styles.sheetSectionLabel, { color: palette.textMuted }]}>
               {t('home.regionsLabel')} ({filteredRegions.length})
             </Text>
             {filteredRegions.map((reg) => {
@@ -529,27 +625,33 @@ export function MarketplaceMapSearchModal({
                     accessibilityRole="button"
                     accessibilityState={{ selected: isSelected }}
                     onPress={() => applyMapSelection(reg)}
-                    style={[styles.areaOption, isSelected && styles.areaOptionSelected]}
+                    style={[
+                      styles.areaOption,
+                      themedAreaOption,
+                      isSelected && themedSelectedAreaOption,
+                    ]}
                     testID={`region-option-${reg.id}`}
                   >
                     <View style={styles.areaPinCircle}>
                       <View style={styles.areaPinDot} />
                     </View>
                     <View style={styles.areaOptionCopy}>
-                      <Text style={styles.areaOptionText}>
+                      <Text style={[styles.areaOptionText, { color: palette.text }]}>
                         {localizeArea(reg.name, language)}
                       </Text>
-                      <Text style={styles.areaOptionSub}>
+                      <Text style={[styles.areaOptionSub, { color: palette.textMuted }]}>
                         {language === 'en' ? reg.provinceEn : reg.province} ·{' '}
                         {reg.districts.slice(0, 4).join(', ')}
                       </Text>
                     </View>
                     <View style={styles.regionCountPill}>
-                      <Text style={styles.regionCountText}>
+                      <Text style={[styles.regionCountText, { color: palette.primary }]}>
                         {techCount} {t('home.profiles')}
                       </Text>
                     </View>
-                    {isSelected && <Text style={styles.areaCheck}>✓</Text>}
+                    {isSelected && (
+                      <Text style={[styles.areaCheck, { color: palette.primary }]}>✓</Text>
+                    )}
                   </Pressable>
                 </View>
               );
@@ -566,17 +668,23 @@ export function MarketplaceMapSearchModal({
                     onSelectArea(areaName);
                     onClose();
                   }}
-                  style={[styles.areaOption, isSelected && styles.areaOptionSelected]}
+                  style={[
+                    styles.areaOption,
+                    themedAreaOption,
+                    isSelected && themedSelectedAreaOption,
+                  ]}
                 >
                   <View style={styles.areaPinCircle}>
                     <View style={styles.areaPinDot} />
                   </View>
                   <View style={styles.areaOptionCopy}>
-                    <Text style={styles.areaOptionText}>
+                    <Text style={[styles.areaOptionText, { color: palette.text }]}>
                       {localizeArea(areaName, language)}
                     </Text>
                   </View>
-                  {isSelected && <Text style={styles.areaCheck}>✓</Text>}
+                  {isSelected && (
+                    <Text style={[styles.areaCheck, { color: palette.primary }]}>✓</Text>
+                  )}
                 </Pressable>
               );
             })}

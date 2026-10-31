@@ -3,6 +3,7 @@ import { containsBlockedContactOrUrl } from './marketplaceStore';
 import { resolveServiceAreaName, shouldUseFixtures, supabase } from './marketplaceRepository';
 import { getStoredJson, setStoredJson } from '../storage/kvStorage';
 import type { TechnicianPost } from '../types/marketplace';
+import type { CursorPage } from '../types/post';
 
 const POSTS_STORAGE_KEY = '@cepat/technician-posts';
 
@@ -53,6 +54,89 @@ async function loadAllStoredPosts(): Promise<TechnicianPost[]> {
   return [...stored, ...DEFAULT_POSTS.filter((seed) => !existingIds.has(seed.id))];
 }
 
+function mapSupabasePost(row: Record<string, unknown>): TechnicianPost {
+  const mediaUrls = Array.isArray(row.media_urls)
+    ? row.media_urls.map(String)
+    : row.image_uri
+      ? [String(row.image_uri)]
+      : [];
+  return {
+    id: String(row.id),
+    technicianId: String(row.technician_id),
+    technicianName: String(row.technician_name ?? 'Teknisi Cepat'),
+    technicianBusinessName: row.technician_business_name
+      ? String(row.technician_business_name)
+      : undefined,
+    technicianAvatarUri: row.technician_avatar_uri
+      ? String(row.technician_avatar_uri)
+      : undefined,
+    technicianVerified: Boolean(row.technician_verified),
+    categorySlug: String(row.category_slug ?? 'plumbing'),
+    serviceArea: String(row.service_area ?? 'Jakarta Selatan'),
+    caption: String(row.content || row.caption || ''),
+    content: String(row.content || row.caption || ''),
+    imageUri: row.image_uri ? String(row.image_uri) : undefined,
+    mediaUrls,
+    isServicePost: Boolean(row.is_service_post),
+    published: Boolean(row.published),
+    accountStatus: 'active',
+    createdAt: String(row.created_at ?? new Date().toISOString()),
+  };
+}
+
+function postTableErrorMessage(error: { code?: string; message: string }): string {
+  if (
+    error.code === 'PGRST205' ||
+    (error.message.includes('technician_posts') &&
+      error.message.toLowerCase().includes('schema cache'))
+  ) {
+    return 'Supabase is missing technician_posts from its API schema. Apply supabase/migrations/20261030030000_technician_posts_and_booking_rls.sql and refresh the Supabase API schema cache.';
+  }
+  return error.message;
+}
+
+function encodePostCursor(post: TechnicianPost): string {
+  return encodeURIComponent(JSON.stringify({ createdAt: post.createdAt, id: post.id }));
+}
+
+function decodePostCursor(cursor: string): { createdAt: string; id: string } | null {
+  if (cursor.startsWith('local:')) return null;
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(decodeURIComponent(cursor));
+  } catch {
+    throw new Error('invalid_post_cursor');
+  }
+  if (
+    typeof parsed !== 'object' ||
+    parsed === null ||
+    !('createdAt' in parsed) ||
+    !('id' in parsed) ||
+    typeof parsed.createdAt !== 'string' ||
+    typeof parsed.id !== 'string'
+  ) {
+    throw new Error('invalid_post_cursor');
+  }
+  return { createdAt: parsed.createdAt, id: parsed.id };
+}
+
+function paginateLocalPosts(
+  posts: TechnicianPost[],
+  cursor: string | null,
+  pageSize: number,
+): CursorPage<TechnicianPost> {
+  const start = cursor?.startsWith('local:')
+    ? Math.max(0, Number.parseInt(cursor.slice(6), 10) || 0)
+    : 0;
+  const items = posts.slice(start, start + pageSize);
+  const end = start + items.length;
+  return {
+    items,
+    nextCursor: end < posts.length ? `local:${end}` : null,
+    hasMore: end < posts.length,
+  };
+}
+
 /**
  * Loads all posts authored by a specific technician (including drafts/unpublished for the owner).
  */
@@ -71,29 +155,16 @@ export async function loadTechnicianPosts(
         query = query.eq('published', true);
       }
       const { data, error } = await query;
-      if (!error && Array.isArray(data) && data.length > 0) {
-        return data.map((row) => ({
-          id: String(row.id),
-          technicianId: String(row.technician_id),
-          technicianName: String(row.technician_name ?? 'Teknisi Cepat'),
-          technicianBusinessName: row.technician_business_name
-            ? String(row.technician_business_name)
-            : undefined,
-          technicianAvatarUri: row.technician_avatar_uri
-            ? String(row.technician_avatar_uri)
-            : undefined,
-          technicianVerified: Boolean(row.technician_verified),
-          categorySlug: String(row.category_slug ?? 'plumbing'),
-          serviceArea: String(row.service_area ?? 'Jakarta Selatan'),
-          caption: String(row.caption ?? ''),
-          imageUri: row.image_uri ? String(row.image_uri) : undefined,
-          published: Boolean(row.published),
-          accountStatus: 'active',
-          createdAt: String(row.created_at ?? new Date().toISOString()),
-        }));
+      if (error && !shouldUseFixtures()) {
+        throw new Error(postTableErrorMessage(error));
       }
-    } catch {
-      // Fallback to local store when table is unavailable.
+      if (!error && Array.isArray(data)) {
+        return data.map((row) => mapSupabasePost(row as Record<string, unknown>));
+      }
+    } catch (error) {
+      if (!shouldUseFixtures()) {
+        throw error instanceof Error ? error : new Error(String(error));
+      }
     }
   }
 
@@ -103,6 +174,54 @@ export async function loadTechnicianPosts(
       post.technicianId === technicianId &&
       (includeUnpublished || (post.published && !post.suspended)),
   );
+}
+
+export async function loadTechnicianPostsPage(
+  technicianId: string,
+  includeUnpublished: boolean,
+  cursor: string | null,
+  pageSize: number,
+): Promise<CursorPage<TechnicianPost>> {
+  if (supabase && technicianId && !cursor?.startsWith('local:')) {
+    let query = supabase
+      .from('technician_posts')
+      .select('*')
+      .eq('technician_id', technicianId)
+      .order('created_at', { ascending: false })
+      .order('id', { ascending: false })
+      .range(0, pageSize);
+    if (!includeUnpublished) query = query.eq('published', true);
+    const position = cursor ? decodePostCursor(cursor) : null;
+    if (position) {
+      query = query.or(
+        `created_at.lt.${position.createdAt},and(created_at.eq.${position.createdAt},id.lt.${position.id})`,
+      );
+    }
+    const { data, error } = await query;
+    if (error) {
+      if (!shouldUseFixtures()) throw new Error(postTableErrorMessage(error));
+    } else if (Array.isArray(data)) {
+      const rows = data.map((row) => mapSupabasePost(row as Record<string, unknown>));
+      const items = rows.slice(0, pageSize);
+      return {
+        items,
+        nextCursor:
+          rows.length > pageSize && items.length > 0
+            ? encodePostCursor(items[items.length - 1])
+            : null,
+        hasMore: rows.length > pageSize,
+      };
+    }
+  }
+
+  const posts = (await loadAllStoredPosts())
+    .filter(
+      (post) =>
+        post.technicianId === technicianId &&
+        (includeUnpublished || (post.published && !post.suspended)),
+    )
+    .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+  return paginateLocalPosts(posts, cursor, pageSize);
 }
 
 /**
@@ -160,6 +279,86 @@ export async function loadMarketplacePublishedPosts(filters?: {
   });
 }
 
+export async function loadMarketplacePublishedPostsPage(
+  filters: { area?: string; query?: string; categorySlug?: string } | undefined,
+  cursor: string | null,
+  pageSize: number,
+): Promise<CursorPage<TechnicianPost>> {
+  const canonicalArea =
+    filters?.area && filters.area !== 'Semua area'
+      ? resolveServiceAreaName(filters.area)
+      : null;
+  const search = (filters?.query ?? '')
+    .trim()
+    .replace(/[%,()_*\\]/g, ' ')
+    .replace(/\s+/g, ' ');
+  const category = filters?.categorySlug?.trim().toLowerCase();
+
+  if (supabase && !cursor?.startsWith('local:')) {
+    let query = supabase
+      .from('technician_posts')
+      .select('*')
+      .eq('published', true)
+      .order('created_at', { ascending: false })
+      .order('id', { ascending: false })
+      .range(0, pageSize);
+    if (canonicalArea) query = query.eq('service_area', canonicalArea);
+    if (category) query = query.eq('category_slug', category);
+    if (search) {
+      const term = `%${search}%`;
+      query = query.or(
+        `caption.ilike.${term},technician_name.ilike.${term},technician_business_name.ilike.${term},category_slug.ilike.${term},service_area.ilike.${term}`,
+      );
+    }
+    const position = cursor ? decodePostCursor(cursor) : null;
+    if (position) {
+      query = query.or(
+        `created_at.lt.${position.createdAt},and(created_at.eq.${position.createdAt},id.lt.${position.id})`,
+      );
+    }
+
+    const { data, error } = await query;
+    if (error) {
+      if (!shouldUseFixtures()) throw new Error(postTableErrorMessage(error));
+    } else if (Array.isArray(data)) {
+      const rows = data.map((row) =>
+        mapSupabasePost(row as Record<string, unknown>),
+      );
+      const items = rows.slice(0, pageSize);
+      return {
+        items,
+        nextCursor:
+          rows.length > pageSize && items.length > 0
+            ? encodePostCursor(items[items.length - 1])
+            : null,
+        hasMore: rows.length > pageSize,
+      };
+    }
+  }
+
+  const localPosts = await loadMarketplacePublishedPosts(filters);
+  const posts =
+    search.length > 0
+      ? localPosts.filter((post) => {
+          const value = [
+            post.caption,
+            post.technicianName,
+            post.technicianBusinessName ?? '',
+            post.categorySlug,
+            post.serviceArea,
+          ]
+            .join(' ')
+            .toLowerCase();
+          return value.includes(search.toLowerCase());
+        })
+      : localPosts;
+  return paginateLocalPosts(
+    posts.sort((a, b) => b.createdAt.localeCompare(a.createdAt)),
+    cursor,
+    pageSize,
+  );
+}
+
 /**
  * Creates a new technician post. Enforces ownership and non-empty caption.
  */
@@ -176,6 +375,7 @@ export async function createTechnicianPost(input: {
   content?: string;
   imageUri?: string;
   mediaUrls?: string[];
+  isServicePost?: boolean;
   published?: boolean;
 }): Promise<TechnicianPost> {
   if (!input.actorUserId || input.actorUserId !== input.technicianId) {
@@ -212,6 +412,7 @@ export async function createTechnicianPost(input: {
     content: cleanCaption.slice(0, 1200),
     imageUri: primaryImage,
     mediaUrls,
+    isServicePost: input.isServicePost ?? false,
     published: input.published ?? true,
     accountStatus: 'active',
     createdAt: new Date().toISOString(),
@@ -219,7 +420,7 @@ export async function createTechnicianPost(input: {
 
   if (supabase) {
     try {
-      await supabase.from('technician_posts').insert({
+      const { error } = await supabase.from('technician_posts').insert({
         id: newPost.id,
         technician_id: newPost.technicianId,
         technician_name: newPost.technicianName,
@@ -232,10 +433,12 @@ export async function createTechnicianPost(input: {
         content: newPost.caption,
         image_uri: newPost.imageUri,
         media_urls: newPost.mediaUrls,
+        is_service_post: newPost.isServicePost,
         published: newPost.published,
       });
-    } catch {
-      // Local storage remains synced.
+      if (error) throw new Error(postTableErrorMessage(error));
+    } catch (error) {
+      throw error instanceof Error ? error : new Error(String(error));
     }
   }
 
@@ -254,6 +457,7 @@ export async function updateTechnicianPost(input: {
   published?: boolean;
   imageUri?: string;
   mediaUrls?: string[];
+  isServicePost?: boolean;
 }): Promise<TechnicianPost> {
   const current = await loadAllStoredPosts();
   const existing = current.find((p) => p.id === input.postId);
@@ -278,6 +482,7 @@ export async function updateTechnicianPost(input: {
     published: input.published !== undefined ? input.published : existing.published,
     imageUri: input.imageUri !== undefined ? input.imageUri : existing.imageUri,
     mediaUrls: input.mediaUrls ?? (input.imageUri ? [input.imageUri] : existing.mediaUrls),
+    isServicePost: input.isServicePost ?? existing.isServicePost ?? false,
     updatedAt: new Date().toISOString(),
   };
 
@@ -293,6 +498,7 @@ export async function updateTechnicianPost(input: {
           content: updatedPost.caption,
           published: updatedPost.published,
           image_uri: updatedPost.imageUri,
+          is_service_post: updatedPost.isServicePost,
         })
         .eq('id', input.postId);
     } catch {

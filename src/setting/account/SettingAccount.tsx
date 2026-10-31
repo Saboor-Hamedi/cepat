@@ -1,12 +1,13 @@
-import { router } from 'expo-router';
-import { useState } from 'react';
-import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { router } from "expo-router";
+import { useState } from "react";
+import { Pressable, StyleSheet, Text, TextInput, View } from "react-native";
 
-import { useAuth } from '../../auth/AuthProvider';
-import { localizeArea, useLanguage } from '../../i18n/locale';
-import { colors, radii, spacing } from '../../theme/tokens';
-import type { SavedAddress, UserPreferences } from '../../types/marketplace';
-import { SettingSection } from '../components/SettingSection';
+import { useAuth } from "../../auth/AuthProvider";
+import { useAppearance } from "../../context/AppearanceContext";
+import { localizeArea, useLanguage } from "../../i18n/locale";
+import { colors, radii, spacing } from "../../theme/tokens";
+import type { SavedAddress, UserPreferences } from "../../types/marketplace";
+import { SettingSection } from "../components/SettingSection";
 
 export interface SettingAccountProps {
   isCustomerRole: boolean;
@@ -15,12 +16,16 @@ export interface SettingAccountProps {
   onChangePhoneNumber?: (value: string) => void;
   onSavePrivateContact?: () => Promise<void>;
   savedAddresses: SavedAddress[];
-  onAddAddress: (input: { label: string; streetAddress: string; area: string }) => Promise<void>;
+  onAddAddress: (input: {
+    label: string;
+    streetAddress: string;
+    area: string;
+  }) => Promise<void>;
   onDeleteAddress: (id: string) => Promise<void>;
   onSetDefaultAddress: (id: string) => Promise<void>;
   addressFeedback?: string | null;
   preferences?: UserPreferences;
-  onUpdateBookingPrefs?: (next: UserPreferences['bookingPreferences']) => void;
+  onUpdateBookingPrefs?: (next: UserPreferences["bookingPreferences"]) => void;
   isTechnicianAvailable?: boolean;
   onToggleTechnicianAvailability?: () => void;
 }
@@ -36,53 +41,65 @@ export function SettingAccount({
   onToggleTechnicianAvailability,
 }: SettingAccountProps) {
   const { language } = useLanguage();
+  const { palette } = useAppearance();
   const { user, effectiveRole } = useAuth();
 
-  const [completeAddress, setCompleteAddress] = useState('');
+  const [completeAddress, setCompleteAddress] = useState("");
 
   const handleAddAddr = async () => {
     if (!completeAddress.trim()) return;
     await onAddAddress({
-      label: language === 'en' ? 'Address' : 'Alamat',
+      label: language === "en" ? "Address" : "Alamat",
       streetAddress: completeAddress.trim(),
-      area: 'Jakarta Selatan',
+      area: "Jakarta Selatan",
     });
-    setCompleteAddress('');
+    setCompleteAddress("");
   };
 
   // Logged-out view
   if (!user) {
     return (
       <SettingSection
-        eyebrow={language === 'en' ? 'ACCOUNT' : 'AKUN'}
-        title={language === 'en' ? 'Sign In or Register' : 'Masuk atau Buat Akun'}
+        eyebrow={language === "en" ? "ACCOUNT" : "AKUN"}
+        title={
+          language === "en" ? "Sign In or Register" : "Masuk atau Buat Akun"
+        }
         description={
-          language === 'en'
-            ? 'Sign in to access your bookings, saved addresses, and profile settings.'
-            : 'Masuk untuk mengakses pesanan, alamat tersimpan, dan pengaturan akun Anda.'
+          language === "en"
+            ? "Sign in to access your bookings, saved addresses, and profile settings."
+            : "Masuk untuk mengakses pesanan, alamat tersimpan, dan pengaturan akun Anda."
         }
         testID="setting-section-account"
       >
-        <View style={styles.guestCard} testID="account-session-card">
+        <View
+          style={[
+            styles.guestCard,
+            {
+              backgroundColor: palette.surfaceElevated,
+              borderColor: palette.border,
+            },
+          ]}
+          testID="account-session-card"
+        >
           <View style={styles.actionRow}>
             <Pressable
               accessibilityRole="button"
-              onPress={() => router.push('/login')}
+              onPress={() => router.push("/login")}
               style={styles.primaryActionBtn}
               testID="account-login"
             >
               <Text style={styles.primaryActionBtnText}>
-                {language === 'en' ? 'Sign In' : 'Masuk'}
+                {language === "en" ? "Sign In" : "Masuk"}
               </Text>
             </Pressable>
             <Pressable
               accessibilityRole="button"
-              onPress={() => router.push('/register')}
+              onPress={() => router.push("/register")}
               style={styles.secondaryBtn}
               testID="account-register"
             >
               <Text style={styles.secondaryBtnText}>
-                {language === 'en' ? 'Create Account' : 'Daftar Akun'}
+                {language === "en" ? "Create Account" : "Daftar Akun"}
               </Text>
             </Pressable>
           </View>
@@ -93,31 +110,52 @@ export function SettingAccount({
 
   return (
     <SettingSection
-      eyebrow={language === 'en' ? 'ACCOUNT SETTINGS' : 'PENGATURAN AKUN'}
-      title={language === 'en' ? 'Account Preferences' : 'Preferensi Akun'}
+      eyebrow={language === "en" ? "ACCOUNT SETTINGS" : "PENGATURAN AKUN"}
+      title={language === "en" ? "Account Preferences" : "Preferensi Akun"}
       description={
-        language === 'en'
-          ? 'Manage your address details, service availability, and account preferences.'
-          : 'Kelola detail alamat, ketersediaan layanan, dan preferensi akun Anda.'
+        language === "en"
+          ? "Manage your address details, service availability, and account preferences."
+          : "Kelola detail alamat, ketersediaan layanan, dan preferensi akun Anda."
       }
       testID="setting-section-account"
     >
       <View testID="account-session-card">
         {/* Availability Toggle for Technicians */}
-        {effectiveRole === 'technician' && onToggleTechnicianAvailability && (
-          <View style={styles.availabilityToggleBox} testID="technician-availability-setting">
+        {effectiveRole === "technician" && onToggleTechnicianAvailability && (
+          <View
+            style={[
+              styles.availabilityToggleBox,
+              {
+                backgroundColor: palette.surfaceElevated,
+                borderColor: palette.border,
+              },
+            ]}
+            testID="technician-availability-setting"
+          >
             <View style={{ flex: 1 }}>
-              <Text style={styles.availabilityToggleTitle}>
-                {language === 'en' ? 'Service Availability' : 'Ketersediaan Menerima Pesanan'}
+              <Text
+                style={[
+                  styles.availabilityToggleTitle,
+                  { color: palette.text },
+                ]}
+              >
+                {language === "en"
+                  ? "Service Availability"
+                  : "Ketersediaan Menerima Pesanan"}
               </Text>
-              <Text style={styles.availabilityToggleSub}>
+              <Text
+                style={[
+                  styles.availabilityToggleSub,
+                  { color: palette.textMuted },
+                ]}
+              >
                 {isTechnicianAvailable
-                  ? language === 'en'
-                    ? 'Available to accept customer bookings'
-                    : 'Aktif menerima permintaan pesanan pelanggan'
-                  : language === 'en'
-                    ? 'Currently offline'
-                    : 'Sedang tidak menerima pesanan (offline)'}
+                  ? language === "en"
+                    ? "Available to accept customer bookings"
+                    : "Aktif menerima permintaan pesanan pelanggan"
+                  : language === "en"
+                    ? "Currently offline"
+                    : "Sedang tidak menerima pesanan (offline)"}
               </Text>
             </View>
             <Pressable
@@ -126,7 +164,9 @@ export function SettingAccount({
               onPress={onToggleTechnicianAvailability}
               style={[
                 styles.availToggleBtn,
-                isTechnicianAvailable ? styles.availToggleBtnActive : styles.availToggleBtnInactive,
+                isTechnicianAvailable
+                  ? styles.availToggleBtnActive
+                  : styles.availToggleBtnInactive,
               ]}
               testID="settings-availability-toggle"
             >
@@ -137,43 +177,65 @@ export function SettingAccount({
                 ]}
               >
                 {isTechnicianAvailable
-                  ? language === 'en'
-                    ? 'Available'
-                    : 'Aktif'
-                  : language === 'en'
-                    ? 'Offline'
-                    : 'Nonaktif'}
+                  ? language === "en"
+                    ? "Available"
+                    : "Aktif"
+                  : language === "en"
+                    ? "Offline"
+                    : "Nonaktif"}
               </Text>
             </Pressable>
           </View>
         )}
 
         {/* Customer Address Management */}
-        {isCustomerRole && effectiveRole === 'customer' && (
+        {isCustomerRole && effectiveRole === "customer" && (
           <View style={styles.customerBlock}>
             <Text style={styles.subSectionTitle}>
-              {language === 'en' ? 'Saved Addresses' : 'Alamat Tersimpan'}
+              {language === "en" ? "Saved Addresses" : "Alamat Tersimpan"}
             </Text>
 
             {savedAddresses.map((addr) => (
               <View
                 key={addr.id}
-                style={styles.savedAddressRow}
+                style={[
+                  styles.savedAddressRow,
+                  {
+                    backgroundColor: palette.surfaceElevated,
+                    borderColor: palette.border,
+                  },
+                ]}
                 testID={`saved-address-${addr.id}`}
               >
                 <View style={styles.savedAddressCopy}>
                   <View style={styles.savedAddressTop}>
-                    <Text style={styles.savedAddressLabel}>{addr.label}</Text>
+                    <Text
+                      style={[
+                        styles.savedAddressLabel,
+                        { color: palette.text },
+                      ]}
+                    >
+                      {addr.label}
+                    </Text>
                     {addr.isDefault && (
                       <View style={styles.defaultBadge}>
                         <Text style={styles.defaultBadgeText}>
-                          {language === 'en' ? 'DEFAULT' : 'UTAMA'}
+                          {language === "en" ? "DEFAULT" : "UTAMA"}
                         </Text>
                       </View>
                     )}
                   </View>
-                  <Text style={styles.savedAddressStreet}>{addr.streetAddress}</Text>
-                  <Text style={styles.savedAddressArea}>
+                  <Text
+                    style={[styles.savedAddressStreet, { color: palette.text }]}
+                  >
+                    {addr.streetAddress}
+                  </Text>
+                  <Text
+                    style={[
+                      styles.savedAddressArea,
+                      { color: palette.textMuted },
+                    ]}
+                  >
                     {localizeArea(addr.area, language)}
                   </Text>
                 </View>
@@ -188,7 +250,7 @@ export function SettingAccount({
                       testID={`set-default-address-${addr.id}`}
                     >
                       <Text style={styles.smallTextBtnLabel}>
-                        {language === 'en' ? 'Set default' : 'Jadikan utama'}
+                        {language === "en" ? "Set default" : "Jadikan utama"}
                       </Text>
                     </Pressable>
                   )}
@@ -201,7 +263,7 @@ export function SettingAccount({
                     testID={`delete-address-${addr.id}`}
                   >
                     <Text style={styles.smallDangerBtnLabel}>
-                      {language === 'en' ? 'Remove' : 'Hapus'}
+                      {language === "en" ? "Remove" : "Hapus"}
                     </Text>
                   </Pressable>
                 </View>
@@ -209,21 +271,38 @@ export function SettingAccount({
             ))}
 
             {/* Single Address Multiline Textarea (quick.md Section 2) */}
-            <View style={styles.addAddressBox}>
-              <Text style={styles.fieldLabel}>
-                {language === 'en' ? 'Add Complete Address' : 'Tambah Alamat Lengkap'}
+            <View
+              style={[
+                styles.addAddressBox,
+                {
+                  backgroundColor: palette.surfaceElevated,
+                  borderColor: palette.border,
+                },
+              ]}
+            >
+              <Text style={[styles.fieldLabel, { color: palette.text }]}>
+                {language === "en"
+                  ? "Add Complete Address"
+                  : "Tambah Alamat Lengkap"}
               </Text>
               <TextInput
                 multiline
                 numberOfLines={3}
                 onChangeText={setCompleteAddress}
                 placeholder={
-                  language === 'en'
-                    ? 'Enter your complete address (street name, house/unit number, neighborhood, city)...'
-                    : 'Masukkan alamat lengkap Anda (nama jalan, nomor rumah/unit, kelurahan/kecamatan, kota)...'
+                  language === "en"
+                    ? "Enter your complete address (street name, house/unit number, neighborhood, city)..."
+                    : "Masukkan alamat lengkap Anda (nama jalan, nomor rumah/unit, kelurahan/kecamatan, kota)..."
                 }
-                placeholderTextColor={colors.muted}
-                style={styles.addressTextarea}
+                placeholderTextColor={palette.textMuted}
+                style={[
+                  styles.addressTextarea,
+                  {
+                    backgroundColor: palette.surface,
+                    borderColor: palette.border,
+                    color: palette.text,
+                  },
+                ]}
                 testID="new-address-street"
                 value={completeAddress}
               />
@@ -240,7 +319,7 @@ export function SettingAccount({
                 testID="add-saved-address-button"
               >
                 <Text style={styles.primaryActionBtnText}>
-                  {language === 'en' ? 'Save Address' : 'Simpan Alamat'}
+                  {language === "en" ? "Save Address" : "Simpan Alamat"}
                 </Text>
               </Pressable>
               {addressFeedback ? (
@@ -263,55 +342,55 @@ const styles = StyleSheet.create({
     padding: spacing.xl,
   },
   actionRow: {
-    flexDirection: 'row',
+    flexDirection: "row",
     gap: spacing.sm,
   },
   primaryActionBtn: {
-    alignItems: 'center',
+    alignItems: "center",
     backgroundColor: colors.greenDark,
     borderRadius: radii.sm,
-    justifyContent: 'center',
+    justifyContent: "center",
     minHeight: 44,
     paddingHorizontal: spacing.lg,
   },
   primaryActionBtnText: {
-    color: '#FFFFFF',
+    color: "#FFFFFF",
     fontSize: 13,
-    fontWeight: '800',
+    fontWeight: "800",
   },
   secondaryBtn: {
-    alignItems: 'center',
+    alignItems: "center",
     backgroundColor: colors.paper,
     borderColor: colors.line,
     borderRadius: radii.sm,
     borderWidth: 1,
-    justifyContent: 'center',
+    justifyContent: "center",
     minHeight: 44,
     paddingHorizontal: spacing.lg,
   },
   secondaryBtnText: {
     color: colors.ink,
     fontSize: 13,
-    fontWeight: '700',
+    fontWeight: "700",
   },
   btnDisabled: {
     opacity: 0.5,
   },
   availabilityToggleBox: {
-    alignItems: 'center',
+    alignItems: "center",
     backgroundColor: colors.paper,
     borderColor: colors.line,
     borderRadius: radii.md,
     borderWidth: 1,
-    flexDirection: 'row',
-    justifyContent: 'space-between',
+    flexDirection: "row",
+    justifyContent: "space-between",
     marginBottom: spacing.md,
     padding: spacing.md,
   },
   availabilityToggleTitle: {
     color: colors.ink,
     fontSize: 14,
-    fontWeight: '800',
+    fontWeight: "800",
   },
   availabilityToggleSub: {
     color: colors.muted,
@@ -332,7 +411,7 @@ const styles = StyleSheet.create({
   availToggleBtnText: {
     color: colors.muted,
     fontSize: 12,
-    fontWeight: '800',
+    fontWeight: "800",
   },
   availToggleBtnTextActive: {
     color: colors.greenDark,
@@ -343,7 +422,7 @@ const styles = StyleSheet.create({
   subSectionTitle: {
     color: colors.ink,
     fontSize: 15,
-    fontWeight: '800',
+    fontWeight: "800",
     marginBottom: spacing.sm,
   },
   savedAddressRow: {
@@ -351,8 +430,8 @@ const styles = StyleSheet.create({
     borderColor: colors.line,
     borderRadius: radii.sm,
     borderWidth: 1,
-    flexDirection: 'row',
-    justifyContent: 'space-between',
+    flexDirection: "row",
+    justifyContent: "space-between",
     marginBottom: spacing.xs,
     padding: spacing.md,
   },
@@ -360,14 +439,14 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   savedAddressTop: {
-    alignItems: 'center',
-    flexDirection: 'row',
+    alignItems: "center",
+    flexDirection: "row",
     gap: spacing.xs,
   },
   savedAddressLabel: {
     color: colors.ink,
     fontSize: 13,
-    fontWeight: '700',
+    fontWeight: "700",
   },
   defaultBadge: {
     backgroundColor: colors.greenSoft,
@@ -378,7 +457,7 @@ const styles = StyleSheet.create({
   defaultBadgeText: {
     color: colors.greenDark,
     fontSize: 9,
-    fontWeight: '800',
+    fontWeight: "800",
   },
   savedAddressStreet: {
     color: colors.ink,
@@ -391,9 +470,9 @@ const styles = StyleSheet.create({
     marginTop: 2,
   },
   savedAddressActions: {
-    alignItems: 'flex-end',
+    alignItems: "flex-end",
     gap: 4,
-    justifyContent: 'center',
+    justifyContent: "center",
   },
   smallTextBtn: {
     paddingHorizontal: 8,
@@ -402,7 +481,7 @@ const styles = StyleSheet.create({
   smallTextBtnLabel: {
     color: colors.greenDark,
     fontSize: 11,
-    fontWeight: '700',
+    fontWeight: "700",
   },
   smallDangerBtn: {
     paddingHorizontal: 8,
@@ -411,7 +490,7 @@ const styles = StyleSheet.create({
   smallDangerBtnLabel: {
     color: colors.danger,
     fontSize: 11,
-    fontWeight: '700',
+    fontWeight: "700",
   },
   addAddressBox: {
     backgroundColor: colors.paper,
@@ -424,11 +503,11 @@ const styles = StyleSheet.create({
   fieldLabel: {
     color: colors.ink,
     fontSize: 13,
-    fontWeight: '700',
+    fontWeight: "700",
     marginBottom: spacing.xs,
   },
   addressTextarea: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: "#FFFFFF",
     borderColor: colors.line,
     borderRadius: radii.sm,
     borderWidth: 1,
@@ -438,12 +517,12 @@ const styles = StyleSheet.create({
     marginBottom: spacing.sm,
     minHeight: 80,
     padding: spacing.md,
-    textAlignVertical: 'top',
+    textAlignVertical: "top",
   },
   feedbackText: {
     color: colors.greenDark,
     fontSize: 12,
-    fontWeight: '700',
+    fontWeight: "700",
     marginTop: spacing.xs,
   },
 });

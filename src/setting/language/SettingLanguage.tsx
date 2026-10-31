@@ -1,11 +1,13 @@
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from "react-native";
 
-import { useLanguage, type Language } from '../../i18n/locale';
-import { colors, radii, spacing } from '../../theme/tokens';
-import { SettingSection } from '../components/SettingSection';
+import { useAppearance } from "../../context/AppearanceContext";
+import { useLanguage, type Language } from "../../i18n/locale";
+import { colors, radii, spacing } from "../../theme/tokens";
+import { SettingSection } from "../components/SettingSection";
 
 export function SettingLanguage() {
   const { language, setLanguage, syncNote, accountLinked, t } = useLanguage();
+  const { palette } = useAppearance();
 
   const options: {
     code: Language;
@@ -16,31 +18,31 @@ export function SettingLanguage() {
     testID: string;
   }[] = [
     {
-      code: 'id',
-      label: t('settings.indonesian'),
-      nativeLabel: 'Bahasa Indonesia',
-      region: 'Indonesia (ID)',
-      flag: '🇮🇩',
-      testID: 'language-id',
+      code: "id",
+      label: t("settings.indonesian"),
+      nativeLabel: "Bahasa Indonesia",
+      region: "Indonesia (ID)",
+      flag: "🇮🇩",
+      testID: "language-id",
     },
     {
-      code: 'en',
-      label: t('settings.english'),
-      nativeLabel: 'English',
-      region: 'International (US/UK)',
-      flag: '🌐',
-      testID: 'language-en',
+      code: "en",
+      label: t("settings.english"),
+      nativeLabel: "English",
+      region: "International (US/UK)",
+      flag: "🌐",
+      testID: "language-en",
     },
   ];
 
   return (
     <SettingSection
-      eyebrow={language === 'en' ? 'LANGUAGE & REGION' : 'BAHASA & WILAYAH'}
-      title={t('settings.languageTitle')}
+      eyebrow={language === "en" ? "LANGUAGE & REGION" : "BAHASA & WILAYAH"}
+      title={t("settings.languageTitle")}
       description={
-        language === 'en'
-          ? 'Choose your interface language. Currencies and dates adapt automatically.'
-          : 'Pilih bahasa tampilan antarmuka. Format mata uang dan tanggal menyesuaikan otomatis.'
+        language === "en"
+          ? "Choose your interface language. Currencies and dates adapt automatically."
+          : "Pilih bahasa tampilan antarmuka. Format mata uang dan tanggal menyesuaikan otomatis."
       }
       testID="setting-section-language"
     >
@@ -55,15 +57,33 @@ export function SettingLanguage() {
               onPress={() => {
                 void setLanguage(opt.code);
               }}
-              style={[styles.languageOption, selected && styles.languageOptionSelected]}
+              style={[
+                styles.languageOption,
+                {
+                  backgroundColor: palette.surface,
+                  borderColor: palette.border,
+                },
+                selected && {
+                  backgroundColor: palette.primarySoft,
+                  borderColor: palette.primary,
+                },
+              ]}
               testID={opt.testID}
             >
               <Text style={styles.flagIcon}>{opt.flag}</Text>
               <View style={styles.textWrap}>
-                <Text style={[styles.languageName, selected && styles.languageNameSelected]}>
+                <Text
+                  style={[
+                    styles.languageName,
+                    { color: selected ? palette.primary : palette.text },
+                    selected && styles.languageNameSelected,
+                  ]}
+                >
                   {opt.label}
                 </Text>
-                <Text style={styles.languageSub}>
+                <Text
+                  style={[styles.languageSub, { color: palette.textMuted }]}
+                >
                   {opt.nativeLabel} · {opt.region}
                 </Text>
               </View>
@@ -75,8 +95,12 @@ export function SettingLanguage() {
         })}
       </View>
 
-      {syncNote && <Text style={styles.saveNote}>{t(`settings.${syncNote}`)}</Text>}
-      {!accountLinked && <Text style={styles.deviceNote}>{t('settings.deviceOnly')}</Text>}
+      {syncNote && (
+        <Text style={styles.saveNote}>{t(`settings.${syncNote}`)}</Text>
+      )}
+      {!accountLinked && (
+        <Text style={styles.deviceNote}>{t("settings.deviceOnly")}</Text>
+      )}
     </SettingSection>
   );
 }
@@ -86,19 +110,19 @@ const styles = StyleSheet.create({
     gap: spacing.xs,
   },
   languageOption: {
-    alignItems: 'center',
+    alignItems: "center",
     backgroundColor: colors.surface,
     borderColor: colors.line,
     borderRadius: radii.md,
     borderWidth: 1,
-    flexDirection: 'row',
+    flexDirection: "row",
     gap: spacing.md,
     minHeight: 60,
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.sm,
   },
   languageOptionSelected: {
-    backgroundColor: '#F0FDF4',
+    backgroundColor: "#F0FDF4",
     borderColor: colors.greenDark,
     borderWidth: 1.5,
   },
@@ -111,11 +135,11 @@ const styles = StyleSheet.create({
   languageName: {
     color: colors.ink,
     fontSize: 14,
-    fontWeight: '700',
+    fontWeight: "700",
   },
   languageNameSelected: {
     color: colors.greenDark,
-    fontWeight: '800',
+    fontWeight: "800",
   },
   languageSub: {
     color: colors.muted,
@@ -123,12 +147,12 @@ const styles = StyleSheet.create({
     marginTop: 2,
   },
   radio: {
-    alignItems: 'center',
+    alignItems: "center",
     borderColor: colors.line,
     borderRadius: radii.pill,
     borderWidth: 2,
     height: 20,
-    justifyContent: 'center',
+    justifyContent: "center",
     width: 20,
   },
   radioSelected: {
@@ -143,7 +167,7 @@ const styles = StyleSheet.create({
   saveNote: {
     color: colors.greenDark,
     fontSize: 12,
-    fontWeight: '700',
+    fontWeight: "700",
     marginTop: spacing.sm,
   },
   deviceNote: {

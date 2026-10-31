@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Image, StyleSheet, Text, View } from 'react-native';
 
 import { ServiceCategoryGlyph } from '../components/marketplace-ui';
+import { useAppearance } from '../context/AppearanceContext';
 import { colors, radii, spacing } from '../theme/tokens';
 
 export function SectionHeader({
@@ -13,13 +14,21 @@ export function SectionHeader({
   title: string;
   trailing?: string;
 }) {
+  const { palette } = useAppearance();
+
   return (
     <View style={styles.sectionHeading}>
       <View>
-        <Text style={styles.sectionEyebrow}>{eyebrow}</Text>
-        <Text style={styles.sectionTitle}>{title}</Text>
+        <Text style={[styles.sectionEyebrow, { color: palette.primary }]}>
+          {eyebrow}
+        </Text>
+        <Text style={[styles.sectionTitle, { color: palette.text }]}>{title}</Text>
       </View>
-      {trailing && <Text style={styles.sectionTrailing}>{trailing}</Text>}
+      {trailing && (
+        <Text style={[styles.sectionTrailing, { color: palette.textMuted }]}>
+          {trailing}
+        </Text>
+      )}
     </View>
   );
 }
@@ -27,19 +36,24 @@ export function SectionHeader({
 export function PortfolioPhoto({
   uri,
   title,
-  tint,
   fallbackLabel,
   large,
 }: {
   uri?: string;
   title: string;
-  tint: string;
   fallbackLabel: string;
   large?: boolean;
 }) {
+  const { palette } = useAppearance();
   const [failed, setFailed] = useState(!uri);
   return (
-    <View style={[styles.portfolioImage, large && styles.portfolioImageLarge, { backgroundColor: tint }]}>
+    <View
+      style={[
+        styles.portfolioImage,
+        large && styles.portfolioImageLarge,
+        { backgroundColor: palette.surfaceElevated },
+      ]}
+    >
       {uri && !failed ? (
         <Image
           source={{ uri }}
@@ -51,7 +65,9 @@ export function PortfolioPhoto({
       ) : (
         <View style={styles.portfolioFallback}>
           <ServiceCategoryGlyph iconKey="home-maintenance" size={34} />
-          <Text style={styles.portfolioFallbackLabel}>{fallbackLabel}</Text>
+          <Text style={[styles.portfolioFallbackLabel, { color: palette.textMuted }]}>
+            {fallbackLabel}
+          </Text>
         </View>
       )}
     </View>

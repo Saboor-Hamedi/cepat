@@ -1,5 +1,5 @@
-import { router } from 'expo-router';
-import { useState } from 'react';
+import { router } from "expo-router";
+import { useState } from "react";
 import {
   Image,
   Modal,
@@ -8,45 +8,59 @@ import {
   Text,
   TextInput,
   View,
-} from 'react-native';
+} from "react-native";
 
-import { useAuth } from '../../auth/AuthProvider';
-import { localizeArea, useLanguage } from '../../i18n/locale';
-import { colors, radii, spacing } from '../../theme/tokens';
-import type { TechnicianPost } from '../../types/post';
-import { Avatar } from '../marketplace-ui';
+import { useAuth } from "../../auth/AuthProvider";
+import { useAppearance } from "../../context/AppearanceContext";
+import { localizeArea, useLanguage } from "../../i18n/locale";
+import { colors, radii, spacing } from "../../theme/tokens";
+import type { TechnicianPost } from "../../types/post";
+import { Avatar } from "../marketplace-ui";
 
 export interface TechnicianPostCardProps {
   post: TechnicianPost;
   isOwner?: boolean;
   isAdmin?: boolean;
-  onEdit?: (post: TechnicianPost, newCaption: string, newImageUri?: string) => Promise<void>;
+  onEdit?: (
+    post: TechnicianPost,
+    newCaption: string,
+    newImageUri?: string,
+  ) => Promise<void>;
   onDelete?: (postId: string) => Promise<void>;
   onSuspend?: (postId: string, suspended: boolean) => Promise<void>;
   showAuthorHeader?: boolean;
+  authorName?: string;
+  authorAvatarUri?: string;
 }
 
-function formatPostTime(dateString: string, language: 'id' | 'en'): string {
+function formatPostTime(dateString: string, language: "id" | "en"): string {
   try {
     const diffMs = Date.now() - new Date(dateString).getTime();
     const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
     if (diffHours < 1) {
       const diffMins = Math.max(1, Math.floor(diffMs / (1000 * 60)));
-      return language === 'en' ? `${diffMins}m ago` : `${diffMins}m yang lalu`;
+      return language === "en" ? `${diffMins}m ago` : `${diffMins}m yang lalu`;
     }
     if (diffHours < 24) {
-      return language === 'en' ? `${diffHours}h ago` : `${diffHours} jam yang lalu`;
+      return language === "en"
+        ? `${diffHours}h ago`
+        : `${diffHours} jam yang lalu`;
     }
     const diffDays = Math.floor(diffHours / 24);
     if (diffDays < 7) {
-      return language === 'en' ? `${diffDays}d ago` : `${diffDays} hari yang lalu`;
+      return language === "en"
+        ? `${diffDays}d ago`
+        : `${diffDays} hari yang lalu`;
     }
-    return new Date(dateString).toLocaleDateString(language === 'en' ? 'en-US' : 'id-ID', {
-      day: 'numeric',
-      month: 'short',
-    });
+    return new Date(dateString).toLocaleDateString(
+      language === "en" ? "en-US" : "id-ID",
+      {
+        day: "numeric",
+        month: "short",
+      },
+    );
   } catch {
-    return language === 'en' ? 'Recently' : 'Baru saja';
+    return language === "en" ? "Recently" : "Baru saja";
   }
 }
 
@@ -58,32 +72,44 @@ export function TechnicianPostCard({
   onDelete,
   onSuspend,
   showAuthorHeader = true,
+  authorName,
+  authorAvatarUri,
 }: TechnicianPostCardProps) {
   const { language } = useLanguage();
   const { user, roles, effectiveRole } = useAuth();
+  const { palette } = useAppearance();
   const [isEditing, setIsEditing] = useState(false);
-  const [draftCaption, setDraftCaption] = useState(post.content || post.caption || '');
-  const [draftImageUri, setDraftImageUri] = useState<string | undefined>(post.imageUri);
+  const [draftCaption, setDraftCaption] = useState(
+    post.content || post.caption || "",
+  );
+  const [draftImageUri, setDraftImageUri] = useState<string | undefined>(
+    post.imageUri,
+  );
   const [busy, setBusy] = useState(false);
   const [imageError, setImageError] = useState(false);
   const [confirmDeleteVisible, setConfirmDeleteVisible] = useState(false);
+  const [menuVisible, setMenuVisible] = useState(false);
 
-  const isAdminUser = Boolean(isAdmin || roles.includes('admin') || effectiveRole === 'admin');
+  const isAdminUser = Boolean(
+    isAdmin || roles.includes("admin") || effectiveRole === "admin",
+  );
   const isSelfPost = Boolean(
-    user?.id && (
-      user.id === post.technicianId ||
-      (user.id === 'demo-rizky' && post.technicianId === 'demo-rizky') ||
-      (user.id === 'demo-customer' && post.technicianId === 'demo-customer')
-    ),
+    user?.id &&
+    (user.id === post.technicianId ||
+      (user.id === "demo-rizky" && post.technicianId === "demo-rizky") ||
+      (user.id === "demo-customer" && post.technicianId === "demo-customer")),
   );
   const isActualOwner = Boolean(isOwner || isSelfPost);
-  const canBook = !isSelfPost && !isOwner;
+  const canBook = Boolean(post.isServicePost) && !isSelfPost && !isOwner;
 
-  const images = post.mediaUrls && post.mediaUrls.length > 0
-    ? post.mediaUrls
-    : post.imageUri
-      ? [post.imageUri]
-      : [];
+  const images =
+    post.mediaUrls && post.mediaUrls.length > 0
+      ? post.mediaUrls
+      : post.imageUri
+        ? [post.imageUri]
+        : [];
+  const displayName = authorName || post.technicianName;
+  const displayAvatar = authorAvatarUri || post.technicianAvatarUri;
 
   const handleSaveEdit = async () => {
     if (!onEdit || !draftCaption.trim()) return;
@@ -108,65 +134,182 @@ export function TechnicianPostCard({
   };
 
   return (
-    <View style={styles.card} testID={`technician-post-card-${post.id}`}>
+    <View
+      style={[
+        styles.card,
+        { backgroundColor: palette.surface, borderColor: palette.border },
+      ]}
+      testID={`technician-post-card-${post.id}`}
+    >
       {/* Post Header */}
       {showAuthorHeader && (
         <View style={styles.headerRow}>
           <Pressable
             accessibilityRole="button"
-            accessibilityLabel={`View profile of ${post.technicianName}`}
+            accessibilityLabel={`View profile of ${displayName}`}
             onPress={() => router.push(`/technician/${post.technicianId}`)}
             style={styles.authorTouchArea}
             testID={`post-author-link-${post.id}`}
           >
-            <Avatar
-              uri={post.technicianAvatarUri}
-              name={post.technicianName}
-              size={42}
-            />
+            <Avatar uri={displayAvatar} name={displayName} size={42} />
             <View style={styles.authorMeta}>
               <View style={styles.nameRow}>
-                <Text numberOfLines={1} style={styles.authorName}>
-                  {post.technicianName}
+                <Text
+                  numberOfLines={1}
+                  style={[styles.authorName, { color: palette.text }]}
+                >
+                  {displayName}
                 </Text>
                 {post.technicianVerified && (
-                  <View style={styles.verifiedBadge}>
-                    <Text style={styles.verifiedBadgeText}>✓</Text>
+                  <View
+                    style={[
+                      styles.verifiedBadge,
+                      { backgroundColor: palette.primarySoft },
+                    ]}
+                  >
+                    <Text style={[styles.verifiedBadgeText, { color: palette.primary }]}>
+                      ✓
+                    </Text>
                   </View>
                 )}
               </View>
-              <Text numberOfLines={1} style={styles.authorSub}>
-                {post.technicianBusinessName ? `${post.technicianBusinessName} · ` : ''}
-                {post.serviceArea ? `${localizeArea(post.serviceArea, language)} · ` : ''}
+              <Text
+                numberOfLines={1}
+                style={[styles.authorSub, { color: palette.textMuted }]}
+              >
+                {post.technicianBusinessName
+                  ? `${post.technicianBusinessName} · `
+                  : ""}
+                {post.serviceArea
+                  ? `${localizeArea(post.serviceArea, language)} · `
+                  : ""}
                 {formatPostTime(post.createdAt, language)}
               </Text>
             </View>
           </Pressable>
 
-          {/* Publication Status Pill for Owner */}
-          {isOwner && (
+          {(isActualOwner && (onEdit || onDelete)) ||
+          (isAdminUser && onSuspend) ? (
+            <View style={styles.menuAnchor}>
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel={
+                  language === "en" ? "Post actions" : "Aksi postingan"
+                }
+                accessibilityState={{ expanded: menuVisible }}
+                onPress={() => setMenuVisible((visible) => !visible)}
+                style={styles.menuTrigger}
+                testID={`post-actions-${post.id}`}
+              >
+                <Text
+                  style={[styles.menuTriggerText, { color: palette.textMuted }]}
+                >
+                  ...
+                </Text>
+              </Pressable>
+              {menuVisible && (
+                <View
+                  style={[
+                    styles.postMenu,
+                    {
+                      backgroundColor: palette.surface,
+                      borderColor: palette.border,
+                    },
+                  ]}
+                >
+                  {isActualOwner && onEdit && (
+                    <Pressable
+                      accessibilityRole="button"
+                      onPress={() => {
+                        setDraftCaption(post.content || post.caption || "");
+                        setDraftImageUri(post.imageUri);
+                        setMenuVisible(false);
+                        setIsEditing(true);
+                      }}
+                      style={styles.postMenuItem}
+                      testID={`edit-post-btn-${post.id}`}
+                    >
+                      <Text
+                        style={[styles.postMenuText, { color: palette.text }]}
+                      >
+                        {language === "en" ? "Edit post" : "Edit postingan"}
+                      </Text>
+                    </Pressable>
+                  )}
+                  {isActualOwner && onDelete && (
+                    <Pressable
+                      accessibilityRole="button"
+                      onPress={() => {
+                        setMenuVisible(false);
+                        handleDeletePress();
+                      }}
+                      style={styles.postMenuItem}
+                      testID={`delete-post-btn-${post.id}`}
+                    >
+                      <Text
+                        style={[styles.postMenuText, { color: palette.danger }]}
+                      >
+                        {language === "en" ? "Delete post" : "Hapus postingan"}
+                      </Text>
+                    </Pressable>
+                  )}
+                  {isAdminUser && !isActualOwner && onSuspend && (
+                    <Pressable
+                      accessibilityRole="button"
+                      onPress={() => {
+                        setMenuVisible(false);
+                        void onSuspend(post.id, !post.suspended);
+                      }}
+                      style={styles.postMenuItem}
+                      testID={
+                        post.suspended
+                          ? `unsuspend-post-btn-${post.id}`
+                          : `suspend-post-btn-${post.id}`
+                      }
+                    >
+                      <Text
+                        style={[styles.postMenuText, { color: palette.text }]}
+                      >
+                        {post.suspended
+                          ? language === "en"
+                            ? "Restore post"
+                            : "Pulihkan postingan"
+                          : language === "en"
+                            ? "Suspend post"
+                            : "Tangguhkan postingan"}
+                      </Text>
+                    </Pressable>
+                  )}
+                </View>
+              )}
+            </View>
+          ) : isOwner ? (
             <View
               style={[
                 styles.statusPill,
-                post.published ? styles.statusPillPublished : styles.statusPillDraft,
+                {
+                  backgroundColor: post.published
+                    ? palette.primarySoft
+                    : palette.surfaceElevated,
+                },
               ]}
             >
               <Text
                 style={[
-                  styles.statusPillText,
-                  post.published ? styles.statusPillTextPublished : styles.statusPillTextDraft,
+                styles.statusPillText,
+                { color: post.published ? palette.primary : palette.textMuted },
                 ]}
               >
                 {post.published
-                  ? language === 'en'
-                    ? 'Published'
-                    : 'Tayang'
-                  : language === 'en'
-                    ? 'Draft'
-                    : 'Draf'}
+                  ? language === "en"
+                    ? "Published"
+                    : "Tayang"
+                  : language === "en"
+                    ? "Draft"
+                    : "Draf"}
               </Text>
             </View>
-          )}
+          ) : null}
         </View>
       )}
 
@@ -177,12 +320,19 @@ export function TechnicianPostCard({
             multiline
             onChangeText={setDraftCaption}
             placeholder={
-              language === 'en'
-                ? 'Update your post caption...'
-                : 'Perbarui keterangan postingan...'
+              language === "en"
+                ? "Update your post caption..."
+                : "Perbarui keterangan postingan..."
             }
-            placeholderTextColor={colors.muted}
-            style={styles.captionInput}
+            placeholderTextColor={palette.textMuted}
+            style={[
+              styles.captionInput,
+              {
+                backgroundColor: palette.inputBg,
+                borderColor: palette.border,
+                color: palette.text,
+              },
+            ]}
             testID={`edit-post-caption-input-${post.id}`}
             value={draftCaption}
           />
@@ -191,15 +341,18 @@ export function TechnicianPostCard({
               accessibilityRole="button"
               disabled={busy}
               onPress={() => {
-                setDraftCaption(post.content || post.caption || '');
+                setDraftCaption(post.content || post.caption || "");
                 setDraftImageUri(post.imageUri);
                 setIsEditing(false);
               }}
-              style={styles.actionBtn}
+              style={[
+                styles.actionBtn,
+                { backgroundColor: palette.surfaceElevated, borderColor: palette.border },
+              ]}
               testID={`cancel-edit-post-btn-${post.id}`}
             >
-              <Text style={styles.actionBtnText}>
-                {language === 'en' ? 'Cancel' : 'Batal'}
+              <Text style={[styles.actionBtnText, { color: palette.text }]}>
+                {language === "en" ? "Cancel" : "Batal"}
               </Text>
             </Pressable>
 
@@ -209,32 +362,55 @@ export function TechnicianPostCard({
               onPress={() => {
                 void handleSaveEdit();
               }}
-              style={[styles.actionBtn, styles.actionPrimaryBtn]}
+              style={[
+                styles.actionBtn,
+                styles.actionPrimaryBtn,
+                { backgroundColor: palette.primary, borderColor: palette.primary },
+              ]}
               testID={`save-edited-post-btn-${post.id}`}
             >
               <Text style={styles.actionPrimaryBtnText}>
                 {busy
-                  ? language === 'en'
-                    ? 'Saving...'
-                    : 'Menyimpan...'
-                  : language === 'en'
-                    ? 'Save'
-                    : 'Simpan'}
+                  ? language === "en"
+                    ? "Saving..."
+                    : "Menyimpan..."
+                  : language === "en"
+                    ? "Save"
+                    : "Simpan"}
               </Text>
             </Pressable>
           </View>
         </View>
       ) : (
         <View style={styles.bodyContent}>
+          {post.isServicePost ? (
+            <View
+              style={[
+                styles.servicePostBadge,
+                { backgroundColor: palette.primarySoft },
+              ]}
+            >
+              <Text style={[styles.servicePostBadgeText, { color: palette.primary }]}>
+                {language === "en" ? "BOOKABLE SERVICE" : "LAYANAN DAPAT DIPESAN"}
+              </Text>
+            </View>
+          ) : null}
           {Boolean(post.content || post.caption) && (
-            <Text style={styles.caption}>{post.content || post.caption}</Text>
+            <Text style={[styles.caption, { color: palette.text }]}>
+              {post.content || post.caption}
+            </Text>
           )}
 
           {/* Media Grid / Images */}
           {images.length > 0 && !imageError ? (
             <View style={styles.mediaContainer}>
               {images.length === 1 ? (
-                <View style={styles.singleImageFrame}>
+                <View
+                  style={[
+                    styles.singleImageFrame,
+                    { backgroundColor: palette.surfaceElevated },
+                  ]}
+                >
                   <Image
                     source={{ uri: images[0] }}
                     style={styles.postImage}
@@ -245,7 +421,13 @@ export function TechnicianPostCard({
               ) : (
                 <View style={styles.gridContainer}>
                   {images.map((imgUri, idx) => (
-                    <View key={`${imgUri}-${idx}`} style={styles.gridImageFrame}>
+                    <View
+                      key={`${imgUri}-${idx}`}
+                      style={[
+                        styles.gridImageFrame,
+                        { backgroundColor: palette.surfaceElevated },
+                      ]}
+                    >
                       <Image
                         source={{ uri: imgUri }}
                         style={styles.postImage}
@@ -261,90 +443,38 @@ export function TechnicianPostCard({
         </View>
       )}
 
-      {/* Owner & Admin Management Actions */}
-      {!isEditing && (
-        <View style={styles.ownerActionsRow}>
-          {isActualOwner && onEdit && (
-            <Pressable
-              accessibilityRole="button"
-              onPress={() => {
-                setDraftCaption(post.content || post.caption || '');
-                setDraftImageUri(post.imageUri);
-                setIsEditing(true);
-              }}
-              style={styles.ownerActionBtn}
-              testID={`edit-post-btn-${post.id}`}
-            >
-              <Text style={styles.ownerActionBtnText}>
-                {language === 'en' ? 'Edit Post' : 'Edit Postingan'}
-              </Text>
-            </Pressable>
-          )}
-
-          {isActualOwner && onDelete && (
-            <Pressable
-              accessibilityRole="button"
-              onPress={handleDeletePress}
-              style={[styles.ownerActionBtn, styles.ownerDeleteBtn]}
-              testID={`delete-post-btn-${post.id}`}
-            >
-              <Text style={styles.ownerDeleteBtnText}>
-                {language === 'en' ? 'Delete' : 'Hapus'}
-              </Text>
-            </Pressable>
-          )}
-
-          {/* Admin Soft-Delete (Suspend / Return) — Admin CANNOT hard delete technician posts */}
-          {isAdminUser && !isActualOwner && onSuspend && (
-            <Pressable
-              accessibilityRole="button"
-              onPress={() => onSuspend(post.id, !post.suspended)}
-              style={[
-                styles.ownerActionBtn,
-                post.suspended ? styles.adminUnsuspendBtn : styles.adminSuspendBtn,
-              ]}
-              testID={post.suspended ? `unsuspend-post-btn-${post.id}` : `suspend-post-btn-${post.id}`}
-            >
-              <Text
-                style={[
-                  styles.ownerActionBtnText,
-                  post.suspended ? styles.adminUnsuspendBtnText : styles.adminSuspendBtnText,
-                ]}
-              >
-                {post.suspended
-                  ? language === 'en'
-                    ? 'Return Post'
-                    : 'Pulihkan Postingan'
-                  : language === 'en'
-                    ? 'Suspend Post'
-                    : 'Tangguhkan'}
-              </Text>
-            </Pressable>
-          )}
-        </View>
-      )}
-
       {/* Direct Booking Shortcut for other users (Never show for self-technician post) */}
       {showAuthorHeader && canBook && (
-        <View style={styles.postBookingRow}>
+        <View
+          style={[
+            styles.postBookingRow,
+            { borderTopColor: palette.border },
+          ]}
+        >
           <Pressable
             accessibilityRole="button"
             onPress={() =>
               router.push({
-                pathname: '/booking/[id]',
+                pathname: "/booking/[id]",
                 params: {
                   id: post.technicianId,
                   postId: post.id,
-                  postCaption: post.caption || post.content || '',
-                  categorySlug: post.categorySlug || 'plumbing',
+                  postCaption: post.caption || post.content || "",
+                  categorySlug: post.categorySlug || "plumbing",
                 },
               })
             }
-            style={styles.postBookBtn}
+            style={[
+              styles.postBookBtn,
+              {
+                backgroundColor: palette.primarySoft,
+                borderColor: palette.primary,
+              },
+            ]}
             testID={`post-book-btn-${post.id}`}
           >
-            <Text style={styles.postBookBtnText}>
-              {language === 'en' ? 'Book Service' : 'Pesan Layanan'} →
+            <Text style={[styles.postBookBtnText, { color: palette.primary }]}>
+              {language === "en" ? "Book Service" : "Pesan Layanan"} →
             </Text>
           </Pressable>
         </View>
@@ -358,14 +488,19 @@ export function TechnicianPostCard({
         onRequestClose={() => setConfirmDeleteVisible(false)}
       >
         <View style={styles.modalOverlay}>
-          <View style={styles.confirmDialog}>
-            <Text style={styles.confirmDialogTitle}>
-              {language === 'en' ? 'Delete Post?' : 'Hapus Postingan?'}
+          <View
+            style={[
+              styles.confirmDialog,
+              { backgroundColor: palette.surface },
+            ]}
+          >
+            <Text style={[styles.confirmDialogTitle, { color: palette.text }]}>
+              {language === "en" ? "Delete Post?" : "Hapus Postingan?"}
             </Text>
-            <Text style={styles.confirmDialogMessage}>
-              {language === 'en'
-                ? 'This post will be permanently removed from your profile and the Marketplace feed.'
-                : 'Postingan ini akan dihapus permanen dari profil Anda dan beranda Marketplace.'}
+            <Text style={[styles.confirmDialogMessage, { color: palette.textMuted }]}>
+              {language === "en"
+                ? "This post will be permanently removed from your profile and the Marketplace feed."
+                : "Postingan ini akan dihapus permanen dari profil Anda dan beranda Marketplace."}
             </Text>
             <View style={styles.confirmDialogActions}>
               <Pressable
@@ -373,8 +508,8 @@ export function TechnicianPostCard({
                 onPress={() => setConfirmDeleteVisible(false)}
                 style={styles.confirmDialogCancelBtn}
               >
-                <Text style={styles.confirmDialogCancelText}>
-                  {language === 'en' ? 'Cancel' : 'Batal'}
+                <Text style={[styles.confirmDialogCancelText, { color: palette.text }]}>
+                  {language === "en" ? "Cancel" : "Batal"}
                 </Text>
               </Pressable>
               <Pressable
@@ -385,7 +520,7 @@ export function TechnicianPostCard({
                 style={styles.confirmDialogDeleteBtn}
               >
                 <Text style={styles.confirmDialogDeleteText}>
-                  {language === 'en' ? 'Delete' : 'Hapus'}
+                  {language === "en" ? "Delete" : "Hapus"}
                 </Text>
               </Pressable>
             </View>
@@ -398,24 +533,24 @@ export function TechnicianPostCard({
 
 const styles = StyleSheet.create({
   card: {
-    backgroundColor: colors.surface,
-    borderColor: '#E2E8F0',
+    borderColor: "#E2E8F0",
     borderRadius: radii.md,
     borderWidth: 1,
     marginBottom: spacing.md,
     padding: spacing.md,
-    width: '100%',
+    width: "100%",
   },
   headerRow: {
-    alignItems: 'center',
-    flexDirection: 'row',
-    justifyContent: 'space-between',
+    alignItems: "center",
+    flexDirection: "row",
+    justifyContent: "space-between",
     marginBottom: spacing.xs,
+    position: "relative",
   },
   authorTouchArea: {
-    alignItems: 'center',
+    alignItems: "center",
     flex: 1,
-    flexDirection: 'row',
+    flexDirection: "row",
     gap: spacing.sm,
   },
   authorMeta: {
@@ -423,27 +558,69 @@ const styles = StyleSheet.create({
     minWidth: 0,
   },
   nameRow: {
-    alignItems: 'center',
-    flexDirection: 'row',
+    alignItems: "center",
+    flexDirection: "row",
     gap: 4,
   },
   authorName: {
     color: colors.ink,
     fontSize: 14,
-    fontWeight: '800',
+    fontWeight: "800",
+  },
+  menuAnchor: {
+    alignSelf: "flex-start",
+    marginLeft: spacing.xs,
+    position: "relative",
+    zIndex: 2,
+  },
+  menuTrigger: {
+    alignItems: "center",
+    borderRadius: radii.pill,
+    height: 36,
+    justifyContent: "center",
+    width: 40,
+  },
+  menuTriggerText: {
+    fontSize: 20,
+    fontWeight: "800",
+    letterSpacing: 1,
+  },
+  postMenu: {
+    borderRadius: radii.md,
+    borderWidth: 1,
+    elevation: 8,
+    minWidth: 150,
+    overflow: "hidden",
+    position: "absolute",
+    right: 0,
+    shadowColor: "#000000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.18,
+    shadowRadius: 8,
+    top: 36,
+    zIndex: 10,
+  },
+  postMenuItem: {
+    minHeight: 44,
+    justifyContent: "center",
+    paddingHorizontal: spacing.md,
+  },
+  postMenuText: {
+    fontSize: 13,
+    fontWeight: "700",
   },
   verifiedBadge: {
-    alignItems: 'center',
+    alignItems: "center",
     backgroundColor: colors.greenSoft,
     borderRadius: 5,
     height: 18,
-    justifyContent: 'center',
+    justifyContent: "center",
     width: 18,
   },
   verifiedBadgeText: {
     color: colors.greenDark,
     fontSize: 10,
-    fontWeight: '900',
+    fontWeight: "900",
   },
   authorSub: {
     color: colors.muted,
@@ -463,7 +640,7 @@ const styles = StyleSheet.create({
   },
   statusPillText: {
     fontSize: 10,
-    fontWeight: '800',
+    fontWeight: "800",
   },
   statusPillTextPublished: {
     color: colors.greenDark,
@@ -474,6 +651,18 @@ const styles = StyleSheet.create({
   bodyContent: {
     marginTop: spacing.xs,
   },
+  servicePostBadge: {
+    alignSelf: "flex-start",
+    borderRadius: radii.sm,
+    marginBottom: spacing.xs,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: 5,
+  },
+  servicePostBadgeText: {
+    fontSize: 10,
+    fontWeight: "800",
+    letterSpacing: 0.4,
+  },
   caption: {
     color: colors.ink,
     fontSize: 14,
@@ -481,37 +670,37 @@ const styles = StyleSheet.create({
   },
   mediaContainer: {
     marginTop: spacing.sm,
-    width: '100%',
+    width: "100%",
   },
   singleImageFrame: {
     backgroundColor: colors.paper,
     borderRadius: radii.md,
     height: 220,
-    overflow: 'hidden',
-    width: '100%',
+    overflow: "hidden",
+    width: "100%",
   },
   gridContainer: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
+    flexDirection: "row",
+    flexWrap: "wrap",
     gap: 8,
   },
   gridImageFrame: {
     backgroundColor: colors.paper,
     borderRadius: radii.sm,
     height: 140,
-    overflow: 'hidden',
-    width: '48%',
+    overflow: "hidden",
+    width: "48%",
   },
   postImage: {
-    height: '100%',
-    width: '100%',
+    height: "100%",
+    width: "100%",
   },
   ownerActionsRow: {
-    borderTopColor: '#F1F5F9',
+    borderTopColor: "#F1F5F9",
     borderTopWidth: 1,
-    flexDirection: 'row',
+    flexDirection: "row",
     gap: spacing.sm,
-    justifyContent: 'flex-end',
+    justifyContent: "flex-end",
     marginTop: spacing.sm,
     paddingTop: spacing.xs,
   },
@@ -526,18 +715,18 @@ const styles = StyleSheet.create({
   ownerActionBtnText: {
     color: colors.ink,
     fontSize: 12,
-    fontWeight: '700',
+    fontWeight: "700",
   },
   postBookingRow: {
-    borderTopColor: '#F1F5F9',
+    borderTopColor: "#F1F5F9",
     borderTopWidth: 1,
-    flexDirection: 'row',
-    justifyContent: 'flex-end',
+    flexDirection: "row",
+    justifyContent: "flex-end",
     marginTop: spacing.sm,
     paddingTop: spacing.xs,
   },
   postBookBtn: {
-    alignItems: 'center',
+    alignItems: "center",
     backgroundColor: colors.greenSoft,
     borderColor: colors.green,
     borderRadius: radii.pill,
@@ -548,34 +737,34 @@ const styles = StyleSheet.create({
   postBookBtnText: {
     color: colors.greenDark,
     fontSize: 12,
-    fontWeight: '800',
+    fontWeight: "800",
   },
   ownerDeleteBtn: {
-    backgroundColor: '#FCE9E7',
-    borderColor: '#F5C4BE',
+    backgroundColor: "#FCE9E7",
+    borderColor: "#F5C4BE",
   },
   ownerDeleteBtnText: {
     color: colors.danger,
     fontSize: 12,
-    fontWeight: '800',
+    fontWeight: "800",
   },
   adminSuspendBtn: {
-    backgroundColor: '#FEF3C7',
-    borderColor: '#FDE68A',
+    backgroundColor: "#FEF3C7",
+    borderColor: "#FDE68A",
   },
   adminSuspendBtnText: {
-    color: '#B45309',
+    color: "#B45309",
     fontSize: 12,
-    fontWeight: '800',
+    fontWeight: "800",
   },
   adminUnsuspendBtn: {
-    backgroundColor: '#DEF7EC',
-    borderColor: '#BCF0DA',
+    backgroundColor: "#DEF7EC",
+    borderColor: "#BCF0DA",
   },
   adminUnsuspendBtnText: {
-    color: '#03543F',
+    color: "#03543F",
     fontSize: 12,
-    fontWeight: '800',
+    fontWeight: "800",
   },
   editForm: {
     marginTop: spacing.xs,
@@ -589,56 +778,56 @@ const styles = StyleSheet.create({
     fontSize: 13,
     minHeight: 78,
     padding: spacing.md,
-    textAlignVertical: 'top',
+    textAlignVertical: "top",
   },
   editActions: {
-    flexDirection: 'row',
+    flexDirection: "row",
     gap: spacing.sm,
-    justifyContent: 'flex-end',
+    justifyContent: "flex-end",
     marginTop: spacing.sm,
   },
   actionBtn: {
-    alignItems: 'center',
+    alignItems: "center",
     backgroundColor: colors.paper,
     borderColor: colors.line,
     borderRadius: radii.sm,
     borderWidth: 1,
-    justifyContent: 'center',
+    justifyContent: "center",
     paddingHorizontal: 14,
     paddingVertical: 6,
   },
   actionBtnText: {
     color: colors.ink,
     fontSize: 12,
-    fontWeight: '700',
+    fontWeight: "700",
   },
   actionPrimaryBtn: {
     backgroundColor: colors.greenDark,
     borderColor: colors.greenDark,
   },
   actionPrimaryBtnText: {
-    color: '#FFFFFF',
+    color: "#FFFFFF",
     fontSize: 12,
-    fontWeight: '800',
+    fontWeight: "800",
   },
   modalOverlay: {
-    alignItems: 'center',
-    backgroundColor: 'rgba(15, 23, 42, 0.5)',
+    alignItems: "center",
+    backgroundColor: "rgba(15, 23, 42, 0.5)",
     flex: 1,
-    justifyContent: 'center',
+    justifyContent: "center",
     padding: spacing.lg,
   },
   confirmDialog: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: "#FFFFFF",
     borderRadius: 16,
     maxWidth: 380,
     padding: spacing.lg,
-    width: '100%',
+    width: "100%",
   },
   confirmDialogTitle: {
     color: colors.ink,
     fontSize: 16,
-    fontWeight: '800',
+    fontWeight: "800",
   },
   confirmDialogMessage: {
     color: colors.muted,
@@ -647,9 +836,9 @@ const styles = StyleSheet.create({
     marginTop: spacing.xs,
   },
   confirmDialogActions: {
-    flexDirection: 'row',
+    flexDirection: "row",
     gap: spacing.sm,
-    justifyContent: 'flex-end',
+    justifyContent: "flex-end",
     marginTop: spacing.lg,
   },
   confirmDialogCancelBtn: {
@@ -660,7 +849,7 @@ const styles = StyleSheet.create({
   confirmDialogCancelText: {
     color: colors.ink,
     fontSize: 13,
-    fontWeight: '600',
+    fontWeight: "600",
   },
   confirmDialogDeleteBtn: {
     backgroundColor: colors.danger,
@@ -669,8 +858,8 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
   },
   confirmDialogDeleteText: {
-    color: '#FFFFFF',
+    color: "#FFFFFF",
     fontSize: 13,
-    fontWeight: '800',
+    fontWeight: "800",
   },
 });

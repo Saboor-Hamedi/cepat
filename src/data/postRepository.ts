@@ -155,6 +155,7 @@ export async function fetchTechnicianPosts(
             : row.image_uri
               ? [String(row.image_uri)]
               : [],
+          isServicePost: Boolean(row.is_service_post),
           published: Boolean(row.published),
           accountStatus: 'active',
           createdAt: String(row.created_at ?? new Date().toISOString()),
@@ -207,6 +208,7 @@ export async function createTechnicianPost(
     content: input.content ?? input.caption ?? '',
     imageUri: input.imageUri,
     mediaUrls: input.mediaUrls,
+    isServicePost: input.isServicePost,
     published: input.published,
   });
 }
@@ -223,6 +225,8 @@ export async function updateTechnicianPost(
     caption: input.caption ?? input.content,
     published: input.published,
     imageUri: input.imageUri,
+    mediaUrls: input.mediaUrls,
+    isServicePost: input.isServicePost,
   });
 }
 

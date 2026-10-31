@@ -1,5 +1,6 @@
 import { Image, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
-import { colors, radii, spacing } from '../../theme/tokens';
+import { useAppearance } from '../../context/AppearanceContext';
+import { radii, spacing } from '../../theme/tokens';
 
 export interface TechnicianPostImagePreviewProps {
   images: string[];
@@ -12,6 +13,8 @@ export function TechnicianPostImagePreview({
   onRemoveImage,
   testIDPrefix = 'post-preview',
 }: TechnicianPostImagePreviewProps) {
+  const { palette } = useAppearance();
+
   if (!images || images.length === 0) {
     return null;
   }
@@ -26,7 +29,13 @@ export function TechnicianPostImagePreview({
         {images.map((uri, index) => (
           <View
             key={`${uri}-${index}`}
-            style={styles.thumbnailWrap}
+            style={[
+              styles.thumbnailWrap,
+              {
+                backgroundColor: palette.surfaceElevated,
+                borderColor: palette.border,
+              },
+            ]}
             testID={`preview-image-${index}`}
           >
             <Image
@@ -63,8 +72,6 @@ const styles = StyleSheet.create({
     paddingVertical: 2,
   },
   thumbnailWrap: {
-    backgroundColor: colors.paper,
-    borderColor: colors.line,
     borderRadius: radii.md,
     borderWidth: 1,
     height: 96,

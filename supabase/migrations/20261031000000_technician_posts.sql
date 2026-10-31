@@ -35,7 +35,7 @@ create policy "technician_posts_storage_tech_upload"
   with check (
     bucket_id = 'technician-posts'
     and (storage.foldername(name))[1] = auth.uid()::text
-    and public.has_role(auth.uid(), 'technician')
+    and public.has_role('technician'::public.app_role)
   );
 
 drop policy if exists "technician_posts_storage_tech_delete" on storage.objects;
@@ -47,3 +47,5 @@ create policy "technician_posts_storage_tech_delete"
     bucket_id = 'technician-posts'
     and (storage.foldername(name))[1] = auth.uid()::text
   );
+
+notify pgrst, 'reload schema';

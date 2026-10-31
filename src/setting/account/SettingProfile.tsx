@@ -1,10 +1,11 @@
-import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Pressable, StyleSheet, Text, TextInput, View } from "react-native";
 
-import { ProfileAvatar } from '../../profile';
-import { useLanguage } from '../../i18n/locale';
-import { colors, radii, spacing } from '../../theme/tokens';
-import type { Technician } from '../../types/marketplace';
-import { SettingSection } from '../components/SettingSection';
+import { ProfileAvatar } from "../../profile";
+import { useAppearance } from "../../context/AppearanceContext";
+import { useLanguage } from "../../i18n/locale";
+import { colors, radii, spacing } from "../../theme/tokens";
+import type { Technician } from "../../types/marketplace";
+import { SettingSection } from "../components/SettingSection";
 
 export interface SettingProfileProps {
   displayName: string;
@@ -13,6 +14,8 @@ export interface SettingProfileProps {
   onChangeAvatarUri: (value: string) => void;
   onSavePublicProfile: () => Promise<void>;
   profileFeedback?: string | null;
+  profileError?: string | null;
+  isSaving?: boolean;
   isTechnicianRole: boolean;
   techProfile: Technician | null;
   onSaveTechProfile: (next: Technician) => Promise<void>;
@@ -26,17 +29,22 @@ export function SettingProfile({
   onChangeAvatarUri,
   onSavePublicProfile,
   profileFeedback,
+  profileError,
+  isSaving = false,
 }: SettingProfileProps) {
   const { language, t } = useLanguage();
+  const { palette } = useAppearance();
 
   return (
     <SettingSection
-      eyebrow={language === 'en' ? 'PUBLIC PROFILE' : 'PROFIL PUBLIK'}
-      title={language === 'en' ? 'Public Profile & Photo' : 'Profil Publik & Foto'}
+      eyebrow={language === "en" ? "PUBLIC PROFILE" : "PROFIL PUBLIK"}
+      title={
+        language === "en" ? "Public Profile & Photo" : "Profil Publik & Foto"
+      }
       description={
-        language === 'en'
-          ? 'Manage your public display name and verified profile photo. Private email and phone number are never shown on your profile.'
-          : 'Kelola nama tampilan dan foto profil terverifikasi. Email dan nomor telepon pribadi tidak pernah ditampilkan di profil publik.'
+        language === "en"
+          ? "Manage your public display name and verified profile photo. Private email and phone number are never shown on your profile."
+          : "Kelola nama tampilan dan foto profil terverifikasi. Email dan nomor telepon pribadi tidak pernah ditampilkan di profil publik."
       }
       testID="setting-section-profile"
     >
@@ -50,29 +58,54 @@ export function SettingProfile({
           testID="profile-avatar"
         />
         <Text style={styles.avatarTapHint}>
-          {language === 'en' ? 'Tap photo to change' : 'Ketuk foto untuk mengubah'}
+          {language === "en"
+            ? "Tap photo to change"
+            : "Ketuk foto untuk mengubah"}
         </Text>
       </View>
 
-      <Text style={styles.fieldLabel}>{t('auth.name')}</Text>
+      <Text style={[styles.fieldLabel, { color: palette.text }]}>
+        {t("auth.name")}
+      </Text>
       <TextInput
         onChangeText={onChangeDisplayName}
-        placeholder={t('auth.name')}
-        style={styles.input}
+        placeholder={t("auth.name")}
+        placeholderTextColor={palette.textMuted}
+        style={[
+          styles.input,
+          {
+            backgroundColor: palette.surfaceElevated,
+            borderColor: palette.border,
+            color: palette.text,
+          },
+        ]}
         testID="settings-display-name"
         value={displayName}
       />
 
       <Pressable
         accessibilityRole="button"
+        disabled={isSaving}
         onPress={() => {
           void onSavePublicProfile();
         }}
-        style={styles.primaryActionBtn}
+        style={[styles.primaryActionBtn, isSaving && styles.primaryActionDisabled]}
         testID="save-personal-info"
       >
-        <Text style={styles.primaryActionBtnText}>{t('settings.saveProfile')}</Text>
+        <Text style={styles.primaryActionBtnText}>
+          {isSaving
+            ? language === "en"
+              ? "Saving..."
+              : "Menyimpan..."
+            : t("settings.saveProfile")}
+        </Text>
       </Pressable>
+
+      {profileError ? (
+        <Text style={styles.errorText} testID="profile-save-error">
+          {profileError}
+        </Text>
+      ) : null}
 
       {profileFeedback ? (
         <Text style={styles.feedbackText} testID="profile-saved-feedback">
@@ -80,11 +113,14 @@ export function SettingProfile({
         </Text>
       ) : null}
 
-      <View style={styles.privacyGuaranteePill} testID="profile-privacy-guarantee">
+      <View
+        style={styles.privacyGuaranteePill}
+        testID="profile-privacy-guarantee"
+      >
         <Text style={styles.privacyGuaranteeText}>
-          {language === 'en'
-            ? 'Privacy Protected: Your email address and phone number are strictly hidden from all public profiles.'
-            : 'Privasi Terlindungi: Alamat email dan nomor telepon Anda disembunyikan sepenuhnya dari profil publik.'}
+          {language === "en"
+            ? "Privacy Protected: Your email address and phone number are strictly hidden from all public profiles."
+            : "Privasi Terlindungi: Alamat email dan nomor telepon Anda disembunyikan sepenuhnya dari profil publik."}
         </Text>
       </View>
     </SettingSection>
@@ -93,20 +129,19 @@ export function SettingProfile({
 
 const styles = StyleSheet.create({
   avatarCenteredWrap: {
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
     marginBottom: spacing.md,
   },
   avatarTapHint: {
     color: colors.muted,
     fontSize: 12,
-    fontWeight: '600',
+    fontWeight: "600",
     marginTop: 6,
   },
   fieldLabel: {
-    color: colors.ink,
     fontSize: 12,
-    fontWeight: '700',
+    fontWeight: "700",
     marginBottom: 4,
     marginTop: spacing.xs,
   },
@@ -123,42 +158,73 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
   },
   primaryActionBtn: {
-    alignItems: 'center',
+    alignItems: "center",
     backgroundColor: colors.greenDark,
     borderRadius: radii.pill,
-    justifyContent: 'center',
+    justifyContent: "center",
     minHeight: 44,
     paddingHorizontal: spacing.xl,
   },
-  primaryActionBtnText: { color: '#FFFFFF', fontSize: 13, fontWeight: '700' },
+  primaryActionDisabled: { opacity: 0.6 },
+  primaryActionBtnText: { color: "#FFFFFF", fontSize: 13, fontWeight: "700" },
   secondaryActionBtn: {
-    alignItems: 'center',
+    alignItems: "center",
     backgroundColor: colors.greenSoft,
     borderColor: colors.green,
     borderRadius: radii.pill,
     borderWidth: 1,
-    justifyContent: 'center',
+    justifyContent: "center",
     marginBottom: spacing.sm,
     minHeight: 40,
     paddingHorizontal: spacing.lg,
   },
-  secondaryActionBtnText: { color: colors.greenDark, fontSize: 12, fontWeight: '800' },
-  feedbackText: { color: colors.greenDark, fontSize: 12, fontWeight: '700', marginTop: spacing.sm },
+  secondaryActionBtnText: {
+    color: colors.greenDark,
+    fontSize: 12,
+    fontWeight: "800",
+  },
+  feedbackText: {
+    color: colors.greenDark,
+    fontSize: 12,
+    fontWeight: "700",
+    marginTop: spacing.sm,
+  },
+  errorText: {
+    color: colors.danger,
+    fontSize: 12,
+    fontWeight: "700",
+    marginTop: spacing.sm,
+  },
   privacyGuaranteePill: {
     backgroundColor: colors.greenSoft,
     borderRadius: radii.md,
     marginTop: spacing.md,
     padding: spacing.md,
   },
-  privacyGuaranteeText: { color: colors.greenDark, fontSize: 11, fontWeight: '700', lineHeight: 16 },
+  privacyGuaranteeText: {
+    color: colors.greenDark,
+    fontSize: 11,
+    fontWeight: "700",
+    lineHeight: 16,
+  },
   techBlock: {
     borderTopColor: colors.line,
     borderTopWidth: 1,
     marginTop: spacing.lg,
     paddingTop: spacing.md,
   },
-  subHeading: { color: colors.ink, fontSize: 15, fontWeight: '800', marginBottom: spacing.xs },
-  chipRow: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.xs, marginBottom: spacing.sm },
+  subHeading: {
+    color: colors.ink,
+    fontSize: 15,
+    fontWeight: "800",
+    marginBottom: spacing.xs,
+  },
+  chipRow: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: spacing.xs,
+    marginBottom: spacing.sm,
+  },
   chip: {
     backgroundColor: colors.paper,
     borderColor: colors.line,
@@ -168,9 +234,9 @@ const styles = StyleSheet.create({
     paddingVertical: 7,
   },
   chipActive: { backgroundColor: colors.greenSoft, borderColor: colors.green },
-  chipText: { color: colors.muted, fontSize: 12, fontWeight: '700' },
-  chipTextActive: { color: colors.greenDark, fontWeight: '800' },
-  inlineAddRow: { flexDirection: 'row', gap: spacing.xs },
+  chipText: { color: colors.muted, fontSize: 12, fontWeight: "700" },
+  chipTextActive: { color: colors.greenDark, fontWeight: "800" },
+  inlineAddRow: { flexDirection: "row", gap: spacing.xs },
   flexInput: { flex: 1 },
   priceInput: { width: 120 },
 });

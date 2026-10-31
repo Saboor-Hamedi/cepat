@@ -1,7 +1,8 @@
-import type { PropsWithChildren, ReactNode } from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import type { PropsWithChildren, ReactNode } from "react";
+import { StyleSheet, Text, View } from "react-native";
 
-import { radii, spacing } from '../../theme/tokens';
+import { useAppearance } from "../../context/AppearanceContext";
+import { radii, spacing } from "../../theme/tokens";
 
 export interface SettingSectionProps extends PropsWithChildren {
   eyebrow: string;
@@ -18,12 +19,23 @@ export function SettingSection({
   testID,
   children,
 }: SettingSectionProps) {
+  const { palette } = useAppearance();
   return (
-    <View style={styles.card} testID={testID}>
+    <View
+      style={[
+        styles.card,
+        { backgroundColor: palette.surface, borderColor: palette.border },
+      ]}
+      testID={testID}
+    >
       <View style={styles.headerRow}>
         <View style={styles.headerCopy}>
-          <Text style={styles.title}>{title}</Text>
-          {description ? <Text style={styles.description}>{description}</Text> : null}
+          <Text style={[styles.title, { color: palette.text }]}>{title}</Text>
+          {description ? (
+            <Text style={[styles.description, { color: palette.textMuted }]}>
+              {description}
+            </Text>
+          ) : null}
         </View>
         {badge}
       </View>
@@ -34,17 +46,15 @@ export function SettingSection({
 
 const styles = StyleSheet.create({
   card: {
-    backgroundColor: '#FFFFFF',
-    borderColor: '#E4E6EB',
     borderRadius: radii.md,
     borderWidth: 1,
     marginBottom: spacing.md,
     padding: spacing.lg,
   },
   headerRow: {
-    alignItems: 'flex-start',
-    flexDirection: 'row',
-    justifyContent: 'space-between',
+    alignItems: "flex-start",
+    flexDirection: "row",
+    justifyContent: "space-between",
     marginBottom: spacing.sm,
   },
   headerCopy: {
@@ -52,13 +62,11 @@ const styles = StyleSheet.create({
     minWidth: 0,
   },
   title: {
-    color: '#050505',
     fontSize: 17,
-    fontWeight: '800',
+    fontWeight: "800",
     letterSpacing: -0.2,
   },
   description: {
-    color: '#65676B',
     fontSize: 12,
     lineHeight: 18,
     marginTop: 2,

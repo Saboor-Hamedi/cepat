@@ -45,7 +45,29 @@ describe('TechnicianPostComposer (X/Twitter style)', () => {
     expect(handleCreate).toHaveBeenCalledWith(
       expect.objectContaining({
         caption: 'Selesai servis AC Panasonic 1 PK di BSD. Dingin maksimal!',
+        isServicePost: false,
       }),
+    );
+  });
+
+  it('Only marks a post bookable when the author opts in', async () => {
+    const handleCreate = jest.fn();
+    await render(<TechnicianPostComposer onCreatePost={handleCreate} />, {
+      wrapper: Wrapper,
+    });
+
+    await fireEvent.changeText(
+      screen.getByTestId('create-post-caption-input'),
+      'AC selesai dibersihkan.',
+    );
+    await fireEvent.press(screen.getByTestId('service-post-toggle'));
+    expect(
+      screen.getByTestId('service-post-toggle').props.accessibilityState.checked,
+    ).toBe(true);
+
+    await fireEvent.press(screen.getByTestId('submit-new-post-btn'));
+    expect(handleCreate).toHaveBeenCalledWith(
+      expect.objectContaining({ isServicePost: true }),
     );
   });
 

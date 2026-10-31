@@ -1,19 +1,21 @@
-import { useState } from 'react';
-import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { useState } from "react";
+import { Pressable, StyleSheet, Text, TextInput, View } from "react-native";
 
-import { useAuth } from '../../auth/AuthProvider';
-import { supabase } from '../../data/marketplaceRepository';
-import { useLanguage } from '../../i18n/locale';
-import { colors, radii, spacing } from '../../theme/tokens';
-import { SettingSection } from '../components/SettingSection';
+import { useAppearance } from "../../context/AppearanceContext";
+import { useAuth } from "../../auth/AuthProvider";
+import { supabase } from "../../data/marketplaceRepository";
+import { useLanguage } from "../../i18n/locale";
+import { colors, radii, spacing } from "../../theme/tokens";
+import { SettingSection } from "../components/SettingSection";
 
 export function SettingPassword() {
   const { language, t } = useLanguage();
+  const { palette } = useAppearance();
   const { user } = useAuth();
 
-  const [currentPassword, setCurrentPassword] = useState('');
-  const [newPassword, setNewPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
+  const [currentPassword, setCurrentPassword] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -25,9 +27,9 @@ export function SettingPassword() {
 
     if (!currentPassword.trim()) {
       setErrorMessage(
-        language === 'en'
-          ? 'Please enter your current password.'
-          : 'Masukkan kata sandi Anda saat ini.',
+        language === "en"
+          ? "Please enter your current password."
+          : "Masukkan kata sandi Anda saat ini.",
       );
       return;
     }
@@ -37,34 +39,36 @@ export function SettingPassword() {
       !/[A-Za-z]/.test(newPassword) ||
       !/\d/.test(newPassword)
     ) {
-      setErrorMessage(t('auth.passwordRule'));
+      setErrorMessage(t("auth.passwordRule"));
       return;
     }
 
     if (newPassword !== confirmPassword) {
-      setErrorMessage(t('auth.passwordMismatch'));
+      setErrorMessage(t("auth.passwordMismatch"));
       return;
     }
 
     setBusy(true);
     try {
       if (supabase && user) {
-        const { error } = await supabase.auth.updateUser({ password: newPassword });
+        const { error } = await supabase.auth.updateUser({
+          password: newPassword,
+        });
         if (error) {
-          setErrorMessage(t('auth.resetFailed'));
+          setErrorMessage(t("auth.resetFailed"));
           return;
         }
       }
-      setCurrentPassword('');
-      setNewPassword('');
-      setConfirmPassword('');
+      setCurrentPassword("");
+      setNewPassword("");
+      setConfirmPassword("");
       setStatusMessage(
-        language === 'en'
-          ? 'Password updated successfully.'
-          : 'Kata sandi berhasil diperbarui.',
+        language === "en"
+          ? "Password updated successfully."
+          : "Kata sandi berhasil diperbarui.",
       );
     } catch {
-      setErrorMessage(t('auth.serviceUnavailable'));
+      setErrorMessage(t("auth.serviceUnavailable"));
     } finally {
       setBusy(false);
     }
@@ -72,54 +76,92 @@ export function SettingPassword() {
 
   return (
     <SettingSection
-      eyebrow={language === 'en' ? 'SECURITY' : 'KEAMANAN'}
-      title={t('settings.passwordTitle')}
+      eyebrow={language === "en" ? "SECURITY" : "KEAMANAN"}
+      title={t("settings.passwordTitle")}
       description={
-        language === 'en'
-          ? 'Update your password to keep your account safe.'
-          : 'Perbarui kata sandi Anda untuk menjaga keamanan akun.'
+        language === "en"
+          ? "Update your password to keep your account safe."
+          : "Perbarui kata sandi Anda untuk menjaga keamanan akun."
       }
       testID="setting-section-password"
     >
-      <View style={styles.card} testID="password-update-form">
+      <View
+        style={[
+          styles.card,
+          {
+            backgroundColor: palette.surfaceElevated,
+            borderColor: palette.border,
+          },
+        ]}
+        testID="password-update-form"
+      >
         {/* 1. Current Password */}
-        <Text style={styles.fieldLabel}>
-          {language === 'en' ? 'Current Password' : 'Kata Sandi Saat Ini'}
+        <Text style={[styles.fieldLabel, { color: palette.text }]}>
+          {language === "en" ? "Current Password" : "Kata Sandi Saat Ini"}
         </Text>
         <TextInput
           onChangeText={setCurrentPassword}
           placeholder={
-            language === 'en' ? 'Enter current password' : 'Masukkan kata sandi saat ini'
+            language === "en"
+              ? "Enter current password"
+              : "Masukkan kata sandi saat ini"
           }
-          placeholderTextColor={colors.muted}
           secureTextEntry={!showPassword}
-          style={styles.input}
+          placeholderTextColor={palette.textMuted}
+          style={[
+            styles.input,
+            {
+              backgroundColor: palette.surface,
+              borderColor: palette.border,
+              color: palette.text,
+            },
+          ]}
           testID="settings-current-password"
           value={currentPassword}
         />
 
         {/* 2. New Password */}
-        <Text style={styles.fieldLabel}>{t('auth.newPassword')}</Text>
+        <Text style={[styles.fieldLabel, { color: palette.text }]}>
+          {t("auth.newPassword")}
+        </Text>
         <TextInput
           onChangeText={setNewPassword}
           placeholder={
-            language === 'en' ? 'Enter new password' : 'Masukkan kata sandi baru'
+            language === "en"
+              ? "Enter new password"
+              : "Masukkan kata sandi baru"
           }
-          placeholderTextColor={colors.muted}
           secureTextEntry={!showPassword}
-          style={styles.input}
+          placeholderTextColor={palette.textMuted}
+          style={[
+            styles.input,
+            {
+              backgroundColor: palette.surface,
+              borderColor: palette.border,
+              color: palette.text,
+            },
+          ]}
           testID="settings-new-password"
           value={newPassword}
         />
 
         {/* 3. Confirm Password */}
-        <Text style={styles.fieldLabel}>{t('auth.confirmPassword')}</Text>
+        <Text style={[styles.fieldLabel, { color: palette.text }]}>
+          {t("auth.confirmPassword")}
+        </Text>
         <TextInput
           onChangeText={setConfirmPassword}
-          placeholder={t('auth.confirmPassword')}
-          placeholderTextColor={colors.muted}
+          placeholder={t("auth.confirmPassword")}
           secureTextEntry={!showPassword}
-          style={styles.input}
+          placeholderTextColor={palette.textMuted}
+          style={[
+            styles.input,
+            {
+              backgroundColor: palette.surface,
+              borderColor: palette.border,
+              color: palette.text,
+            },
+          ]}
           testID="settings-confirm-password"
           value={confirmPassword}
         />
@@ -132,17 +174,19 @@ export function SettingPassword() {
           style={styles.toggleRow}
           testID="toggle-show-password"
         >
-          <View style={[styles.checkbox, showPassword && styles.checkboxActive]}>
+          <View
+            style={[styles.checkbox, showPassword && styles.checkboxActive]}
+          >
             {showPassword && <Text style={styles.checkboxCheck}>✓</Text>}
           </View>
-          <Text style={styles.toggleText}>
+          <Text style={[styles.toggleText, { color: palette.text }]}>
             {showPassword
-              ? language === 'en'
-                ? 'Hide Passwords'
-                : 'Sembunyikan Kata Sandi'
-              : language === 'en'
-                ? 'Show Passwords'
-                : 'Tampilkan Kata Sandi'}
+              ? language === "en"
+                ? "Hide Passwords"
+                : "Sembunyikan Kata Sandi"
+              : language === "en"
+                ? "Show Passwords"
+                : "Tampilkan Kata Sandi"}
           </Text>
         </Pressable>
 
@@ -161,25 +205,33 @@ export function SettingPassword() {
         {/* Update Password Action Button */}
         <Pressable
           accessibilityRole="button"
-          disabled={busy || !currentPassword.trim() || !newPassword.trim() || !confirmPassword.trim()}
+          disabled={
+            busy ||
+            !currentPassword.trim() ||
+            !newPassword.trim() ||
+            !confirmPassword.trim()
+          }
           onPress={() => {
             void handleUpdatePassword();
           }}
           style={[
             styles.primaryBtn,
-            (busy || !currentPassword.trim() || !newPassword.trim() || !confirmPassword.trim()) &&
+            (busy ||
+              !currentPassword.trim() ||
+              !newPassword.trim() ||
+              !confirmPassword.trim()) &&
               styles.btnDisabled,
           ]}
           testID="save-password-button"
         >
           <Text style={styles.primaryBtnText}>
             {busy
-              ? language === 'en'
-                ? 'Updating Password...'
-                : 'Memperbarui Kata Sandi...'
-              : language === 'en'
-                ? 'Save Password'
-                : 'Simpan Kata Sandi'}
+              ? language === "en"
+                ? "Updating Password..."
+                : "Memperbarui Kata Sandi..."
+              : language === "en"
+                ? "Save Password"
+                : "Simpan Kata Sandi"}
           </Text>
         </Pressable>
       </View>
@@ -198,7 +250,7 @@ const styles = StyleSheet.create({
   fieldLabel: {
     color: colors.ink,
     fontSize: 12,
-    fontWeight: '700',
+    fontWeight: "700",
     marginBottom: 4,
     marginTop: spacing.xs,
   },
@@ -214,18 +266,18 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.md,
   },
   toggleRow: {
-    alignItems: 'center',
-    flexDirection: 'row',
+    alignItems: "center",
+    flexDirection: "row",
     gap: spacing.xs,
     marginVertical: spacing.sm,
   },
   checkbox: {
-    alignItems: 'center',
+    alignItems: "center",
     borderColor: colors.line,
     borderRadius: 4,
     borderWidth: 1.5,
     height: 18,
-    justifyContent: 'center',
+    justifyContent: "center",
     width: 18,
   },
   checkboxActive: {
@@ -233,40 +285,40 @@ const styles = StyleSheet.create({
     borderColor: colors.greenDark,
   },
   checkboxCheck: {
-    color: '#FFFFFF',
+    color: "#FFFFFF",
     fontSize: 11,
-    fontWeight: '800',
+    fontWeight: "800",
   },
   toggleText: {
     color: colors.ink,
     fontSize: 12,
-    fontWeight: '600',
+    fontWeight: "600",
   },
   errorText: {
     color: colors.danger,
     fontSize: 12,
-    fontWeight: '600',
+    fontWeight: "600",
     marginTop: spacing.xs,
   },
   successText: {
     color: colors.greenDark,
     fontSize: 12,
-    fontWeight: '700',
+    fontWeight: "700",
     marginTop: spacing.xs,
   },
   primaryBtn: {
-    alignItems: 'center',
+    alignItems: "center",
     backgroundColor: colors.greenDark,
     borderRadius: radii.sm,
-    justifyContent: 'center',
+    justifyContent: "center",
     marginTop: spacing.md,
     minHeight: 44,
     paddingHorizontal: spacing.lg,
   },
   primaryBtnText: {
-    color: '#FFFFFF',
+    color: "#FFFFFF",
     fontSize: 13,
-    fontWeight: '800',
+    fontWeight: "800",
   },
   btnDisabled: {
     opacity: 0.5,

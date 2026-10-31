@@ -3,7 +3,6 @@ import { useMemo, useState } from 'react';
 import {
   Modal,
   Pressable,
-  ScrollView,
   StyleSheet,
   Text,
   View,
@@ -20,7 +19,7 @@ import {
   loadTechnicianPosts,
 } from '../data/postsStore';
 import { localizeArea, useLanguage } from '../i18n/locale';
-import { colors, radii, spacing } from '../theme/tokens';
+import { radii, spacing } from '../theme/tokens';
 import type { BookingRecord, TechnicianPost } from '../types/marketplace';
 import { JobActiveCard } from './components/JobActiveCard';
 import { JobHistoryCard } from './components/JobHistoryCard';
@@ -197,6 +196,7 @@ export function JobsContainer({
                 caption: input.caption,
                 imageUri: input.imageUri,
                 mediaUrls: input.mediaUrls,
+                isServicePost: input.isServicePost,
                 serviceArea: 'Jakarta Selatan',
                 categorySlug: 'plumbing',
                 published: true,

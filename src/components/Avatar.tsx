@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Image, StyleSheet, Text, View } from 'react-native';
 
-import { colors } from '../theme/tokens';
+import { useAppearance } from '../context/AppearanceContext';
 
 export interface AvatarProps {
   uri?: string;
@@ -14,26 +14,41 @@ export function Avatar({
   name,
   size = 76,
 }: AvatarProps) {
-  const [imageFailed, setImageFailed] = useState(false);
+  const { palette } = useAppearance();
+  const [failedUri, setFailedUri] = useState<string | null>(null);
+  const imageFailed = Boolean(uri && failedUri === uri);
   const trimmed = name.trim();
-  const singleChar = (trimmed.charAt(0) || 'C').toLocaleUpperCase('id-ID');
+  const initial = (trimmed.charAt(0) || 'C').toLocaleUpperCase('id-ID');
 
   return (
     <View
       accessible
       accessibilityLabel={`Foto profil ${name}`}
-      style={[styles.avatar, { width: size, height: size, borderRadius: size / 2 }]}
+      style={[
+        styles.avatar,
+        {
+          width: size,
+          height: size,
+          borderRadius: size / 2,
+          backgroundColor: palette.primarySoft,
+        },
+      ]}
     >
       {uri && !imageFailed ? (
         <Image
           source={{ uri }}
           style={[styles.avatarImage, { width: size, height: size, borderRadius: size / 2 }]}
           resizeMode="cover"
-          onError={() => setImageFailed(true)}
+          onError={() => setFailedUri(uri ?? null)}
         />
       ) : (
-        <Text style={[styles.avatarInitials, { fontSize: Math.round(size * 0.42) }]}>
-          {singleChar}
+        <Text
+          style={[
+            styles.avatarInitials,
+            { color: palette.primary, fontSize: Math.round(size * 0.42) },
+          ]}
+        >
+          {initial}
         </Text>
       )}
     </View>
@@ -43,7 +58,6 @@ export function Avatar({
 const styles = StyleSheet.create({
   avatar: {
     alignItems: 'center',
-    backgroundColor: colors.greenSoft,
     justifyContent: 'center',
     overflow: 'hidden',
   },
@@ -54,7 +68,6 @@ const styles = StyleSheet.create({
     width: '100%',
   },
   avatarInitials: {
-    color: colors.greenDark,
     fontWeight: '800',
   },
 });

@@ -11,6 +11,7 @@ import {
 } from 'react-native';
 
 import { useAuth } from '../../auth/AuthProvider';
+import { useAppearance } from '../../context/AppearanceContext';
 import { containsBlockedContactOrUrl } from '../../data/marketplaceStore';
 import { useLanguage } from '../../i18n/locale';
 import { colors, spacing } from '../../theme/tokens';
@@ -23,6 +24,7 @@ export interface TechnicianPostComposerProps {
     caption: string;
     imageUri?: string;
     mediaUrls?: string[];
+    isServicePost: boolean;
   }) => Promise<void>;
   technicianProfile?: {
     id: string;
@@ -42,9 +44,11 @@ export function TechnicianPostComposer({
 }: TechnicianPostComposerProps) {
   const { language } = useLanguage();
   const { user, roles } = useAuth();
+  const { palette } = useAppearance();
 
   const [caption, setCaption] = useState('');
   const [images, setImages] = useState<string[]>([]);
+  const [isServicePost, setIsServicePost] = useState(false);
   const [showPickerModal, setShowPickerModal] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -144,9 +148,11 @@ export function TechnicianPostComposer({
         caption: trimmedCaption,
         imageUri: images[0],
         mediaUrls: images,
+        isServicePost,
       });
       setCaption('');
       setImages([]);
+      setIsServicePost(false);
       setShowPickerModal(false);
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Unable to create post.');
@@ -166,30 +172,59 @@ export function TechnicianPostComposer({
   return (
     <KeyboardAvoidingView
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-      style={styles.card}
+      style={[
+        styles.card,
+        { backgroundColor: palette.surface, borderColor: palette.border },
+      ]}
       testID="technician-post-composer"
     >
-      {/* Top Row: Avatar and Auto-Expanding Multiline TextInput */}
-      <View style={styles.topRow}>
-        <View style={styles.avatarWrap}>
-          <Avatar uri={authorAvatarUri} name={authorName} size={40} />
+      <View style={styles.composerHeader}>
+        <View
+          style={[
+            styles.avatarRing,
+            { backgroundColor: palette.primarySoft, borderColor: palette.border },
+          ]}
+        >
+          <Avatar uri={authorAvatarUri} name={authorName} size={42} />
         </View>
+        <View style={styles.authorInfo}>
+          <Text
+            numberOfLines={1}
+            style={[styles.authorName, { color: palette.text }]}
+          >
+            {authorName}
+          </Text>
+          <View style={styles.audienceTag}>
+            <View
+              style={[styles.audienceDot, { backgroundColor: palette.primary }]}
+            />
+            <Text style={[styles.audienceText, { color: palette.textMuted }]}>
+              {language === 'en' ? 'Marketplace' : 'Marketplace'}
+            </Text>
+          </View>
+        </View>
+      </View>
 
-        <View style={styles.inputContainer}>
+      <View
+        style={[
+          styles.inputShell,
+          { backgroundColor: palette.inputBg, borderColor: palette.border },
+        ]}
+      >
           <TextInput
             multiline
+            maxLength={MAX_POST_CHARS + 100}
             onChangeText={handleTextChange}
             placeholder={
               language === 'en'
                 ? "What's happening? Share a job update..."
                 : 'Bagikan update pekerjaan atau tips servis...'
             }
-            placeholderTextColor={colors.muted}
-            style={styles.textInput}
+            placeholderTextColor={palette.textMuted}
+            style={[styles.textInput, { color: palette.text }]}
             testID="create-post-caption-input"
             value={caption}
           />
-        </View>
       </View>
 
       {/* Pre-upload Image Attachment Strip */}
@@ -200,7 +235,13 @@ export function TechnicianPostComposer({
 
       {/* Inline Picker View (when toggled via manual picker) */}
       {showPickerModal ? (
-        <View style={styles.pickerWrap} testID="composer-image-picker-wrap">
+        <View
+          style={[
+            styles.pickerWrap,
+            { borderTopColor: palette.border },
+          ]}
+          testID="composer-image-picker-wrap"
+        >
           <StrictImagePicker
             label={language === 'en' ? 'Add Photo of Your Work' : 'Tambah Foto Hasil Kerja'}
             onImageValidated={handleImageValidated}
@@ -211,7 +252,12 @@ export function TechnicianPostComposer({
             onPress={() => setShowPickerModal(false)}
             style={styles.cancelPickerBtn}
           >
-            <Text style={styles.cancelPickerBtnText}>
+            <Text
+              style={[
+                styles.cancelPickerBtnText,
+                { color: palette.textMuted },
+              ]}
+            >
               {language === 'en' ? 'Cancel' : 'Batal'}
             </Text>
           </Pressable>
@@ -220,13 +266,57 @@ export function TechnicianPostComposer({
 
       {/* Error / Validation Warning */}
       {error ? (
-        <Text style={styles.errorText} testID="create-post-error">
+        <Text
+          style={[styles.errorText, { color: palette.danger }]}
+          testID="create-post-error"
+        >
           {error}
         </Text>
       ) : null}
 
+      <Pressable
+        accessibilityRole="switch"
+        accessibilityState={{ checked: isServicePost }}
+        disabled={busy}
+        onPress={() => setIsServicePost((value) => !value)}
+        style={[
+          styles.servicePostOption,
+          {
+            backgroundColor: palette.surfaceElevated,
+            borderColor: palette.border,
+          },
+        ]}
+        testID="service-post-toggle"
+      >
+        <View
+          style={[
+            styles.servicePostCheckbox,
+            {
+              backgroundColor: isServicePost ? palette.primary : palette.surface,
+              borderColor: isServicePost ? palette.primary : palette.border,
+            },
+          ]}
+        >
+          {isServicePost ? (
+            <Text style={styles.servicePostCheckmark}>✓</Text>
+          ) : null}
+        </View>
+        <View style={styles.servicePostCopy}>
+          <Text style={[styles.servicePostTitle, { color: palette.text }]}>
+            {language === 'en' ? 'Offer this as a service' : 'Tawarkan sebagai layanan'}
+          </Text>
+          <Text style={[styles.servicePostDescription, { color: palette.textMuted }]}>
+            {language === 'en'
+              ? 'Allow people to book from this post.'
+              : 'Izinkan orang memesan dari postingan ini.'}
+          </Text>
+        </View>
+      </Pressable>
+
       {/* Bottom Action Bar */}
-      <View style={styles.actionBar}>
+      <View
+        style={[styles.actionBar, { borderTopColor: palette.border }]}
+      >
         {/* Left: Media upload icon button */}
         <Pressable
           accessibilityRole="button"
@@ -241,15 +331,27 @@ export function TechnicianPostComposer({
           ]}
           testID="add-image-btn"
         >
-          {/* Backwards-compatible duplicate testID target */}
-          <View testID="toggle-post-photo-picker-btn" style={styles.mediaIconCanvas}>
-            <View style={styles.mediaIconFrame}>
-              <View style={styles.mediaIconSun} />
-              <View style={styles.mediaIconMountain} />
+          <View style={styles.mediaActionContent}>
+            <View
+              testID="toggle-post-photo-picker-btn"
+              style={[
+                styles.mediaIconCanvas,
+                { backgroundColor: palette.primarySoft },
+              ]}
+            >
+              <View style={[styles.mediaIconFrame, { borderColor: palette.primary }]}>
+                <View style={[styles.mediaIconSun, { backgroundColor: palette.primary }]} />
+                <View style={[styles.mediaIconMountain, { borderBottomColor: palette.primary }]} />
+              </View>
             </View>
+            <Text style={[styles.mediaActionLabel, { color: palette.primary }]}>
+              {language === 'en' ? 'Photo' : 'Foto'}
+            </Text>
           </View>
           {images.length > 0 ? (
-            <Text style={styles.mediaBadgeText}>{images.length}/{MAX_POST_IMAGES}</Text>
+            <Text style={[styles.mediaBadgeText, { color: palette.primary }]}>
+              {images.length}/{MAX_POST_IMAGES}
+            </Text>
           ) : null}
         </Pressable>
 
@@ -259,7 +361,10 @@ export function TechnicianPostComposer({
             <Text
               style={[
                 styles.charCounter,
-                isOverCharLimit && styles.charCounterLimit,
+                {
+                  color: isOverCharLimit ? palette.danger : palette.textMuted,
+                  fontWeight: isOverCharLimit ? '800' : '600',
+                },
               ]}
               testID={isOverCharLimit ? 'char-count-warning' : 'char-counter'}
             >
@@ -276,7 +381,11 @@ export function TechnicianPostComposer({
           onPress={() => {
             void handlePublish();
           }}
-          style={[styles.postBtn, !canSubmit && styles.postBtnDisabled]}
+          style={[
+            styles.postBtn,
+            { backgroundColor: palette.primary },
+            !canSubmit && styles.postBtnDisabled,
+          ]}
           testID="submit-new-post-btn"
         >
           {busy ? (
@@ -295,34 +404,63 @@ export function TechnicianPostComposer({
 const styles = StyleSheet.create({
   card: {
     backgroundColor: colors.surface,
-    borderColor: '#E2E8F0',
-    borderRadius: 16,
+    borderColor: colors.line,
+    borderRadius: 5,
     borderWidth: 1,
     marginBottom: spacing.md,
     padding: spacing.md,
     width: '100%',
   },
-  topRow: {
-    alignItems: 'flex-start',
-    flexDirection: 'row',
-    gap: spacing.sm,
-  },
-  avatarWrap: {
+  composerHeader: {
     alignItems: 'center',
-    justifyContent: 'center',
-    paddingTop: 2,
+    flexDirection: 'row',
+    gap: spacing.md,
+    marginBottom: spacing.md,
   },
-  inputContainer: {
+  avatarRing: {
+    alignItems: 'center',
+    borderRadius: 28,
+    borderWidth: 1,
+    height: 50,
+    justifyContent: 'center',
+    width: 50,
+  },
+  authorInfo: {
     flex: 1,
-    minHeight: 52,
+    gap: 3,
+    minWidth: 0,
+  },
+  authorName: {
+    fontSize: 14,
+    fontWeight: '800',
+  },
+  audienceTag: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    gap: 5,
+  },
+  audienceDot: {
+    borderRadius: 4,
+    height: 7,
+    width: 7,
+  },
+  audienceText: {
+    fontSize: 11,
+    fontWeight: '600',
+  },
+  inputShell: {
+    borderRadius: 5,
+    borderWidth: 1,
+    minHeight: 98,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
   },
   textInput: {
-    color: colors.ink,
     fontSize: 15,
-    lineHeight: 22,
-    minHeight: 52,
-    paddingHorizontal: spacing.xs,
-    paddingVertical: 4,
+    lineHeight: 23,
+    maxHeight: 180,
+    minHeight: 78,
+    padding: 0,
     textAlignVertical: 'top',
   },
   pickerWrap: {
@@ -348,6 +486,42 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     marginTop: spacing.xs,
   },
+  servicePostOption: {
+    alignItems: 'center',
+    borderRadius: 5,
+    borderWidth: 1,
+    flexDirection: 'row',
+    gap: spacing.sm,
+    marginTop: spacing.md,
+    minHeight: 58,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: spacing.xs,
+  },
+  servicePostCheckbox: {
+    alignItems: 'center',
+    borderRadius: 5,
+    borderWidth: 1,
+    height: 20,
+    justifyContent: 'center',
+    width: 20,
+  },
+  servicePostCheckmark: {
+    color: '#FFFFFF',
+    fontSize: 13,
+    fontWeight: '800',
+    lineHeight: 16,
+  },
+  servicePostCopy: {
+    flex: 1,
+  },
+  servicePostTitle: {
+    fontSize: 12,
+    fontWeight: '700',
+  },
+  servicePostDescription: {
+    fontSize: 11,
+    marginTop: 1,
+  },
   actionBar: {
     alignItems: 'center',
     borderTopColor: '#F1F5F9',
@@ -359,20 +533,29 @@ const styles = StyleSheet.create({
   },
   mediaBtn: {
     alignItems: 'center',
-    flexDirection: 'row',
-    gap: 4,
     minHeight: 36,
-    paddingHorizontal: 8,
-    paddingVertical: 6,
+    justifyContent: 'center',
+    paddingHorizontal: spacing.xs,
+    paddingVertical: spacing.xs,
+  },
+  mediaActionContent: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    gap: spacing.xs,
+  },
+  mediaActionLabel: {
+    fontSize: 12,
+    fontWeight: '700',
   },
   mediaBtnDisabled: {
     opacity: 0.4,
   },
   mediaIconCanvas: {
     alignItems: 'center',
-    height: 24,
+    borderRadius: 5,
+    height: 30,
     justifyContent: 'center',
-    width: 24,
+    width: 30,
   },
   mediaIconFrame: {
     borderColor: colors.greenDark,
@@ -427,7 +610,7 @@ const styles = StyleSheet.create({
   postBtn: {
     alignItems: 'center',
     backgroundColor: colors.greenDark,
-    borderRadius: 9999,
+    borderRadius: 5,
     justifyContent: 'center',
     minHeight: 34,
     minWidth: 76,
