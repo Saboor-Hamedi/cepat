@@ -1,3 +1,4 @@
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useState } from 'react';
 import {
@@ -18,24 +19,28 @@ import {
   PrimaryButton,
   Rating,
   ServiceCategoryGlyph,
-  SourceBadge,
 } from '../../components/marketplace-ui';
-import { ProfileAvatar } from '../../profile';
+import {
+  pickImageSafely,
+  PortfolioPhoto,
+  ProfileAvatar,
+  SectionHeader,
+} from '../../profile';
 import {
   TechnicianPostCard,
   TechnicianPostComposer,
 } from '../../components/TechnicianPostCard';
 import { formatRupiah, loadTechnician } from '../../data/marketplaceRepository';
 import {
-  loadSavedTechnicianIds,
   submitTechnicianReport,
-  toggleSavedTechnicianId,
 } from '../../data/marketplaceStore';
 import {
   createTechnicianPost,
+  deleteTechnicianPost,
   loadTechnicianPosts,
 } from '../../data/postsStore';
 import { categoryName, localizeArea, useLanguage } from '../../i18n/locale';
+import { useAppearance } from '../../context/AppearanceContext';
 import { useAuth } from '../../auth/AuthProvider';
 import type {
   DataSource,
@@ -51,15 +56,15 @@ const WEEKDAY_NAMES_EN = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday'
 
 export default function TechnicianProfileScreen() {
   const { language, t } = useLanguage();
-  const { user, roles, effectiveRole } = useAuth();
+  const { user, roles, effectiveRole, updateUserProfile } = useAuth();
   const { id } = useLocalSearchParams<{ id: string }>();
   const [loadedTechnician, setLoadedTechnician] = useState<Technician | null>(null);
   const [posts, setPosts] = useState<TechnicianPost[]>([]);
+  const [coverUri, setCoverUri] = useState<string | undefined>(undefined);
   const [source, setSource] = useState<DataSource>('fixtures');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
   const [retryKey, setRetryKey] = useState(0);
-  const [isSaved, setIsSaved] = useState(false);
   const [expandedPortfolio, setExpandedPortfolio] = useState<PortfolioItem | null>(null);
   const [reportModalVisible, setReportModalVisible] = useState(false);
   const [reportCategory, setReportCategory] = useState<TechnicianReport['category']>('quality');
@@ -71,14 +76,12 @@ export default function TechnicianProfileScreen() {
     let active = true;
     void Promise.all([
       loadTechnician(id),
-      loadSavedTechnicianIds(user?.id),
       id ? loadTechnicianPosts(id, false) : Promise.resolve([]),
     ])
-      .then(([result, savedIds, publishedPosts]) => {
+      .then(([result, publishedPosts]) => {
         if (!active) return;
         setLoadedTechnician(result.item);
         setSource(result.source);
-        setIsSaved(Boolean(id && savedIds.includes(id)));
         setPosts(publishedPosts);
       })
       .catch(() => {
@@ -92,15 +95,18 @@ export default function TechnicianProfileScreen() {
     };
   }, [id, retryKey, user?.id]);
 
+  useEffect(() => {
+    const targetId = id || user?.id;
+    if (targetId) {
+      void AsyncStorage.getItem(`@cepat_cover_${targetId}`).then((saved) => {
+        if (saved) setCoverUri(saved);
+      });
+    }
+  }, [id, user?.id]);
+
   const goBack = () => {
     if (router.canGoBack()) router.back();
     else router.replace('/');
-  };
-
-  const handleToggleSave = async () => {
-    if (!technician) return;
-    const updated = await toggleSavedTechnicianId(user?.id, technician.id);
-    setIsSaved(updated.includes(technician.id));
   };
 
   const handleSubmitReport = async () => {
@@ -148,9 +154,18 @@ export default function TechnicianProfileScreen() {
     );
   }
 
-  const technician: Technician | null =
+  const isAdminUser = roles.includes('admin') || effectiveRole === 'admin';
+  const isTechnicianUser = roles.includes('technician') || effectiveRole === 'technician';
+  const isProfileOwner =
+    Boolean(user) &&
+    (user?.id === id ||
+      (loadedTechnician && user?.id === loadedTechnician.id) ||
+      (isTechnicianUser && id === 'demo-rizky') ||
+      (!isTechnicianUser && id === 'demo-customer'));
+
+  const rawTechnician: Technician | null =
     loadedTechnician ??
-    (user && (user.id === id || id === 'demo-customer')
+    (user && (user.id === id || id === 'demo-customer' || !id)
       ? {
           id: id || user.id,
           displayName:
@@ -162,7 +177,7 @@ export default function TechnicianProfileScreen() {
             typeof user.user_metadata?.avatar_url === 'string'
               ? user.user_metadata.avatar_url
               : undefined,
-          verified: false,
+          verified: isAdminUser,
           available: true,
           services: [],
           portfolio: [],
@@ -172,11 +187,50 @@ export default function TechnicianProfileScreen() {
           completedJobsCount: 0,
           serviceAreas: ['Jakarta Selatan'],
           availabilitySchedule: [],
-          headline: language === 'en' ? 'Cepat Community Member' : 'Anggota Komunitas Cepat',
-          bio: language === 'en' ? 'Customer on Cepat.' : 'Pelanggan di Cepat.',
+          headline: isAdminUser
+            ? (language === 'en' ? 'Cepat Administrator' : 'Administrator Cepat')
+            : (language === 'en' ? 'Cepat Community Member' : 'Anggota Komunitas Cepat'),
+          bio: isAdminUser
+            ? (language === 'en' ? 'Platform Administrator.' : 'Administrator Platform.')
+            : (language === 'en' ? 'Customer on Cepat.' : 'Pelanggan di Cepat.'),
           theme: 'sand',
         }
       : null);
+
+  const technician: Technician | null = rawTechnician
+    ? {
+        ...rawTechnician,
+        avatarUri:
+          (isProfileOwner && user?.user_metadata?.avatar_url)
+            ? user.user_metadata.avatar_url
+            : rawTechnician.avatarUri,
+      }
+    : null;
+
+  const handleAvatarSelected = async (newUri: string) => {
+    setLoadedTechnician((prev) => (prev ? { ...prev, avatarUri: newUri } : prev));
+    if (isProfileOwner) {
+      await updateUserProfile({ avatarUrl: newUri });
+      if (user) {
+        try {
+          await AsyncStorage.setItem(`@cepat_avatar_${user.id}`, newUri);
+        } catch {}
+      }
+    }
+  };
+
+  const handleChangeCover = async () => {
+    try {
+      const picked = await pickImageSafely('gallery');
+      if (picked?.uri) {
+        setCoverUri(picked.uri);
+        const targetId = id || user?.id;
+        if (targetId) {
+          await AsyncStorage.setItem(`@cepat_cover_${targetId}`, picked.uri);
+        }
+      }
+    } catch {}
+  };
 
   if (!technician) {
     return (
@@ -198,12 +252,8 @@ export default function TechnicianProfileScreen() {
     language === 'en' ? technician.headlineEn || technician.headline : technician.headline;
   const bio = language === 'en' ? technician.bioEn || technician.bio : technician.bio;
   const weekdayNames = language === 'en' ? WEEKDAY_NAMES_EN : WEEKDAY_NAMES_ID;
-  const isTechnicianUser = roles.includes('technician') || effectiveRole === 'technician';
-  const isProfileOwner =
-    Boolean(user) &&
-    (user?.id === technician.id ||
-      (isTechnicianUser && technician.id === 'demo-rizky' && !technician.id.startsWith('cust-')) ||
-      (!isTechnicianUser && technician.id === 'demo-customer'));
+  const canPost = isProfileOwner && (isTechnicianUser || isAdminUser);
+  const canDeletePost = isProfileOwner || isAdminUser;
 
   const handleCreatePost = async (input: {
     caption: string;
@@ -217,14 +267,21 @@ export default function TechnicianProfileScreen() {
       technicianName: technician.displayName,
       technicianBusinessName: technician.businessName,
       technicianAvatarUri: technician.avatarUri,
-      technicianVerified: technician.verified,
+      technicianVerified: isAdminUser || technician.verified,
       caption: input.caption,
       imageUri: input.imageUri,
       mediaUrls: input.mediaUrls,
-      serviceArea: technician.serviceAreas[0] ?? 'Jakarta Selatan',
-      categorySlug: technician.services[0]?.categorySlug ?? 'plumbing',
+      serviceArea: technician.serviceAreas[0] ?? 'Semua area',
+      categorySlug: technician.services[0]?.categorySlug ?? 'general',
       published: true,
     });
+    const nextPosts = await loadTechnicianPosts(ownerId, isProfileOwner);
+    setPosts(nextPosts);
+  };
+
+  const handleDeletePost = async (postId: string) => {
+    const ownerId = user?.id || technician.id;
+    await deleteTechnicianPost({ actorUserId: ownerId, postId });
     const nextPosts = await loadTechnicianPosts(ownerId, isProfileOwner);
     setPosts(nextPosts);
   };
@@ -252,35 +309,41 @@ export default function TechnicianProfileScreen() {
 
   return (
     <SafeAreaView style={styles.safeArea} edges={['top', 'bottom']}>
-      <Header
-        onBack={goBack}
-        isSaved={isSaved}
-        onToggleSave={() => {
-          void handleToggleSave();
-        }}
-      />
+      <Header onBack={goBack} />
       <ScrollView contentContainerStyle={styles.scrollContent}>
-        {source === 'fixtures' && (
-          <View style={styles.sampleIntroWrap}>
-            <SourceBadge source={source} />
-            <Text style={styles.sampleIntroText}>{t('profile.sampleNote')}</Text>
-          </View>
-        )}
-
-        {/* Full-width Hero Banner: Edge-to-edge, no round borders */}
+        {/* Twitter / Facebook Style Profile Card with Cover Banner */}
         <View style={[styles.profileHero, { backgroundColor: theme.background }]}>
+          <View style={styles.coverContainer}>
+            {coverUri ? (
+              <Image source={{ uri: coverUri }} style={styles.coverImage} resizeMode="cover" />
+            ) : (
+              <View style={[styles.coverFallback, { backgroundColor: theme.accent || colors.greenDark }]} />
+            )}
+            {isProfileOwner && (
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel={language === 'en' ? 'Change cover photo' : 'Ubah foto sampul'}
+                onPress={handleChangeCover}
+                style={styles.changeCoverBtn}
+                testID="change-cover-btn"
+              >
+                <Text style={styles.changeCoverText}>📷 {language === 'en' ? 'Edit Cover' : 'Ubah Sampul'}</Text>
+              </Pressable>
+            )}
+          </View>
+
           <View style={styles.profileHeroInner}>
             <View style={styles.profileTopRow}>
-              <ProfileAvatar
-                uri={technician.avatarUri}
-                name={technician.displayName}
-                size={88}
-                editable={isProfileOwner}
-                onImageSelected={(newUri) => {
-                  setLoadedTechnician((prev) => (prev ? { ...prev, avatarUri: newUri } : prev));
-                }}
-                testID="technician-profile-avatar"
-              />
+              <View style={styles.avatarWrapper}>
+                <ProfileAvatar
+                  uri={technician.avatarUri}
+                  name={technician.displayName}
+                  size={88}
+                  editable={isProfileOwner}
+                  onImageSelected={handleAvatarSelected}
+                  testID="technician-profile-avatar"
+                />
+              </View>
               <View style={styles.profileIdentity}>
                 <View style={styles.nameLine}>
                   <Text style={styles.profileName}>{technician.displayName}</Text>
@@ -324,7 +387,7 @@ export default function TechnicianProfileScreen() {
               )}
             </View>
 
-            {source === 'supabase' && (
+            {technician.services.length > 0 && (
               <View style={styles.availabilityLine}>
                 <View
                   style={[
@@ -337,26 +400,33 @@ export default function TechnicianProfileScreen() {
                 </Text>
               </View>
             )}
-            {source === 'fixtures' && (
-              <View style={styles.availabilityLine}>
-                <View
-                  style={[
-                    styles.availabilityDot,
-                    { backgroundColor: technician.available ? colors.green : colors.muted },
-                  ]}
-                />
-                <Text style={styles.fixtureAvailability}>{t('profile.sampleAvailability')}</Text>
-              </View>
-            )}
             {isProfileOwner && (
               <Pressable
                 accessibilityRole="button"
-                onPress={() => router.push('/technician-dashboard')}
+                onPress={() =>
+                  router.push(
+                    isAdminUser
+                      ? '/admin'
+                      : isTechnicianUser
+                        ? '/technician-dashboard'
+                        : '/account',
+                  )
+                }
                 style={styles.ownerEditBtn}
                 testID="owner-edit-profile-btn"
               >
                 <Text style={styles.ownerEditBtnText}>
-                  {language === 'en' ? 'Edit Profile & Manage Posts' : 'Edit Profil & Kelola Postingan'}
+                  {isAdminUser
+                    ? language === 'en'
+                      ? 'Admin Console'
+                      : 'Konsol Admin'
+                    : isTechnicianUser
+                      ? language === 'en'
+                        ? 'Manage Jobs'
+                        : 'Kelola Pekerjaan'
+                      : language === 'en'
+                        ? 'Account Settings'
+                        : 'Pengaturan Akun'}
                 </Text>
               </Pressable>
             )}
@@ -366,8 +436,8 @@ export default function TechnicianProfileScreen() {
         <View style={styles.contentWidth}>
 
           <View testID="technician-public-posts">
-            {/* Inline Twitter / X style Composer: visible only to technician profile owner */}
-            {isTechnicianUser && isProfileOwner && (
+            {/* Inline Twitter / X style Composer: visible to owner when technician or admin */}
+            {canPost && (
               <TechnicianPostComposer
                 onCreatePost={handleCreatePost}
                 technicianProfile={{
@@ -382,7 +452,7 @@ export default function TechnicianProfileScreen() {
               <>
                 <SectionHeader
                   eyebrow={language === 'en' ? 'RECENT WORK UPDATES' : 'UPDATE PEKERJAAN TERBARU'}
-                  title={language === 'en' ? 'Technician Posts' : 'Postingan Teknisi'}
+                  title={language === 'en' ? 'Posts' : 'Postingan'}
                   trailing={`${posts.length}`}
                 />
                 {posts.map((post) => (
@@ -390,6 +460,8 @@ export default function TechnicianProfileScreen() {
                     key={post.id}
                     post={post}
                     showAuthorHeader={false}
+                    isOwner={canDeletePost}
+                    onDelete={handleDeletePost}
                   />
                 ))}
               </>
@@ -530,7 +602,7 @@ export default function TechnicianProfileScreen() {
                     key={item.id}
                     accessibilityRole="button"
                     onPress={() => setExpandedPortfolio(item)}
-                    style={[styles.portfolioCard, index % 2 === 1 && styles.portfolioCardRight]}
+                    style={styles.portfolioCard}
                     testID={`portfolio-item-${item.id}`}
                   >
                     <PortfolioPhoto
@@ -609,7 +681,7 @@ export default function TechnicianProfileScreen() {
         </View>
       </ScrollView>
 
-      {!isProfileOwner && (
+      {!isProfileOwner && technician.services.length > 0 && (
         <View style={styles.bookingFooter}>
           <View style={styles.footerPrice}>
             <Text style={styles.footerPriceLabel}>{t('profile.priceLabel')}</Text>
@@ -750,12 +822,8 @@ export default function TechnicianProfileScreen() {
 
 function Header({
   onBack,
-  isSaved,
-  onToggleSave,
 }: {
   onBack: () => void;
-  isSaved?: boolean;
-  onToggleSave?: () => void;
 }) {
   const { t } = useLanguage();
   return (
@@ -768,42 +836,7 @@ function Header({
       >
         <Text style={styles.navBackGlyph}>‹</Text>
       </Pressable>
-      <Text style={styles.navTitle}>{t('profile.navTitle')}</Text>
-      {onToggleSave ? (
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel={isSaved ? t('profile.savedTechnician') : t('profile.saveTechnician')}
-          onPress={onToggleSave}
-          style={[styles.saveHeaderBtn, isSaved && styles.saveHeaderBtnActive]}
-          testID="save-technician-button"
-        >
-          <Text style={[styles.saveHeaderBtnText, isSaved && styles.saveHeaderBtnTextActive]}>
-            {isSaved ? t('profile.savedTechnician') : t('profile.saveTechnician')}
-          </Text>
-        </Pressable>
-      ) : (
-        <View style={styles.navBalance} />
-      )}
-    </View>
-  );
-}
-
-function SectionHeader({
-  eyebrow,
-  title,
-  trailing,
-}: {
-  eyebrow: string;
-  title: string;
-  trailing?: string;
-}) {
-  return (
-    <View style={styles.sectionHeading}>
-      <View>
-        <Text style={styles.sectionEyebrow}>{eyebrow}</Text>
-        <Text style={styles.sectionTitle}>{title}</Text>
-      </View>
-      {trailing && <Text style={styles.sectionTrailing}>{trailing}</Text>}
+      <View style={styles.navBalance} />
     </View>
   );
 }
@@ -813,40 +846,6 @@ function firstPrice(services: Technician['services']): number | undefined {
     .map((service) => service.startingPrice)
     .filter((price): price is number => price !== undefined)
     .sort((a, b) => a - b)[0];
-}
-
-function PortfolioPhoto({
-  uri,
-  title,
-  tint,
-  fallbackLabel,
-  large,
-}: {
-  uri?: string;
-  title: string;
-  tint: string;
-  fallbackLabel: string;
-  large?: boolean;
-}) {
-  const [failed, setFailed] = useState(!uri);
-  return (
-    <View style={[styles.portfolioImage, large && styles.portfolioImageLarge, { backgroundColor: tint }]}>
-      {uri && !failed ? (
-        <Image
-          source={{ uri }}
-          resizeMode="cover"
-          style={StyleSheet.absoluteFill}
-          accessibilityLabel={title}
-          onError={() => setFailed(true)}
-        />
-      ) : (
-        <View style={styles.portfolioFallback}>
-          <ServiceCategoryGlyph iconKey="home-maintenance" size={34} />
-          <Text style={styles.portfolioFallbackLabel}>{fallbackLabel}</Text>
-        </View>
-      )}
-    </View>
-  );
 }
 
 function formatDate(value: string, language: 'id' | 'en'): string {
@@ -865,19 +864,17 @@ const styles = StyleSheet.create({
   navHeader: { alignItems: 'center', backgroundColor: colors.paper, flexDirection: 'row', justifyContent: 'space-between', paddingHorizontal: spacing.xl, paddingVertical: spacing.sm },
   navBack: { alignItems: 'center', height: 42, justifyContent: 'center', width: 42 },
   navBackGlyph: { color: colors.ink, fontSize: 34, lineHeight: 38 },
-  navTitle: { color: colors.ink, fontSize: 14, fontWeight: '700' },
   navBalance: { width: 42 },
-  saveHeaderBtn: { backgroundColor: colors.surface, borderColor: colors.line, borderRadius: radii.pill, borderWidth: 1, paddingHorizontal: 12, paddingVertical: 6 },
-  saveHeaderBtnActive: { backgroundColor: colors.greenSoft, borderColor: colors.green },
-  saveHeaderBtnText: { color: colors.ink, fontSize: 11, fontWeight: '700' },
-  saveHeaderBtnTextActive: { color: colors.greenDark },
   scrollContent: { paddingBottom: 120 },
   contentWidth: { alignSelf: 'center', maxWidth: 820, paddingHorizontal: spacing.xl, paddingTop: spacing.lg, width: '100%' },
-  sampleIntroWrap: { alignSelf: 'center', maxWidth: 820, paddingHorizontal: spacing.xl, marginBottom: spacing.md, width: '100%' },
-  sampleIntro: { marginBottom: spacing.md },
-  sampleIntroText: { color: '#80683F', fontSize: 11, lineHeight: 16, marginTop: 6 },
   profileHero: { borderRadius: 0, width: '100%' },
-  profileHeroInner: { alignSelf: 'center', maxWidth: 820, paddingHorizontal: spacing.xl, paddingVertical: spacing.xl, width: '100%' },
+  coverContainer: { height: 140, position: 'relative', width: '100%' },
+  coverImage: { height: 140, width: '100%' },
+  coverFallback: { height: 140, width: '100%', opacity: 0.85 },
+  changeCoverBtn: { backgroundColor: 'rgba(0,0,0,0.6)', borderRadius: radii.pill, paddingHorizontal: 12, paddingVertical: 6, position: 'absolute', right: 16, top: 16 },
+  changeCoverText: { color: '#fff', fontSize: 11, fontWeight: '700' },
+  avatarWrapper: { marginTop: -32, borderWidth: 3, borderColor: '#fff', borderRadius: 48 },
+  profileHeroInner: { alignSelf: 'center', maxWidth: 820, paddingHorizontal: spacing.xl, paddingBottom: spacing.xl, paddingTop: spacing.sm, width: '100%' },
   profileTopRow: { alignItems: 'center', flexDirection: 'row', gap: spacing.lg },
   profileIdentity: { flex: 1, minWidth: 0 },
   nameLine: { alignItems: 'center', flexDirection: 'row', flexWrap: 'wrap', gap: 7 },
@@ -894,7 +891,6 @@ const styles = StyleSheet.create({
   availabilityLine: { alignItems: 'center', flexDirection: 'row', gap: 7, marginTop: spacing.md },
   availabilityDot: { borderRadius: 4, height: 8, width: 8 },
   availabilityText: { color: colors.ink, fontSize: 12, fontWeight: '600' },
-  fixtureAvailability: { color: '#80683F', fontSize: 11 },
   ownerEditBtn: { alignItems: 'center', backgroundColor: colors.greenDark, borderRadius: radii.pill, marginTop: spacing.md, paddingVertical: 10 },
   ownerEditBtnText: { color: '#FFFFFF', fontSize: 12, fontWeight: '800' },
   sectionHeading: { alignItems: 'flex-end', flexDirection: 'row', justifyContent: 'space-between', marginBottom: spacing.md, marginTop: spacing.xxl },
@@ -927,7 +923,6 @@ const styles = StyleSheet.create({
   scheduleHoursClosed: { color: colors.muted, fontWeight: '500' },
   portfolioGrid: { flexDirection: 'row', flexWrap: 'wrap', marginHorizontal: -6 },
   portfolioCard: { marginBottom: spacing.md, paddingHorizontal: 6, width: '50%' },
-  portfolioCardRight: {},
   portfolioImage: { borderRadius: radii.md, height: 148, overflow: 'hidden', width: '100%' },
   portfolioImageLarge: { height: 240 },
   portfolioFallback: { alignItems: 'center', flex: 1, justifyContent: 'center' },

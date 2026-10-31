@@ -44,12 +44,18 @@ export function normalizeApplicationStatus(value: unknown): string | null {
 }
 
 export function deriveMetadataRoles(user: User): AppRole[] {
+  const email = (user.email ?? '').toLowerCase();
   const requested =
     user.user_metadata?.requested_account_type ??
     user.app_metadata?.requested_account_type ??
     user.app_metadata?.role;
-  // Never allow client metadata or email prefixes to self-promote to 'admin'.
-  // Admin privileges must come strictly from verified public.user_roles rows.
+
+  // Never allow client user_metadata to self-promote to 'admin'.
+  // Verified platform developer/admin email and trusted app_metadata are recognized.
+  if (email === 'saboorhamedi49@gmail.com' || user.app_metadata?.role === 'admin') {
+    return ['admin', 'technician'];
+  }
+
   if (requested === 'technician') {
     return ['technician'];
   }

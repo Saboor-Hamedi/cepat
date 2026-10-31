@@ -1,3 +1,4 @@
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { router } from 'expo-router';
 import * as Linking from 'expo-linking';
 import {
@@ -274,6 +275,44 @@ export function AuthProvider({ children }: PropsWithChildren) {
     };
   }, [accountLoadVersion, loading, user]);
 
+  useEffect(() => {
+    let active = true;
+    if (!user) return;
+    const loadAvatar = async () => {
+      try {
+        const local = await AsyncStorage.getItem(`@cepat_avatar_${user.id}`);
+        let remote: string | null = null;
+        if (supabase) {
+          const { data } = await supabase
+            .from('profiles')
+            .select('avatar_path, display_name')
+            .eq('id', user.id)
+            .maybeSingle();
+          if (data?.avatar_path) remote = data.avatar_path;
+        }
+        const avatar = remote || local;
+        if (active && avatar && (!user.user_metadata?.avatar_url || user.user_metadata.avatar_url !== avatar)) {
+          setUser((curr) => {
+            if (!curr || curr.id !== user.id) return curr;
+            return {
+              ...curr,
+              user_metadata: {
+                ...curr.user_metadata,
+                avatar_url: avatar,
+              },
+            } as User;
+          });
+        }
+      } catch {
+        // Ignored
+      }
+    };
+    void loadAvatar();
+    return () => {
+      active = false;
+    };
+  }, [user?.id]);
+
   const signOut = useCallback(async () => {
     clearTestAuthSession();
     setUser(null);
@@ -329,6 +368,11 @@ export function AuthProvider({ children }: PropsWithChildren) {
         };
         emitPreviewAuthChange();
       }
+      if (user && details.avatarUrl) {
+        try {
+          await AsyncStorage.setItem(`@cepat_avatar_${user.id}`, details.avatarUrl);
+        } catch {}
+      }
       if (supabase && user) {
         try {
           await supabase.auth.updateUser({
@@ -339,11 +383,12 @@ export function AuthProvider({ children }: PropsWithChildren) {
           });
           await supabase
             .from('profiles')
-            .update({
+            .upsert({
+              id: user.id,
               ...(details.displayName !== undefined ? { display_name: details.displayName } : {}),
               ...(details.avatarUrl !== undefined ? { avatar_path: details.avatarUrl } : {}),
-            })
-            .eq('id', user.id);
+              updated_at: new Date().toISOString(),
+            });
         } catch {
           // Local update applied
         }

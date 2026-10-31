@@ -4,7 +4,7 @@ import { Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-nati
 import { useAuth } from '../auth/AuthProvider';
 import { useLanguage } from '../i18n/locale';
 import { colors, radii, spacing } from '../theme/tokens';
-import { Avatar } from './marketplace-ui';
+import { Avatar } from './Avatar';
 
 export interface SidebarProps {
   visible: boolean;
@@ -89,7 +89,8 @@ export function Sidebar({
   const { user, roles, effectiveRole, signOut } = useAuth();
 
   const isAuthenticated = Boolean(user);
-  const isVerifiedAdmin = isAuthenticated && roles.includes('admin');
+  const isVerifiedAdmin =
+    isAuthenticated && (roles.includes('admin') || effectiveRole === 'admin');
   const isTechnician =
     isAuthenticated && (effectiveRole === 'technician' || roles.includes('technician'));
 
@@ -102,10 +103,10 @@ export function Sidebar({
       ? 'Guest Visitor'
       : 'Pengunjung Tamu';
 
+  const rawEmailPart = (user?.email?.split('@')[0] || 'cepat_member').toLowerCase();
+  const strippedUsername = rawEmailPart.replace(/\d+/g, '');
   const accountIdentifier = isAuthenticated
-    ? `@${(user?.email?.split('@')[0] || 'cepat_member')
-        .toLowerCase()
-        .replace(/[^a-z0-9_]/g, '_')}`
+    ? strippedUsername || rawEmailPart
     : language === 'en'
       ? 'Not signed in'
       : 'Belum masuk';

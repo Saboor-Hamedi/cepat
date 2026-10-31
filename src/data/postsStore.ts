@@ -1,6 +1,6 @@
 import { loadAdminAccounts } from './adminStore';
 import { containsBlockedContactOrUrl } from './marketplaceStore';
-import { resolveServiceAreaName, supabase } from './marketplaceRepository';
+import { resolveServiceAreaName, shouldUseFixtures, supabase } from './marketplaceRepository';
 import { getStoredJson, setStoredJson } from '../storage/kvStorage';
 import type { TechnicianPost } from '../types/marketplace';
 
@@ -40,8 +40,14 @@ const DEFAULT_POSTS: TechnicianPost[] = [
 async function loadAllStoredPosts(): Promise<TechnicianPost[]> {
   const stored = await getStoredJson<TechnicianPost[]>(POSTS_STORAGE_KEY, []);
   if (stored.length === 0) {
-    await setStoredJson(POSTS_STORAGE_KEY, DEFAULT_POSTS);
-    return DEFAULT_POSTS;
+    if (shouldUseFixtures()) {
+      await setStoredJson(POSTS_STORAGE_KEY, DEFAULT_POSTS);
+      return DEFAULT_POSTS;
+    }
+    return [];
+  }
+  if (!shouldUseFixtures()) {
+    return stored.filter((p) => !p.id.startsWith('post-seed-'));
   }
   const existingIds = new Set(stored.map((item) => item.id));
   return [...stored, ...DEFAULT_POSTS.filter((seed) => !existingIds.has(seed.id))];

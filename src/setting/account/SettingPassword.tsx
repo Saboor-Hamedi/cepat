@@ -102,7 +102,9 @@ export function SettingPassword() {
         <Text style={styles.fieldLabel}>{t('auth.newPassword')}</Text>
         <TextInput
           onChangeText={setNewPassword}
-          placeholder={t('auth.newPassword')}
+          placeholder={
+            language === 'en' ? 'Enter new password' : 'Masukkan kata sandi baru'
+          }
           placeholderTextColor={colors.muted}
           secureTextEntry={!showPassword}
           style={styles.input}

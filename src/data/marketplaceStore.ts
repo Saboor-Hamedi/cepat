@@ -147,6 +147,10 @@ export async function saveSelectedArea(area: string): Promise<boolean> {
 }
 
 export async function loadSavedAddresses(userId?: string | null): Promise<SavedAddress[]> {
+  if (!shouldUseFixtures()) {
+    const items = await getStoredJson<SavedAddress[]>(scopeKey(SAVED_ADDRESSES_KEY, userId), []);
+    return items.filter((addr) => addr.id !== 'addr-1' && addr.id !== 'addr-2');
+  }
   return getStoredJson<SavedAddress[]>(scopeKey(SAVED_ADDRESSES_KEY, userId), fixtureSavedAddresses);
 }
 
@@ -214,6 +218,10 @@ export async function setDefaultCustomerAddress(
 }
 
 export async function loadSavedTechnicianIds(userId?: string | null): Promise<string[]> {
+  if (!shouldUseFixtures()) {
+    const ids = await getStoredJson<string[]>(scopeKey(SAVED_TECHNICIANS_KEY, userId), []);
+    return ids.filter((id) => !id.startsWith('demo-'));
+  }
   return getStoredJson<string[]>(scopeKey(SAVED_TECHNICIANS_KEY, userId), ['demo-rizky']);
 }
 
@@ -284,13 +292,21 @@ export async function loadAccountProfileDetails(
   fallbackEmail = '',
   fallbackName = '',
 ): Promise<AccountProfileDetails> {
-  const defaultProfile: AccountProfileDetails = {
-    displayName: fallbackName || (userId ? 'Pengguna Cepat' : 'Andi Wijaya'),
-    email: fallbackEmail || (userId ? '' : 'andi.wijaya@cepat.id'),
-    phoneNumber: '+62 812-8890-1120',
-    avatarUri: '',
-    addressNotes: 'Kebayoran Baru, Jakarta Selatan',
-  };
+  const defaultProfile: AccountProfileDetails = shouldUseFixtures()
+    ? {
+        displayName: fallbackName || (userId ? 'Pengguna Cepat' : 'Andi Wijaya'),
+        email: fallbackEmail || (userId ? '' : 'andi.wijaya@cepat.id'),
+        phoneNumber: '+62 812-8890-1120',
+        avatarUri: '',
+        addressNotes: 'Kebayoran Baru, Jakarta Selatan',
+      }
+    : {
+        displayName: fallbackName || '',
+        email: fallbackEmail || '',
+        phoneNumber: '',
+        avatarUri: '',
+        addressNotes: '',
+      };
   const stored = await getStoredJson<AccountProfileDetails>(
     scopeKey(ACCOUNT_PROFILE_KEY, userId),
     defaultProfile,
@@ -301,12 +317,20 @@ export async function loadAccountProfileDetails(
         supabase.from('profiles').select('display_name, avatar_path').eq('id', userId).maybeSingle(),
         supabase.from('private_profiles').select('phone_number, address_notes').eq('user_id', userId).maybeSingle(),
       ]);
+      const cleanPhone =
+        priv?.phone_number ??
+        (stored.phoneNumber === '+62 812-8890-1120' ? '' : stored.phoneNumber);
+      const cleanAddress =
+        priv?.address_notes ??
+        (stored.addressNotes === 'Kebayoran Baru, Jakarta Selatan' ? '' : stored.addressNotes);
       return {
-        displayName: pub?.display_name || stored.displayName,
-        email: fallbackEmail || stored.email,
-        phoneNumber: priv?.phone_number ?? stored.phoneNumber,
+        displayName:
+          pub?.display_name ||
+          (stored.displayName === 'Andi Wijaya' ? fallbackName : stored.displayName),
+        email: fallbackEmail || (stored.email === 'andi.wijaya@cepat.id' ? '' : stored.email),
+        phoneNumber: cleanPhone,
         avatarUri: pub?.avatar_path ?? stored.avatarUri,
-        addressNotes: priv?.address_notes ?? stored.addressNotes,
+        addressNotes: cleanAddress,
       };
     } catch {
       return stored;
@@ -353,7 +377,6 @@ export async function saveAccountProfileDetails(
 }
 
 export async function loadTechnicianWorkspaceProfile(userId?: string | null): Promise<Technician> {
-  const defaultTech = fixtureTechnicians[0];
   const stored = await getStoredJson<Technician | null>(
     scopeKey(TECH_WORKSPACE_KEY, userId),
     null,
@@ -364,9 +387,74 @@ export async function loadTechnicianWorkspaceProfile(userId?: string | null): Pr
       theme: normalizeProfileTheme({ preset: stored.theme }),
     };
   }
+
+  if (supabase && userId && !userId.startsWith('demo-')) {
+    try {
+      const [{ data: techData }, { data: profileData }] = await Promise.all([
+        supabase
+          .from('technician_profiles')
+          .select('*')
+          .eq('user_id', userId)
+          .maybeSingle(),
+        supabase
+          .from('profiles')
+          .select('display_name, avatar_path')
+          .eq('id', userId)
+          .maybeSingle(),
+      ]);
+
+      if (techData || profileData) {
+        return {
+          id: userId,
+          displayName:
+            profileData?.display_name ||
+            techData?.business_name ||
+            'Teknisi Cepat',
+          businessName: techData?.business_name || undefined,
+          headline: techData?.headline || undefined,
+          bio: techData?.bio || undefined,
+          avatarUri: profileData?.avatar_path || undefined,
+          yearsExperience: techData?.years_experience ?? 0,
+          verified: Boolean(techData?.is_verified),
+          available: techData?.is_available ?? true,
+          averageRating: techData?.average_rating ?? 0,
+          reviewCount: techData?.review_count ?? 0,
+          completedJobsCount: techData?.completed_jobs_count ?? 0,
+          services: [],
+          serviceAreas: ['Jakarta Selatan'],
+          portfolio: [],
+          reviews: [],
+          availabilitySchedule: [],
+          theme: 'sand',
+        };
+      }
+    } catch {
+      // Return clean fallback
+    }
+  }
+
+  if (shouldUseFixtures() && (!userId || userId.startsWith('demo-'))) {
+    const defaultTech = fixtureTechnicians[0];
+    return {
+      ...defaultTech,
+      availabilitySchedule: defaultTech.availabilitySchedule ?? [],
+    };
+  }
+
   return {
-    ...defaultTech,
-    availabilitySchedule: defaultTech.availabilitySchedule ?? [],
+    id: userId || 'clean-technician',
+    displayName: 'Teknisi Cepat',
+    verified: false,
+    available: true,
+    averageRating: 0,
+    reviewCount: 0,
+    completedJobsCount: 0,
+    services: [],
+    serviceAreas: ['Jakarta Selatan'],
+    portfolio: [],
+    reviews: [],
+    availabilitySchedule: [],
+    theme: 'sand',
   };
 }
 
@@ -474,7 +562,7 @@ export async function loadAccountDeletionRequest(
 export async function loadBookings(): Promise<BookingRecord[]> {
   const localBookings = await getStoredJson<BookingRecord[]>(
     BOOKINGS_STORAGE_KEY,
-    fixtureBookings,
+    shouldUseFixtures() ? fixtureBookings : [],
   );
 
   if (!shouldUseFixtures() && supabase) {
@@ -486,13 +574,35 @@ export async function loadBookings(): Promise<BookingRecord[]> {
           .from('bookings')
           .select('*')
           .order('created_at', { ascending: false });
-        if (!error && Array.isArray(data) && data.length > 0) {
+        if (!error && Array.isArray(data)) {
+          const userIds = Array.from(
+            new Set([
+              ...data.map((r) => String(r.customer_user_id ?? '')),
+              ...data.map((r) => String(r.technician_user_id ?? '')),
+            ]),
+          ).filter(Boolean);
+
+          let nameById = new Map<string, string>();
+          if (userIds.length > 0) {
+            try {
+              const { data: pData } = await supabase
+                .from('profiles')
+                .select('id, display_name')
+                .in('id', userIds);
+              if (Array.isArray(pData)) {
+                nameById = new Map(pData.map((p) => [String(p.id), String(p.display_name)]));
+              }
+            } catch {}
+          }
+
           return data.map((row: Record<string, unknown>) => ({
             id: String(row.id ?? ''),
             customerUserId: String(row.customer_user_id ?? ''),
-            customerName: 'Pelanggan Cepat',
+            customerName:
+              nameById.get(String(row.customer_user_id)) || 'Pelanggan Cepat',
             technicianUserId: String(row.technician_user_id ?? ''),
-            technicianName: 'Teknisi Cepat',
+            technicianName:
+              nameById.get(String(row.technician_user_id)) || 'Teknisi Cepat',
             technicianServiceId: row.technician_service_id ? String(row.technician_service_id) : undefined,
             serviceId: row.service_id ? String(row.service_id) : undefined,
             serviceNameSnapshot: String(row.service_name_snapshot ?? 'Layanan Rumah'),
@@ -519,7 +629,14 @@ export async function loadBookings(): Promise<BookingRecord[]> {
     }
   }
 
-  return localBookings;
+  return shouldUseFixtures()
+    ? localBookings
+    : localBookings.filter(
+        (b) =>
+          !b.id.startsWith('mock-') &&
+          !b.id.startsWith('booking-seed') &&
+          b.customerName !== 'Saboor',
+      );
 }
 
 export async function loadBookingById(bookingId: string): Promise<BookingRecord | null> {

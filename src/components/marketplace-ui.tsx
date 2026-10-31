@@ -11,9 +11,10 @@ import {
 import { colors, radii, spacing } from '../theme/tokens';
 import { localizeArea, useLanguage } from '../i18n/locale';
 import type { DataSource, Technician } from '../types/marketplace';
-import { AppNavigationBar } from './AppNavigationBar';
+import { Avatar } from './Avatar';
+import { AppNavigationBar, Header } from './Header';
 
-export { AppNavigationBar };
+export { Avatar, AppNavigationBar, Header };
 
 export function SourceBadge({ source }: { source: DataSource }) {
   const { t } = useLanguage();
@@ -112,40 +113,6 @@ function getGlyphPalette(key: string, selected: boolean) {
   return { bg: colors.greenSoft, fg: colors.greenDark, accent: colors.orange, border: '#D4E4DA' };
 }
 
-export function Avatar({
-  uri,
-  name,
-  size = 76,
-}: {
-  uri?: string;
-  name: string;
-  size?: number;
-}) {
-  const [imageFailed, setImageFailed] = useState(false);
-  const trimmed = name.trim();
-  const singleChar = (trimmed.charAt(0) || 'C').toLocaleUpperCase('id-ID');
-
-  return (
-    <View
-      accessible
-      accessibilityLabel={`Foto profil ${name}`}
-      style={[styles.avatar, { width: size, height: size, borderRadius: size / 2 }]}
-    >
-      {uri && !imageFailed ? (
-        <Image
-          source={{ uri }}
-          style={[styles.avatarImage, { width: size, height: size, borderRadius: size / 2 }]}
-          resizeMode="cover"
-          onError={() => setImageFailed(true)}
-        />
-      ) : (
-        <Text style={[styles.avatarInitials, { fontSize: Math.round(size * 0.42) }]}>
-          {singleChar}
-        </Text>
-      )}
-    </View>
-  );
-}
 
 export function Rating({ value, count }: { value: number; count: number }) {
   const { language, t } = useLanguage();

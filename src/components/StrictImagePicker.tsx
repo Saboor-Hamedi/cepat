@@ -177,6 +177,7 @@ export function StrictImagePicker({
 
     setBusyMode(mode);
     try {
+      await new Promise((resolve) => setTimeout(resolve, 150));
       if (mode === 'gallery') {
         if (nativePicker.requestMediaLibraryPermissionsAsync) {
           const perm = await nativePicker.requestMediaLibraryPermissionsAsync(false);
@@ -195,13 +196,20 @@ export function StrictImagePicker({
           );
           return;
         }
-        const res = await nativePicker.launchImageLibraryAsync({
-          mediaTypes: ['images'],
-          allowsEditing: true,
-          aspect: [1, 1],
-          quality: 0.85,
-          base64: false,
-        });
+        let res: NativeImagePickerResult;
+        try {
+          res = await nativePicker.launchImageLibraryAsync({
+            mediaTypes: ['images'],
+            allowsEditing: true,
+            aspect: [1, 1],
+            quality: 0.8,
+          });
+        } catch {
+          res = await nativePicker.launchImageLibraryAsync({
+            allowsEditing: false,
+            quality: 0.8,
+          });
+        }
         if (res.canceled || res.cancelled) return;
         const asset = res.assets?.[0] ?? (res.uri ? { uri: res.uri, width: res.width, height: res.height, type: res.type } : null);
         if (!asset?.uri) return;
@@ -252,13 +260,20 @@ export function StrictImagePicker({
           );
           return;
         }
-        const res = await nativePicker.launchCameraAsync({
-          mediaTypes: ['images'],
-          allowsEditing: true,
-          aspect: [1, 1],
-          quality: 0.85,
-          base64: false,
-        });
+        let res: NativeImagePickerResult;
+        try {
+          res = await nativePicker.launchCameraAsync({
+            mediaTypes: ['images'],
+            allowsEditing: true,
+            aspect: [1, 1],
+            quality: 0.8,
+          });
+        } catch {
+          res = await nativePicker.launchCameraAsync({
+            allowsEditing: false,
+            quality: 0.8,
+          });
+        }
         if (res.canceled || res.cancelled) return;
         const asset = res.assets?.[0] ?? (res.uri ? { uri: res.uri, width: res.width, height: res.height, type: res.type } : null);
         if (!asset?.uri) return;

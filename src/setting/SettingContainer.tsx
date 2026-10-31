@@ -5,6 +5,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { useAuth } from '../auth/AuthProvider';
 import { AppNavigationBar } from '../components/marketplace-ui';
+import { useAppearance } from '../context/AppearanceContext';
 import {
   DEFAULT_PREFERENCES,
   deleteCustomerAddress,
@@ -25,7 +26,6 @@ import { colors, spacing } from '../theme/tokens';
 import type { SavedAddress, Technician, UserPreferences } from '../types/marketplace';
 import { SettingAccount } from './account/SettingAccount';
 import { SettingPassword } from './account/SettingPassword';
-import { SettingProfile } from './account/SettingProfile';
 import { SettingAppearance } from './appearance/SettingAppearance';
 import { SettingHeader, type SettingSectionKey } from './components/SettingHeader';
 import { SettingLanguage } from './language/SettingLanguage';
@@ -34,10 +34,10 @@ import { SettingSecurity } from './security/SettingSecurity';
 
 export function SettingContainer() {
   const { language, t } = useLanguage();
+  const { palette } = useAppearance();
   const { user, effectiveRole, updateUserProfile } = useAuth();
   const params = useLocalSearchParams<{ tab?: string }>();
   const initialTab: SettingSectionKey =
-    params.tab === 'profile' ||
     params.tab === 'password' ||
     params.tab === 'notifications' ||
     params.tab === 'language' ||
@@ -75,7 +75,6 @@ export function SettingContainer() {
   const visibleSection: SettingSectionKey =
     !isAuthenticated &&
     activeSection !== 'account' &&
-    activeSection !== 'profile' &&
     activeSection !== 'language' &&
     activeSection !== 'appearance'
       ? 'account'
@@ -208,11 +207,13 @@ export function SettingContainer() {
   };
 
   const activeBg =
-    preferences.appearance === 'warm'
-      ? '#F4EFE6'
-      : preferences.appearance === 'highContrast'
-        ? '#FFFFFF'
-        : colors.paper;
+    preferences.appearance === 'dark' || palette.background === '#18191A'
+      ? palette.background
+      : preferences.appearance === 'warm'
+        ? '#F4EFE6'
+        : preferences.appearance === 'highContrast'
+          ? '#FFFFFF'
+          : palette.background;
 
   return (
     <SafeAreaView style={[styles.safeArea, { backgroundColor: activeBg }]} edges={['top', 'bottom']}>
@@ -246,21 +247,6 @@ export function SettingContainer() {
                 }}
               />
             </>
-          )}
-
-          {isAuthenticated && visibleSection === 'profile' && (
-            <SettingProfile
-              displayName={displayName}
-              avatarUri={avatarUri}
-              onChangeDisplayName={setDisplayName}
-              onChangeAvatarUri={setAvatarUri}
-              onSavePublicProfile={handleSavePublicProfile}
-              profileFeedback={profileFeedback}
-              isTechnicianRole={isTechnicianRole}
-              techProfile={techProfile}
-              onSaveTechProfile={handleSaveTechProfile}
-              techFeedback={techFeedback}
-            />
           )}
 
           {visibleSection === 'language' && <SettingLanguage />}

@@ -15,6 +15,7 @@ import {
   LoadingState,
   TechnicianCard,
 } from '../components/marketplace-ui';
+import { useAppearance } from '../context/AppearanceContext';
 import { formatRupiah, loadTechnicians } from '../data/marketplaceRepository';
 import {
   isChatEnabledForStatus,
@@ -37,6 +38,7 @@ type CustomerHubTab = 'current' | 'history' | 'messages' | 'saved' | 'reviews_re
 
 export default function CustomerBookingsScreen() {
   const { language, t } = useLanguage();
+  const { palette } = useAppearance();
   const { user, effectiveRole } = useAuth();
   const [tab, setTab] = useState<CustomerHubTab>('current');
   const [loading, setLoading] = useState(true);
@@ -94,11 +96,29 @@ export default function CustomerBookingsScreen() {
     [bookings],
   );
 
-  const isNonCustomerAccount =
-    Boolean(user) && (effectiveRole === 'technician' || effectiveRole === 'admin');
+  const uniqueReviews = useMemo(() => {
+    const seen = new Set<string>();
+    return reviews.filter((r) => {
+      if (seen.has(r.id)) return false;
+      seen.add(r.id);
+      return true;
+    });
+  }, [reviews]);
+
+  const uniqueReports = useMemo(() => {
+    const seen = new Set<string>();
+    return reports.filter((r) => {
+      if (seen.has(r.id)) return false;
+      seen.add(r.id);
+      return true;
+    });
+  }, [reports]);
 
   return (
-    <SafeAreaView style={styles.safeArea} edges={['top', 'bottom']}>
+    <SafeAreaView
+      style={[styles.safeArea, { backgroundColor: palette.background }]}
+      edges={['top', 'bottom']}
+    >
       <AppNavigationBar activeTab="bookings" />
       <ScrollView contentContainerStyle={styles.scrollContent}>
         <View style={styles.container}>
@@ -107,41 +127,6 @@ export default function CustomerBookingsScreen() {
             {t('dashboard.customerTitle')}
           </Text>
 
-          {isNonCustomerAccount ? (
-            <EmptyState
-              title={
-                effectiveRole === 'admin'
-                  ? language === 'en'
-                    ? 'Admin Account Active'
-                    : 'Akun Admin Aktif'
-                  : language === 'en'
-                    ? 'Technician Account Active'
-                    : 'Akun Teknisi Aktif'
-              }
-              description={
-                effectiveRole === 'admin'
-                  ? language === 'en'
-                    ? 'Customer bookings are separated from Admin operations. Open the Admin Console to oversee platform bookings, reports, and accounts.'
-                    : 'Pesanan pelanggan dipisahkan dari operasi Admin. Buka Konsol Admin untuk mengawasi pesanan, laporan, dan akun.'
-                  : language === 'en'
-                    ? 'Customer bookings are separated from your Technician Workspace. Open Technician Workspace to manage incoming service requests and jobs.'
-                    : 'Halaman pesanan pelanggan dipisahkan dari Ruang Kerja Teknisi. Buka Ruang Kerja Teknisi untuk mengelola permintaan layanan.'
-              }
-              actionLabel={
-                effectiveRole === 'admin'
-                  ? language === 'en'
-                    ? 'Open Admin Console'
-                    : 'Buka Konsol Admin'
-                  : language === 'en'
-                    ? 'Open Technician Workspace'
-                    : 'Buka Ruang Kerja Teknisi'
-              }
-              onAction={() =>
-                router.replace(effectiveRole === 'admin' ? '/admin' : '/technician-dashboard')
-              }
-            />
-          ) : (
-            <>
           <ScrollView
             horizontal
             showsHorizontalScrollIndicator={false}
@@ -271,34 +256,51 @@ export default function CustomerBookingsScreen() {
               />
             )
           ) : (
-            <View style={styles.sectionList}>
-              <Text style={styles.sectionSubheading}>
-                {language === 'en' ? 'Your Submitted Reviews' : 'Ulasan yang Kamu Kirim'} (
-                {reviews.length})
-              </Text>
-              {reviews.map((rev) => (
-                <View key={rev.id} style={styles.card}>
-                  <Text style={styles.cardTitle}>★ {rev.rating.toFixed(1)}</Text>
-                  <Text style={styles.cardSub}>{rev.comment}</Text>
-                </View>
-              ))}
+            uniqueReviews.length === 0 && uniqueReports.length === 0 ? (
+              <EmptyState
+                title={language === 'en' ? 'No reviews or reports yet' : 'Belum ada ulasan atau laporan'}
+                description={
+                  language === 'en'
+                    ? 'Your submitted service reviews and dispute reports will appear here.'
+                    : 'Ulasan layanan dan laporan pengaduan yang Anda kirim akan muncul di sini.'
+                }
+              />
+            ) : (
+              <View style={styles.sectionList}>
+                {uniqueReviews.length > 0 && (
+                  <>
+                    <Text style={styles.sectionSubheading}>
+                      {language === 'en' ? 'Your Submitted Reviews' : 'Ulasan yang Kamu Kirim'} (
+                      {uniqueReviews.length})
+                    </Text>
+                    {uniqueReviews.map((rev) => (
+                      <View key={rev.id} style={styles.card}>
+                        <Text style={styles.cardTitle}>★ {rev.rating.toFixed(1)}</Text>
+                        <Text style={styles.cardSub}>{rev.comment}</Text>
+                      </View>
+                    ))}
+                  </>
+                )}
 
-              <Text style={styles.sectionSubheading}>
-                {language === 'en' ? 'Your Submitted Reports' : 'Laporan Kendala'} (
-                {reports.length})
-              </Text>
-              {reports.map((rep) => (
-                <View key={rep.id} style={styles.card}>
-                  <Text style={styles.cardTitle}>
-                    {rep.technicianName} · {rep.category}
-                  </Text>
-                  <Text style={styles.cardSub}>{rep.description}</Text>
-                  <Text style={styles.reportStatusBadge}>{rep.status.toUpperCase()}</Text>
-                </View>
-              ))}
-            </View>
-          )}
-            </>
+                {uniqueReports.length > 0 && (
+                  <>
+                    <Text style={styles.sectionSubheading}>
+                      {language === 'en' ? 'Your Submitted Reports' : 'Laporan Kendala'} (
+                      {uniqueReports.length})
+                    </Text>
+                    {uniqueReports.map((rep) => (
+                      <View key={rep.id} style={styles.card}>
+                        <Text style={styles.cardTitle}>
+                          {rep.technicianName} · {rep.category}
+                        </Text>
+                        <Text style={styles.cardSub}>{rep.description}</Text>
+                        <Text style={styles.reportStatusBadge}>{rep.status.toUpperCase()}</Text>
+                      </View>
+                    ))}
+                  </>
+                )}
+              </View>
+            )
           )}
         </View>
       </ScrollView>
@@ -315,6 +317,8 @@ function BookingListItem({
   language: 'id' | 'en';
   t: (key: string) => string;
 }) {
+  const isCompleted = booking.status === 'completed';
+
   return (
     <Pressable
       accessibilityRole="button"
@@ -324,8 +328,10 @@ function BookingListItem({
     >
       <View style={styles.cardTop}>
         <Text style={styles.cardTitle}>{booking.serviceNameSnapshot}</Text>
-        <View style={styles.statusChip}>
-          <Text style={styles.statusChipText}>{t(`booking.status.${booking.status}`)}</Text>
+        <View style={[styles.statusChip, isCompleted && styles.statusChipCompleted]}>
+          <Text style={[styles.statusChipText, isCompleted && styles.statusChipCompletedText]}>
+            {isCompleted ? '✓ ' : ''}{t(`booking.status.${booking.status}`)}
+          </Text>
         </View>
       </View>
       <Text style={styles.cardProvider}>
@@ -402,7 +408,16 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10,
     paddingVertical: 4,
   },
+  statusChipCompleted: {
+    backgroundColor: '#E6F4EA',
+    borderColor: '#34A853',
+    borderWidth: 1,
+  },
   statusChipText: { color: colors.greenDark, fontSize: 10, fontWeight: '800' },
+  statusChipCompletedText: {
+    color: '#137333',
+    fontWeight: '800',
+  },
   cardProvider: { color: colors.greenDark, fontSize: 13, fontWeight: '700', marginTop: 4 },
   cardSub: { color: colors.muted, fontSize: 12, marginTop: 4 },
   cardFooter: {

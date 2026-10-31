@@ -1,5 +1,6 @@
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
+import { useAppearance } from '../../context/AppearanceContext';
 import { useLanguage } from '../../i18n/locale';
 import { colors, radii, spacing } from '../../theme/tokens';
 import type { UserPreferences } from '../../types/marketplace';
@@ -20,6 +21,18 @@ export function SettingAppearance({
   feedback,
 }: SettingAppearanceProps) {
   const { language, t } = useLanguage();
+  const { themeMode, largeText, reduceMotion, setThemeMode, setLargeText, setReduceMotion } =
+    useAppearance();
+
+  const currentTheme = preferences.appearance || themeMode;
+  const currentLargeText =
+    typeof preferences.accessibility?.largeText === 'boolean'
+      ? preferences.accessibility.largeText
+      : largeText;
+  const currentReduceMotion =
+    typeof preferences.accessibility?.reduceMotion === 'boolean'
+      ? preferences.accessibility.reduceMotion
+      : reduceMotion;
 
   const modes: { key: UserPreferences['appearance']; label: string }[] = [
     { key: 'light', label: language === 'en' ? 'Light' : 'Terang' },
@@ -43,13 +56,18 @@ export function SettingAppearance({
       </Text>
       <View style={styles.chipRow}>
         {modes.map((item) => {
-          const selected = preferences.appearance === item.key;
+          const selected = currentTheme === item.key;
           return (
             <Pressable
               key={item.key}
               accessibilityRole="button"
               accessibilityState={{ selected }}
-              onPress={() => onUpdateAppearance(item.key)}
+              onPress={() => {
+                if (item.key === 'light' || item.key === 'dark' || item.key === 'system') {
+                  void setThemeMode(item.key);
+                }
+                onUpdateAppearance(item.key);
+              }}
               style={[styles.chip, selected && styles.chipSelected]}
               testID={`pref-appearance-${item.key}`}
             >
@@ -63,37 +81,41 @@ export function SettingAppearance({
 
       <SettingItem
         accessibilityRole="switch"
-        active={preferences.accessibility.largeText}
+        active={currentLargeText}
         description={
           language === 'en'
             ? 'Increase text legibility across service descriptions and cards.'
             : 'Perbesar keterbacaan teks pada deskripsi layanan dan kartu.'
         }
         label={language === 'en' ? 'Larger readable text' : 'Teks lebih besar & mudah dibaca'}
-        onPress={() =>
+        onPress={() => {
+          const next = !currentLargeText;
+          void setLargeText(next);
           onUpdateAccessibility({
             ...preferences.accessibility,
-            largeText: !preferences.accessibility.largeText,
-          })
-        }
+            largeText: next,
+          });
+        }}
         testID="pref-a11y-large-text"
       />
 
       <SettingItem
         accessibilityRole="switch"
-        active={preferences.accessibility.reduceMotion}
+        active={currentReduceMotion}
         description={
           language === 'en'
             ? 'Minimize screen transitions and decorative animations.'
             : 'Kurangi transisi layar dan animasi dekoratif.'
         }
         label={language === 'en' ? 'Reduce screen motion' : 'Kurangi animasi layar'}
-        onPress={() =>
+        onPress={() => {
+          const next = !currentReduceMotion;
+          void setReduceMotion(next);
           onUpdateAccessibility({
             ...preferences.accessibility,
-            reduceMotion: !preferences.accessibility.reduceMotion,
-          })
-        }
+            reduceMotion: next,
+          });
+        }}
         testID="pref-a11y-reduce-motion"
       />
 

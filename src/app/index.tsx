@@ -12,6 +12,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { useAuth } from '../auth/AuthProvider';
+import { useAppearance } from '../context/AppearanceContext';
 import {
   AppNavigationBar,
   CategoryPill,
@@ -66,6 +67,7 @@ interface PopularTaskItem {
 
 export default function MarketplaceScreen() {
   const { language, t } = useLanguage();
+  const { palette } = useAppearance();
   const { user } = useAuth();
   const [categories, setCategories] = useState<ServiceCategory[]>([]);
   const [technicians, setTechnicians] = useState<Technician[]>([]);
@@ -466,24 +468,26 @@ export default function MarketplaceScreen() {
       )}
 
       {/* Recommended Technicians Header */}
-      <SectionTitle
-        eyebrow={
-          area === 'Semua area'
-            ? t('home.featuredEyebrow')
-            : t('home.areaEyebrow', {
-                area: localizeArea(area, language).toLocaleUpperCase(
-                  language === 'id' ? 'id-ID' : 'en-US',
-                ),
-              })
-        }
-        title={query ? t('home.searchResultsTitle') : t('home.resultsTitle')}
-        trailing={`${visibleTechnicians.length}${hasMore ? '+' : ''} ${t('home.profiles')}`}
-      />
+      {visibleTechnicians.length > 0 && (
+        <SectionTitle
+          eyebrow={
+            area === 'Semua area'
+              ? t('home.featuredEyebrow')
+              : t('home.areaEyebrow', {
+                  area: localizeArea(area, language).toLocaleUpperCase(
+                    language === 'id' ? 'id-ID' : 'en-US',
+                  ),
+                })
+          }
+          title={query ? t('home.searchResultsTitle') : t('home.resultsTitle')}
+          trailing={`${visibleTechnicians.length}${hasMore ? '+' : ''} ${t('home.profiles')}`}
+        />
+      )}
     </View>
   );
 
   return (
-    <SafeAreaView style={styles.safeArea} edges={['top', 'bottom']}>
+    <SafeAreaView style={[styles.safeArea, { backgroundColor: palette.background }]} edges={['top', 'bottom']}>
       <AppNavigationBar activeTab="marketplace" />
       <FlatList
         contentContainerStyle={styles.listContent}

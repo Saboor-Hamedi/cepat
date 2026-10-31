@@ -1,5 +1,6 @@
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
+import { useAppearance } from '../../context/AppearanceContext';
 import { useLanguage } from '../../i18n/locale';
 import { colors, radii, spacing } from '../../theme/tokens';
 
@@ -24,9 +25,9 @@ export function SettingHeader({
   isAuthenticated,
 }: SettingHeaderProps) {
   const { language } = useLanguage();
+  const { palette } = useAppearance();
 
   const allTabs: { key: SettingSectionKey; label: string; authOnly?: boolean }[] = [
-    { key: 'profile', label: language === 'en' ? 'Profile' : 'Profil' },
     { key: 'account', label: language === 'en' ? 'Account' : 'Akun' },
     { key: 'language', label: language === 'en' ? 'Language' : 'Bahasa' },
     { key: 'appearance', label: language === 'en' ? 'Appearance' : 'Tampilan' },
@@ -59,10 +60,20 @@ export function SettingHeader({
               accessibilityRole="tab"
               accessibilityState={{ selected }}
               onPress={() => onSelectSection(tab.key)}
-              style={[styles.tabPill, selected && styles.tabPillSelected]}
+              style={[
+                styles.tabPill,
+                { backgroundColor: palette.pillBg },
+                selected && styles.tabPillSelected,
+              ]}
               testID={`setting-tab-${tab.key}`}
             >
-              <Text style={[styles.tabPillText, selected && styles.tabPillTextSelected]}>
+              <Text
+                style={[
+                  styles.tabPillText,
+                  { color: palette.pillText },
+                  selected && styles.tabPillTextSelected,
+                ]}
+              >
                 {tab.label}
               </Text>
             </Pressable>

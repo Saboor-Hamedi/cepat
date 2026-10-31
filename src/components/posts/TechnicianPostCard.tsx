@@ -279,6 +279,27 @@ export function TechnicianPostCard({
         </View>
       )}
 
+      {/* Direct Booking Shortcut for Customers & Admin */}
+      {showAuthorHeader && !isOwner && (
+        <View style={styles.postBookingRow}>
+          <Pressable
+            accessibilityRole="button"
+            onPress={() =>
+              router.push({
+                pathname: '/booking/[id]',
+                params: { id: post.technicianId },
+              })
+            }
+            style={styles.postBookBtn}
+            testID={`post-book-btn-${post.id}`}
+          >
+            <Text style={styles.postBookBtnText}>
+              {language === 'en' ? 'Book Service' : 'Pesan Layanan'} →
+            </Text>
+          </Pressable>
+        </View>
+      )}
+
       {/* Confirmation Modal for Post Deletion */}
       <Modal
         animationType="fade"
@@ -456,6 +477,28 @@ const styles = StyleSheet.create({
     color: colors.ink,
     fontSize: 12,
     fontWeight: '700',
+  },
+  postBookingRow: {
+    borderTopColor: '#F1F5F9',
+    borderTopWidth: 1,
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    marginTop: spacing.sm,
+    paddingTop: spacing.xs,
+  },
+  postBookBtn: {
+    alignItems: 'center',
+    backgroundColor: colors.greenSoft,
+    borderColor: colors.green,
+    borderRadius: radii.pill,
+    borderWidth: 1,
+    paddingHorizontal: 14,
+    paddingVertical: 6,
+  },
+  postBookBtnText: {
+    color: colors.greenDark,
+    fontSize: 12,
+    fontWeight: '800',
   },
   ownerDeleteBtn: {
     backgroundColor: '#FCE9E7',

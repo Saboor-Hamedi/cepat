@@ -2,6 +2,7 @@ import { requireOptionalNativeModule } from 'expo-modules-core';
 import { useState } from 'react';
 import {
   ActivityIndicator,
+  Alert,
   Modal,
   Platform,
   Pressable,
@@ -11,6 +12,7 @@ import {
 } from 'react-native';
 
 import { Avatar } from '../components/marketplace-ui';
+import { useAppearance } from '../context/AppearanceContext';
 import { useLanguage } from '../i18n/locale';
 import { colors, radii, spacing } from '../theme/tokens';
 import {
@@ -18,25 +20,148 @@ import {
   type ImageCandidateInput,
 } from '../utils/imageValidator';
 
+interface NativeImageAsset {
+  uri: string;
+  fileName?: string | null;
+  mimeType?: string | null;
+  fileSize?: number | null;
+  width?: number | null;
+  height?: number | null;
+  type?: string | null;
+}
+
+interface NativePickerResult {
+  canceled?: boolean;
+  cancelled?: boolean;
+  assets?: NativeImageAsset[];
+  uri?: string;
+}
+
 interface ExponentImagePickerModule {
-  requestMediaLibraryPermissionsAsync?: (writeOnly?: boolean) => Promise<{ status?: string; granted?: boolean }>;
+  requestMediaLibraryPermissionsAsync?: (
+    writeOnly?: boolean,
+  ) => Promise<{ status?: string; granted?: boolean }>;
   requestCameraPermissionsAsync?: () => Promise<{ status?: string; granted?: boolean }>;
-  launchImageLibraryAsync?: (options: Record<string, unknown>) => Promise<{
-    canceled?: boolean;
-    cancelled?: boolean;
-    assets?: { uri: string; fileName?: string | null; mimeType?: string | null; fileSize?: number | null }[];
-  }>;
-  launchCameraAsync?: (options: Record<string, unknown>) => Promise<{
-    canceled?: boolean;
-    cancelled?: boolean;
-    assets?: { uri: string; fileName?: string | null; mimeType?: string | null; fileSize?: number | null }[];
-  }>;
+  launchImageLibraryAsync?: (
+    options: Record<string, unknown>,
+  ) => Promise<NativePickerResult>;
+  launchCameraAsync?: (
+    options: Record<string, unknown>,
+  ) => Promise<NativePickerResult>;
 }
 
 function getNativePicker(): ExponentImagePickerModule | null {
   try {
     return requireOptionalNativeModule<ExponentImagePickerModule>('ExponentImagePicker');
   } catch {
+    return null;
+  }
+}
+
+export async function pickImageSafely(
+  source: 'camera' | 'gallery',
+): Promise<ImageCandidateInput | null> {
+  const picker = getNativePicker();
+  if (!picker) {
+    return null;
+  }
+
+  try {
+    if (source === 'camera') {
+      if (picker.requestCameraPermissionsAsync) {
+        const perm = await picker.requestCameraPermissionsAsync();
+        const status = perm?.status ?? (perm?.granted ? 'granted' : 'denied');
+        if (status !== 'granted' && perm?.granted !== true) {
+          Alert.alert(
+            'Izin Kamera Diperlukan',
+            'Aktifkan izin kamera di pengaturan perangkat Anda.',
+          );
+          return null;
+        }
+      }
+
+      if (!picker.launchCameraAsync) return null;
+
+      let result: NativePickerResult | undefined;
+      try {
+        result = await picker.launchCameraAsync({
+          mediaTypes: ['images'],
+          allowsEditing: true,
+          aspect: [1, 1],
+          quality: 0.8,
+        });
+      } catch {
+        // Fallback on Android/Xiaomi devices when cropper or mediaTypes option rejects
+        result = await picker.launchCameraAsync({
+          allowsEditing: false,
+          quality: 0.8,
+        });
+      }
+
+      if (!result || result.canceled || result.cancelled) return null;
+      const asset =
+        result.assets?.[0] ?? (result.uri ? { uri: result.uri } : null);
+      if (!asset?.uri) return null;
+
+      return {
+        uri: asset.uri,
+        fileName: asset.fileName ?? 'camera-photo.jpg',
+        mimeType: asset.mimeType ?? 'image/jpeg',
+        fileSize: asset.fileSize ?? 250000,
+        width: asset.width ?? 800,
+        height: asset.height ?? 800,
+      };
+    } else {
+      if (picker.requestMediaLibraryPermissionsAsync) {
+        const perm = await picker.requestMediaLibraryPermissionsAsync(false);
+        const status = perm?.status ?? (perm?.granted ? 'granted' : 'denied');
+        if (status !== 'granted' && perm?.granted !== true) {
+          Alert.alert(
+            'Izin Galeri Diperlukan',
+            'Aktifkan izin galeri untuk memilih foto.',
+          );
+          return null;
+        }
+      }
+
+      if (!picker.launchImageLibraryAsync) return null;
+
+      let result: NativePickerResult | undefined;
+      try {
+        result = await picker.launchImageLibraryAsync({
+          mediaTypes: ['images'],
+          allowsEditing: true,
+          aspect: [1, 1],
+          quality: 0.8,
+        });
+      } catch {
+        // Fallback on Android/Xiaomi devices when cropper or mediaTypes option rejects
+        result = await picker.launchImageLibraryAsync({
+          allowsEditing: false,
+          quality: 0.8,
+        });
+      }
+
+      if (!result || result.canceled || result.cancelled) return null;
+      const asset =
+        result.assets?.[0] ?? (result.uri ? { uri: result.uri } : null);
+      if (!asset?.uri) return null;
+
+      return {
+        uri: asset.uri,
+        fileName: asset.fileName ?? 'gallery-photo.jpg',
+        mimeType: asset.mimeType ?? 'image/jpeg',
+        fileSize: asset.fileSize ?? 250000,
+        width: asset.width ?? 800,
+        height: asset.height ?? 800,
+      };
+    }
+  } catch (error) {
+    console.warn('ImagePicker error:', error);
+    Alert.alert(
+      'Gagal Memuat Foto',
+      'Terjadi kesalahan saat membuka galeri atau kamera. Coba lagi.',
+    );
     return null;
   }
 }
@@ -61,6 +186,7 @@ export function ProfileAvatar({
   testID = 'profile-avatar',
 }: ProfileAvatarProps) {
   const { language } = useLanguage();
+  const { palette, reduceMotion } = useAppearance();
   const [menuVisible, setMenuVisible] = useState(false);
   const [busy, setBusy] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -69,11 +195,11 @@ export function ProfileAvatar({
     setErrorMessage(null);
     const result = validateStrictImageAsset(candidate);
     if (!result.valid || !result.sanitizedUri) {
-      setErrorMessage(
+      const msg =
         language === 'en'
-          ? result.errorMessageEn ?? 'Please select a valid image (JPG, PNG, WEBP).'
-          : result.errorMessageId ?? 'Silakan pilih file gambar valid (JPG, PNG, WEBP).',
-      );
+          ? result.errorMessageEn ?? 'Please select a valid image (JPG, PNG, WEBP, <= 5 MB).'
+          : result.errorMessageId ?? 'Silakan pilih file gambar valid (JPG, PNG, WEBP, maks 5 MB).';
+      setErrorMessage(msg);
       return;
     }
     setMenuVisible(false);
@@ -82,6 +208,7 @@ export function ProfileAvatar({
 
   const handlePick = async (mode: 'gallery' | 'camera') => {
     setErrorMessage(null);
+
     if (customPickerLauncher) {
       try {
         setBusy(true);
@@ -96,6 +223,11 @@ export function ProfileAvatar({
       }
       return;
     }
+
+    // Always close the action sheet / dropdown modal first and wait 150ms
+    // before invoking the native picker on Android/Xiaomi devices.
+    setMenuVisible(false);
+    await new Promise((resolve) => setTimeout(resolve, 150));
 
     if (Platform.OS === 'web' && typeof document !== 'undefined') {
       const input = document.createElement('input');
@@ -128,7 +260,6 @@ export function ProfileAvatar({
 
     const picker = getNativePicker();
     if (!picker) {
-      // Direct mock/fallback candidate
       applyCandidate({
         uri: `file:///profile-${mode}-${Date.now()}.jpg`,
         fileName: `profile-${mode}.jpg`,
@@ -140,49 +271,10 @@ export function ProfileAvatar({
 
     setBusy(true);
     try {
-      if (mode === 'gallery') {
-        const perm = await picker.requestMediaLibraryPermissionsAsync?.(false);
-        if (perm && !perm.granted) {
-          setErrorMessage(language === 'en' ? 'Gallery permission denied.' : 'Izin galeri ditolak.');
-          return;
-        }
-        const res = await picker.launchImageLibraryAsync?.({
-          mediaTypes: 'images',
-          allowsEditing: true,
-          aspect: [1, 1],
-          quality: 0.85,
-        });
-        if (res && !res.canceled && res.assets?.[0]) {
-          applyCandidate({
-            uri: res.assets[0].uri,
-            fileName: res.assets[0].fileName,
-            mimeType: res.assets[0].mimeType,
-            fileSize: res.assets[0].fileSize,
-          });
-        }
-      } else {
-        const perm = await picker.requestCameraPermissionsAsync?.();
-        if (perm && !perm.granted) {
-          setErrorMessage(language === 'en' ? 'Camera permission denied.' : 'Izin kamera ditolak.');
-          return;
-        }
-        const res = await picker.launchCameraAsync?.({
-          mediaTypes: 'images',
-          allowsEditing: true,
-          aspect: [1, 1],
-          quality: 0.85,
-        });
-        if (res && !res.canceled && res.assets?.[0]) {
-          applyCandidate({
-            uri: res.assets[0].uri,
-            fileName: res.assets[0].fileName,
-            mimeType: res.assets[0].mimeType,
-            fileSize: res.assets[0].fileSize,
-          });
-        }
+      const candidate = await pickImageSafely(mode);
+      if (candidate) {
+        applyCandidate(candidate);
       }
-    } catch (err: unknown) {
-      setErrorMessage(err instanceof Error ? err.message : 'Photo selection failed.');
     } finally {
       setBusy(false);
     }
@@ -217,7 +309,6 @@ export function ProfileAvatar({
       >
         <Avatar uri={uri} name={name} size={size} />
 
-        {/* Camera indicator badge for editable mode */}
         {editable && (
           <View
             style={[
@@ -235,9 +326,8 @@ export function ProfileAvatar({
         )}
       </Pressable>
 
-      {/* Sleek Bottom Sheet / Popup Menu (X.com / Twitter Style) */}
       <Modal
-        animationType="fade"
+        animationType={reduceMotion ? 'none' : 'fade'}
         transparent
         visible={menuVisible}
         onRequestClose={() => setMenuVisible(false)}
@@ -248,75 +338,96 @@ export function ProfileAvatar({
           testID={`${testID}-menu-backdrop`}
         >
           <Pressable
-            style={styles.sheetContent}
+            style={[
+              styles.menuSheet,
+              { backgroundColor: palette.surface, borderColor: palette.border },
+            ]}
             onPress={(e) => e.stopPropagation()}
-            testID={`${testID}-sheet-content`}
+            testID="avatar-action-menu"
           >
-            <View style={styles.dragHandle} />
-            <Text style={styles.sheetTitle}>
-              {language === 'en' ? 'Profile Picture' : 'Foto Profil'}
+            <View style={[styles.sheetHandle, { backgroundColor: palette.border }]} />
+            <Text style={[styles.sheetTitle, { color: palette.text }]}>
+              {language === 'en' ? 'Update Profile Photo' : 'Ubah Foto Profil'}
+            </Text>
+            <Text style={[styles.sheetSubtitle, { color: palette.textMuted }]}>
+              {language === 'en'
+                ? 'Choose a clear photo so customers and technicians recognize you.'
+                : 'Pilih foto yang jelas agar mudah dikenali.'}
             </Text>
 
-            {errorMessage ? (
-              <Text style={styles.sheetErrorText}>{errorMessage}</Text>
-            ) : null}
-
             {busy ? (
-              <View style={styles.busyContainer}>
-                <ActivityIndicator size="small" color={colors.greenDark} />
+              <View style={styles.busyWrap}>
+                <ActivityIndicator size="small" color={palette.primary} />
               </View>
             ) : (
-              <View style={styles.actionsList}>
-                {/* Take Photo action */}
+              <View style={styles.optionsList}>
                 <Pressable
                   accessibilityRole="button"
                   onPress={() => {
                     void handlePick('camera');
                   }}
-                  style={styles.actionItem}
+                  style={({ pressed }) => [
+                    styles.optionBtn,
+                    { backgroundColor: palette.surfaceElevated, borderColor: palette.border },
+                    pressed && styles.optionBtnPressed,
+                  ]}
                   testID="avatar-take-photo-btn"
                 >
-                  <Text style={styles.actionIcon}>📸</Text>
-                  <View style={styles.actionCopy}>
-                    <Text style={styles.actionLabel}>
+                  <View style={styles.optionIconCircle}>
+                    <Text style={styles.optionIcon}>📸</Text>
+                  </View>
+                  <View style={styles.optionTextWrap}>
+                    <Text style={[styles.optionTitle, { color: palette.text }]}>
                       {language === 'en' ? 'Take Photo' : 'Ambil Foto'}
                     </Text>
-                    <Text style={styles.actionSub}>
-                      {language === 'en' ? 'Use device camera' : 'Gunakan kamera perangkat'}
+                    <Text style={[styles.optionHint, { color: palette.textMuted }]}>
+                      {language === 'en' ? 'Use your camera now' : 'Gunakan kamera sekarang'}
                     </Text>
                   </View>
                 </Pressable>
 
-                {/* Choose from Gallery action */}
                 <Pressable
                   accessibilityRole="button"
                   onPress={() => {
                     void handlePick('gallery');
                   }}
-                  style={styles.actionItem}
+                  style={({ pressed }) => [
+                    styles.optionBtn,
+                    { backgroundColor: palette.surfaceElevated, borderColor: palette.border },
+                    pressed && styles.optionBtnPressed,
+                  ]}
                   testID="avatar-choose-gallery-btn"
                 >
-                  <Text style={styles.actionIcon}>🖼️</Text>
-                  <View style={styles.actionCopy}>
-                    <Text style={styles.actionLabel}>
+                  <View style={styles.optionIconCircle}>
+                    <Text style={styles.optionIcon}>🖼️</Text>
+                  </View>
+                  <View style={styles.optionTextWrap}>
+                    <Text style={[styles.optionTitle, { color: palette.text }]}>
                       {language === 'en' ? 'Choose from Gallery' : 'Pilih dari Galeri'}
                     </Text>
-                    <Text style={styles.actionSub}>
-                      {language === 'en' ? 'Upload from photo library' : 'Unggah dari galeri foto'}
+                    <Text style={[styles.optionHint, { color: palette.textMuted }]}>
+                      {language === 'en'
+                        ? 'Select an existing photo (JPG, PNG, WEBP)'
+                        : 'Pilih foto dari perangkat (JPG, PNG, WEBP)'}
                     </Text>
                   </View>
                 </Pressable>
               </View>
             )}
 
-            {/* Cancel Button */}
+            {errorMessage ? (
+              <View style={styles.errorBox} testID="avatar-picker-error">
+                <Text style={styles.errorText}>{errorMessage}</Text>
+              </View>
+            ) : null}
+
             <Pressable
               accessibilityRole="button"
               onPress={() => setMenuVisible(false)}
-              style={styles.cancelBtn}
+              style={[styles.cancelBtn, { borderColor: palette.border }]}
               testID="cancel-avatar-menu-btn"
             >
-              <Text style={styles.cancelBtnText}>
+              <Text style={[styles.cancelBtnText, { color: palette.text }]}>
                 {language === 'en' ? 'Cancel' : 'Batal'}
               </Text>
             </Pressable>
@@ -331,12 +442,10 @@ const styles = StyleSheet.create({
   container: {
     alignItems: 'center',
     justifyContent: 'center',
-    position: 'relative',
   },
   avatarTouch: {
     alignItems: 'center',
     justifyContent: 'center',
-    overflow: 'visible',
     position: 'relative',
   },
   avatarPressed: {
@@ -344,102 +453,128 @@ const styles = StyleSheet.create({
   },
   cameraBadge: {
     alignItems: 'center',
-    backgroundColor: '#0F172A',
+    backgroundColor: colors.greenDark,
     borderColor: '#FFFFFF',
     borderWidth: 2,
-    bottom: -2,
+    bottom: 0,
+     elevation: 3,
     justifyContent: 'center',
     position: 'absolute',
-    right: -2,
-    zIndex: 10,
+    right: 0,
   },
   cameraBadgeIcon: {
     fontSize: 11,
   },
   modalOverlay: {
-    alignItems: 'center',
-    backgroundColor: 'rgba(15, 23, 42, 0.45)',
+    backgroundColor: 'rgba(15, 20, 25, 0.55)',
     flex: 1,
     justifyContent: 'flex-end',
   },
-  sheetContent: {
+  menuSheet: {
+    alignSelf: 'center',
     backgroundColor: '#FFFFFF',
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
-    maxWidth: 480,
-    paddingBottom: spacing.xl,
-    paddingHorizontal: spacing.lg,
-    paddingTop: spacing.sm,
+    borderWidth: 1,
+    maxWidth: 520,
+    paddingBottom: spacing.xxl,
+    paddingHorizontal: spacing.xl,
+    paddingTop: spacing.md,
     width: '100%',
   },
-  dragHandle: {
+  sheetHandle: {
     alignSelf: 'center',
-    backgroundColor: '#CBD5E1',
-    borderRadius: 3,
+    backgroundColor: '#CFD9DE',
+    borderRadius: radii.pill,
     height: 4,
     marginBottom: spacing.md,
-    marginTop: 4,
-    width: 36,
+    width: 40,
   },
   sheetTitle: {
-    color: colors.ink,
-    fontSize: 16,
+    color: '#0F1419',
+    fontSize: 18,
     fontWeight: '800',
-    marginBottom: spacing.md,
-    textAlign: 'center',
+    letterSpacing: -0.3,
   },
-  sheetErrorText: {
+  sheetSubtitle: {
+    color: '#536471',
+    fontSize: 13,
+    lineHeight: 18,
+    marginBottom: spacing.lg,
+    marginTop: 4,
+  },
+  busyWrap: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: spacing.xl,
+  },
+  optionsList: {
+    gap: spacing.sm,
+  },
+  optionBtn: {
+    alignItems: 'center',
+    backgroundColor: '#F7F9F9',
+    borderColor: '#EFF3F4',
+    borderRadius: 16,
+    borderWidth: 1,
+    flexDirection: 'row',
+    gap: spacing.md,
+    paddingHorizontal: spacing.md,
+    paddingVertical: 14,
+  },
+  optionBtnPressed: {
+    opacity: 0.8,
+  },
+  optionIconCircle: {
+    alignItems: 'center',
+    backgroundColor: colors.greenSoft,
+    borderRadius: 22,
+    height: 44,
+    justifyContent: 'center',
+    width: 44,
+  },
+  optionIcon: {
+    fontSize: 20,
+  },
+  optionTextWrap: {
+    flex: 1,
+  },
+  optionTitle: {
+    color: '#0F1419',
+    fontSize: 15,
+    fontWeight: '700',
+  },
+  optionHint: {
+    color: '#536471',
+    fontSize: 12,
+    marginTop: 2,
+  },
+  errorBox: {
+    backgroundColor: '#FBEDEA',
+    borderColor: colors.danger,
+    borderRadius: radii.sm,
+    borderWidth: 1,
+    marginTop: spacing.md,
+    paddingHorizontal: spacing.md,
+    paddingVertical: 8,
+  },
+  errorText: {
     color: colors.danger,
     fontSize: 12,
     fontWeight: '600',
-    marginBottom: spacing.sm,
-    textAlign: 'center',
-  },
-  busyContainer: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: spacing.lg,
-  },
-  actionsList: {
-    gap: spacing.xs,
-  },
-  actionItem: {
-    alignItems: 'center',
-    backgroundColor: colors.paper,
-    borderRadius: radii.md,
-    flexDirection: 'row',
-    gap: spacing.md,
-    padding: spacing.md,
-  },
-  actionIcon: {
-    fontSize: 22,
-  },
-  actionCopy: {
-    flex: 1,
-  },
-  actionLabel: {
-    color: colors.ink,
-    fontSize: 14,
-    fontWeight: '700',
-  },
-  actionSub: {
-    color: colors.muted,
-    fontSize: 11,
-    marginTop: 2,
   },
   cancelBtn: {
     alignItems: 'center',
-    backgroundColor: colors.surface,
-    borderColor: colors.line,
-    borderRadius: radii.md,
+    borderColor: '#CFD9DE',
+    borderRadius: radii.pill,
     borderWidth: 1,
     justifyContent: 'center',
-    marginTop: spacing.md,
-    paddingVertical: 12,
+    marginTop: spacing.lg,
+    minHeight: 46,
   },
   cancelBtnText: {
-    color: colors.ink,
-    fontSize: 13,
-    fontWeight: '700',
+    color: '#0F1419',
+    fontSize: 14,
+    fontWeight: '800',
   },
 });
