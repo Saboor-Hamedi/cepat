@@ -9,8 +9,9 @@ import {
   View,
 } from 'react-native';
 
+import { useAppearance } from '../context/AppearanceContext';
 import { useLanguage } from '../i18n/locale';
-import { colors, radii, spacing } from '../theme/tokens';
+import { radii, spacing } from '../theme/tokens';
 import {
   validateStrictImageAsset,
   type ImageCandidateInput,
@@ -67,6 +68,7 @@ export interface StrictImagePickerProps {
   currentUri?: string;
   displayName?: string;
   label?: string;
+  displayMode?: 'inline' | 'actions';
   onImageValidated: (uri: string) => void;
   testIDPrefix?: string;
   /**
@@ -82,11 +84,13 @@ export function StrictImagePicker({
   currentUri,
   displayName = 'Cepat',
   label,
+  displayMode = 'inline',
   onImageValidated,
   testIDPrefix = 'strict-image',
   customPickerLauncher,
 }: StrictImagePickerProps) {
   const { language } = useLanguage();
+  const { palette, scaleFont } = useAppearance();
   const [busyMode, setBusyMode] = useState<'gallery' | 'camera' | null>(null);
   const [validationError, setValidationError] = useState<string | null>(null);
   const [validationSuccess, setValidationSuccess] = useState<string | null>(null);
@@ -303,25 +307,32 @@ export function StrictImagePicker({
 
   return (
     <View style={styles.container} testID={`${testIDPrefix}-picker`}>
-      {label ? <Text style={styles.label}>{label}</Text> : null}
+      {label ? <Text style={[styles.label, { color: palette.text, fontSize: scaleFont(13) }]}>{label}</Text> : null}
 
-      <View style={styles.row}>
-        <Avatar uri={currentUri || undefined} name={displayName} size={56} />
-        <View style={styles.buttonGroup}>
+      <View style={displayMode === 'actions' ? styles.actionGroup : styles.row}>
+        {displayMode === 'inline' ? (
+          <View testID={`${testIDPrefix}-avatar`}>
+            <Avatar uri={currentUri || undefined} name={displayName} size={56} />
+          </View>
+        ) : null}
+        <View style={displayMode === 'actions' ? styles.actionGroup : styles.buttonGroup}>
           <Pressable
             accessibilityRole="button"
             disabled={busyMode !== null}
             onPress={() => {
               void launchNativePicker('gallery');
             }}
-            style={styles.galleryBtn}
+            style={[
+              displayMode === 'actions' ? styles.actionBtn : styles.galleryBtn,
+              { backgroundColor: palette.surfaceElevated, borderColor: palette.border },
+            ]}
             testID={`${testIDPrefix}-gallery-btn`}
           >
             {busyMode === 'gallery' ? (
-              <ActivityIndicator size="small" color={colors.greenDark} />
+              <ActivityIndicator size="small" color={palette.primary} />
             ) : (
-              <Text style={styles.galleryBtnText}>
-                {language === 'en' ? 'Select from Gallery' : 'Pilih dari Galeri'}
+              <Text style={[styles.galleryBtnText, { color: palette.text, fontSize: scaleFont(13) }]}>
+                {language === 'en' ? 'Choose from Gallery' : 'Pilih dari Galeri'}
               </Text>
             )}
           </Pressable>
@@ -332,13 +343,16 @@ export function StrictImagePicker({
             onPress={() => {
               void launchNativePicker('camera');
             }}
-            style={styles.cameraBtn}
+            style={[
+              displayMode === 'actions' ? styles.actionBtn : styles.cameraBtn,
+              { backgroundColor: palette.primary, borderColor: palette.primary },
+            ]}
             testID={`${testIDPrefix}-camera-btn`}
           >
             {busyMode === 'camera' ? (
               <ActivityIndicator size="small" color="#FFFFFF" />
             ) : (
-              <Text style={styles.cameraBtnText}>
+              <Text style={[styles.cameraBtnText, { fontSize: scaleFont(13) }]}>
                 {language === 'en' ? 'Take Photo' : 'Ambil Foto'}
               </Text>
             )}
@@ -347,8 +361,8 @@ export function StrictImagePicker({
       </View>
 
       {validationError ? (
-        <View style={styles.errorBanner} testID={`${testIDPrefix}-error`}>
-          <Text style={styles.errorBannerText}>{validationError}</Text>
+        <View style={[styles.errorBanner, { backgroundColor: `${palette.danger}18`, borderColor: palette.danger }]} testID={`${testIDPrefix}-error`}>
+          <Text style={[styles.errorBannerText, { color: palette.danger, fontSize: scaleFont(12) }]}>{validationError}</Text>
         </View>
       ) : null}
 
@@ -366,10 +380,11 @@ const styles = StyleSheet.create({
     marginBottom: spacing.md,
   },
   label: {
-    color: colors.ink,
-    fontSize: 13,
     fontWeight: '700',
     marginBottom: spacing.xs,
+  },
+  actionGroup: {
+    gap: spacing.sm,
   },
   row: {
     alignItems: 'center',
@@ -384,8 +399,6 @@ const styles = StyleSheet.create({
   },
   galleryBtn: {
     alignItems: 'center',
-    backgroundColor: colors.surface,
-    borderColor: colors.line,
     borderRadius: radii.md,
     borderWidth: 1,
     justifyContent: 'center',
@@ -393,14 +406,20 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.md,
     paddingVertical: 8,
   },
+  actionBtn: {
+    alignItems: 'center',
+    borderRadius: radii.md,
+    borderWidth: 1,
+    justifyContent: 'center',
+    minHeight: 50,
+    paddingHorizontal: spacing.md,
+  },
   galleryBtnText: {
-    color: colors.ink,
-    fontSize: 12,
     fontWeight: '700',
+    textAlign: 'center',
   },
   cameraBtn: {
     alignItems: 'center',
-    backgroundColor: colors.greenDark,
     borderRadius: radii.md,
     justifyContent: 'center',
     minHeight: 40,
@@ -409,7 +428,6 @@ const styles = StyleSheet.create({
   },
   cameraBtnText: {
     color: '#FFFFFF',
-    fontSize: 12,
     fontWeight: '700',
   },
   srOnly: {
@@ -419,8 +437,6 @@ const styles = StyleSheet.create({
     width: 0,
   },
   errorBanner: {
-    backgroundColor: '#FBEDEA',
-    borderColor: colors.danger,
     borderRadius: radii.sm,
     borderWidth: 1,
     marginTop: spacing.xs,
@@ -428,22 +444,6 @@ const styles = StyleSheet.create({
     paddingVertical: 6,
   },
   errorBannerText: {
-    color: colors.danger,
-    fontSize: 12,
-    fontWeight: '600',
-  },
-  successBanner: {
-    backgroundColor: colors.greenSoft,
-    borderColor: colors.green,
-    borderRadius: radii.sm,
-    borderWidth: 1,
-    marginTop: spacing.xs,
-    paddingHorizontal: spacing.sm,
-    paddingVertical: 6,
-  },
-  successBannerText: {
-    color: colors.greenDark,
-    fontSize: 12,
     fontWeight: '600',
   },
 });

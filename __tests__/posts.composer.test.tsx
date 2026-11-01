@@ -104,6 +104,18 @@ describe('TechnicianPostComposer (X/Twitter style)', () => {
     );
   });
 
+  it('opens the compact themed photo action sheet without a profile-photo control', async () => {
+    await render(<TechnicianPostComposer onCreatePost={jest.fn()} />, {
+      wrapper: Wrapper,
+    });
+
+    await fireEvent.press(screen.getByTestId('add-image-btn'));
+    expect(await screen.findByTestId('composer-image-picker-wrap')).toBeTruthy();
+    expect(screen.getByTestId('post-image-picker-gallery-btn')).toBeTruthy();
+    expect(screen.getByTestId('post-image-picker-camera-btn')).toBeTruthy();
+    expect(screen.queryByTestId('post-image-picker-avatar')).toBeNull();
+  });
+
   it('Removing an image updates preview state correctly', async () => {
     const handleCreate = jest.fn();
     const mockImageLauncher = jest.fn().mockResolvedValue('file:///sample-water-pump.jpg');

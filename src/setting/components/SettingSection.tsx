@@ -19,7 +19,7 @@ export function SettingSection({
   testID,
   children,
 }: SettingSectionProps) {
-  const { palette } = useAppearance();
+  const { palette, scaleFont } = useAppearance();
   return (
     <View
       style={[
@@ -30,9 +30,9 @@ export function SettingSection({
     >
       <View style={styles.headerRow}>
         <View style={styles.headerCopy}>
-          <Text style={[styles.title, { color: palette.text }]}>{title}</Text>
+          <Text style={[styles.title, { color: palette.text, fontSize: scaleFont(17) }]}>{title}</Text>
           {description ? (
-            <Text style={[styles.description, { color: palette.textMuted }]}>
+            <Text style={[styles.description, { color: palette.textMuted, fontSize: scaleFont(12), lineHeight: scaleFont(18) }]}>
               {description}
             </Text>
           ) : null}
@@ -62,13 +62,10 @@ const styles = StyleSheet.create({
     minWidth: 0,
   },
   title: {
-    fontSize: 17,
     fontWeight: "800",
     letterSpacing: -0.2,
   },
   description: {
-    fontSize: 12,
-    lineHeight: 18,
     marginTop: 2,
   },
   body: {

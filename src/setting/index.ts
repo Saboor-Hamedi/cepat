@@ -4,7 +4,6 @@ export { SettingSection } from './components/SettingSection';
 export { SettingItem } from './components/SettingItem';
 export { SettingAccount } from './account/SettingAccount';
 export { SettingPassword } from './account/SettingPassword';
-export { SettingProfile } from './account/SettingProfile';
 export { SettingLanguage } from './language/SettingLanguage';
 export { SettingNotifications } from './notifications/SettingNotifications';
 export { SettingAppearance } from './appearance/SettingAppearance';

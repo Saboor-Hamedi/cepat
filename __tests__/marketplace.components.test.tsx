@@ -17,7 +17,7 @@ import { InlineMarketplaceMapCard } from "../src/components/MarketplaceMapSearch
 import { StrictImagePicker } from "../src/components/StrictImagePicker";
 import { fixtureTechnicians, indonesianRegions } from "../src/data/fixtures";
 import { LanguageProvider } from "../src/i18n/locale";
-import { SettingProfile } from "../src/setting";
+import { SettingHeader } from "../src/setting";
 
 function LanguageWrapper({ children }: PropsWithChildren) {
   return <LanguageProvider>{children}</LanguageProvider>;
@@ -177,24 +177,20 @@ describe("marketplace reusable components, unified header, sidebar, and modular 
     );
   });
 
-  it("renders modular Settings sub-views and keeps public profile free of private email or phone numbers", async () => {
+  it("shows the signed-in user's name without a public-profile editor tab", async () => {
     await render(
-      <SettingProfile
-        displayName="Rizky Pratama"
-        avatarUri=""
-        onChangeDisplayName={jest.fn()}
-        onChangeAvatarUri={jest.fn()}
-        onSavePublicProfile={jest.fn().mockResolvedValue(undefined)}
-        isTechnicianRole={true}
-        techProfile={fixtureTechnicians[0]}
-        onSaveTechProfile={jest.fn().mockResolvedValue(undefined)}
+      <SettingHeader
+        activeSection="account"
+        onSelectSection={jest.fn()}
+        isAuthenticated
+        userName="Rizky Pratama"
+        userRole="technician"
       />,
       { wrapper: LanguageWrapper },
     );
-    expect(await screen.findByTestId("setting-section-profile")).toBeTruthy();
-    expect(screen.getByTestId("settings-display-name")).toBeTruthy();
-    expect(screen.queryByText(/@/)).toBeNull();
-    expect(screen.queryByText(/\+62/)).toBeNull();
+    expect(await screen.findByTestId("settings-user-identity")).toBeTruthy();
+    expect(screen.getByText("Rizky Pratama")).toBeTruthy();
+    expect(screen.queryByTestId("setting-tab-profile")).toBeNull();
   });
 
   it("renders the interactive InlineMarketplaceMapCard and opens the map search modal on press", async () => {

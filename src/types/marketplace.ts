@@ -33,6 +33,7 @@ export interface PortfolioItem {
 
 export interface TechnicianReview {
   id: string;
+  technicianId?: string;
   bookingId?: string;
   customerName: string;
   rating: number;
@@ -128,6 +129,7 @@ export interface BookingRecord {
   requestedStartAt: string;
   agreedStartAt?: string;
   proposedStartAt?: string;
+  workCompletedAt?: string;
   status: BookingStatus;
   customerNotes?: string;
   agreedPrice?: number;
@@ -148,6 +150,8 @@ export interface BookingMessage {
   senderRole: 'customer' | 'technician';
   senderName: string;
   body: string;
+  kind?: 'text' | 'image' | 'system';
+  attachmentUrl?: string;
   createdAt: string;
 }
 

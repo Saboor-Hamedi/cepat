@@ -25,6 +25,7 @@ import {
   loadAdminBookings,
   loadAdminCategories,
   loadAdminReports,
+  loadAdminUserCounts,
   toggleAdminTechnicianVerified,
   updateAdminAccountModeration,
   updateAdminApplicationStatus,
@@ -33,10 +34,12 @@ import {
   type AdminAccountRecord,
   type AdminReportRecord,
   type AdminTechnicianApplication,
+  type AdminUserCounts,
 } from '../data/adminStore';
 import { formatRupiah, shouldUseFixtures } from '../data/marketplaceRepository';
+import { useAppearance, type ThemePalette } from '../context/AppearanceContext';
 import { useLanguage } from '../i18n/locale';
-import { colors, radii, spacing } from '../theme/tokens';
+import { radii, spacing } from '../theme/tokens';
 import type { BookingRecord, ServiceCategory } from '../types/marketplace';
 
 type AdminTab = 'reports' | 'accounts' | 'applications' | 'bookings' | 'platform';
@@ -44,14 +47,18 @@ type AccountFilter = 'all' | 'customer' | 'technician' | 'blocked';
 
 export default function AdminConsoleScreen() {
   const { language } = useLanguage();
+  const { palette } = useAppearance();
   const { user, roles, effectiveRole } = useAuth();
+  const styles = useMemo(() => createStyles(palette), [palette]);
   const [tab, setTab] = useState<AdminTab>('reports');
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [reports, setReports] = useState<AdminReportRecord[]>([]);
   const [accounts, setAccounts] = useState<AdminAccountRecord[]>([]);
   const [applications, setApplications] = useState<AdminTechnicianApplication[]>([]);
   const [bookings, setBookings] = useState<BookingRecord[]>([]);
   const [categories, setCategories] = useState<ServiceCategory[]>([]);
+  const [userCounts, setUserCounts] = useState<AdminUserCounts | null>(null);
   const [accountFilter, setAccountFilter] = useState<AccountFilter>('all');
   const [accountSearch, setAccountSearch] = useState('');
   const [reportNoteMap, setReportNoteMap] = useState<Record<string, string>>({});
@@ -65,20 +72,33 @@ export default function AdminConsoleScreen() {
 
   useEffect(() => {
     let active = true;
+    if (!isAdminAuthorized) {
+      return () => {
+        active = false;
+      };
+    }
+
     void Promise.all([
       loadAdminReports(),
       loadAdminAccounts(),
       loadAdminApplications(),
       loadAdminBookings(),
       loadAdminCategories(),
+      loadAdminUserCounts(),
     ])
-      .then(([reps, accs, apps, bks, cats]) => {
+      .then(([reps, accs, apps, bks, cats, counts]) => {
         if (!active) return;
         setReports(reps);
         setAccounts(accs);
         setApplications(apps);
         setBookings(bks);
         setCategories(cats);
+        setUserCounts(counts);
+        setLoadError(null);
+      })
+      .catch((error: unknown) => {
+        if (!active) return;
+        setLoadError(error instanceof Error ? error.message : String(error));
       })
       .finally(() => {
         if (active) setLoading(false);
@@ -86,20 +106,36 @@ export default function AdminConsoleScreen() {
     return () => {
       active = false;
     };
-  }, []);
+  }, [isAdminAuthorized]);
 
   const openReportsCount = useMemo(
     () => reports.filter((r) => r.status === 'submitted' || r.status === 'under_review').length,
     [reports],
   );
-  const blockedAccountsCount = useMemo(
-    () => accounts.filter((a) => a.status !== 'active').length,
-    [accounts],
-  );
   const pendingAppsCount = useMemo(
     () => applications.filter((a) => a.status === 'pending').length,
     [applications],
   );
+  const activeBookingsCount = useMemo(
+    () =>
+      bookings.filter((booking) =>
+        ['requested', 'alternative_proposed', 'confirmed', 'in_progress'].includes(
+          booking.status,
+        ),
+      ).length,
+    [bookings],
+  );
+  const mostBookedServices = useMemo(() => {
+    const counts = new Map<string, number>();
+    for (const booking of bookings) {
+      const serviceName = booking.serviceNameSnapshot.trim();
+      if (serviceName) counts.set(serviceName, (counts.get(serviceName) ?? 0) + 1);
+    }
+    return [...counts.entries()]
+      .map(([name, count]) => ({ name, count }))
+      .sort((a, b) => b.count - a.count || a.name.localeCompare(b.name))
+      .slice(0, 5);
+  }, [bookings]);
 
   const filteredAccounts = useMemo(() => {
     const q = accountSearch.trim().toLowerCase();
@@ -200,8 +236,7 @@ export default function AdminConsoleScreen() {
 
   return (
     <SafeAreaView style={styles.safeArea} edges={['top', 'bottom']}>
-      <AppNavigationBar activeTab="admin" />
-      <ScrollView contentContainerStyle={styles.scrollContent}>
+      <ScrollView style={styles.screenContent} contentContainerStyle={styles.scrollContent}>
         <View style={styles.container}>
           <View style={styles.headerRow}>
             <View style={styles.headerCopy}>
@@ -215,8 +250,8 @@ export default function AdminConsoleScreen() {
               </Text>
               <Text style={styles.subtitle}>
                 {language === 'en'
-                  ? 'Review and accept reports, block or reactivate customer and technician accounts, approve technician applications, and manage the marketplace.'
-                  : 'Tinjau dan terima laporan kendala, blokir atau aktifkan kembali akun pelanggan & teknisi, setujui pendaftaran teknisi, serta kelola operasional aplikasi.'}
+                  ? 'A live view of customer and technician accounts, booking demand, reports, and marketplace operations.'
+                  : 'Pantau pelanggan dan teknisi, permintaan layanan, laporan, serta operasional marketplace.'}
               </Text>
             </View>
             {isPreview && <SourceBadge source="fixtures" />}
@@ -251,34 +286,126 @@ export default function AdminConsoleScreen() {
             />
           ) : (
             <>
-              {/* KPI Metrics Strip */}
+              {/* Operational overview */}
               <View style={styles.kpiRow} testID="admin-kpi-strip">
                 <View style={styles.kpiCard}>
-                  <Text style={styles.kpiValue}>{openReportsCount}</Text>
+                  <Text style={styles.kpiValue}>
+                    {userCounts ? userCounts.customers : '—'}
+                  </Text>
                   <Text style={styles.kpiLabel}>
-                    {language === 'en' ? 'Open Reports' : 'Laporan Aktif'}
+                    {language === 'en' ? 'Customers' : 'Pelanggan'}
                   </Text>
                 </View>
                 <View style={styles.kpiCard}>
-                  <Text style={styles.kpiValue}>{accounts.length}</Text>
+                  <Text style={styles.kpiValue}>
+                    {userCounts ? userCounts.technicians : '—'}
+                  </Text>
                   <Text style={styles.kpiLabel}>
-                    {language === 'en' ? 'Total Accounts' : 'Total Akun'}
+                    {language === 'en' ? 'Technicians' : 'Teknisi'}
+                  </Text>
+                </View>
+                <View style={styles.kpiCard}>
+                  <Text style={styles.kpiValue}>{bookings.length}</Text>
+                  <Text style={styles.kpiLabel}>
+                    {language === 'en' ? 'All bookings' : 'Semua pesanan'}
                   </Text>
                 </View>
                 <View style={styles.kpiCard}>
                   <Text style={[styles.kpiValue, styles.kpiValueDanger]}>
-                    {blockedAccountsCount}
+                    {activeBookingsCount}
                   </Text>
                   <Text style={styles.kpiLabel}>
-                    {language === 'en' ? 'Blocked / Restricted' : 'Akun Diblokir'}
+                    {language === 'en' ? 'Active bookings' : 'Pesanan aktif'}
+                  </Text>
+                </View>
+                <View style={styles.kpiCard}>
+                  <Text style={[styles.kpiValue, styles.kpiValueDanger]}>
+                    {userCounts ? userCounts.restrictedAccounts : '—'}
+                  </Text>
+                  <Text style={styles.kpiLabel}>
+                    {language === 'en' ? 'Restricted accounts' : 'Akun dibatasi'}
                   </Text>
                 </View>
                 <View style={styles.kpiCard}>
                   <Text style={styles.kpiValue}>{pendingAppsCount}</Text>
                   <Text style={styles.kpiLabel}>
-                    {language === 'en' ? 'Pending Techs' : 'Antrean Teknisi'}
+                    {language === 'en' ? 'Pending applications' : 'Pengajuan menunggu'}
                   </Text>
                 </View>
+                <View style={styles.kpiCard}>
+                  <Text style={styles.kpiValue}>{openReportsCount}</Text>
+                  <Text style={styles.kpiLabel}>
+                    {language === 'en' ? 'Open reports' : 'Laporan terbuka'}
+                  </Text>
+                </View>
+              </View>
+
+              {loadError ? (
+                <View style={styles.errorBanner} testID="admin-load-error">
+                  <Text style={styles.errorTitle}>
+                    {language === 'en'
+                      ? 'Some dashboard data could not be loaded'
+                      : 'Sebagian data dasbor gagal dimuat'}
+                  </Text>
+                  <Text style={styles.errorDescription}>{loadError}</Text>
+                </View>
+              ) : null}
+              {userCounts ? (
+                <Text style={styles.dataSourceNote} testID="admin-user-count-source">
+                  {userCounts.source === 'supabase'
+                    ? language === 'en'
+                      ? 'User totals are live counts of assigned customer and technician roles.'
+                      : 'Jumlah pengguna dihitung langsung dari peran pelanggan dan teknisi.'
+                    : language === 'en'
+                      ? 'User totals are sample data; connect Supabase for live counts.'
+                      : 'Jumlah pengguna adalah data contoh; hubungkan Supabase untuk data langsung.'}
+                </Text>
+              ) : null}
+
+              <View style={styles.card} testID="admin-most-booked-services">
+                <Text style={styles.cardTitle}>
+                  {language === 'en' ? 'Most requested services' : 'Layanan paling banyak dipesan'}
+                </Text>
+                <Text style={styles.cardMeta}>
+                  {language === 'en'
+                    ? `Ranked from ${bookings.length} bookings currently available to this dashboard.`
+                    : `Diurutkan dari ${bookings.length} pesanan yang tersedia di dasbor ini.`}
+                </Text>
+                {mostBookedServices.length > 0 ? (
+                  mostBookedServices.map((service) => (
+                    <View key={service.name} style={styles.serviceMetric}>
+                      <View style={styles.serviceMetricHeader}>
+                        <Text numberOfLines={1} style={styles.serviceMetricName}>
+                          {service.name}
+                        </Text>
+                        <Text style={styles.serviceMetricCount}>
+                          {service.count}{' '}
+                          {language === 'en' ? 'bookings' : 'pesanan'}
+                        </Text>
+                      </View>
+                      <View style={styles.serviceMetricTrack}>
+                        <View
+                          style={[
+                            styles.serviceMetricBar,
+                            {
+                              width: `${Math.max(
+                                8,
+                                (service.count / mostBookedServices[0].count) * 100,
+                              )}%`,
+                              backgroundColor: palette.primary,
+                            },
+                          ]}
+                        />
+                      </View>
+                    </View>
+                  ))
+                ) : (
+                  <Text style={styles.cardMeta}>
+                    {language === 'en'
+                      ? 'No booking data is available yet.'
+                      : 'Belum ada data pesanan.'}
+                  </Text>
+                )}
               </View>
 
               {adminNotice && (
@@ -369,7 +496,7 @@ export default function AdminConsoleScreen() {
                           ]}
                         >
                           <Text style={styles.statusBadgeText}>
-                            {rep.status.toUpperCase()}
+                            {rep.status.replace(/_/g, ' ').toUpperCase()}
                           </Text>
                         </View>
                       </View>
@@ -385,6 +512,11 @@ export default function AdminConsoleScreen() {
                           {rep.adminNotes}
                         </Text>
                       ) : null}
+                      <Text style={styles.cardMeta}>
+                        {language === 'en'
+                          ? 'Resolve closes this report without changing the technician account. Use the block action only when restricting access is intended.'
+                          : 'Selesaikan menutup laporan tanpa mengubah akun teknisi. Gunakan tindakan blokir hanya jika akses memang perlu dibatasi.'}
+                      </Text>
 
                       <TextInput
                         onChangeText={(txt) =>
@@ -395,7 +527,7 @@ export default function AdminConsoleScreen() {
                             ? 'Add moderation or investigation note...'
                             : 'Tambahkan catatan investigasi atau tindak lanjut...'
                         }
-                        placeholderTextColor={colors.muted}
+                        placeholderTextColor={palette.textMuted}
                         style={styles.input}
                         testID={`admin-report-note-${rep.id}`}
                         value={reportNoteMap[rep.id] ?? ''}
@@ -411,7 +543,7 @@ export default function AdminConsoleScreen() {
                           testID={`admin-accept-report-${rep.id}`}
                         >
                           <Text style={styles.secondaryBtnText}>
-                            {language === 'en' ? 'Accept & Investigate' : 'Terima & Tinjau'}
+                            {language === 'en' ? 'Start investigation' : 'Mulai investigasi'}
                           </Text>
                         </Pressable>
                         <Pressable
@@ -423,7 +555,9 @@ export default function AdminConsoleScreen() {
                           testID={`admin-resolve-report-${rep.id}`}
                         >
                           <Text style={styles.primaryBtnText}>
-                            {language === 'en' ? 'Mark Resolved' : 'Selesaikan Laporan'}
+                            {language === 'en'
+                              ? 'Resolve · no account action'
+                              : 'Selesaikan · tanpa tindakan akun'}
                           </Text>
                         </Pressable>
                         <Pressable
@@ -440,8 +574,8 @@ export default function AdminConsoleScreen() {
                         >
                           <Text style={styles.dangerBtnText}>
                             {language === 'en'
-                              ? 'Resolve & Block Account'
-                              : 'Selesaikan & Blokir Akun'}
+                              ? 'Resolve & block technician'
+                              : 'Selesaikan & blokir teknisi'}
                           </Text>
                         </Pressable>
                         <Pressable
@@ -453,7 +587,9 @@ export default function AdminConsoleScreen() {
                           testID={`admin-dismiss-report-${rep.id}`}
                         >
                           <Text style={styles.ghostBtnText}>
-                            {language === 'en' ? 'Dismiss' : 'Tolak'}
+                            {language === 'en'
+                              ? 'Dismiss as invalid'
+                              : 'Tutup tanpa tindak lanjut'}
                           </Text>
                         </Pressable>
                       </View>
@@ -470,7 +606,7 @@ export default function AdminConsoleScreen() {
                           ? 'Search customer or technician name, email, or city...'
                           : 'Cari nama pelanggan atau teknisi, email, atau kota...'
                       }
-                      placeholderTextColor={colors.muted}
+                      placeholderTextColor={palette.textMuted}
                       style={styles.input}
                       testID="admin-account-search"
                       value={accountSearch}
@@ -735,7 +871,7 @@ export default function AdminConsoleScreen() {
                       placeholder={
                         language === 'en' ? 'Category name (e.g., Solar Panel)' : 'Nama kategori'
                       }
-                      placeholderTextColor={colors.muted}
+                      placeholderTextColor={palette.textMuted}
                       style={[styles.input, { marginTop: spacing.sm }]}
                       testID="admin-new-category-name"
                       value={newCategoryName}
@@ -747,7 +883,7 @@ export default function AdminConsoleScreen() {
                           ? 'Category description...'
                           : 'Deskripsi kategori layanan...'
                       }
-                      placeholderTextColor={colors.muted}
+                      placeholderTextColor={palette.textMuted}
                       style={styles.input}
                       testID="admin-new-category-desc"
                       value={newCategoryDesc}
@@ -780,208 +916,259 @@ export default function AdminConsoleScreen() {
           )}
         </View>
       </ScrollView>
+      <AppNavigationBar activeTab="admin" />
     </SafeAreaView>
   );
 }
 
-const styles = StyleSheet.create({
-  safeArea: { backgroundColor: colors.paper, flex: 1 },
-  scrollContent: { paddingBottom: spacing.xxxl },
-  container: {
-    alignSelf: 'center',
-    maxWidth: 860,
-    paddingHorizontal: spacing.xl,
-    paddingTop: spacing.md,
-    width: '100%',
-  },
-  headerRow: {
-    alignItems: 'flex-start',
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginBottom: spacing.md,
-  },
-  headerCopy: { flex: 1, marginRight: spacing.sm },
-  eyebrow: { color: colors.orange, fontSize: 10, fontWeight: '800', letterSpacing: 1.2 },
-  title: { color: colors.ink, fontSize: 28, fontWeight: '800', letterSpacing: -0.7, marginTop: 4 },
-  subtitle: { color: colors.muted, fontSize: 13, lineHeight: 19, marginTop: 4 },
-  kpiRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: spacing.sm,
-    marginBottom: spacing.md,
-  },
-  kpiCard: {
-    backgroundColor: colors.surface,
-    borderColor: colors.line,
-    borderRadius: radii.md,
-    borderWidth: 1,
-    flex: 1,
-    minWidth: 130,
-    padding: spacing.md,
-  },
-  kpiValue: { color: colors.greenDark, fontSize: 22, fontWeight: '800' },
-  kpiValueDanger: { color: colors.danger },
-  kpiLabel: { color: colors.muted, fontSize: 11, fontWeight: '700', marginTop: 2 },
-  noticeBanner: {
-    backgroundColor: colors.greenSoft,
-    borderColor: colors.green,
-    borderRadius: radii.md,
-    borderWidth: 1,
-    marginBottom: spacing.md,
-    padding: spacing.md,
-  },
-  noticeText: { color: colors.greenDark, fontSize: 12, fontWeight: '800' },
-  tabsRow: { gap: spacing.xs, paddingBottom: spacing.md },
-  tabPill: {
-    backgroundColor: colors.surface,
-    borderColor: colors.line,
-    borderRadius: radii.pill,
-    borderWidth: 1,
-    paddingHorizontal: 14,
-    paddingVertical: 8,
-  },
-  tabPillActive: {
-    backgroundColor: colors.greenDark,
-    borderColor: colors.greenDark,
-  },
-  tabPillText: { color: colors.ink, fontSize: 12, fontWeight: '700' },
-  tabPillTextActive: { color: '#FFFFFF' },
-  sectionList: { gap: spacing.sm },
-  filterBar: {
-    backgroundColor: colors.surface,
-    borderColor: colors.line,
-    borderRadius: radii.md,
-    borderWidth: 1,
-    marginBottom: spacing.xs,
-    padding: spacing.md,
-  },
-  chipRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: spacing.xs },
-  filterChip: {
-    backgroundColor: colors.paper,
-    borderColor: colors.line,
-    borderRadius: radii.pill,
-    borderWidth: 1,
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-  },
-  filterChipActive: { backgroundColor: colors.greenDark, borderColor: colors.greenDark },
-  filterChipText: { color: colors.ink, fontSize: 11, fontWeight: '700' },
-  filterChipTextActive: { color: '#FFFFFF' },
-  card: {
-    backgroundColor: colors.surface,
-    borderColor: colors.line,
-    borderRadius: radii.md,
-    borderWidth: 1,
-    marginBottom: spacing.sm,
-    padding: spacing.lg,
-  },
-  cardTop: {
-    alignItems: 'flex-start',
-    flexDirection: 'row',
-    gap: spacing.sm,
-    justifyContent: 'space-between',
-  },
-  cardTitle: { color: colors.ink, flex: 1, fontSize: 15, fontWeight: '800' },
-  cardMeta: { color: colors.muted, fontSize: 12, marginTop: 4 },
-  cardDescription: {
-    backgroundColor: colors.paper,
-    borderRadius: radii.sm,
-    color: colors.ink,
-    fontSize: 13,
-    lineHeight: 19,
-    marginTop: spacing.sm,
-    padding: spacing.sm,
-  },
-  adminNoteBox: {
-    backgroundColor: '#FFF4E5',
-    borderRadius: radii.sm,
-    color: '#7D490A',
-    fontSize: 12,
-    fontWeight: '700',
-    marginTop: spacing.xs,
-    padding: spacing.sm,
-  },
-  statusBadge: {
-    borderRadius: radii.pill,
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-  },
-  badgeSuccess: { backgroundColor: colors.greenSoft },
-  badgeWarning: { backgroundColor: colors.orangeSoft },
-  badgeDanger: { backgroundColor: '#FBEDEA' },
-  badgeMuted: { backgroundColor: colors.paper },
-  statusBadgeText: { color: colors.ink, fontSize: 10, fontWeight: '800' },
-  input: {
-    backgroundColor: colors.paper,
-    borderColor: colors.line,
-    borderRadius: radii.sm,
-    borderWidth: 1,
-    color: colors.ink,
-    fontSize: 12,
-    marginTop: spacing.xs,
-    minHeight: 38,
-    paddingHorizontal: spacing.md,
-  },
-  actionRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: spacing.xs,
-    marginTop: spacing.md,
-  },
-  primaryBtn: {
-    alignItems: 'center',
-    backgroundColor: colors.greenDark,
-    borderRadius: radii.sm,
-    justifyContent: 'center',
-    minHeight: 36,
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-  },
-  primaryBtnText: { color: '#FFFFFF', fontSize: 11, fontWeight: '800' },
-  secondaryBtn: {
-    alignItems: 'center',
-    backgroundColor: colors.greenSoft,
-    borderRadius: radii.sm,
-    justifyContent: 'center',
-    minHeight: 36,
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-  },
-  secondaryBtnText: { color: colors.greenDark, fontSize: 11, fontWeight: '800' },
-  warningBtn: {
-    alignItems: 'center',
-    backgroundColor: colors.orangeSoft,
-    borderColor: colors.orange,
-    borderRadius: radii.sm,
-    borderWidth: 1,
-    justifyContent: 'center',
-    minHeight: 36,
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-  },
-  warningBtnText: { color: colors.orange, fontSize: 11, fontWeight: '800' },
-  dangerBtn: {
-    alignItems: 'center',
-    backgroundColor: '#FBEDEA',
-    borderColor: colors.danger,
-    borderRadius: radii.sm,
-    borderWidth: 1,
-    justifyContent: 'center',
-    minHeight: 36,
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-  },
-  dangerBtnText: { color: colors.danger, fontSize: 11, fontWeight: '800' },
-  ghostBtn: {
-    alignItems: 'center',
-    backgroundColor: colors.paper,
-    borderColor: colors.line,
-    borderRadius: radii.sm,
-    borderWidth: 1,
-    justifyContent: 'center',
-    minHeight: 36,
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-  },
-  ghostBtnText: { color: colors.muted, fontSize: 11, fontWeight: '700' },
-});
+function createStyles(palette: ThemePalette) {
+  return StyleSheet.create({
+    screenContent: { flex: 1 },
+    safeArea: { backgroundColor: palette.background, flex: 1 },
+    scrollContent: { paddingBottom: spacing.xxxl },
+    container: {
+      alignSelf: 'center',
+      maxWidth: 860,
+      paddingHorizontal: 5,
+      paddingTop: spacing.md,
+      width: '100%',
+    },
+    headerRow: {
+      alignItems: 'flex-start',
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      marginBottom: spacing.md,
+    },
+    headerCopy: { flex: 1, marginRight: spacing.sm },
+    eyebrow: {
+      color: palette.primary,
+      fontSize: 10,
+      fontWeight: '800',
+      letterSpacing: 1.2,
+    },
+    title: {
+      color: palette.text,
+      fontSize: 28,
+      fontWeight: '800',
+      letterSpacing: -0.7,
+      marginTop: 4,
+    },
+    subtitle: { color: palette.textMuted, fontSize: 13, lineHeight: 19, marginTop: 4 },
+    kpiRow: {
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      gap: spacing.sm,
+      marginBottom: spacing.md,
+    },
+    kpiCard: {
+      backgroundColor: palette.surface,
+      borderColor: palette.border,
+      borderRadius: 5,
+      borderWidth: 1,
+      flex: 1,
+      flexBasis: '30%',
+      minWidth: 140,
+      padding: spacing.md,
+    },
+    kpiValue: { color: palette.primary, fontSize: 22, fontWeight: '800' },
+    kpiValueDanger: { color: palette.danger },
+    kpiLabel: { color: palette.textMuted, fontSize: 11, fontWeight: '700', marginTop: 2 },
+    noticeBanner: {
+      backgroundColor: palette.primarySoft,
+      borderColor: palette.primary,
+      borderRadius: 5,
+      borderWidth: 1,
+      marginBottom: spacing.md,
+      padding: spacing.md,
+    },
+    noticeText: { color: palette.text, fontSize: 12, fontWeight: '800' },
+    errorBanner: {
+      backgroundColor: palette.surfaceElevated,
+      borderColor: palette.danger,
+      borderRadius: 5,
+      borderWidth: 1,
+      marginBottom: spacing.md,
+      padding: spacing.md,
+    },
+    errorTitle: { color: palette.danger, fontSize: 13, fontWeight: '800' },
+    errorDescription: { color: palette.text, fontSize: 12, marginTop: spacing.xs },
+    dataSourceNote: {
+      color: palette.textMuted,
+      fontSize: 11,
+      marginBottom: spacing.sm,
+    },
+    tabsRow: { gap: spacing.xs, paddingBottom: spacing.md },
+    tabPill: {
+      backgroundColor: palette.surface,
+      borderColor: palette.border,
+      borderRadius: radii.pill,
+      borderWidth: 1,
+      paddingHorizontal: 14,
+      paddingVertical: 8,
+    },
+    tabPillActive: {
+      backgroundColor: palette.primary,
+      borderColor: palette.primary,
+    },
+    tabPillText: { color: palette.text, fontSize: 12, fontWeight: '700' },
+    tabPillTextActive: { color: '#FFFFFF' },
+    sectionList: { gap: spacing.sm },
+    filterBar: {
+      backgroundColor: palette.surface,
+      borderColor: palette.border,
+      borderRadius: 5,
+      borderWidth: 1,
+      marginBottom: spacing.xs,
+      padding: spacing.md,
+    },
+    chipRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: spacing.xs },
+    filterChip: {
+      backgroundColor: palette.surfaceElevated,
+      borderColor: palette.border,
+      borderRadius: radii.pill,
+      borderWidth: 1,
+      paddingHorizontal: 12,
+      paddingVertical: 6,
+    },
+    filterChipActive: {
+      backgroundColor: palette.primary,
+      borderColor: palette.primary,
+    },
+    filterChipText: { color: palette.text, fontSize: 11, fontWeight: '700' },
+    filterChipTextActive: { color: '#FFFFFF' },
+    card: {
+      backgroundColor: palette.surface,
+      borderColor: palette.border,
+      borderRadius: 5,
+      borderWidth: 1,
+      marginBottom: spacing.sm,
+      padding: spacing.md,
+    },
+    cardTop: {
+      alignItems: 'flex-start',
+      flexDirection: 'row',
+      gap: spacing.sm,
+      justifyContent: 'space-between',
+    },
+    cardTitle: { color: palette.text, flex: 1, fontSize: 15, fontWeight: '800' },
+    cardMeta: { color: palette.textMuted, fontSize: 12, marginTop: 4 },
+    cardDescription: {
+      backgroundColor: palette.surfaceElevated,
+      borderRadius: 5,
+      color: palette.text,
+      fontSize: 13,
+      lineHeight: 19,
+      marginTop: spacing.sm,
+      padding: spacing.sm,
+    },
+    adminNoteBox: {
+      backgroundColor: palette.surfaceElevated,
+      borderRadius: 5,
+      color: palette.text,
+      fontSize: 12,
+      fontWeight: '700',
+      marginTop: spacing.xs,
+      padding: spacing.sm,
+    },
+    statusBadge: {
+      borderRadius: radii.pill,
+      paddingHorizontal: 10,
+      paddingVertical: 4,
+    },
+    badgeSuccess: { backgroundColor: palette.primarySoft },
+    badgeWarning: { backgroundColor: palette.surfaceElevated },
+    badgeDanger: { backgroundColor: palette.surfaceElevated },
+    badgeMuted: { backgroundColor: palette.surfaceElevated },
+    statusBadgeText: { color: palette.text, fontSize: 10, fontWeight: '800' },
+    input: {
+      backgroundColor: palette.inputBg,
+      borderColor: palette.border,
+      borderRadius: 5,
+      borderWidth: 1,
+      color: palette.text,
+      fontSize: 12,
+      marginTop: spacing.xs,
+      minHeight: 38,
+      paddingHorizontal: spacing.md,
+    },
+    actionRow: {
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      gap: spacing.xs,
+      marginTop: spacing.md,
+    },
+    primaryBtn: {
+      alignItems: 'center',
+      backgroundColor: palette.primary,
+      borderRadius: 5,
+      justifyContent: 'center',
+      minHeight: 36,
+      paddingHorizontal: 12,
+      paddingVertical: 6,
+    },
+    primaryBtnText: { color: '#FFFFFF', fontSize: 11, fontWeight: '800' },
+    secondaryBtn: {
+      alignItems: 'center',
+      backgroundColor: palette.primarySoft,
+      borderRadius: 5,
+      justifyContent: 'center',
+      minHeight: 36,
+      paddingHorizontal: 12,
+      paddingVertical: 6,
+    },
+    secondaryBtnText: { color: palette.text, fontSize: 11, fontWeight: '800' },
+    warningBtn: {
+      alignItems: 'center',
+      backgroundColor: palette.surfaceElevated,
+      borderColor: palette.border,
+      borderRadius: 5,
+      borderWidth: 1,
+      justifyContent: 'center',
+      minHeight: 36,
+      paddingHorizontal: 12,
+      paddingVertical: 6,
+    },
+    warningBtnText: { color: palette.text, fontSize: 11, fontWeight: '800' },
+    dangerBtn: {
+      alignItems: 'center',
+      backgroundColor: palette.surfaceElevated,
+      borderColor: palette.danger,
+      borderRadius: 5,
+      borderWidth: 1,
+      justifyContent: 'center',
+      minHeight: 36,
+      paddingHorizontal: 12,
+      paddingVertical: 6,
+    },
+    dangerBtnText: { color: palette.danger, fontSize: 11, fontWeight: '800' },
+    ghostBtn: {
+      alignItems: 'center',
+      backgroundColor: palette.surfaceElevated,
+      borderColor: palette.border,
+      borderRadius: 5,
+      borderWidth: 1,
+      justifyContent: 'center',
+      minHeight: 36,
+      paddingHorizontal: 12,
+      paddingVertical: 6,
+    },
+    ghostBtnText: { color: palette.textMuted, fontSize: 11, fontWeight: '700' },
+    serviceMetric: { marginTop: spacing.md },
+    serviceMetricHeader: {
+      alignItems: 'center',
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      gap: spacing.sm,
+    },
+    serviceMetricName: { color: palette.text, flex: 1, fontSize: 12, fontWeight: '700' },
+    serviceMetricCount: { color: palette.textMuted, fontSize: 11, fontWeight: '700' },
+    serviceMetricTrack: {
+      backgroundColor: palette.surfaceElevated,
+      borderRadius: radii.pill,
+      height: 6,
+      marginTop: 6,
+      overflow: 'hidden',
+    },
+    serviceMetricBar: { borderRadius: radii.pill, height: '100%' },
+  });
+}

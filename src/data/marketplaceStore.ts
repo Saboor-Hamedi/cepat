@@ -5,6 +5,7 @@ import {
   fixtureTechnicians,
 } from './fixtures';
 import { shouldUseFixtures, supabase } from './marketplaceRepository';
+import { recordLocalBookingNotification, recordLocalMessageNotification } from './notifications';
 import { getStoredItem, getStoredJson, setStoredItem, setStoredJson } from '../storage/kvStorage';
 import { normalizeProfileTheme } from '../theme/tokens';
 import type {
@@ -21,6 +22,13 @@ import type {
   UserPreferences,
 } from '../types/marketplace';
 
+let realtimeChannelSequence = 0;
+
+function nextRealtimeChannelSuffix(): string {
+  realtimeChannelSequence += 1;
+  return `${Date.now()}-${realtimeChannelSequence}`;
+}
+
 const AREA_STORAGE_KEY = '@cepat/selected-area';
 const SAVED_ADDRESSES_KEY = '@cepat/saved-addresses:';
 const SAVED_TECHNICIANS_KEY = '@cepat/saved-technicians:';
@@ -32,6 +40,58 @@ const MESSAGES_STORAGE_KEY = '@cepat/booking-messages';
 const REVIEWS_STORAGE_KEY = '@cepat/submitted-reviews';
 const REPORTS_STORAGE_KEY = '@cepat/submitted-reports';
 const DELETION_REQUEST_KEY = '@cepat/deletion-request:';
+
+function mapSupabaseBooking(
+  row: Record<string, unknown>,
+  namesById: Map<string, string>,
+  areasById: Map<string, string>,
+): BookingRecord {
+  const customerId = String(row.customer_user_id ?? '');
+  const technicianId = String(row.technician_user_id ?? '');
+  return {
+    id: String(row.id ?? ''),
+    customerUserId: customerId,
+    customerName: namesById.get(customerId) ?? 'Pelanggan Cepat',
+    technicianUserId: technicianId,
+    technicianName: namesById.get(technicianId) ?? 'Teknisi Cepat',
+    technicianServiceId: row.technician_service_id
+      ? String(row.technician_service_id)
+      : undefined,
+    serviceId: row.service_id ? String(row.service_id) : undefined,
+    serviceNameSnapshot: String(row.service_name_snapshot ?? 'Layanan Rumah'),
+    serviceDescription: row.service_description ? String(row.service_description) : undefined,
+    customerAddress: String(row.customer_address ?? ''),
+    addressNotes: row.address_notes ? String(row.address_notes) : undefined,
+    serviceArea:
+      (typeof row.service_area_name_snapshot === 'string' &&
+        row.service_area_name_snapshot.trim()) ||
+      areasById.get(String(row.service_area_id ?? '')) ||
+      'Area layanan',
+    customerLatitude:
+      typeof row.customer_latitude === 'number' ? row.customer_latitude : undefined,
+    customerLongitude:
+      typeof row.customer_longitude === 'number' ? row.customer_longitude : undefined,
+    requestedStartAt: String(row.requested_start_at ?? row.created_at ?? ''),
+    agreedStartAt: row.agreed_start_at ? String(row.agreed_start_at) : undefined,
+    proposedStartAt: row.proposed_start_at ? String(row.proposed_start_at) : undefined,
+    workCompletedAt: row.work_completed_at
+      ? String(row.work_completed_at)
+      : undefined,
+    status: (row.status as BookingStatus) ?? 'requested',
+    customerNotes: row.customer_notes ? String(row.customer_notes) : undefined,
+    agreedPrice:
+      typeof row.agreed_price === 'number'
+        ? row.agreed_price
+        : Number(row.agreed_price) || undefined,
+    currency: 'IDR',
+    cancellationReason: row.cancellation_reason
+      ? String(row.cancellation_reason)
+      : undefined,
+    createdAt: String(row.created_at ?? ''),
+    updatedAt: String(row.updated_at ?? ''),
+    source: 'supabase',
+  };
+}
 
 export const DEFAULT_PREFERENCES: UserPreferences = {
   appearance: 'light',
@@ -75,11 +135,10 @@ const ALLOWED_TRANSITIONS: Record<
   },
   confirmed: {
     in_progress: ['technician'],
-    completed: ['technician'],
     cancelled: ['customer', 'technician'],
   },
   in_progress: {
-    completed: ['technician'],
+    completed: ['customer'],
     cancelled: ['customer', 'technician'],
   },
   completed: {},
@@ -571,88 +630,103 @@ export async function loadAccountDeletionRequest(
 }
 
 export async function loadBookings(): Promise<BookingRecord[]> {
-  const localBookings = await getStoredJson<BookingRecord[]>(
-    BOOKINGS_STORAGE_KEY,
-    shouldUseFixtures() ? fixtureBookings : [],
+  if (shouldUseFixtures()) {
+    return getStoredJson<BookingRecord[]>(BOOKINGS_STORAGE_KEY, fixtureBookings);
+  }
+  if (!supabase) throw new Error('supabase_unavailable');
+
+  const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
+  if (sessionError) throw new Error(`booking_session_failed: ${sessionError.message}`);
+  if (!sessionData.session?.user) return [];
+
+  const { data, error } = await supabase
+    .from('bookings')
+    .select('*')
+    .order('created_at', { ascending: false });
+  if (error) throw new Error(`bookings_load_failed: ${error.message}`);
+
+  const rows = data ?? [];
+  const userIds = Array.from(
+    new Set(rows.flatMap((row) => [
+      String(row.customer_user_id ?? ''),
+      String(row.technician_user_id ?? ''),
+    ])),
+  ).filter(Boolean);
+  const areaIds = Array.from(
+    new Set(rows.map((row) => String(row.service_area_id ?? '')).filter(Boolean)),
   );
+  const namesById = new Map<string, string>();
+  const areasById = new Map<string, string>();
 
-  if (!shouldUseFixtures() && supabase) {
-    try {
-      const { data: sessionData } = await supabase.auth.getSession();
-      const currentUserId = sessionData.session?.user?.id;
-      if (currentUserId) {
-        const { data, error } = await supabase
-          .from('bookings')
-          .select('*')
-          .order('created_at', { ascending: false });
-        if (!error && Array.isArray(data)) {
-          const userIds = Array.from(
-            new Set([
-              ...data.map((r) => String(r.customer_user_id ?? '')),
-              ...data.map((r) => String(r.technician_user_id ?? '')),
-            ]),
-          ).filter(Boolean);
-
-          let nameById = new Map<string, string>();
-          if (userIds.length > 0) {
-            try {
-              const { data: pData } = await supabase
-                .from('profiles')
-                .select('id, display_name')
-                .in('id', userIds);
-              if (Array.isArray(pData)) {
-                nameById = new Map(pData.map((p) => [String(p.id), String(p.display_name)]));
-              }
-            } catch {}
-          }
-
-          return data.map((row: Record<string, unknown>) => ({
-            id: String(row.id ?? ''),
-            customerUserId: String(row.customer_user_id ?? ''),
-            customerName:
-              nameById.get(String(row.customer_user_id)) || 'Pelanggan Cepat',
-            technicianUserId: String(row.technician_user_id ?? ''),
-            technicianName:
-              nameById.get(String(row.technician_user_id)) || 'Teknisi Cepat',
-            technicianServiceId: row.technician_service_id ? String(row.technician_service_id) : undefined,
-            serviceId: row.service_id ? String(row.service_id) : undefined,
-            serviceNameSnapshot: String(row.service_name_snapshot ?? 'Layanan Rumah'),
-            serviceDescription: row.service_description ? String(row.service_description) : undefined,
-            customerAddress: String(row.customer_address ?? ''),
-            addressNotes: row.address_notes ? String(row.address_notes) : undefined,
-            serviceArea: 'Jakarta Selatan',
-            requestedStartAt: String(row.requested_start_at ?? row.created_at ?? new Date().toISOString()),
-            agreedStartAt: row.agreed_start_at ? String(row.agreed_start_at) : undefined,
-            proposedStartAt: row.proposed_start_at ? String(row.proposed_start_at) : undefined,
-            status: (row.status as BookingStatus) ?? 'requested',
-            customerNotes: row.customer_notes ? String(row.customer_notes) : undefined,
-            agreedPrice: typeof row.agreed_price === 'number' ? row.agreed_price : Number(row.agreed_price) || undefined,
-            currency: 'IDR',
-            cancellationReason: row.cancellation_reason ? String(row.cancellation_reason) : undefined,
-            createdAt: String(row.created_at ?? new Date().toISOString()),
-            updatedAt: String(row.updated_at ?? new Date().toISOString()),
-            source: 'supabase',
-          }));
-        }
-      }
-    } catch {
-      // Fall back to local bookings store.
+  if (userIds.length > 0) {
+    const { data: profiles, error: profilesError } = await supabase
+      .from('profiles')
+      .select('id, display_name')
+      .in('id', userIds);
+    if (profilesError) {
+      throw new Error(`booking_profiles_load_failed: ${profilesError.message}`);
+    }
+    for (const profile of profiles ?? []) {
+      namesById.set(String(profile.id), String(profile.display_name));
+    }
+  }
+  if (areaIds.length > 0) {
+    const { data: areas, error: areasError } = await supabase
+      .from('service_areas')
+      .select('id, name')
+      .in('id', areaIds);
+    if (areasError) throw new Error(`booking_areas_load_failed: ${areasError.message}`);
+    for (const area of areas ?? []) {
+      areasById.set(String(area.id), String(area.name));
     }
   }
 
-  return shouldUseFixtures()
-    ? localBookings
-    : localBookings.filter(
-        (b) =>
-          !b.id.startsWith('mock-') &&
-          !b.id.startsWith('booking-seed') &&
-          b.customerName !== 'Saboor',
-      );
+  return rows.map((row) => mapSupabaseBooking(row, namesById, areasById));
 }
 
 export async function loadBookingById(bookingId: string): Promise<BookingRecord | null> {
   const bookings = await loadBookings();
   return bookings.find((b) => b.id === bookingId) ?? null;
+}
+
+export function subscribeToBookings(
+  userId: string,
+  onChange: () => void,
+  onError: (message: string) => void,
+): () => void {
+  if (!userId || shouldUseFixtures() || !supabase) return () => {};
+
+  const channel = supabase
+    .channel(`bookings:${userId}:${nextRealtimeChannelSuffix()}`)
+    .on(
+      'postgres_changes',
+      {
+        event: '*',
+        schema: 'public',
+        table: 'bookings',
+        filter: `customer_user_id=eq.${userId}`,
+      },
+      onChange,
+    )
+    .on(
+      'postgres_changes',
+      {
+        event: '*',
+        schema: 'public',
+        table: 'bookings',
+        filter: `technician_user_id=eq.${userId}`,
+      },
+      onChange,
+    )
+    .subscribe((status) => {
+      if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
+        onError(`bookings_realtime_${status.toLowerCase()}`);
+      }
+    });
+
+  return () => {
+    void supabase?.removeChannel(channel);
+  };
 }
 
 export interface CreateBookingInput {
@@ -676,6 +750,14 @@ export async function createBookingRequest(input: CreateBookingInput): Promise<B
 
   if (!input.technician.id || !input.service.id || !address || !requestedStartAt || !area) {
     throw new Error('missing_booking_fields');
+  }
+
+  if (
+    input.customerUserId &&
+    (input.customerUserId === input.technician.id ||
+      (input.technician as any).userId === input.customerUserId)
+  ) {
+    throw new Error('cannot_book_own_service');
   }
 
   const now = new Date().toISOString();
@@ -704,58 +786,82 @@ export async function createBookingRequest(input: CreateBookingInput): Promise<B
     source: shouldUseFixtures() ? 'fixtures' : 'supabase',
   };
 
-  if (!shouldUseFixtures() && supabase && input.customerUserId) {
-    try {
-      const { data, error } = await supabase
-        .from('bookings')
-        .insert({
-          customer_user_id: input.customerUserId,
-          technician_user_id: input.technician.id,
-          service_name_snapshot: newBooking.serviceNameSnapshot,
-          service_description: newBooking.serviceDescription ?? null,
-          customer_address: newBooking.customerAddress,
-          address_notes: newBooking.addressNotes ?? null,
-          requested_start_at: newBooking.requestedStartAt,
-          status: 'requested',
-          customer_notes: newBooking.customerNotes ?? null,
-          agreed_price: newBooking.agreedPrice ?? null,
-          currency: 'IDR',
-        })
-        .select('id')
-        .maybeSingle();
-      if (!error && data?.id) {
-        newBooking.id = String(data.id);
-      }
-    } catch {
-      // Keep local booking record available.
+  if (!shouldUseFixtures()) {
+    if (!supabase) throw new Error('supabase_unavailable');
+    const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
+    if (sessionError) throw new Error(`booking_session_failed: ${sessionError.message}`);
+    const sessionUserId = sessionData.session?.user.id;
+    if (!sessionUserId || sessionUserId !== input.customerUserId) {
+      throw new Error('booking_customer_session_mismatch');
     }
+
+    const { data: technicianProfile, error: technicianProfileError } =
+      await supabase
+        .from('technician_profiles')
+        .select('user_id')
+        .eq('user_id', input.technician.id)
+        .maybeSingle();
+    if (technicianProfileError) {
+      throw new Error(
+        `booking_technician_check_failed: ${technicianProfileError.message}`,
+      );
+    }
+    if (!technicianProfile) {
+      throw new Error('booking_technician_profile_missing');
+    }
+
+    const { data, error } = await supabase
+      .from('bookings')
+      .insert({
+        customer_user_id: sessionUserId,
+        technician_user_id: input.technician.id,
+        technician_service_id: input.service.id.startsWith('post-')
+          ? null
+          : input.service.id,
+        service_name_snapshot: newBooking.serviceNameSnapshot,
+        service_description: newBooking.serviceDescription ?? null,
+        customer_address: newBooking.customerAddress,
+        address_notes: newBooking.addressNotes ?? null,
+        service_area_name_snapshot: area,
+        customer_latitude: input.customerLatitude ?? null,
+        customer_longitude: input.customerLongitude ?? null,
+        requested_start_at: newBooking.requestedStartAt,
+        status: 'requested',
+        customer_notes: newBooking.customerNotes ?? null,
+        agreed_price: newBooking.agreedPrice ?? null,
+        currency: 'IDR',
+      })
+      .select('*')
+      .single();
+    if (error) {
+      if (
+        error.code === '23503' &&
+        error.message.toLowerCase().includes('technician')
+      ) {
+        throw new Error('booking_technician_profile_missing');
+      }
+      throw new Error(`booking_create_failed: ${error.message}`);
+    }
+
+    const namesById = new Map([
+      [sessionUserId, newBooking.customerName],
+      [input.technician.id, input.technician.displayName],
+    ]);
+    return mapSupabaseBooking(
+      data,
+      namesById,
+      new Map(),
+    );
   }
 
   const current = await getStoredJson<BookingRecord[]>(BOOKINGS_STORAGE_KEY, fixtureBookings);
-  const updated = [newBooking, ...current];
-  await setStoredJson(BOOKINGS_STORAGE_KEY, updated);
-
-  // Seed chat with booking order details card so both parties immediately see the requested job
-  try {
-    const initialOrderMessage: BookingMessage = {
-      id: `msg-order-${newBooking.id}`,
-      bookingId: newBooking.id,
-      senderUserId: newBooking.customerUserId,
-      senderRole: 'customer',
-      senderName: newBooking.customerName,
-      body: `📋 [Pesanan #${newBooking.id.slice(-6)}] ${newBooking.serviceNameSnapshot} · ${newBooking.customerAddress} (${newBooking.serviceArea}) · Jadwal: ${newBooking.requestedStartAt.slice(0, 16).replace('T', ' ')} WIB`,
-      createdAt: now,
-    };
-    const allMsgs = await getStoredJson<Record<string, BookingMessage[]>>(
-      MESSAGES_STORAGE_KEY,
-      fixtureMessages,
-    );
-    allMsgs[newBooking.id] = [initialOrderMessage, ...(allMsgs[newBooking.id] ?? [])];
-    await setStoredJson(MESSAGES_STORAGE_KEY, allMsgs);
-  } catch {
-    // Non-critical seeding failure fallback
-  }
-
+  await setStoredJson(BOOKINGS_STORAGE_KEY, [newBooking, ...current]);
+  await recordLocalBookingNotification(
+    newBooking.technicianUserId,
+    'booking_requested',
+    newBooking.id,
+    newBooking.serviceNameSnapshot,
+  );
   return newBooking;
 }
 
@@ -768,8 +874,7 @@ export async function transitionBookingStatus(
     cancellationReason?: string;
   },
 ): Promise<BookingRecord> {
-  const current = await getStoredJson<BookingRecord[]>(BOOKINGS_STORAGE_KEY, fixtureBookings);
-  const target = current.find((item) => item.id === bookingId);
+  const target = await loadBookingById(bookingId);
   if (!target) {
     throw new Error('booking_not_found');
   }
@@ -780,6 +885,13 @@ export async function transitionBookingStatus(
 
   if (nextStatus === 'alternative_proposed' && !options?.proposedStartAt?.trim()) {
     throw new Error('missing_proposed_time');
+  }
+  if (
+    nextStatus === 'completed' &&
+    actor === 'customer' &&
+    !target.workCompletedAt
+  ) {
+    throw new Error('invalid_status_transition: technician_work_not_submitted');
   }
 
   const now = new Date().toISOString();
@@ -803,51 +915,193 @@ export async function transitionBookingStatus(
     updatedAt: now,
   };
 
-  const nextList = current.map((item) => (item.id === bookingId ? updatedRecord : item));
-  await setStoredJson(BOOKINGS_STORAGE_KEY, nextList);
-
-  if (!shouldUseFixtures() && supabase) {
-    try {
-      await supabase
-        .from('bookings')
-        .update({
-          status: nextStatus,
-          proposed_start_at: updatedRecord.proposedStartAt ?? null,
-          agreed_start_at: updatedRecord.agreedStartAt ?? null,
-          cancellation_reason: updatedRecord.cancellationReason ?? null,
-        })
-        .eq('id', bookingId);
-    } catch {
-      // Local state already updated.
+  if (!shouldUseFixtures()) {
+    if (!supabase) throw new Error('supabase_unavailable');
+    const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
+    if (sessionError) throw new Error(`booking_session_failed: ${sessionError.message}`);
+    const currentUserId = sessionData.session?.user.id;
+    const participantId = actor === 'customer'
+      ? target.customerUserId
+      : target.technicianUserId;
+    if (!currentUserId || currentUserId !== participantId) {
+      throw new Error('booking_actor_session_mismatch');
     }
+
+    const { data, error } = await supabase
+      .from('bookings')
+      .update({
+        status: nextStatus,
+        proposed_start_at: updatedRecord.proposedStartAt ?? null,
+        agreed_start_at: updatedRecord.agreedStartAt ?? null,
+        cancellation_reason: updatedRecord.cancellationReason ?? null,
+      })
+      .eq('id', bookingId)
+      .eq('status', target.status)
+      .select('*')
+      .maybeSingle();
+    if (error) throw new Error(`booking_update_failed: ${error.message}`);
+    if (!data) throw new Error('booking_status_conflict');
+    return {
+      ...target,
+      status: data.status as BookingStatus,
+      proposedStartAt: data.proposed_start_at
+        ? String(data.proposed_start_at)
+        : undefined,
+      agreedStartAt: data.agreed_start_at
+        ? String(data.agreed_start_at)
+        : undefined,
+      cancellationReason: data.cancellation_reason
+        ? String(data.cancellation_reason)
+        : undefined,
+      updatedAt: String(data.updated_at ?? now),
+    };
   }
 
+  const current = await getStoredJson<BookingRecord[]>(BOOKINGS_STORAGE_KEY, fixtureBookings);
+  const nextList = current.map((item) => (item.id === bookingId ? updatedRecord : item));
+  await setStoredJson(BOOKINGS_STORAGE_KEY, nextList);
+  if (nextStatus === 'confirmed' && target.status === 'requested') {
+    await recordLocalBookingNotification(
+      target.customerUserId,
+      'booking_accepted',
+      target.id,
+      target.serviceNameSnapshot,
+    );
+  } else if (nextStatus === 'confirmed' && target.status === 'alternative_proposed') {
+    await recordLocalBookingNotification(
+      target.technicianUserId,
+      'booking_schedule_confirmed',
+      target.id,
+      target.serviceNameSnapshot,
+    );
+  }
   return updatedRecord;
 }
 
 export async function customerAcceptWorkDone(bookingId: string): Promise<BookingRecord> {
-  const current = await getStoredJson<BookingRecord[]>(BOOKINGS_STORAGE_KEY, fixtureBookings);
-  const target = current.find((item) => item.id === bookingId);
-  if (!target) {
-    throw new Error('booking_not_found');
+  return transitionBookingStatus(bookingId, 'completed', 'customer');
+}
+
+export async function submitBookingWorkForAcceptance(
+  bookingId: string,
+): Promise<BookingRecord> {
+  const target = await loadBookingById(bookingId);
+  if (!target) throw new Error('booking_not_found');
+  if (target.status !== 'in_progress') {
+    throw new Error('booking_not_in_progress');
   }
+
   const now = new Date().toISOString();
+  if (!shouldUseFixtures()) {
+    if (!supabase) throw new Error('supabase_unavailable');
+    const { data: sessionData, error: sessionError } =
+      await supabase.auth.getSession();
+    if (sessionError) {
+      throw new Error(`booking_session_failed: ${sessionError.message}`);
+    }
+    if (sessionData.session?.user.id !== target.technicianUserId) {
+      throw new Error('booking_actor_session_mismatch');
+    }
+
+    const { data, error } = await supabase.rpc(
+      'submit_booking_work_for_acceptance',
+      { p_booking_id: bookingId },
+    );
+    if (error) {
+      throw new Error(`booking_work_submit_failed: ${error.message}`);
+    }
+    const workCompletedAt =
+      typeof data === 'string' ? data : target.workCompletedAt ?? now;
+    return { ...target, workCompletedAt, updatedAt: now };
+  }
+
   const updatedRecord: BookingRecord = {
     ...target,
-    customerAcceptedWorkDone: true,
+    workCompletedAt: target.workCompletedAt ?? now,
     updatedAt: now,
   };
-  const nextList = current.map((item) => (item.id === bookingId ? updatedRecord : item));
-  await setStoredJson(BOOKINGS_STORAGE_KEY, nextList);
+  const current = await getStoredJson<BookingRecord[]>(
+    BOOKINGS_STORAGE_KEY,
+    fixtureBookings,
+  );
+  await setStoredJson(
+    BOOKINGS_STORAGE_KEY,
+    current.map((booking) =>
+      booking.id === bookingId ? updatedRecord : booking,
+    ),
+  );
+  await recordLocalBookingNotification(
+    target.customerUserId,
+    'booking_work_completed',
+    target.id,
+    target.serviceNameSnapshot,
+  );
   return updatedRecord;
 }
 
 export async function loadBookingMessages(bookingId: string): Promise<BookingMessage[]> {
+  if (!shouldUseFixtures()) {
+    if (!supabase) throw new Error('supabase_unavailable');
+    const { data, error } = await supabase.rpc('load_booking_messages', {
+      p_booking_id: bookingId,
+    });
+    if (error) throw new Error(`booking_messages_load_failed: ${error.message}`);
+    return (data ?? []).map((row: Record<string, unknown>) => ({
+      id: String(row.message_id),
+      bookingId: String(row.booking_id),
+      senderUserId: String(row.sender_user_id),
+      senderRole: row.sender_role === 'technician' ? 'technician' : 'customer',
+      senderName: String(row.sender_name ?? 'Cepat'),
+      body: String(row.body ?? ''),
+      createdAt: String(row.created_at),
+    }));
+  }
   const allMessages = await getStoredJson<Record<string, BookingMessage[]>>(
     MESSAGES_STORAGE_KEY,
     fixtureMessages,
   );
   return allMessages[bookingId] ?? [];
+}
+
+export async function subscribeToBookingMessages(
+  bookingId: string,
+  onChange: () => void,
+  onError: (message: string) => void,
+): Promise<() => void> {
+  if (shouldUseFixtures()) return () => {};
+  if (!supabase) throw new Error('supabase_unavailable');
+
+  const { data: conversation, error } = await supabase
+    .from('conversations')
+    .select('id')
+    .eq('booking_id', bookingId)
+    .maybeSingle();
+  if (error) throw new Error(`booking_conversation_load_failed: ${error.message}`);
+  if (!conversation?.id) return () => {};
+
+  const channel = supabase
+    .channel(
+      `booking-messages:${conversation.id}:${nextRealtimeChannelSuffix()}`,
+    )
+    .on(
+      'postgres_changes',
+      {
+        event: 'INSERT',
+        schema: 'public',
+        table: 'messages',
+        filter: `conversation_id=eq.${conversation.id}`,
+      },
+      onChange,
+    )
+    .subscribe((status) => {
+      if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
+        onError(`booking_messages_realtime_${status.toLowerCase()}`);
+      }
+    });
+
+  return () => {
+    void supabase?.removeChannel(channel);
+  };
 }
 
 export async function sendBookingMessage(input: {
@@ -856,6 +1110,7 @@ export async function sendBookingMessage(input: {
   senderRole: 'customer' | 'technician';
   senderName: string;
   body: string;
+  clientMessageId?: string;
 }): Promise<BookingMessage> {
   const trimmed = input.body.trim();
   if (!trimmed) {
@@ -866,6 +1121,34 @@ export async function sendBookingMessage(input: {
   }
   if (containsBlockedUrl(trimmed)) {
     throw new Error('url_blocked');
+  }
+
+  if (!shouldUseFixtures()) {
+    if (!supabase) throw new Error('supabase_unavailable');
+    const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
+    if (sessionError) throw new Error(`booking_message_session_failed: ${sessionError.message}`);
+    if (sessionData.session?.user.id !== input.senderUserId) {
+      throw new Error('booking_message_sender_mismatch');
+    }
+    const { data, error } = await supabase.rpc('send_booking_message', {
+      p_booking_id: input.bookingId,
+      p_body: trimmed,
+      p_client_message_id:
+        input.clientMessageId ??
+        `${input.senderUserId}-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`,
+    });
+    if (error) throw new Error(`booking_message_send_failed: ${error.message}`);
+    const row = Array.isArray(data) ? data[0] : data;
+    if (!row) throw new Error('booking_message_send_failed: empty_response');
+    return {
+      id: String(row.message_id),
+      bookingId: String(row.booking_id),
+      senderUserId: String(row.sender_user_id),
+      senderRole: row.sender_role === 'technician' ? 'technician' : 'customer',
+      senderName: String(row.sender_name ?? input.senderName),
+      body: String(row.body ?? trimmed),
+      createdAt: String(row.created_at),
+    };
   }
 
   const booking = await loadBookingById(input.bookingId);
@@ -893,6 +1176,16 @@ export async function sendBookingMessage(input: {
     [input.bookingId]: [...existing, message],
   };
   await setStoredJson(MESSAGES_STORAGE_KEY, nextAll);
+  const recipientUserId =
+    input.senderRole === 'customer'
+      ? booking.technicianUserId
+      : booking.customerUserId;
+  await recordLocalMessageNotification(
+    recipientUserId,
+    input.senderName,
+    trimmed,
+    input.bookingId,
+  );
   return message;
 }
 
@@ -914,6 +1207,7 @@ export async function submitBookingReview(input: {
 
   const review: TechnicianReview = {
     id: `review-${Date.now()}`,
+    technicianId: input.technicianId,
     bookingId: input.bookingId,
     customerName: input.customerName.trim() || 'Pelanggan Cepat',
     rating: normalizedRating,

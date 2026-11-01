@@ -10,7 +10,7 @@ import {
 import { useLanguage } from '../../i18n/locale';
 import { colors, spacing } from '../../theme/tokens';
 import type { TechnicianPost } from '../../types/post';
-import { TechnicianPostCard } from './TechnicianPostCard';
+import { Post } from './Post';
 
 export interface TechnicianPostFeedProps {
   posts: TechnicianPost[];
@@ -74,7 +74,7 @@ export function TechnicianPostFeed({
       data={posts}
       keyExtractor={(item) => item.id}
       renderItem={({ item }) => (
-        <TechnicianPostCard
+        <Post
           post={item}
           isOwner={isOwner}
           onEdit={onEditPost}

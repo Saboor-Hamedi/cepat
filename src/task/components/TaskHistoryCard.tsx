@@ -5,11 +5,16 @@ import { localizeArea, useLanguage } from '../../i18n/locale';
 import { colors, radii, spacing } from '../../theme/tokens';
 import type { BookingRecord } from '../../types/marketplace';
 
-export interface JobHistoryCardProps {
-  job: BookingRecord;
+export interface TaskHistoryCardProps {
+  task?: BookingRecord;
+  job?: BookingRecord;
 }
+export type JobHistoryCardProps = TaskHistoryCardProps;
 
-export function JobHistoryCard({ job }: JobHistoryCardProps) {
+export function TaskHistoryCard({ task, job }: TaskHistoryCardProps) {
+  const item = task ?? job;
+  if (!item) return null;
+
   const { language, t } = useLanguage();
   const { palette } = useAppearance();
 
@@ -19,20 +24,22 @@ export function JobHistoryCard({ job }: JobHistoryCardProps) {
         styles.card,
         { backgroundColor: palette.surface, borderColor: palette.border },
       ]}
-      testID={`history-job-card-${job.id}`}
+      testID={`history-job-card-${item.id}`}
     >
       <View style={styles.cardTop}>
         <Text style={[styles.cardTitle, { color: palette.text }]}>
-          {job.serviceNameSnapshot}
+          {item.serviceNameSnapshot}
         </Text>
-        <Text style={styles.statusTag}>{t(`booking.status.${job.status}`)}</Text>
+        <Text style={styles.statusTag}>{t(`booking.status.${item.status}`)}</Text>
       </View>
       <Text style={[styles.cardMeta, { color: palette.textMuted }]}>
-        {job.customerName} · {localizeArea(job.serviceArea, language)}
+        {item.customerName} · {localizeArea(item.serviceArea, language)}
       </Text>
     </View>
   );
 }
+
+export const JobHistoryCard = TaskHistoryCard;
 
 const styles = StyleSheet.create({
   card: {

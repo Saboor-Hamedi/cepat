@@ -18,6 +18,7 @@ import {
   loadSavedTechnicianIds,
   loadSubmittedReports,
   loadSubmittedReviews,
+  subscribeToBookings,
 } from "../data/marketplaceStore";
 import { localizeArea, useLanguage } from "../i18n/locale";
 import { useAuth } from "../auth/AuthProvider";
@@ -38,6 +39,8 @@ export default function CustomerBookingsScreen() {
   const { user } = useAuth();
   const [tab, setTab] = useState<CustomerHubTab>("current");
   const [loading, setLoading] = useState(true);
+  const [bookingsError, setBookingsError] = useState<string | null>(null);
+  const [reloadBookingsKey, setReloadBookingsKey] = useState(0);
   const [bookings, setBookings] = useState<BookingRecord[]>([]);
   const [savedTechnicians, setSavedTechnicians] = useState<Technician[]>([]);
   const [reviews, setReviews] = useState<TechnicianReview[]>([]);
@@ -45,35 +48,72 @@ export default function CustomerBookingsScreen() {
 
   useEffect(() => {
     let active = true;
-    void Promise.all([
-      loadBookings(),
-      loadTechnicians(),
-      loadSavedTechnicianIds(user?.id),
-      loadSubmittedReviews(),
-      loadSubmittedReports(),
-    ])
-      .then(([allBookings, techPage, savedIds, subReviews, subReports]) => {
+    const applyBookings = (allBookings: BookingRecord[]) => {
+      const userBookings = user?.id
+        ? allBookings.filter((booking) => booking.customerUserId === user.id)
+        : [];
+      setBookings(userBookings);
+    };
+    const refresh = async () => {
+      try {
+        const [allBookings, techPage, savedIds, subReviews, subReports] =
+          await Promise.all([
+            loadBookings(),
+            loadTechnicians(),
+            loadSavedTechnicianIds(user?.id),
+            loadSubmittedReviews(),
+            loadSubmittedReports(),
+          ]);
         if (!active) return;
-        const userBookings = user?.id
-          ? allBookings.filter((b) => b.customerUserId === user.id)
-          : [];
-        setBookings(userBookings);
+        applyBookings(allBookings);
         setSavedTechnicians(
           techPage.items.filter((item) => savedIds.includes(item.id)),
         );
         setReviews(subReviews);
         setReports(subReports);
-      })
-      .catch(() => {
-        // Handled by repository fallback
-      })
-      .finally(() => {
+        setBookingsError(null);
+      } catch (error) {
+        if (active) {
+          setBookingsError(
+            error instanceof Error ? error.message : "bookings_load_failed",
+          );
+        }
+      } finally {
         if (active) setLoading(false);
-      });
+      }
+    };
+    void refresh();
+    const unsubscribe = user?.id
+      ? subscribeToBookings(
+          user.id,
+          () => {
+            void loadBookings()
+              .then((allBookings) => {
+                if (active) {
+                  applyBookings(allBookings);
+                  setBookingsError(null);
+                }
+              })
+              .catch((error: unknown) => {
+                if (active) {
+                  setBookingsError(
+                    error instanceof Error
+                      ? error.message
+                      : "bookings_load_failed",
+                  );
+                }
+              });
+          },
+          (message) => {
+            if (active) setBookingsError(message);
+          },
+        )
+      : () => {};
     return () => {
       active = false;
+      unsubscribe();
     };
-  }, [user?.id]);
+  }, [reloadBookingsKey, user?.id]);
 
   const currentBookings = useMemo(
     () =>
@@ -124,8 +164,10 @@ export default function CustomerBookingsScreen() {
       style={[styles.safeArea, { backgroundColor: palette.background }]}
       edges={["top", "bottom"]}
     >
-      <AppNavigationBar activeTab="bookings" />
-      <ScrollView contentContainerStyle={styles.scrollContent}>
+      <ScrollView
+        style={styles.screenContent}
+        contentContainerStyle={styles.scrollContent}
+      >
         <View style={styles.container}>
           {/* Hidden semantic tag to preserve test compatibility */}
           <Text style={styles.srOnly} testID="bookings-heading">
@@ -167,13 +209,29 @@ export default function CustomerBookingsScreen() {
               },
               {
                 key: "reviews_reports",
-                label: language === "en" ? "Reviews & Reports" : "Ulasan & Laporan",
+                label:
+                  language === "en" ? "Reviews & Reports" : "Ulasan & Laporan",
               },
             ]}
           />
 
           {loading ? (
             <LoadingState label={t("home.loading")} />
+          ) : bookingsError ? (
+            <EmptyState
+              title={
+                language === "en"
+                  ? "Could not load your bookings"
+                  : "Pesanan tidak dapat dimuat"
+              }
+              description={bookingsError}
+              actionLabel={t("home.retry")}
+              onAction={() => {
+                setBookingsError(null);
+                setLoading(true);
+                setReloadBookingsKey((current) => current + 1);
+              }}
+            />
           ) : tab === "current" ? (
             currentBookings.length > 0 ? (
               currentBookings.map((booking) => (
@@ -383,6 +441,7 @@ export default function CustomerBookingsScreen() {
           )}
         </View>
       </ScrollView>
+      <AppNavigationBar activeTab="bookings" />
     </SafeAreaView>
   );
 }
@@ -451,6 +510,7 @@ function BookingListItem({
 }
 
 const styles = StyleSheet.create({
+  screenContent: { flex: 1 },
   safeArea: { backgroundColor: colors.paper, flex: 1 },
   srOnly: { height: 0, opacity: 0, position: "absolute", width: 0 },
   scrollContent: { paddingBottom: spacing.xxxl },

@@ -41,6 +41,7 @@ import {
   saveCustomerAddress,
   saveSelectedArea,
   sendBookingMessage,
+  submitBookingWorkForAcceptance,
   submitBookingReview,
   submitTechnicianReport,
   toggleSavedTechnicianId,
@@ -327,7 +328,14 @@ describe('booking lifecycle, chat link blocking, and marketplace store', () => {
     const inProgress = await transitionBookingStatus(booking.id, 'in_progress', 'technician');
     expect(inProgress.status).toBe('in_progress');
 
-    const completed = await transitionBookingStatus(booking.id, 'completed', 'technician');
+    await expect(
+      transitionBookingStatus(booking.id, 'completed', 'customer'),
+    ).rejects.toThrow('invalid_status_transition');
+
+    const submitted = await submitBookingWorkForAcceptance(booking.id);
+    expect(submitted.workCompletedAt).toBeTruthy();
+
+    const completed = await transitionBookingStatus(booking.id, 'completed', 'customer');
     expect(completed.status).toBe('completed');
 
     const review = await submitBookingReview({

@@ -1,9 +1,10 @@
 import { fixtureBookings, fixtureCategories, fixtureTechnicians } from './fixtures';
-import { supabase } from './marketplaceRepository';
+import { shouldUseFixtures, supabase } from './marketplaceRepository';
 import { loadBookings } from './marketplaceStore';
 import { getStoredJson, setStoredJson } from '../storage/kvStorage';
 import type {
   BookingRecord,
+  BookingStatus,
   ServiceCategory,
   TechnicianReport,
 } from '../types/marketplace';
@@ -25,6 +26,13 @@ export interface AdminAccountRecord {
   verified: boolean;
   moderationReason?: string;
   updatedAt: string;
+}
+
+export interface AdminUserCounts {
+  customers: number;
+  technicians: number;
+  restrictedAccounts: number;
+  source: 'fixtures' | 'supabase';
 }
 
 export interface AdminTechnicianApplication {
@@ -211,6 +219,58 @@ export async function loadAdminAccounts(): Promise<AdminAccountRecord[]> {
   return getStoredJson<AdminAccountRecord[]>(ADMIN_ACCOUNTS_KEY, DEFAULT_ACCOUNTS);
 }
 
+export async function loadAdminUserCounts(): Promise<AdminUserCounts> {
+  if (!supabase || shouldUseFixtures()) {
+    const accounts = await loadAdminAccounts();
+    return {
+      customers: accounts.filter((account) => account.role === 'customer').length,
+      technicians: accounts.filter((account) => account.role === 'technician').length,
+      restrictedAccounts: accounts.filter((account) => account.status !== 'active').length,
+      source: 'fixtures',
+    };
+  }
+
+  const [customers, technicians, restrictedAccounts] = await Promise.all([
+    supabase
+      .from('user_roles')
+      .select('user_id', { count: 'exact', head: true })
+      .eq('role', 'customer'),
+    supabase
+      .from('user_roles')
+      .select('user_id', { count: 'exact', head: true })
+      .eq('role', 'technician'),
+    supabase
+      .from('user_account_status')
+      .select('user_id', { count: 'exact', head: true })
+      .neq('status', 'active'),
+  ]);
+  if (customers.error) {
+    throw new Error(`Could not load customer count: ${customers.error.message}`);
+  }
+  if (technicians.error) {
+    throw new Error(`Could not load technician count: ${technicians.error.message}`);
+  }
+  if (restrictedAccounts.error) {
+    throw new Error(
+      `Could not load restricted account count: ${restrictedAccounts.error.message}`,
+    );
+  }
+  if (
+    customers.count === null ||
+    technicians.count === null ||
+    restrictedAccounts.count === null
+  ) {
+    throw new Error('Supabase did not return exact user-role counts.');
+  }
+
+  return {
+    customers: customers.count,
+    technicians: technicians.count,
+    restrictedAccounts: restrictedAccounts.count,
+    source: 'supabase',
+  };
+}
+
 export async function updateAdminAccountModeration(
   accountId: string,
   status: AccountStatus,
@@ -300,6 +360,79 @@ export async function updateAdminApplicationStatus(
 }
 
 export async function loadAdminBookings(): Promise<BookingRecord[]> {
+  if (supabase && !shouldUseFixtures()) {
+    const { data, error } = await supabase
+      .from('bookings')
+      .select('*')
+      .order('created_at', { ascending: false });
+    if (error) {
+      throw new Error(`Could not load platform bookings: ${error.message}`);
+    }
+
+    const rows = Array.isArray(data) ? data : [];
+    const userIds = [
+      ...new Set(
+        rows.flatMap((row) => [
+          String(row.customer_user_id ?? ''),
+          String(row.technician_user_id ?? ''),
+        ]),
+      ),
+    ].filter(Boolean);
+    let nameById = new Map<string, string>();
+    if (userIds.length > 0) {
+      const { data: profiles, error: profileError } = await supabase
+        .from('profiles')
+        .select('id, display_name')
+        .in('id', userIds);
+      if (profileError) {
+        throw new Error(`Could not load booking participant names: ${profileError.message}`);
+      }
+      nameById = new Map(
+        (profiles ?? []).map((profile) => [
+          String(profile.id),
+          String(profile.display_name),
+        ]),
+      );
+    }
+
+    return rows.map((row) => ({
+      id: String(row.id ?? ''),
+      customerUserId: String(row.customer_user_id ?? ''),
+      customerName:
+        nameById.get(String(row.customer_user_id ?? '')) ?? 'Cepat Customer',
+      technicianUserId: String(row.technician_user_id ?? ''),
+      technicianName:
+        nameById.get(String(row.technician_user_id ?? '')) ?? 'Cepat Technician',
+      technicianServiceId: row.technician_service_id
+        ? String(row.technician_service_id)
+        : undefined,
+      serviceId: row.service_id ? String(row.service_id) : undefined,
+      serviceNameSnapshot: String(row.service_name_snapshot ?? 'Home service'),
+      serviceDescription: row.service_description
+        ? String(row.service_description)
+        : undefined,
+      customerAddress: String(row.customer_address ?? ''),
+      addressNotes: row.address_notes ? String(row.address_notes) : undefined,
+      serviceArea: 'Jakarta Selatan',
+      requestedStartAt: String(row.requested_start_at ?? row.created_at ?? ''),
+      agreedStartAt: row.agreed_start_at ? String(row.agreed_start_at) : undefined,
+      proposedStartAt: row.proposed_start_at ? String(row.proposed_start_at) : undefined,
+      status: (row.status as BookingStatus | null) ?? 'requested',
+      customerNotes: row.customer_notes ? String(row.customer_notes) : undefined,
+      agreedPrice:
+        typeof row.agreed_price === 'number'
+          ? row.agreed_price
+          : Number(row.agreed_price) || undefined,
+      currency: 'IDR',
+      cancellationReason: row.cancellation_reason
+        ? String(row.cancellation_reason)
+        : undefined,
+      createdAt: String(row.created_at ?? ''),
+      updatedAt: String(row.updated_at ?? ''),
+      source: 'supabase',
+    }));
+  }
+
   const bookings = await loadBookings();
   return bookings.length > 0 ? bookings : fixtureBookings;
 }
@@ -309,6 +442,15 @@ export async function adminOverrideBookingStatus(
   status: BookingRecord['status'],
 ): Promise<BookingRecord[]> {
   const bookings = await loadAdminBookings();
+  if (supabase && !shouldUseFixtures()) {
+    const { error } = await supabase
+      .from('bookings')
+      .update({ status })
+      .eq('id', bookingId);
+    if (error) {
+      throw new Error(`Could not update booking status: ${error.message}`);
+    }
+  }
   const updated = bookings.map((b) =>
     b.id === bookingId
       ? {

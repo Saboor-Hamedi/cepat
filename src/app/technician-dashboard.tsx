@@ -20,10 +20,11 @@ import { useAppearance } from '../context/AppearanceContext';
 import { shouldUseFixtures } from '../data/marketplaceRepository';
 import {
   loadBookings,
+  subscribeToBookings,
   transitionBookingStatus,
 } from '../data/marketplaceStore';
 import { useLanguage } from '../i18n/locale';
-import { JobsContainer } from '../jobs';
+import { TaskContainer } from '../task';
 import { colors, radii, spacing } from '../theme/tokens';
 import type { BookingRecord } from '../types/marketplace';
 
@@ -41,6 +42,8 @@ export default function TechnicianDashboardScreen() {
 
   const [loading, setLoading] = useState(true);
   const [bookings, setBookings] = useState<BookingRecord[]>([]);
+  const [bookingsError, setBookingsError] = useState<string | null>(null);
+  const [reloadBookingsKey, setReloadBookingsKey] = useState(0);
 
   const isPreview = shouldUseFixtures();
   const isTechnicianAccount =
@@ -56,19 +59,39 @@ export default function TechnicianDashboardScreen() {
 
   useEffect(() => {
     let active = true;
-    void loadBookings()
-      .then((allBookings) => {
+    const refresh = async () => {
+      try {
+        const allBookings = await loadBookings();
         if (!active) return;
-        setBookings(allBookings);
-      })
-      .catch(() => {})
-      .finally(() => {
+        setBookings(
+          user?.id
+            ? allBookings.filter((booking) => booking.technicianUserId === user.id)
+            : allBookings,
+        );
+        setBookingsError(null);
+      } catch (error) {
+        if (active) {
+          setBookingsError(
+            error instanceof Error ? error.message : 'bookings_load_failed',
+          );
+        }
+      } finally {
         if (active) setLoading(false);
-      });
+      }
+    };
+    void refresh();
+    const unsubscribe = user?.id
+      ? subscribeToBookings(
+          user.id,
+          () => void refresh(),
+          (message) => setBookingsError(message),
+        )
+      : () => {};
     return () => {
       active = false;
+      unsubscribe();
     };
-  }, [user?.id]);
+  }, [reloadBookingsKey, user?.id]);
 
   const handleBookingAction = async (
     bookingId: string,
@@ -87,13 +110,13 @@ export default function TechnicianDashboardScreen() {
       style={[styles.safeArea, { backgroundColor: palette.background }]}
       edges={['top', 'bottom']}
     >
-      <AppNavigationBar activeTab="workspace" />
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         keyboardVerticalOffset={Platform.OS === 'ios' ? 96 : 0}
         style={{ flex: 1 }}
       >
         <ScrollView
+          style={styles.screenContent}
           contentContainerStyle={styles.scrollContent}
           keyboardDismissMode="on-drag"
           keyboardShouldPersistTaps="handled"
@@ -113,11 +136,11 @@ export default function TechnicianDashboardScreen() {
                 description={
                   effectiveRole === 'admin'
                     ? language === 'en'
-                      ? 'This jobs hub is reserved for technician accounts.'
-                      : 'Pusat pekerjaan ini dikhususkan untuk akun teknisi.'
+                      ? 'This tasks hub is reserved for technician accounts.'
+                      : 'Pusat tugas ini dikhususkan untuk akun teknisi.'
                     : language === 'en'
-                      ? 'This jobs hub is reserved for technician accounts.'
-                      : 'Pusat pekerjaan ini dikhususkan untuk akun teknisi.'
+                      ? 'This tasks hub is reserved for technician accounts.'
+                      : 'Pusat tugas ini dikhususkan untuk akun teknisi.'
                 }
                 actionLabel={
                   effectiveRole === 'admin'
@@ -165,8 +188,23 @@ export default function TechnicianDashboardScreen() {
                   </View>
                 ) : null}
               </View>
+            ) : bookingsError ? (
+              <EmptyState
+                title={
+                  language === 'en'
+                    ? 'Could not load booking requests'
+                    : 'Permintaan pesanan tidak dapat dimuat'
+                }
+                description={bookingsError}
+                actionLabel={t('home.retry')}
+                onAction={() => {
+                  setBookingsError(null);
+                  setLoading(true);
+                  setReloadBookingsKey((current) => current + 1);
+                }}
+              />
             ) : (
-              <JobsContainer
+              <TaskContainer
                 bookings={bookings}
                 loading={loading}
                 onBookingAction={handleBookingAction}
@@ -175,11 +213,15 @@ export default function TechnicianDashboardScreen() {
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
+      <AppNavigationBar activeTab="workspace" />
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
+  screenContent: {
+    flex: 1,
+  },
   safeArea: {
     backgroundColor: colors.paper,
     flex: 1,

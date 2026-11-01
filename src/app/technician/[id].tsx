@@ -1,6 +1,6 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { router, useLocalSearchParams } from "expo-router";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   Image,
   Modal,
@@ -31,7 +31,11 @@ import {
   TechnicianPostComposer,
 } from "../../components/TechnicianPostCard";
 import { formatRupiah, loadTechnician } from "../../data/marketplaceRepository";
-import { submitTechnicianReport } from "../../data/marketplaceStore";
+import {
+  loadBookings,
+  loadSubmittedReviews,
+  submitTechnicianReport,
+} from "../../data/marketplaceStore";
 import {
   createTechnicianPost,
   deleteTechnicianPost,
@@ -49,6 +53,7 @@ import type {
   Technician,
   TechnicianPost,
   TechnicianReport,
+  TechnicianReview,
 } from "../../types/marketplace";
 import { colors, getProfileTheme, radii, spacing } from "../../theme/tokens";
 
@@ -95,6 +100,8 @@ export default function TechnicianProfileScreen() {
   const [reportDescription, setReportDescription] = useState("");
   const [reportStatusNote, setReportStatusNote] = useState<string | null>(null);
   const [reportError, setReportError] = useState<string | null>(null);
+  const [dynamicCompletedJobs, setDynamicCompletedJobs] = useState<number>(0);
+  const [dynamicReviews, setDynamicReviews] = useState<TechnicianReview[]>([]);
   const feedIsTechnician = roles.includes("technician") || effectiveRole === "technician";
   const feedIsOwner = Boolean(
     user &&
@@ -146,6 +153,43 @@ export default function TechnicianProfileScreen() {
       });
     }
   }, [id, user?.id]);
+
+  useEffect(() => {
+    let active = true;
+    const targetId = id || user?.id;
+    if (!targetId) return;
+
+    void loadBookings()
+      .then((allBookings) => {
+        if (!active) return;
+        const completed = allBookings.filter(
+          (b) =>
+            (b.technicianUserId === targetId ||
+              (user && b.technicianUserId === user.id) ||
+              (loadedTechnician && b.technicianUserId === loadedTechnician.id)) &&
+            b.status === "completed",
+        ).length;
+        setDynamicCompletedJobs(completed);
+      })
+      .catch(() => {});
+
+    void loadSubmittedReviews()
+      .then((allReviews) => {
+        if (!active) return;
+        const matched = allReviews.filter(
+          (r) =>
+            r.technicianId === targetId ||
+            (user && r.technicianId === user.id) ||
+            (loadedTechnician && r.technicianId === loadedTechnician.id),
+        );
+        setDynamicReviews(matched);
+      })
+      .catch(() => {});
+
+    return () => {
+      active = false;
+    };
+  }, [id, loadedTechnician, retryKey, user]);
 
   const goBack = () => {
     if (router.canGoBack()) router.back();
@@ -210,8 +254,8 @@ export default function TechnicianProfileScreen() {
     Boolean(user) &&
     (user?.id === id ||
       (loadedTechnician && user?.id === loadedTechnician.id) ||
-      (isTechnicianUser && id === "demo-rizky") ||
-      (!isTechnicianUser && id === "demo-customer"));
+      (isTechnicianUser && (!id || id === user?.id || id === "demo-rizky")) ||
+      (!isTechnicianUser && (!id || id === user?.id || id === "demo-customer")));
   const accountDisplayName =
     (typeof user?.user_metadata?.display_name === "string" &&
       user.user_metadata.display_name.trim()) ||
@@ -255,6 +299,27 @@ export default function TechnicianProfileScreen() {
         }
       : null);
 
+  const baseReviews = rawTechnician?.reviews ?? [];
+  const dynamicIds = new Set(dynamicReviews.map((r) => r.id));
+  const dedupedBase = baseReviews.filter((r) => !dynamicIds.has(r.id));
+  const mergedReviews = [...dynamicReviews, ...dedupedBase];
+
+  const effectiveReviewCount = mergedReviews.length;
+  const effectiveAverageRating =
+    effectiveReviewCount > 0
+      ? Number(
+          (
+            mergedReviews.reduce((sum, r) => sum + r.rating, 0) /
+            effectiveReviewCount
+          ).toFixed(1),
+        )
+      : rawTechnician?.averageRating ?? 0;
+
+  const effectiveCompletedJobs = Math.max(
+    rawTechnician?.completedJobsCount ?? 0,
+    dynamicCompletedJobs,
+  );
+
   const technician: Technician | null = rawTechnician
     ? {
         ...rawTechnician,
@@ -264,6 +329,10 @@ export default function TechnicianProfileScreen() {
           isProfileOwner && user?.user_metadata?.avatar_url
             ? user.user_metadata.avatar_url
             : rawTechnician.avatarUri,
+        reviews: mergedReviews,
+        reviewCount: effectiveReviewCount,
+        averageRating: effectiveAverageRating,
+        completedJobsCount: effectiveCompletedJobs,
       }
     : null;
 
@@ -381,7 +450,7 @@ export default function TechnicianProfileScreen() {
   };
 
   const navigateToBooking = (selectedServiceId?: string) => {
-    if (isProfileOwner) return;
+    if (isProfileOwner || (user && technician && user.id === technician.id)) return;
     if (!user) {
       router.push({
         pathname: "/login",
@@ -523,13 +592,6 @@ export default function TechnicianProfileScreen() {
               ]}
             >
               <View style={styles.statCell}>
-                <Text style={[styles.statValue, { color: palette.text }]}>
-                  {posts.length}
-                  {postFeed.hasMore ? "+" : ""}{" "}
-                  {language === "en" ? "Posts" : "Postingan"}
-                </Text>
-              </View>
-              <View style={styles.statCell}>
                 <Rating
                   value={technician.reviewCount ? technician.averageRating : 0}
                   count={technician.reviewCount}
@@ -579,7 +641,7 @@ export default function TechnicianProfileScreen() {
                   router.push(
                     isAdminUser
                       ? "/admin"
-                      : { pathname: "/account", params: { tab: "profile" } },
+                      : "/account",
                   )
                 }
                 style={[
@@ -594,8 +656,8 @@ export default function TechnicianProfileScreen() {
                       ? "Admin Console"
                       : "Konsol Admin"
                     : language === "en"
-                      ? "Edit Profile"
-                      : "Edit Profil"}
+                      ? "Account Settings"
+                      : "Pengaturan Akun"}
                 </Text>
               </Pressable>
             )}
@@ -672,15 +734,6 @@ export default function TechnicianProfileScreen() {
 
               {posts.length > 0 && (
                 <>
-                  <SectionHeader
-                    eyebrow={
-                      language === "en"
-                        ? "RECENT WORK UPDATES"
-                        : "UPDATE PEKERJAAN TERBARU"
-                    }
-                    title={language === "en" ? "Posts" : "Postingan"}
-                    trailing={`${posts.length}`}
-                  />
                   {postFeed.error ? (
                     <View style={styles.feedErrorWrap}>
                       <Text style={styles.feedErrorText}>{postFeed.error}</Text>

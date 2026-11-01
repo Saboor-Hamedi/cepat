@@ -1,12 +1,12 @@
 import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 
+import { Avatar } from "../../components/marketplace-ui";
 import { useAppearance } from "../../context/AppearanceContext";
 import { useLanguage } from "../../i18n/locale";
-import { colors, radii, spacing } from "../../theme/tokens";
+import { radii, spacing } from "../../theme/tokens";
 
 export type SettingSectionKey =
   | "account"
-  | "profile"
   | "password"
   | "notifications"
   | "language"
@@ -17,15 +17,21 @@ export interface SettingHeaderProps {
   activeSection: SettingSectionKey;
   onSelectSection: (section: SettingSectionKey) => void;
   isAuthenticated: boolean;
+  userName?: string;
+  avatarUri?: string;
+  userRole?: string;
 }
 
 export function SettingHeader({
   activeSection,
   onSelectSection,
   isAuthenticated,
+  userName,
+  avatarUri,
+  userRole,
 }: SettingHeaderProps) {
   const { language } = useLanguage();
-  const { palette } = useAppearance();
+  const { palette, scaleFont } = useAppearance();
 
   const allTabs: {
     key: SettingSectionKey;
@@ -33,11 +39,6 @@ export function SettingHeader({
     authOnly?: boolean;
   }[] = [
     { key: "account", label: language === "en" ? "Account" : "Akun" },
-    {
-      key: "profile",
-      label: language === "en" ? "Profile" : "Profil",
-      authOnly: true,
-    },
     { key: "language", label: language === "en" ? "Language" : "Bahasa" },
     { key: "appearance", label: language === "en" ? "Appearance" : "Tampilan" },
     {
@@ -61,6 +62,25 @@ export function SettingHeader({
 
   return (
     <View style={styles.headerContainer}>
+      {isAuthenticated && userName ? (
+        <View
+          style={[
+            styles.identityCard,
+            { backgroundColor: palette.surface, borderColor: palette.border },
+          ]}
+          testID="settings-user-identity"
+        >
+          <Avatar uri={avatarUri} name={userName} size={44} />
+          <View style={styles.identityCopy}>
+            <Text style={[styles.identityName, { color: palette.text, fontSize: scaleFont(15) }]} numberOfLines={1}>
+              {userName}
+            </Text>
+            <Text style={[styles.identityRole, { color: palette.textMuted, fontSize: scaleFont(12) }]} numberOfLines={1}>
+              {userRole || (language === "en" ? "Cepat account" : "Akun Cepat")}
+            </Text>
+          </View>
+        </View>
+      ) : null}
       <Text style={styles.srOnly}>{language === "en" ? "" : "Pengaturan"}</Text>
       <ScrollView
         horizontal
@@ -85,7 +105,7 @@ export function SettingHeader({
               <Text
                 style={[
                   styles.tabPillText,
-                  { color: palette.pillText },
+                  { color: palette.pillText, fontSize: scaleFont(13) },
                   selected && { color: "#FFFFFF" },
                 ]}
               >
@@ -104,6 +124,26 @@ const styles = StyleSheet.create({
     marginBottom: spacing.md,
     marginTop: spacing.xs,
   },
+  identityCard: {
+    alignItems: "center",
+    borderRadius: radii.md,
+    borderWidth: 1,
+    flexDirection: "row",
+    gap: spacing.md,
+    marginBottom: spacing.md,
+    padding: spacing.md,
+  },
+  identityCopy: {
+    flex: 1,
+    minWidth: 0,
+  },
+  identityName: {
+    fontWeight: "800",
+  },
+  identityRole: {
+    marginTop: 3,
+    textTransform: "capitalize",
+  },
   srOnly: {
     height: 0,
     opacity: 0,
@@ -120,15 +160,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 9,
   },
-  tabPillSelected: {
-    backgroundColor: colors.greenDark,
-  },
   tabPillText: {
     color: "#050505",
-    fontSize: 13,
     fontWeight: "700",
-  },
-  tabPillTextSelected: {
-    color: "#FFFFFF",
   },
 });

@@ -318,38 +318,25 @@ export async function loadTechnicians(
   }
   if (!supabase) throw new Error(supabaseConfigurationError);
 
-  let data: unknown = null;
-  try {
-    const joinedResult = await supabase
+  const joinedResult = await supabase
+    .from('technician_profiles')
+    .select(TECHNICIAN_PROFILE_SELECT)
+    .range(offset, offset + pageSize - 1)
+    .order('average_rating', { ascending: false });
+
+  let profileRows: Record<string, unknown>[];
+  if (joinedResult.error) {
+    const simpleResult = await supabase
       .from('technician_profiles')
-      .select(TECHNICIAN_PROFILE_SELECT)
+      .select('*')
       .range(offset, offset + pageSize - 1)
-      .order('average_rating', { ascending: false });
-
-    if (joinedResult.error) {
-      const simpleResult = await supabase
-        .from('technician_profiles')
-        .select('*')
-        .range(offset, offset + pageSize - 1);
-      data = simpleResult.data ?? [];
-    } else {
-      data = joinedResult.data;
+      .order('created_at', { ascending: false });
+    if (simpleResult.error) {
+      throw new Error(`technicians_load_failed: ${simpleResult.error.message}`);
     }
-  } catch {
-    data = [];
-  }
-
-  let profileRows = records(data);
-  if (profileRows.length === 0) {
-    try {
-      const { data: techRoles } = await supabase
-        .from('user_roles')
-        .select('user_id')
-        .eq('role', 'technician');
-      if (Array.isArray(techRoles) && techRoles.length > 0) {
-        profileRows = techRoles.map((r) => ({ user_id: r.user_id, is_available: true }));
-      }
-    } catch {}
+    profileRows = records(simpleResult.data);
+  } else {
+    profileRows = records(joinedResult.data);
   }
 
   if (profileRows.length === 0) {

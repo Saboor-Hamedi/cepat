@@ -6,23 +6,43 @@ import { localizeArea, useLanguage } from '../../i18n/locale';
 import { colors, radii, spacing } from '../../theme/tokens';
 import type { BookingRecord } from '../../types/marketplace';
 
-export interface JobActiveCardProps {
-  job: BookingRecord;
+export interface TaskActiveCardProps {
+  task?: BookingRecord;
+  job?: BookingRecord;
   onOpenChat: (id: string) => void;
-  onStartJob: (id: string) => void;
-  onCompleteJob: (id: string) => void;
-  onViewCustomer: (job: BookingRecord) => void;
+  onStartTask?: (id: string) => void;
+  onStartJob?: (id: string) => void;
+  onCompleteTask?: (id: string) => void;
+  onCompleteJob?: (id: string) => void;
+  onViewCustomer: (task: BookingRecord) => void;
 }
+export type JobActiveCardProps = TaskActiveCardProps;
 
-export function JobActiveCard({
+export function TaskActiveCard({
+  task,
   job,
   onOpenChat,
+  onStartTask,
   onStartJob,
+  onCompleteTask,
   onCompleteJob,
   onViewCustomer,
-}: JobActiveCardProps) {
+}: TaskActiveCardProps) {
+  const item = task ?? job;
+  if (!item) return null;
+
   const { language, t } = useLanguage();
   const { palette } = useAppearance();
+
+  const handleStart = () => {
+    if (onStartTask) onStartTask(item.id);
+    else if (onStartJob) onStartJob(item.id);
+  };
+
+  const handleComplete = () => {
+    if (onCompleteTask) onCompleteTask(item.id);
+    else if (onCompleteJob) onCompleteJob(item.id);
+  };
 
   return (
     <View
@@ -30,23 +50,23 @@ export function JobActiveCard({
         styles.card,
         { backgroundColor: palette.surface, borderColor: palette.border },
       ]}
-      testID={`upcoming-job-card-${job.id}`}
+      testID={`upcoming-job-card-${item.id}`}
     >
       <View style={styles.customerHeaderRow}>
-        <Avatar name={job.customerName} size={42} />
+        <Avatar name={item.customerName} size={42} />
         <View style={{ flex: 1 }}>
           <Text style={[styles.cardCustomer, { color: palette.text }]}>
-            {job.customerName}
+            {item.customerName}
           </Text>
           <Text style={[styles.cardMeta, { color: palette.textMuted }]}>
-            {job.requestedStartAt.slice(0, 16).replace('T', ' ')} WIB
+            {item.requestedStartAt.slice(0, 16).replace('T', ' ')} WIB
           </Text>
         </View>
         <Pressable
           accessibilityRole="button"
-          onPress={() => onViewCustomer(job)}
+          onPress={() => onViewCustomer(item)}
           style={[styles.customerProfileBtn, { borderColor: palette.border }]}
-          testID={`dashboard-view-customer-${job.id}`}
+          testID={`dashboard-view-customer-${item.id}`}
         >
           <Text style={[styles.customerProfileBtnText, { color: palette.text }]}>
             {language === 'en' ? 'Customer Profile' : 'Profil Pelanggan'}
@@ -56,44 +76,44 @@ export function JobActiveCard({
 
       <View style={styles.cardTop}>
         <Text style={[styles.cardTitle, { color: palette.text }]}>
-          {job.serviceNameSnapshot}
+          {item.serviceNameSnapshot}
         </Text>
-        <Text style={styles.statusTag}>{t(`booking.status.${job.status}`)}</Text>
+        <Text style={styles.statusTag}>{t(`booking.status.${item.status}`)}</Text>
       </View>
       <Text
         style={[styles.unlockedAddressText, { color: palette.text }]}
-        testID={`unlocked-customer-address-${job.id}`}
+        testID={`unlocked-customer-address-${item.id}`}
       >
-        {job.customerAddress} ({localizeArea(job.serviceArea, language)})
+        {item.customerAddress} ({localizeArea(item.serviceArea, language)})
       </Text>
       <View style={styles.actionRow}>
         <Pressable
           accessibilityRole="button"
-          onPress={() => onOpenChat(job.id)}
+          onPress={() => onOpenChat(item.id)}
           style={styles.chatActionBtn}
-          testID={`dashboard-open-chat-${job.id}`}
+          testID={`dashboard-open-chat-${item.id}`}
         >
           <View style={styles.chatIconBox}>
             <View style={styles.chatIconTail} />
           </View>
           <Text style={styles.chatActionBtnText}>{t('booking.chatTitle')}</Text>
         </Pressable>
-        {job.status === 'confirmed' && (
+        {item.status === 'confirmed' && (
           <Pressable
             accessibilityRole="button"
-            onPress={() => onStartJob(job.id)}
+            onPress={handleStart}
             style={styles.secondaryBtn}
-            testID={`dashboard-start-${job.id}`}
+            testID={`dashboard-start-${item.id}`}
           >
             <Text style={styles.secondaryBtnText}>
-              {language === 'en' ? 'Start Job' : 'Mulai Pekerjaan'}
+              {language === 'en' ? 'Start Task' : 'Mulai Tugas'}
             </Text>
           </Pressable>
         )}
         <Pressable
           accessibilityRole="button"
           onPress={() => {
-            if (!job.customerAcceptedWorkDone) {
+            if (!item.customerAcceptedWorkDone) {
               Alert.alert(
                 language === 'en'
                   ? 'Customer Approval Required'
@@ -104,10 +124,10 @@ export function JobActiveCard({
               );
               return;
             }
-            onCompleteJob(job.id);
+            handleComplete();
           }}
-          style={[styles.acceptBtn, !job.customerAcceptedWorkDone && { opacity: 0.6 }]}
-          testID={`dashboard-complete-${job.id}`}
+          style={[styles.acceptBtn, !item.customerAcceptedWorkDone && { opacity: 0.6 }]}
+          testID={`dashboard-complete-${item.id}`}
         >
           <Text style={styles.acceptBtnText}>{t('booking.completeJob')}</Text>
         </Pressable>
@@ -115,6 +135,8 @@ export function JobActiveCard({
     </View>
   );
 }
+
+export const JobActiveCard = TaskActiveCard;
 
 const styles = StyleSheet.create({
   card: {

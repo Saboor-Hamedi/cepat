@@ -40,7 +40,13 @@ function SidebarItemIcon({
   color = "#0F1419",
 }: {
   kind:
-    "profile" | "settings" | "preferences" | "bookings" | "workspace" | "admin";
+    | "profile"
+    | "settings"
+    | "preferences"
+    | "bookings"
+    | "notifications"
+    | "workspace"
+    | "admin";
   color?: string;
 }) {
   const stroke = color;
@@ -81,6 +87,14 @@ function SidebarItemIcon({
     return (
       <View style={styles.itemIconCanvas}>
         <View style={[styles.iconShield, { borderColor: stroke }]} />
+      </View>
+    );
+  }
+  if (kind === "notifications") {
+    return (
+      <View style={styles.itemIconCanvas}>
+        <View style={[styles.iconNotificationBell, { borderColor: stroke }]} />
+        <View style={[styles.iconNotificationBase, { backgroundColor: stroke }]} />
       </View>
     );
   }
@@ -127,6 +141,7 @@ export function Sidebar({ visible, onClose, avatarUri }: SidebarProps) {
       | "/"
       | "/account"
       | "/bookings"
+      | "/notifications"
       | "/technician-dashboard"
       | "/admin"
       | "/login"
@@ -146,7 +161,7 @@ export function Sidebar({ visible, onClose, avatarUri }: SidebarProps) {
     await signOut();
     onClose();
     try {
-      router.replace("/login");
+      router.replace("/");
     } catch {
       // Router may not be mounted in isolated unit component tests.
     }
@@ -283,6 +298,20 @@ export function Sidebar({ visible, onClose, avatarUri }: SidebarProps) {
                 {language === "en" ? "Account preferences" : "Preferensi akun"}
               </Text>
             </Pressable>
+
+            {isAuthenticated && (
+              <Pressable
+                accessibilityRole="button"
+                onPress={() => navigateAndClose("/notifications")}
+                style={styles.menuItem}
+                testID="sidebar-notifications"
+              >
+                <SidebarItemIcon kind="notifications" color={palette.text} />
+                <Text style={[styles.menuItemText, { color: palette.text }]}>
+                  {language === "en" ? "Notifications" : "Notifikasi"}
+                </Text>
+              </Pressable>
+            )}
 
             {isTechnician ? (
               <Pressable
@@ -535,6 +564,19 @@ const styles = StyleSheet.create({
     borderWidth: 2,
     height: 16,
     width: 16,
+  },
+  iconNotificationBell: {
+    borderTopLeftRadius: 8,
+    borderTopRightRadius: 8,
+    borderWidth: 2,
+    height: 14,
+    width: 14,
+  },
+  iconNotificationBase: {
+    borderRadius: 2,
+    height: 2,
+    marginTop: 1,
+    width: 18,
   },
   bottomFooter: {
     borderTopWidth: 1,

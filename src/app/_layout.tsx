@@ -2,10 +2,20 @@ import { requireOptionalNativeModule } from 'expo-modules-core';
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect } from 'react';
+import * as SplashScreen from 'expo-splash-screen';
+import { Platform } from 'react-native';
 
 import { AuthProvider } from '../auth/AuthProvider';
 import { AppearanceProvider, useAppearance } from '../context/AppearanceContext';
 import { LanguageProvider } from '../i18n/locale';
+import { PostDropdownProvider } from '../components/posts/PostDropdown';
+import { InAppNotificationBanner } from '../components/InAppNotificationBanner';
+
+if (Platform.OS !== 'web') {
+  void SplashScreen.preventAutoHideAsync().catch((error: unknown) => {
+    console.warn('Could not hold the native splash screen:', error);
+  });
+}
 
 function disableFloatingDevGearButton() {
   try {
@@ -38,12 +48,20 @@ function disableFloatingDevGearButton() {
 }
 
 function ThemedStack() {
-  const { isDark, palette, reduceMotion } = useAppearance();
+  const { isDark, palette, reduceMotion, isHydrated } = useAppearance();
   const stackAnim = reduceMotion ? 'none' : 'fade';
 
   useEffect(() => {
     disableFloatingDevGearButton();
   }, []);
+
+  useEffect(() => {
+    if (isHydrated && Platform.OS !== 'web') {
+      void SplashScreen.hideAsync().catch((error: unknown) => {
+        console.warn('Could not hide the native splash screen:', error);
+      });
+    }
+  }, [isHydrated]);
 
   return (
     <>
@@ -60,6 +78,7 @@ function ThemedStack() {
         <Stack.Screen name="technician/[id]" options={{ animation: stackAnim }} />
         <Stack.Screen name="booking/[id]" options={{ animation: stackAnim }} />
         <Stack.Screen name="bookings" options={{ animation: 'none' }} />
+        <Stack.Screen name="notifications" options={{ animation: stackAnim }} />
         <Stack.Screen name="technician-dashboard" options={{ animation: 'none' }} />
         <Stack.Screen name="admin" options={{ animation: 'none' }} />
         <Stack.Screen name="account" options={{ animation: 'none' }} />
@@ -68,6 +87,7 @@ function ThemedStack() {
         <Stack.Screen name="forgot-password" options={{ animation: stackAnim }} />
         <Stack.Screen name="reset-password" options={{ animation: stackAnim }} />
       </Stack>
+      <InAppNotificationBanner />
     </>
   );
 }
@@ -77,7 +97,9 @@ export default function RootLayout() {
     <AuthProvider>
       <AppearanceProvider>
         <LanguageProvider>
-          <ThemedStack />
+          <PostDropdownProvider>
+            <ThemedStack />
+          </PostDropdownProvider>
         </LanguageProvider>
       </AppearanceProvider>
     </AuthProvider>

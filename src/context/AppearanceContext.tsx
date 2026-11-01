@@ -68,6 +68,7 @@ interface StoredAppearanceState {
 }
 
 export interface AppearanceContextValue {
+  isHydrated: boolean;
   themeMode: ThemeMode;
   effectiveTheme: 'light' | 'dark';
   isDark: boolean;
@@ -82,6 +83,7 @@ export interface AppearanceContextValue {
 }
 
 const AppearanceContext = createContext<AppearanceContextValue>({
+  isHydrated: false,
   themeMode: 'light',
   effectiveTheme: 'light',
   isDark: false,
@@ -100,6 +102,7 @@ export function AppearanceProvider({ children }: PropsWithChildren) {
   const [themeMode, setThemeModeState] = useState<ThemeMode>('light');
   const [largeText, setLargeTextState] = useState<boolean>(false);
   const [reduceMotion, setReduceMotionState] = useState<boolean>(false);
+  const [isHydrated, setIsHydrated] = useState(false);
 
   useEffect(() => {
     let active = true;
@@ -121,7 +124,12 @@ export function AppearanceProvider({ children }: PropsWithChildren) {
           setReduceMotionState(parsed.reduceMotion);
         }
       })
-      .catch(() => {});
+      .catch((error: unknown) => {
+        console.warn('Could not load saved appearance preferences:', error);
+      })
+      .finally(() => {
+        if (active) setIsHydrated(true);
+      });
     return () => {
       active = false;
     };
@@ -191,6 +199,7 @@ export function AppearanceProvider({ children }: PropsWithChildren) {
 
   const value = useMemo<AppearanceContextValue>(
     () => ({
+      isHydrated,
       themeMode,
       effectiveTheme,
       isDark,
@@ -206,6 +215,7 @@ export function AppearanceProvider({ children }: PropsWithChildren) {
     [
       effectiveTheme,
       fontScale,
+      isHydrated,
       isDark,
       largeText,
       palette,

@@ -1,16 +1,25 @@
 import { router } from "expo-router";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 
 import { useAuth } from "../auth/AuthProvider";
 import { useAppearance } from "../context/AppearanceContext";
+import {
+  loadNotifications,
+  subscribeToNotifications,
+} from "../data/notifications";
 import { useLanguage } from "../i18n/locale";
-import { colors, spacing } from "../theme/tokens";
+import { colors, radii, spacing } from "../theme/tokens";
 import { Avatar } from "./Avatar";
 import { Sidebar } from "./Sidebar";
 
 export type NavigationTabKey =
-  "marketplace" | "bookings" | "workspace" | "admin" | "settings";
+  | "marketplace"
+  | "bookings"
+  | "notifications"
+  | "workspace"
+  | "admin"
+  | "settings";
 
 function NavTabIcon({
   tabKey,
@@ -60,6 +69,16 @@ function NavTabIcon({
             style={[styles.calRowLineShort, { backgroundColor: strokeColor }]}
           />
         </View>
+      </View>
+    );
+  }
+
+  if (tabKey === "notifications") {
+    return (
+      <View style={styles.iconCanvas}>
+        <View style={[styles.bellBody, { borderColor: strokeColor, backgroundColor: fillColor }]} />
+        <View style={[styles.bellBase, { backgroundColor: strokeColor }]} />
+        <View style={[styles.bellClapper, { backgroundColor: strokeColor }]} />
       </View>
     );
   }
@@ -133,6 +152,7 @@ export function Header({ activeTab }: { activeTab: NavigationTabKey }) {
   const { language } = useLanguage();
   const { palette, isDark } = useAppearance();
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [unreadNotifCount, setUnreadNotifCount] = useState(0);
 
   const isAuthenticated = Boolean(user);
   const displayName =
@@ -145,11 +165,39 @@ export function Header({ activeTab }: { activeTab: NavigationTabKey }) {
       ? user.user_metadata.avatar_url
       : undefined;
 
+  useEffect(() => {
+    if (!user?.id) return;
+    let mounted = true;
+    void loadNotifications(user.id)
+      .then((items) => {
+        if (mounted) {
+          setUnreadNotifCount(items.filter((item) => !item.readAt).length);
+        }
+      })
+      .catch(() => {});
+
+    const unsubscribe = subscribeToNotifications(user.id, () => {
+      void loadNotifications(user.id)
+        .then((items) => {
+          if (mounted) {
+            setUnreadNotifCount(items.filter((item) => !item.readAt).length);
+          }
+        })
+        .catch(() => {});
+    });
+
+    return () => {
+      mounted = false;
+      unsubscribe();
+    };
+  }, [user?.id]);
+
   const allTabs: {
     key: NavigationTabKey;
-    href: "/" | "/bookings" | "/technician-dashboard" | "/account";
+    href: "/" | "/bookings" | "/notifications" | "/technician-dashboard" | "/account";
     testID: string;
     label: string;
+    badgeCount?: number;
   }[] = [
     {
       key: "marketplace",
@@ -164,10 +212,17 @@ export function Header({ activeTab }: { activeTab: NavigationTabKey }) {
       label: "Bookings",
     },
     {
+      key: "notifications",
+      href: "/notifications",
+      testID: "nav-notifications",
+      label: language === "en" ? "Notification" : "Notifikasi",
+      badgeCount: unreadNotifCount,
+    },
+    {
       key: "workspace",
       href: "/technician-dashboard",
       testID: "nav-workspace",
-      label: language === "en" ? "Jobs" : "Pekerjaan",
+      label: language === "en" ? "Task" : "Tugas",
     },
   ];
 
@@ -177,10 +232,10 @@ export function Header({ activeTab }: { activeTab: NavigationTabKey }) {
         styles.navBarWrap,
         {
           backgroundColor: palette.surface,
-          borderBottomColor: palette.border,
+          borderTopColor: palette.border,
         },
       ]}
-      testID="top-navigation-bar"
+      testID="bottom-navigation-bar"
     >
       {/* Hidden semantic tag to preserve suite compatibility without displaying redundant title */}
       <Text style={styles.srOnly}>cepat</Text>
@@ -236,12 +291,21 @@ export function Header({ activeTab }: { activeTab: NavigationTabKey }) {
                 style={styles.navTab}
                 testID={item.testID}
               >
-                <NavTabIcon
-                  tabKey={item.key}
-                  active={active}
-                  strokeColor={strokeColor}
-                  fillColor={fillColor}
-                />
+                <View style={styles.iconWithBadgeWrap}>
+                  <NavTabIcon
+                    tabKey={item.key}
+                    active={active}
+                    strokeColor={strokeColor}
+                    fillColor={fillColor}
+                  />
+                  {Boolean(item.badgeCount && item.badgeCount > 0) && (
+                    <View style={styles.badgePill} testID={`${item.testID}-badge`}>
+                      <Text style={styles.badgeText}>
+                        {item.badgeCount! > 99 ? "99+" : item.badgeCount}
+                      </Text>
+                    </View>
+                  )}
+                </View>
                 <Text
                   numberOfLines={1}
                   style={[
@@ -288,8 +352,8 @@ export const AppNavigationBar = Header;
 
 const styles = StyleSheet.create({
   navBarWrap: {
-    borderBottomWidth: 1,
-    height: 56,
+    borderTopWidth: 1,
+    height: 64,
     justifyContent: "center",
     paddingHorizontal: spacing.md,
   },
@@ -338,6 +402,32 @@ const styles = StyleSheet.create({
     paddingBottom: 4,
     paddingTop: 4,
     position: "relative",
+  },
+  iconWithBadgeWrap: {
+    alignItems: "center",
+    height: 24,
+    justifyContent: "center",
+    position: "relative",
+    width: 28,
+  },
+  badgePill: {
+    alignItems: "center",
+    backgroundColor: colors.danger,
+    borderRadius: radii.pill,
+    height: 16,
+    justifyContent: "center",
+    minWidth: 16,
+    paddingHorizontal: 4,
+    position: "absolute",
+    right: -6,
+    top: -4,
+    zIndex: 10,
+  },
+  badgeText: {
+    color: "#FFFFFF",
+    fontSize: 9,
+    fontWeight: "800",
+    textAlign: "center",
   },
   tabLabel: {
     fontSize: 10,
@@ -423,6 +513,26 @@ const styles = StyleSheet.create({
   calRowLineShort: {
     height: 1,
     width: "60%",
+  },
+  bellBody: {
+    borderTopLeftRadius: 7,
+    borderTopRightRadius: 7,
+    borderWidth: 1.8,
+    borderBottomWidth: 0,
+    height: 11,
+    width: 12,
+  },
+  bellBase: {
+    borderRadius: 1,
+    height: 2,
+    marginTop: 0,
+    width: 16,
+  },
+  bellClapper: {
+    borderRadius: 1,
+    height: 2,
+    marginTop: 1,
+    width: 4,
   },
   briefcaseHandle: {
     borderTopLeftRadius: 2,

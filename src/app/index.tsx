@@ -14,9 +14,7 @@ import { useAuth } from '../auth/AuthProvider';
 import { useAppearance } from '../context/AppearanceContext';
 import {
   AppNavigationBar,
-  CategoryPill,
   EmptyState,
-  FeaturedProfessionalCard,
   LoadingState,
   SectionTitle,
   ServiceCategoryGlyph,
@@ -30,7 +28,6 @@ import {
 } from '../components/MarketplaceMapSearch';
 import {
   TechnicianPostCard,
-  TechnicianPostComposer,
 } from '../components/TechnicianPostCard';
 import {
   filterTechnicians,
@@ -48,7 +45,6 @@ import {
   saveSelectedArea,
 } from '../data/marketplaceStore';
 import {
-  createTechnicianPost,
   deleteTechnicianPost,
   loadMarketplacePublishedPostsPage,
   suspendTechnicianPost,
@@ -75,10 +71,30 @@ interface PopularTaskItem {
   technicianName: string;
 }
 
+interface MarketplaceCategoryFilter {
+  slug: string;
+  label: string;
+}
+
+const CORE_CATEGORY_FILTERS: Record<string, { id: string; en: string }> = {
+  'ac-repair': { id: 'Servis AC', en: 'AC Service' },
+  plumbing: { id: 'Plumbing', en: 'Plumbing' },
+  electrical: { id: 'Kelistrikan', en: 'Electrical' },
+  cleaning: { id: 'Kebersihan', en: 'Cleaning' },
+  painting: { id: 'Pengecatan', en: 'Painting' },
+  'appliance-repair': { id: 'Perbaikan Elektronik', en: 'Appliance Repair' },
+  locksmith: { id: 'Tukang Kunci', en: 'Locksmith' },
+  'pest-control': { id: 'Pengendalian Hama', en: 'Pest Control' },
+  moving: { id: 'Pindahan', en: 'Moving' },
+  renovation: { id: 'Renovasi', en: 'Renovation' },
+};
+
 type MarketplaceListItem =
   | { key: string; kind: 'posts-heading' }
+  | { key: string; kind: 'recommendations-heading' }
   | { key: string; kind: 'technicians-heading' }
   | { key: string; kind: 'post'; post: TechnicianPost }
+  | { key: string; kind: 'recommended-technician'; technician: Technician }
   | { key: string; kind: 'technician'; technician: Technician };
 
 export default function MarketplaceScreen() {
@@ -93,6 +109,7 @@ export default function MarketplaceScreen() {
   const [source, setSource] = useState<DataSource>('fixtures');
   const [query, setQuery] = useState('');
   const [area, setArea] = useState('Semua area');
+  const [selectedCategory, setSelectedCategory] = useState('all');
   const [areaModalVisible, setAreaModalVisible] = useState(false);
   const [pinNotice, setPinNotice] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -103,13 +120,40 @@ export default function MarketplaceScreen() {
   const [reloadKey, setReloadKey] = useState(0);
   const refreshInFlightRef = useRef(false);
 
+  const categoryFilters = useMemo<MarketplaceCategoryFilter[]>(() => {
+    const coreFilters = Object.entries(CORE_CATEGORY_FILTERS).map(([slug, labels]) => ({
+      slug,
+      label: language === 'en' ? labels.en : labels.id,
+    }));
+    const knownSlugs = new Set(coreFilters.map((category) => category.slug));
+    const additionalFilters = categories
+      .filter((category) => !knownSlugs.has(category.slug))
+      .map((category) => ({
+        slug: category.slug,
+        label: categoryName(category.slug, category.name, t),
+      }));
+    return [
+      { slug: 'all', label: language === 'en' ? 'All' : 'Semua' },
+      ...coreFilters,
+      ...additionalFilters,
+    ];
+  }, [categories, language, t]);
+
   const fetchPostPage = useCallback(
     (cursor: string | null, pageSize: number) =>
-      loadMarketplacePublishedPostsPage({ area, query }, cursor, pageSize),
-    [area, query],
+      loadMarketplacePublishedPostsPage(
+        {
+          area,
+          query,
+          categorySlug: selectedCategory === 'all' ? undefined : selectedCategory,
+        },
+        cursor,
+        pageSize,
+      ),
+    [area, query, selectedCategory],
   );
   const postFeed = useInfiniteList({
-    cacheKey: `marketplace-posts:${area}:${query.trim().toLowerCase()}`,
+    cacheKey: `marketplace-posts:${area}:${query.trim().toLowerCase()}:${selectedCategory}`,
     fetchPage: fetchPostPage,
     keyExtractor: (post: TechnicianPost) => post.id,
     pageSize: 10,
@@ -168,17 +212,14 @@ export default function MarketplaceScreen() {
   }, []);
 
   const visibleTechnicians = useMemo(() => {
-    return filterTechnicians(technicians, query, area, undefined, { prioritizeArea: true });
-  }, [technicians, query, area]);
-
-  const featuredProfessionals = useMemo(
-    () =>
-      [...visibleTechnicians]
-        .filter((tech) => tech.available)
-        .sort((a, b) => b.averageRating - a.averageRating)
-        .slice(0, 4),
-    [visibleTechnicians],
-  );
+    return filterTechnicians(
+      technicians,
+      query,
+      area,
+      selectedCategory === 'all' ? undefined : selectedCategory,
+      { prioritizeArea: true },
+    );
+  }, [technicians, query, area, selectedCategory]);
 
   const popularTasks = useMemo<PopularTaskItem[]>(() => {
     const items: PopularTaskItem[] = [];
@@ -232,20 +273,45 @@ export default function MarketplaceScreen() {
 
   const marketplaceItems = useMemo<MarketplaceListItem[]>(() => {
     const items: MarketplaceListItem[] = [];
+    const recommendations = query.trim()
+      ? []
+      : visibleTechnicians
+          .filter((technician) => technician.available)
+          .slice(0, 3);
+    const recommendationIds = new Set(recommendations.map((technician) => technician.id));
+    let recommendationsAdded = false;
+    const addRecommendations = () => {
+      if (recommendationsAdded || recommendations.length === 0) return;
+      recommendationsAdded = true;
+      items.push({
+        key: 'recommendations-heading',
+        kind: 'recommendations-heading',
+      });
+      for (const technician of recommendations) {
+        items.push({
+          key: `recommended-${technician.id}`,
+          kind: 'recommended-technician',
+          technician,
+        });
+      }
+    };
     if (postFeed.items.length > 0) {
       items.push({ key: 'posts-heading', kind: 'posts-heading' });
-      for (const post of postFeed.items) {
+      for (const [index, post] of postFeed.items.entries()) {
         items.push({ key: `post-${post.id}`, kind: 'post', post });
+        if (index === 2) addRecommendations();
       }
     }
+    if (postFeed.items.length < 3) addRecommendations();
     if (visibleTechnicians.length > 0) {
       items.push({ key: 'technicians-heading', kind: 'technicians-heading' });
       for (const technician of visibleTechnicians) {
+        if (recommendationIds.has(technician.id)) continue;
         items.push({ key: `technician-${technician.id}`, kind: 'technician', technician });
       }
     }
     return items;
-  }, [postFeed.items, visibleTechnicians]);
+  }, [postFeed.items, query, visibleTechnicians]);
 
   const handlePullToRefresh = useCallback(async () => {
     if (refreshInFlightRef.current || isLoading) return;
@@ -281,44 +347,6 @@ export default function MarketplaceScreen() {
 
   const previewReason = getMarketplacePreviewReason();
 
-  const handleCreatePost = async (input: {
-    caption: string;
-    imageUri?: string;
-    mediaUrls?: string[];
-    isServicePost: boolean;
-  }) => {
-    if (!user) {
-      router.push('/login');
-      return;
-    }
-    const actorId = user.id;
-    const authorName =
-      (typeof user.user_metadata?.display_name === 'string' &&
-        user.user_metadata.display_name.trim()) ||
-      user.email?.split('@')[0] ||
-      'Pengguna Cepat';
-    const authorAvatar =
-      typeof user.user_metadata?.avatar_url === 'string'
-        ? user.user_metadata.avatar_url
-        : undefined;
-
-    await createTechnicianPost({
-      actorUserId: actorId,
-      technicianId: actorId,
-      technicianName: authorName,
-      technicianAvatarUri: authorAvatar,
-      technicianVerified: roles.includes('admin') || roles.includes('technician'),
-      caption: input.caption,
-      imageUri: input.imageUri,
-      mediaUrls: input.mediaUrls,
-      isServicePost: input.isServicePost,
-      serviceArea: area !== 'Semua area' ? area : 'Jakarta Selatan',
-      categorySlug: 'plumbing',
-      published: true,
-    });
-    await postFeed.refresh();
-  };
-
   const handleEditPost = async (
     post: TechnicianPost,
     newCaption: string,
@@ -348,126 +376,127 @@ export default function MarketplaceScreen() {
 
   const Header = (
     <View style={styles.contentWidth}>
-      {/* Unified Clean Marketplace Search & Location Card */}
       <View
         style={[
-          styles.heroCard,
-          { backgroundColor: palette.surface, borderColor: palette.border },
+          styles.searchBox,
+          { backgroundColor: palette.inputBg, borderColor: palette.border },
         ]}
+        testID="marketplace-search-shell"
       >
-        <View style={styles.heroTitleWrap}>
-          <Text
-            style={[styles.welcomeTitle, { color: palette.text }]}
-            testID="marketplace-heading"
-          >
-            {t('home.title')}
-          </Text>
-          <Text style={[styles.welcomeBody, { color: palette.textMuted }]}>
-            {t('home.subtitle')}
-          </Text>
+        <View style={styles.searchIconBox}>
+          <View
+            style={[styles.searchCircle, { borderColor: palette.textMuted }]}
+          />
+          <View
+            style={[styles.searchHandle, { backgroundColor: palette.textMuted }]}
+          />
         </View>
-
-        <View
+        <TextInput
+          accessibilityLabel={t('home.search')}
+          autoCapitalize="none"
+          onChangeText={setQuery}
+          placeholder={t('home.search')}
+          placeholderTextColor={palette.textMuted}
+          returnKeyType="search"
+          style={[styles.searchInput, { color: palette.text }]}
+          testID="marketplace-search"
+          value={query}
+        />
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={`${t('home.areaLabel')}: ${
+            area === 'Semua area'
+              ? t('home.allAreasOption')
+              : localizeArea(area, language)
+          }`}
+          onPress={() => setAreaModalVisible(true)}
           style={[
-            styles.searchBox,
-            { backgroundColor: palette.inputBg, borderColor: palette.border },
+            styles.searchLocationButton,
+            { borderColor: palette.border },
           ]}
+          testID="area-picker-trigger"
         >
-          <View style={styles.searchIconBox}>
+          <View
+            style={[
+              styles.locationPinBox,
+              { backgroundColor: palette.primarySoft },
+            ]}
+          >
             <View
-              style={[styles.searchCircle, { borderColor: palette.textMuted }]}
-            />
-            <View
-              style={[styles.searchHandle, { backgroundColor: palette.textMuted }]}
+              style={[
+                styles.locationPinDot,
+                { backgroundColor: palette.primary },
+              ]}
             />
           </View>
-          <TextInput
-            accessibilityLabel={t('home.search')}
-            autoCapitalize="none"
-            onChangeText={setQuery}
-            placeholder={t('home.search')}
-            placeholderTextColor={palette.textMuted}
-            returnKeyType="search"
-            style={[styles.searchInput, { color: palette.text }]}
-            testID="marketplace-search"
-            value={query}
-          />
-          {query.length > 0 && (
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel={t('home.clearSearch')}
-              onPress={() => setQuery('')}
-              style={[
-                styles.clearSearch,
-                { backgroundColor: palette.pillBg },
-              ]}
-              testID="clear-search"
-            >
-              <Text style={[styles.clearSearchText, { color: palette.textMuted }]}>
-                ×
-              </Text>
-            </Pressable>
-          )}
-
+          <Text
+            numberOfLines={1}
+            style={[styles.searchLocationValue, { color: palette.text }]}
+          >
+            {area === 'Semua area'
+              ? t('home.allAreasOption')
+              : localizeArea(area, language)}
+          </Text>
+          <Text style={[styles.locationChevron, { color: palette.textMuted }]}>
+            ˅
+          </Text>
+        </Pressable>
+        {query.length > 0 && (
           <Pressable
             accessibilityRole="button"
-            accessibilityLabel={`${t('home.areaLabel')}: ${area}`}
-            onPress={() => setAreaModalVisible(true)}
+            accessibilityLabel={t('home.clearSearch')}
+            onPress={() => setQuery('')}
             style={[
-              styles.locationButton,
-              { backgroundColor: palette.surface, borderColor: palette.border },
+              styles.clearSearch,
+              { backgroundColor: palette.pillBg },
             ]}
-            testID="area-picker-trigger"
+            testID="clear-search"
           >
-            <View
-              style={[
-                styles.locationPinBox,
-                { backgroundColor: palette.primarySoft },
-              ]}
-            >
-              <View
-                style={[
-                  styles.locationPinDot,
-                  { backgroundColor: palette.primary },
-                ]}
-              />
-            </View>
-            <View style={styles.locationTextWrap}>
-              <Text
-                numberOfLines={1}
-                style={[styles.locationValue, { color: palette.text }]}
-              >
-                {area === 'Semua area'
-                  ? t('home.allAreasOption')
-                  : localizeArea(area, language)}
-              </Text>
-            </View>
+            <Text style={[styles.clearSearchText, { color: palette.textMuted }]}>
+              ×
+            </Text>
           </Pressable>
-        </View>
-
-        {pinNotice ? <Text style={styles.pinNoticeText}>{pinNotice}</Text> : null}
+        )}
       </View>
 
-      {/* Inline Post Creator under search input */}
-      {user && (
-        <View style={styles.marketplaceComposerWrap} testID="marketplace-composer-section">
-          <TechnicianPostComposer
-            onCreatePost={handleCreatePost}
-            technicianProfile={{
-              id: user.id,
-              displayName:
-                (typeof user.user_metadata?.display_name === 'string' &&
-                  user.user_metadata.display_name.trim()) ||
-                user.email?.split('@')[0] ||
-                'Pengguna Cepat',
-              avatarUri:
-                typeof user.user_metadata?.avatar_url === 'string'
-                  ? user.user_metadata.avatar_url
-                  : undefined,
-            }}
-          />
-        </View>
-      )}
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        contentContainerStyle={styles.categoryFilters}
+        testID="marketplace-category-filters"
+      >
+        {categoryFilters.map((category) => {
+          const selected = selectedCategory === category.slug;
+          return (
+            <Pressable
+              key={category.slug}
+              accessibilityRole="tab"
+              accessibilityState={{ selected }}
+              onPress={() => setSelectedCategory(category.slug)}
+              style={[
+                styles.categoryFilter,
+                {
+                  backgroundColor: selected
+                    ? palette.primary
+                    : palette.surface,
+                  borderColor: selected ? palette.primary : palette.border,
+                },
+              ]}
+              testID={`category-${category.slug}`}
+            >
+              <Text
+                style={[
+                  styles.categoryFilterText,
+                  { color: selected ? '#FFFFFF' : palette.text },
+                ]}
+              >
+                {category.label}
+              </Text>
+            </Pressable>
+          );
+        })}
+      </ScrollView>
+      {pinNotice ? <Text style={styles.pinNoticeText}>{pinNotice}</Text> : null}
 
       {/* Clean Area & City Strip */}
       <InlineMarketplaceMapCard
@@ -502,32 +531,6 @@ export default function MarketplaceScreen() {
       {source === 'supabase' && query.length > 0 && (
         <Text style={styles.searchScopeNote}>{t('home.searchScope')}</Text>
       )}
-
-      {/* Service Categories */}
-      <SectionTitle
-        eyebrow={t('home.categoryEyebrow')}
-        title={t('home.categoryTitle')}
-      />
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        contentContainerStyle={styles.categoryList}
-      >
-        {categories.map((category) => (
-          <CategoryPill
-            key={category.id}
-            icon={category.icon}
-            name={categoryName(category.slug, category.name, t)}
-            onPress={() =>
-              router.push({
-                pathname: '/category/[slug]',
-                params: { slug: category.slug },
-              })
-            }
-            testID={`category-${category.slug}`}
-          />
-        ))}
-      </ScrollView>
 
       {/* Popular Tasks Discovery */}
       {!query && popularTasks.length > 0 && (
@@ -588,34 +591,6 @@ export default function MarketplaceScreen() {
         </>
       )}
 
-      {/* Featured Professionals */}
-      {!query && featuredProfessionals.length > 0 && (
-        <>
-          <SectionTitle
-            eyebrow={t('home.featuredProsEyebrow')}
-            title={t('home.featuredProsTitle')}
-          />
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={styles.featuredList}
-          >
-            {featuredProfessionals.map((tech) => (
-              <FeaturedProfessionalCard
-                key={tech.id}
-                technician={tech}
-                onPress={() =>
-                  router.push({
-                    pathname: '/technician/[id]',
-                    params: { id: tech.id },
-                  })
-                }
-              />
-            ))}
-          </ScrollView>
-        </>
-      )}
-
       {/* Bookmarked / Saved Technicians */}
       {!query && savedTechnicians.length > 0 && (
         <View style={styles.savedHighlightBar}>
@@ -641,8 +616,8 @@ export default function MarketplaceScreen() {
 
   return (
     <SafeAreaView style={[styles.safeArea, { backgroundColor: palette.background }]} edges={['top', 'bottom']}>
-      <AppNavigationBar activeTab="marketplace" />
       <InfiniteFlatList
+        style={styles.feedList}
         contentContainerStyle={styles.listContent}
         data={marketplaceItems}
         hasMore={postFeed.hasMore || hasMore}
@@ -665,7 +640,11 @@ export default function MarketplaceScreen() {
           ) : (
             <EmptyState
               title={
-                query
+                selectedCategory !== 'all'
+                  ? language === 'en'
+                    ? 'No results in this category yet'
+                    : 'Belum ada hasil di kategori ini'
+                  : query
                   ? hasMore || postFeed.hasMore
                     ? t('home.noSearchMoreTitle')
                     : t('home.noSearchTitle')
@@ -674,7 +653,11 @@ export default function MarketplaceScreen() {
                     : t('home.noAreaTitle')
               }
               description={
-                query
+                selectedCategory !== 'all'
+                  ? language === 'en'
+                    ? 'Try another service category or return to all services.'
+                    : 'Coba kategori layanan lain atau tampilkan semua layanan.'
+                  : query
                   ? hasMore || postFeed.hasMore
                     ? t('home.noSearchMoreDescription')
                     : t('home.noSearchDescription')
@@ -685,16 +668,22 @@ export default function MarketplaceScreen() {
               actionLabel={
                 hasMore || postFeed.hasMore
                   ? t('home.loadMore')
-                  : query
-                    ? t('home.clearSearch')
-                    : t('home.allAreas')
+                  : selectedCategory !== 'all'
+                    ? language === 'en'
+                      ? 'Show all categories'
+                      : 'Tampilkan semua kategori'
+                    : query
+                      ? t('home.clearSearch')
+                      : t('home.allAreas')
               }
               onAction={() =>
                 hasMore || postFeed.hasMore
                   ? void loadMoreAll()
-                  : query
-                    ? setQuery('')
-                    : handleSelectArea('Semua area')
+                  : selectedCategory !== 'all'
+                    ? setSelectedCategory('all')
+                    : query
+                      ? setQuery('')
+                      : handleSelectArea('Semua area')
               }
             />
           )
@@ -711,6 +700,17 @@ export default function MarketplaceScreen() {
                       : 'Postingan Pekerjaan Terbaru Teknisi'
                   }
                   trailing={`${postFeed.items.length}${postFeed.hasMore ? '+' : ''}`}
+                />
+              </View>
+            );
+          }
+          if (item.kind === 'recommendations-heading') {
+            return (
+              <View style={styles.feedSectionTitle} testID="marketplace-recommendations-section">
+                <SectionTitle
+                  eyebrow={language === 'en' ? 'SUGGESTED NEAR YOU' : 'REKOMENDASI DI SEKITARMU'}
+                  title={language === 'en' ? 'Technicians to consider' : 'Teknisi yang bisa dipilih'}
+                  trailing={language === 'en' ? 'Recommended' : 'Rekomendasi'}
                 />
               </View>
             );
@@ -748,17 +748,27 @@ export default function MarketplaceScreen() {
               </View>
             );
           }
+          if (item.kind === 'recommended-technician') {
+            const technician = item.technician;
+            if (!technician?.id) return null;
+            return (
+              <View style={styles.cardWrap} testID={`recommended-technician-${technician.id}`}>
+                <TechnicianCard
+                  technician={technician}
+                  source={source}
+                  onPress={() => router.push(`/technician/${encodeURIComponent(technician.id)}`)}
+                />
+              </View>
+            );
+          }
+          const technician = item.technician;
+          if (!technician?.id) return null;
           return (
             <View style={styles.cardWrap}>
               <TechnicianCard
-                technician={item.technician}
+                technician={technician}
                 source={source}
-                onPress={() =>
-                  router.push({
-                    pathname: '/technician/[id]',
-                    params: { id: item.technician.id },
-                  })
-                }
+                onPress={() => router.push(`/technician/${encodeURIComponent(technician.id)}`)}
               />
             </View>
           );
@@ -808,6 +818,7 @@ export default function MarketplaceScreen() {
         savedAddresses={savedAddresses}
         technicians={technicians}
       />
+      <AppNavigationBar activeTab="marketplace" />
     </SafeAreaView>
   );
 }
@@ -817,41 +828,28 @@ const styles = StyleSheet.create({
     backgroundColor: colors.paper,
     flex: 1,
   },
+  feedList: {
+    flex: 1,
+  },
   listContent: {
-    paddingBottom: spacing.xxl,
+    paddingBottom: 5,
   },
   contentWidth: {
     alignSelf: 'center',
     maxWidth: 820,
     paddingHorizontal: 5,
-    paddingTop: spacing.sm,
+    paddingTop: 5,
     width: '100%',
   },
-  heroCard: {
-    backgroundColor: colors.surface,
-    borderColor: colors.line,
-    borderRadius: radii.sm,
-    borderWidth: 1,
-    marginBottom: spacing.sm,
-    padding: spacing.lg,
-    width: '100%',
-  },
-  heroTitleWrap: {
+  searchLocationButton: {
     alignItems: 'center',
-    marginBottom: spacing.xs,
-    width: '100%',
-  },
-  locationButton: {
-    alignItems: 'center',
-    backgroundColor: colors.surface,
-    borderColor: colors.line,
-    borderRadius: radii.sm,
-    borderWidth: 1,
+    borderLeftWidth: 1,
     flexDirection: 'row',
-    gap: 4,
-    height: 32,
+    gap: 5,
     marginLeft: spacing.xs,
-    paddingHorizontal: 8,
+    maxWidth: 118,
+    minWidth: 72,
+    paddingLeft: spacing.sm,
   },
   locationPinBox: {
     alignItems: 'center',
@@ -867,39 +865,24 @@ const styles = StyleSheet.create({
     height: 6,
     width: 6,
   },
-  locationTextWrap: {
-    maxWidth: 95,
-  },
-  locationValue: {
-    color: colors.ink,
-    fontSize: 11,
+  searchLocationValue: {
+    flexShrink: 1,
+    fontSize: 12,
     fontWeight: '700',
   },
-  welcomeTitle: {
-    color: colors.ink,
-    fontSize: 22,
-    fontWeight: '800',
-    letterSpacing: -0.5,
-    lineHeight: 28,
-    textAlign: 'center',
-  },
-  welcomeBody: {
-    color: colors.muted,
+  locationChevron: {
     fontSize: 13,
-    lineHeight: 19,
-    marginTop: 4,
-    textAlign: 'center',
+    fontWeight: '800',
   },
   searchBox: {
     alignItems: 'center',
     backgroundColor: colors.paper,
     borderColor: colors.line,
-    borderRadius: radii.sm,
     borderWidth: 1,
     flexDirection: 'row',
-    height: 44,
-    marginTop: spacing.md,
-    paddingHorizontal: spacing.md,
+    borderRadius: 5,
+    height: 52,
+    paddingHorizontal: spacing.sm,
     width: '100%',
   },
   searchIconBox: {
@@ -928,7 +911,7 @@ const styles = StyleSheet.create({
   searchInput: {
     color: colors.ink,
     flex: 1,
-    fontSize: 14,
+    fontSize: 15,
     height: '100%',
   },
   clearSearch: {
@@ -950,10 +933,6 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     marginTop: spacing.xs,
   },
-  marketplaceComposerWrap: {
-    marginTop: spacing.md,
-    width: '100%',
-  },
   previewBanner: {
     backgroundColor: '#FFFBF2',
     borderColor: '#EDE3CC',
@@ -974,9 +953,21 @@ const styles = StyleSheet.create({
     lineHeight: 16,
     marginTop: spacing.sm,
   },
-  categoryList: {
-    paddingBottom: 4,
-    paddingRight: 20,
+  categoryFilters: {
+    gap: spacing.xs,
+    paddingBottom: spacing.xs,
+    paddingRight: spacing.md,
+    paddingTop: spacing.sm,
+  },
+  categoryFilter: {
+    borderRadius: radii.pill,
+    borderWidth: 1,
+    paddingHorizontal: spacing.md,
+    paddingVertical: 8,
+  },
+  categoryFilterText: {
+    fontSize: 12,
+    fontWeight: '700',
   },
   popularGrid: {
     flexDirection: 'row',
@@ -1020,10 +1011,6 @@ const styles = StyleSheet.create({
     color: colors.muted,
     fontSize: 11,
     marginTop: 2,
-  },
-  featuredList: {
-    paddingBottom: 4,
-    paddingRight: 20,
   },
   savedHighlightBar: {
     alignItems: 'center',

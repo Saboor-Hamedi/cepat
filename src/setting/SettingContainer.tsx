@@ -21,6 +21,7 @@ import {
   setDefaultCustomerAddress,
   submitAccountDeletionRequest,
 } from "../data/marketplaceStore";
+import { setInAppPushEnabled } from "../data/notifications";
 import { useLanguage } from "../i18n/locale";
 import { colors, spacing } from "../theme/tokens";
 import type {
@@ -30,7 +31,6 @@ import type {
 } from "../types/marketplace";
 import { SettingAccount } from "./account/SettingAccount";
 import { SettingPassword } from "./account/SettingPassword";
-import { SettingProfile } from "./account/SettingProfile";
 import { SettingAppearance } from "./appearance/SettingAppearance";
 import {
   SettingHeader,
@@ -41,18 +41,17 @@ import { SettingNotifications } from "./notifications/SettingNotifications";
 import { SettingSecurity } from "./security/SettingSecurity";
 
 export function SettingContainer() {
-  const { language, t } = useLanguage();
+  const { language } = useLanguage();
   const { palette, setThemeMode, setLargeText, setReduceMotion } =
     useAppearance();
-  const { user, effectiveRole, updateUserProfile } = useAuth();
+  const { user, effectiveRole } = useAuth();
   const params = useLocalSearchParams<{ tab?: string }>();
   const initialTab: SettingSectionKey =
     params.tab === "password" ||
     params.tab === "notifications" ||
     params.tab === "language" ||
     params.tab === "appearance" ||
-    params.tab === "security" ||
-    params.tab === "profile"
+    params.tab === "security"
       ? params.tab
       : "account";
   const [selectedSection, setSelectedSection] =
@@ -61,17 +60,11 @@ export function SettingContainer() {
 
   const isAuthenticated = Boolean(user);
   const isCustomerRole = effectiveRole === "customer";
-  const isTechnicianRole = effectiveRole === "technician";
-
   const [displayName, setDisplayName] = useState("");
   const [email, setEmail] = useState("");
   const [phoneNumber, setPhoneNumber] = useState("");
   const [avatarUri, setAvatarUri] = useState("");
   const [addressNotes, setAddressNotes] = useState("");
-  const [profileFeedback, setProfileFeedback] = useState<string | null>(null);
-  const [profileError, setProfileError] = useState<string | null>(null);
-  const [isSavingProfile, setIsSavingProfile] = useState(false);
-
   const [preferences, setPreferences] =
     useState<UserPreferences>(DEFAULT_PREFERENCES);
 
@@ -79,8 +72,6 @@ export function SettingContainer() {
   const [addressFeedback, setAddressFeedback] = useState<string | null>(null);
 
   const [techProfile, setTechProfile] = useState<Technician | null>(null);
-  const [techFeedback, setTechFeedback] = useState<string | null>(null);
-
   const [deletionRequest, setDeletionRequest] = useState<{
     requestedAt: string;
     reason: string;
@@ -141,41 +132,6 @@ export function SettingContainer() {
     };
   }, [setLargeText, setReduceMotion, setThemeMode, user]);
 
-  const handleSavePublicProfile = async () => {
-    if (!user) return;
-    setProfileFeedback(null);
-    setProfileError(null);
-    setIsSavingProfile(true);
-    try {
-      const updated = await saveAccountProfileDetails(user.id, {
-        displayName,
-        email,
-        phoneNumber,
-        avatarUri:
-          avatarUri ||
-          (typeof user.user_metadata?.avatar_url === "string"
-            ? user.user_metadata.avatar_url
-            : ""),
-        addressNotes,
-      });
-      setDisplayName(updated.displayName);
-      setAvatarUri(updated.avatarUri);
-      await updateUserProfile({
-        displayName: updated.displayName,
-        ...(updated.avatarUri ? { avatarUrl: updated.avatarUri } : {}),
-      });
-      setProfileFeedback(t("settings.profileSaved"));
-    } catch {
-      setProfileError(
-        language === "en"
-          ? "Unable to save profile. Please review the name and try again."
-          : "Profil tidak dapat disimpan. Periksa nama dan coba lagi.",
-      );
-    } finally {
-      setIsSavingProfile(false);
-    }
-  };
-
   const handleSavePrivateContact = async () => {
     if (!user) return;
     const updated = await saveAccountProfileDetails(user.id, {
@@ -234,14 +190,8 @@ export function SettingContainer() {
 
   const handleSaveTechProfile = async (next: Technician) => {
     if (!user) return;
-    setTechFeedback(null);
     const saved = await saveTechnicianWorkspaceProfile(user.id, next);
     setTechProfile(saved);
-    setTechFeedback(
-      language === "en"
-        ? "Technician profile updated."
-        : "Profil teknisi berhasil diperbarui.",
-    );
   };
 
   const handleToggleTechAvailability = async () => {
@@ -270,13 +220,32 @@ export function SettingContainer() {
       style={[styles.safeArea, { backgroundColor: activeBg }]}
       edges={["top", "bottom"]}
     >
-      <AppNavigationBar activeTab="settings" />
-      <ScrollView contentContainerStyle={styles.scrollContent}>
+      <ScrollView style={styles.screenContent} contentContainerStyle={styles.scrollContent}>
         <View style={styles.content}>
           <SettingHeader
             activeSection={visibleSection}
             onSelectSection={setSelectedSection}
             isAuthenticated={isAuthenticated}
+            userName={displayName || user?.email?.split("@")[0]}
+            avatarUri={
+              avatarUri ||
+              (typeof user?.user_metadata?.avatar_url === "string"
+                ? user.user_metadata.avatar_url
+                : undefined)
+            }
+            userRole={
+              effectiveRole === "customer"
+                ? language === "en"
+                  ? "Customer"
+                  : "Pelanggan"
+                : effectiveRole === "technician"
+                  ? language === "en"
+                    ? "Technician"
+                    : "Teknisi"
+                  : effectiveRole === "admin"
+                    ? "Admin"
+                    : undefined
+            }
           />
 
           {visibleSection === "account" && (
@@ -307,27 +276,11 @@ export function SettingContainer() {
 
           {visibleSection === "language" && <SettingLanguage />}
 
-          {isAuthenticated && visibleSection === "profile" && (
-            <SettingProfile
-              displayName={displayName}
-              avatarUri={avatarUri}
-              onChangeDisplayName={setDisplayName}
-              onChangeAvatarUri={setAvatarUri}
-              onSavePublicProfile={handleSavePublicProfile}
-              profileFeedback={profileFeedback}
-              profileError={profileError}
-              isSaving={isSavingProfile}
-              isTechnicianRole={isTechnicianRole}
-              techProfile={techProfile}
-              onSaveTechProfile={handleSaveTechProfile}
-              techFeedback={techFeedback}
-            />
-          )}
-
           {isAuthenticated && visibleSection === "notifications" && (
             <SettingNotifications
               preferences={preferences}
               onUpdateNotifications={(notifications) => {
+                void setInAppPushEnabled(notifications.push);
                 void handleUpdatePrefs({ ...preferences, notifications });
               }}
             />
@@ -361,11 +314,15 @@ export function SettingContainer() {
           )}
         </View>
       </ScrollView>
+      <AppNavigationBar activeTab="settings" />
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
+  screenContent: {
+    flex: 1,
+  },
   safeArea: {
     backgroundColor: colors.paper,
     flex: 1,

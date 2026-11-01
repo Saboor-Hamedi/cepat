@@ -1,5 +1,5 @@
 import { router, useLocalSearchParams } from "expo-router";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   KeyboardAvoidingView,
   Platform,
@@ -14,7 +14,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 
 import { useAuth } from "../../auth/AuthProvider";
 import { BookingLifecyclePanel } from "../../components/BookingLifecyclePanel";
-import { useAppearance } from "../../context/AppearanceContext";
+import { useAppearance, type ThemePalette } from "../../context/AppearanceContext";
 import {
   Avatar,
   LoadingState,
@@ -30,47 +30,36 @@ import {
   loadSavedAddresses,
 } from "../../data/marketplaceStore";
 import { localizeArea, useLanguage } from "../../i18n/locale";
-import { colors, radii, spacing } from "../../theme/tokens";
+import {
+  BOOKING_TIME_SLOTS,
+  createUpcomingScheduleDates,
+  toIndonesiaDateTime,
+} from "../../task/schedule";
+import { radii, spacing } from "../../theme/tokens";
 import type {
   BookingMessage,
   BookingRecord,
   DataSource,
   SavedAddress,
   Technician,
+  TechnicianService,
 } from "../../types/marketplace";
 
-const DATE_OPTIONS = [
-  {
-    labelId: "Besok, 2 Nov 2026",
-    labelEn: "Tomorrow, Nov 2, 2026",
-    datePart: "2026-11-02",
-  },
-  {
-    labelId: "Selasa, 3 Nov 2026",
-    labelEn: "Tue, Nov 3, 2026",
-    datePart: "2026-11-03",
-  },
-  {
-    labelId: "Rabu, 4 Nov 2026",
-    labelEn: "Wed, Nov 4, 2026",
-    datePart: "2026-11-04",
-  },
-];
-
-const TIME_SLOTS = ["09:00", "11:00", "14:00", "16:00"];
-
 export default function BookingEntryScreen() {
-  const { id, serviceId, postId, postCaption, categorySlug } =
+  const { id, serviceId, postId, postCaption, categorySlug, serviceName } =
     useLocalSearchParams<{
       id: string;
       serviceId?: string;
       postId?: string;
       postCaption?: string;
       categorySlug?: string;
+      serviceName?: string;
     }>();
   const { language, t } = useLanguage();
-  const { user } = useAuth();
+  const { user, effectiveRole } = useAuth();
   const { palette } = useAppearance();
+  const styles = useMemo(() => createStyles(palette), [palette]);
+  const [dateOptions] = useState(createUpcomingScheduleDates);
 
   const [loading, setLoading] = useState(true);
   const [technician, setTechnician] = useState<Technician | null>(null);
@@ -83,9 +72,11 @@ export default function BookingEntryScreen() {
   const [addressNotes, setAddressNotes] = useState<string>("");
   const [serviceArea, setServiceArea] = useState<string>("");
   const [selectedDate, setSelectedDate] = useState<string>(
-    DATE_OPTIONS[0].datePart,
+    dateOptions[0].value,
   );
-  const [selectedTime, setSelectedTime] = useState<string>(TIME_SLOTS[0]);
+  const [selectedTime, setSelectedTime] = useState<string>(
+    BOOKING_TIME_SLOTS[0],
+  );
   const [customerNotes, setCustomerNotes] = useState<string>("");
   const [formError, setFormError] = useState<string | null>(null);
 
@@ -133,16 +124,35 @@ export default function BookingEntryScreen() {
         if (id) {
           const techResult = await loadTechnician(id);
           if (!active) return;
-          setTechnician(techResult.item);
-          setSource(techResult.source);
           if (techResult.item) {
-            const initialSvc =
-              techResult.item.services.find((s) => s.id === serviceId) ??
-              techResult.item.services[0];
-            if (initialSvc) setSelectedServiceId(initialSvc.id);
-            if (!preferredAddress && techResult.item.serviceAreas[0]) {
-              setServiceArea(techResult.item.serviceAreas[0]);
+            let item = { ...techResult.item };
+            if (item.services.length === 0 || serviceName) {
+              const decodedServiceName = serviceName ? decodeURIComponent(serviceName) : '';
+              const matchedExisting = item.services.find((s) => s.id === serviceId);
+              if (!matchedExisting) {
+                const fallbackService: TechnicianService = {
+                  id: serviceId || `svc-${item.id}`,
+                  name: decodedServiceName || item.headline || (language === "en" ? "General Service" : "Layanan Umum"),
+                  nameEn: decodedServiceName || item.headlineEn || "General Service",
+                  startingPrice: 150000,
+                  categorySlug: categorySlug || "electronic",
+                  categoryName: "Elektronik",
+                };
+                item.services = [fallbackService, ...item.services];
+              }
             }
+            setTechnician(item);
+            setSource(techResult.source);
+            const initialSvc =
+              item.services.find((s) => s.id === serviceId) ??
+              (postId ? undefined : item.services[0]);
+            if (initialSvc) setSelectedServiceId(initialSvc.id);
+            if (!preferredAddress && item.serviceAreas[0]) {
+              setServiceArea(item.serviceAreas[0]);
+            }
+          } else {
+            setTechnician(null);
+            setSource(techResult.source);
           }
         }
       } finally {
@@ -152,10 +162,26 @@ export default function BookingEntryScreen() {
     return () => {
       active = false;
     };
-  }, [id, serviceId, user?.id]);
+  }, [id, postId, serviceId, user?.id]);
 
+  const postService: TechnicianService | undefined = postId
+    ? {
+        id: `post-${postId}`,
+        name:
+          postCaption?.trim() ||
+          (language === "en" ? "Service from post" : "Layanan dari postingan"),
+        categoryName: categorySlug ?? "service",
+        categorySlug: categorySlug ?? "service",
+        description: postCaption?.trim() || undefined,
+        isActive: true,
+      }
+    : undefined;
   const selectedService =
-    technician?.services.find((s) => s.id === selectedServiceId);
+    (serviceId
+      ? technician?.services.find((service) => service.id === serviceId)
+      : undefined) ??
+    (postId ? postService : undefined) ??
+    technician?.services.find((service) => service.id === selectedServiceId);
 
   const handleSubmitBooking = async () => {
     setFormError(null);
@@ -169,6 +195,14 @@ export default function BookingEntryScreen() {
       });
       return;
     }
+    if (isOwnService) {
+      setFormError(
+        language === "en"
+          ? "You cannot book your own service as a technician."
+          : "Anda tidak dapat memesan layanan Anda sendiri sebagai teknisi.",
+      );
+      return;
+    }
     if (!technician) {
       setFormError(
         language === "en"
@@ -180,8 +214,8 @@ export default function BookingEntryScreen() {
     if (!selectedService) {
       setFormError(
         language === "en"
-          ? "Select an available service before submitting your booking."
-          : "Pilih layanan yang tersedia sebelum mengirim permintaan.",
+          ? "This technician has no bookable service listed yet. Choose a service post or another technician."
+          : "Teknisi ini belum mencantumkan layanan yang bisa dipesan. Pilih postingan layanan atau teknisi lain.",
       );
       return;
     }
@@ -211,7 +245,7 @@ export default function BookingEntryScreen() {
     }
 
     try {
-      const requestedStartAt = `${selectedDate}T${selectedTime}:00.000Z`;
+      const requestedStartAt = toIndonesiaDateTime(selectedDate, selectedTime);
       const created = await createBookingRequest({
         customerUserId: user?.id,
         customerName:
@@ -227,19 +261,34 @@ export default function BookingEntryScreen() {
         customerNotes,
       });
       setActiveBooking(created);
-      const msgs = await loadBookingMessages(created.id);
-      setMessages(msgs);
-    } catch {
+    } catch (error) {
+      const detail = error instanceof Error ? error.message : "booking_create_failed";
+      const missingTechnicianProfile =
+        detail.includes("booking_technician_profile_missing");
       setFormError(
-        language === "en"
-          ? "We couldn't submit the request. Please check your connection and try again."
-          : "Permintaan tidak dapat dikirim. Periksa koneksi Anda dan coba lagi.",
+        missingTechnicianProfile
+          ? language === "en"
+            ? "This technician profile is not ready to accept bookings. Please choose another technician or contact support."
+            : "Profil teknisi ini belum siap menerima pesanan. Silakan pilih teknisi lain atau hubungi dukungan."
+          : language === "en"
+            ? `Booking request was not saved: ${detail}`
+            : `Pesanan belum tersimpan: ${detail}`,
       );
     }
   };
 
   const displayedTechnicianId =
     activeBooking?.technicianUserId || technician?.id || id || "";
+
+  // Prevent self-booking by technicians
+  const isOwnService = Boolean(
+    user &&
+      technician &&
+      (user.id === technician.id ||
+        user.id === displayedTechnicianId ||
+        (effectiveRole === "technician" &&
+          (user.id === technician.id || displayedTechnicianId === user.id)))
+  );
 
   return (
     <SafeAreaView
@@ -292,15 +341,12 @@ export default function BookingEntryScreen() {
         <LoadingState label={t("home.loading")} />
       ) : (
         <KeyboardAvoidingView
-          behavior={Platform.OS === "ios" ? "padding" : undefined}
-          keyboardVerticalOffset={Platform.OS === "ios" ? 64 : 0}
+          behavior={Platform.OS === "ios" ? "padding" : "height"}
+          keyboardVerticalOffset={Platform.OS === "ios" ? 88 : 24}
           style={{ flex: 1 }}
         >
           <ScrollView
-            contentContainerStyle={[
-              styles.scrollContent,
-              { paddingBottom: 160 },
-            ]}
+            contentContainerStyle={styles.scrollContent}
             keyboardShouldPersistTaps="handled"
             automaticallyAdjustKeyboardInsets={true}
           >
@@ -311,13 +357,20 @@ export default function BookingEntryScreen() {
                 </View>
               )}
 
-              <Text style={styles.eyebrow}>{t("booking.eyebrow")}</Text>
-              <Text style={[styles.title, { color: palette.text }]}>
+              <Text
+                style={[
+                  styles.title,
+                  activeBooking && styles.activeBookingTitle,
+                  { color: palette.text },
+                ]}
+              >
                 {activeBooking ? t("booking.createdTitle") : t("booking.title")}
               </Text>
-              <Text style={[styles.description, { color: palette.textMuted }]}>
-                {t("booking.description")}
-              </Text>
+              {!activeBooking && (
+                <Text style={[styles.description, { color: palette.textMuted }]}>
+                  {t("booking.description")}
+                </Text>
+              )}
 
               {/* Technician Summary & Selected Technician ID */}
               <View
@@ -358,16 +411,56 @@ export default function BookingEntryScreen() {
 
               {!activeBooking ? (
                 /* MODE A: CREATE BOOKING FORM */
-                <View
-                  style={[
-                    styles.formCard,
-                    {
-                      backgroundColor: palette.surface,
-                      borderColor: palette.border,
-                    },
-                  ]}
-                  testID="booking-request-form"
-                >
+                isOwnService ? (
+                  <View
+                    style={[
+                      styles.formCard,
+                      {
+                        backgroundColor: palette.surface,
+                        borderColor: palette.border,
+                        alignItems: "center",
+                        paddingVertical: spacing.xl,
+                      },
+                    ]}
+                  >
+                    <Text style={{ fontSize: 36, marginBottom: 8 }}>⚠️</Text>
+                    <Text style={[styles.stepTitle, { textAlign: "center", marginBottom: 6 }]}>
+                      {language === "en"
+                        ? "This is your technician profile"
+                        : "Ini adalah profil teknisi Anda"}
+                    </Text>
+                    <Text
+                      style={[
+                        styles.description,
+                        { textAlign: "center", marginBottom: spacing.lg, paddingHorizontal: spacing.md },
+                      ]}
+                    >
+                      {language === "en"
+                        ? "Technicians cannot book their own services. To view and manage your work, visit your technician dashboard."
+                        : "Teknisi tidak dapat memesan layanan sendiri. Untuk melihat dan mengelola pekerjaan Anda, buka dashboard teknisi."}
+                    </Text>
+                    <View style={styles.submitWrap}>
+                      <PrimaryButton
+                        label={
+                          language === "en"
+                            ? "Go to Technician Dashboard"
+                            : "Buka Dashboard Teknisi"
+                        }
+                        onPress={() => router.replace("/technician-dashboard")}
+                      />
+                    </View>
+                  </View>
+                ) : (
+                  <View
+                    style={[
+                      styles.formCard,
+                      {
+                        backgroundColor: palette.surface,
+                        borderColor: palette.border,
+                      },
+                    ]}
+                    testID="booking-request-form"
+                  >
                   {postCaption ? (
                     <View style={styles.postContextCard}>
                       <Text style={styles.postContextEyebrow}>
@@ -411,6 +504,15 @@ export default function BookingEntryScreen() {
                       <Text style={styles.stepTitle}>
                         {t("booking.selectService")}
                       </Text>
+                      {technician?.services.length === 0 && (
+                        <View style={styles.noServiceNotice}>
+                          <Text style={styles.noServiceText}>
+                            {language === "en"
+                              ? "This technician has not listed a bookable service yet. Choose a service post or another technician."
+                              : "Teknisi ini belum mencantumkan layanan yang bisa dipesan. Pilih postingan layanan atau teknisi lain."}
+                          </Text>
+                        </View>
+                      )}
                       {technician?.services.map((svc) => {
                         const selected = svc.id === (selectedService?.id ?? "");
                         const svcName =
@@ -515,66 +617,31 @@ export default function BookingEntryScreen() {
                   <TextInput
                     onChangeText={setCustomerAddress}
                     placeholder={t("booking.addressPlaceholder")}
-                    placeholderTextColor={colors.muted}
+                    placeholderTextColor={palette.textMuted}
                     style={styles.input}
                     testID="booking-address-input"
                     value={customerAddress}
                   />
-                  <TextInput
-                    onChangeText={setAddressNotes}
-                    placeholder={t("booking.addressNotesPlaceholder")}
-                    placeholderTextColor={colors.muted}
-                    style={styles.input}
-                    testID="booking-address-notes-input"
-                    value={addressNotes}
-                  />
-
-                  <View style={styles.savedChipRow}>
-                    {(technician?.serviceAreas.length
-                      ? technician.serviceAreas
-                      : ["Jakarta Selatan", "Jakarta Pusat", "Depok"]
-                    ).map((areaName) => (
-                      <Pressable
-                        key={areaName}
-                        accessibilityRole="button"
-                        onPress={() => setServiceArea(areaName)}
-                        style={[
-                          styles.chip,
-                          serviceArea === areaName && styles.chipSelected,
-                        ]}
-                        testID={`booking-area-${areaName}`}
-                      >
-                        <Text
-                          style={[
-                            styles.chipText,
-                            serviceArea === areaName && styles.chipTextSelected,
-                          ]}
-                        >
-                          {localizeArea(areaName, language)}
-                        </Text>
-                      </Pressable>
-                    ))}
-                  </View>
 
                   <Text style={styles.stepTitle}>
                     {t("booking.selectDate")}
                   </Text>
                   <View style={styles.savedChipRow}>
-                    {DATE_OPTIONS.map((opt) => (
+                    {dateOptions.map((opt) => (
                       <Pressable
-                        key={opt.datePart}
+                        key={opt.value}
                         accessibilityRole="button"
-                        onPress={() => setSelectedDate(opt.datePart)}
+                        onPress={() => setSelectedDate(opt.value)}
                         style={[
                           styles.chip,
-                          selectedDate === opt.datePart && styles.chipSelected,
+                          selectedDate === opt.value && styles.chipSelected,
                         ]}
-                        testID={`booking-date-${opt.datePart}`}
+                        testID={`booking-date-${opt.value}`}
                       >
                         <Text
                           style={[
                             styles.chipText,
-                            selectedDate === opt.datePart &&
+                            selectedDate === opt.value &&
                               styles.chipTextSelected,
                           ]}
                         >
@@ -585,7 +652,7 @@ export default function BookingEntryScreen() {
                   </View>
 
                   <View style={styles.savedChipRow}>
-                    {TIME_SLOTS.map((slot) => (
+                    {BOOKING_TIME_SLOTS.map((slot) => (
                       <Pressable
                         key={slot}
                         accessibilityRole="button"
@@ -615,7 +682,7 @@ export default function BookingEntryScreen() {
                     multiline
                     onChangeText={setCustomerNotes}
                     placeholder={t("booking.notesPlaceholder")}
-                    placeholderTextColor={colors.muted}
+                    placeholderTextColor={palette.textMuted}
                     style={[styles.input, styles.notesArea]}
                     testID="booking-customer-notes-input"
                     value={customerNotes}
@@ -641,7 +708,7 @@ export default function BookingEntryScreen() {
                   </View>
                   <Text style={styles.notice}>{t("booking.notice")}</Text>
                 </View>
-              ) : (
+              )) : (
                 /* MODE B: ACTIVE BOOKING LIFECYCLE, ACTIONS, CHAT & REVIEW */
                 <BookingLifecyclePanel
                   activeBooking={activeBooking}
@@ -658,8 +725,9 @@ export default function BookingEntryScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  safeArea: { backgroundColor: colors.paper, flex: 1 },
+function createStyles(palette: ThemePalette) {
+  return StyleSheet.create({
+  safeArea: { backgroundColor: palette.background, flex: 1 },
   srOnly: { height: 0, opacity: 0, position: "absolute", width: 0 },
   topNav: {
     alignItems: "center",
@@ -670,66 +738,74 @@ const styles = StyleSheet.create({
   },
   back: { alignItems: "center", flexDirection: "row", minHeight: 44 },
   backGlyph: {
-    color: colors.ink,
+    color: palette.text,
     fontSize: 32,
     lineHeight: 37,
     marginRight: 7,
   },
-  backLabel: { color: colors.greenDark, fontSize: 13, fontWeight: "700" },
+  backLabel: { color: palette.primary, fontSize: 13, fontWeight: "700" },
   allBookingsLink: {
-    backgroundColor: colors.greenSoft,
+    backgroundColor: palette.primarySoft,
     borderRadius: radii.pill,
     paddingHorizontal: 12,
     paddingVertical: 6,
   },
   allBookingsLinkText: {
-    color: colors.greenDark,
+    color: palette.primary,
     fontSize: 12,
     fontWeight: "800",
   },
-  scrollContent: { paddingBottom: spacing.xxxl },
+  scrollContent: { paddingBottom: spacing.xl },
   container: {
     alignSelf: "center",
     maxWidth: 680,
     paddingHorizontal: spacing.xl,
+    paddingTop: spacing.md,
     width: "100%",
   },
   badgeWrap: { marginBottom: spacing.sm },
   eyebrow: {
-    color: colors.orange,
+    color: palette.primary,
     fontSize: 10,
     fontWeight: "800",
     letterSpacing: 1.2,
   },
   title: {
-    color: colors.ink,
+    color: palette.text,
     fontSize: 28,
     fontWeight: "800",
     letterSpacing: -0.7,
     marginTop: 4,
   },
+  activeBookingTitle: {
+    fontSize: 20,
+    fontWeight: "800",
+    letterSpacing: -0.4,
+    marginTop: spacing.sm,
+    marginBottom: spacing.sm,
+  },
   description: {
-    color: colors.muted,
+    color: palette.textMuted,
     fontSize: 14,
     lineHeight: 20,
     marginTop: 4,
   },
   postContextCard: {
-    backgroundColor: "#F0FDF4",
-    borderColor: "#BBF7D0",
+    backgroundColor: palette.primarySoft,
+    borderColor: palette.border,
     borderRadius: radii.md,
     borderWidth: 1,
     marginBottom: spacing.lg,
     padding: spacing.md,
   },
   postContextEyebrow: {
-    color: colors.greenDark,
+    color: palette.primary,
     fontSize: 10,
     fontWeight: "800",
     letterSpacing: 0.8,
   },
   postContextCaption: {
-    color: colors.ink,
+    color: palette.text,
     fontSize: 13,
     fontStyle: "italic",
     lineHeight: 18,
@@ -742,12 +818,12 @@ const styles = StyleSheet.create({
     marginTop: spacing.xs,
   },
   postContextServiceName: {
-    color: colors.greenDark,
+    color: palette.primary,
     fontSize: 13,
     fontWeight: "800",
   },
   postContextServicePrice: {
-    color: colors.ink,
+    color: palette.text,
     fontSize: 13,
     fontWeight: "800",
   },
@@ -759,14 +835,14 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   addAddressLinkText: {
-    color: colors.greenDark,
+    color: palette.primary,
     fontSize: 12,
     fontWeight: "700",
     textDecorationLine: "underline",
   },
   technicianSummaryCard: {
-    backgroundColor: colors.surface,
-    borderColor: colors.line,
+    backgroundColor: palette.surface,
+    borderColor: palette.border,
     borderRadius: radii.md,
     borderWidth: 1,
     marginTop: spacing.lg,
@@ -774,7 +850,7 @@ const styles = StyleSheet.create({
   },
   techRow: {
     alignItems: "center",
-    borderBottomColor: colors.line,
+    borderBottomColor: palette.border,
     borderBottomWidth: 1,
     flexDirection: "row",
     gap: spacing.md,
@@ -782,30 +858,30 @@ const styles = StyleSheet.create({
     paddingBottom: spacing.sm,
   },
   techCopy: { flex: 1 },
-  techName: { color: colors.ink, fontSize: 16, fontWeight: "800" },
-  techPerson: { color: colors.muted, fontSize: 12, marginBottom: 4 },
+  techName: { color: palette.text, fontSize: 16, fontWeight: "800" },
+  techPerson: { color: palette.textMuted, fontSize: 12, marginBottom: 4 },
   idRow: {
     alignItems: "center",
     flexDirection: "row",
     justifyContent: "space-between",
   },
   selectionLabel: {
-    color: colors.muted,
+    color: palette.textMuted,
     fontSize: 9,
     fontWeight: "800",
     letterSpacing: 0.9,
   },
-  selectionId: { color: colors.ink, fontSize: 12, fontWeight: "700" },
+  selectionId: { color: palette.text, fontSize: 12, fontWeight: "700" },
   formCard: {
-    backgroundColor: colors.surface,
-    borderColor: colors.line,
+    backgroundColor: palette.surface,
+    borderColor: palette.border,
     borderRadius: radii.lg,
     borderWidth: 1,
     marginTop: spacing.lg,
     padding: spacing.xl,
   },
   stepTitle: {
-    color: colors.ink,
+    color: palette.text,
     fontSize: 15,
     fontWeight: "800",
     marginBottom: spacing.sm,
@@ -813,8 +889,8 @@ const styles = StyleSheet.create({
   },
   serviceOption: {
     alignItems: "center",
-    backgroundColor: colors.paper,
-    borderColor: colors.line,
+    backgroundColor: palette.surfaceElevated,
+    borderColor: palette.border,
     borderRadius: radii.sm,
     borderWidth: 1,
     flexDirection: "row",
@@ -823,14 +899,14 @@ const styles = StyleSheet.create({
     padding: spacing.md,
   },
   serviceOptionSelected: {
-    backgroundColor: colors.greenSoft,
-    borderColor: colors.green,
+    backgroundColor: palette.primarySoft,
+    borderColor: palette.primary,
   },
   serviceOptionCopy: { flex: 1, marginRight: spacing.sm },
-  serviceOptionName: { color: colors.ink, fontSize: 14, fontWeight: "700" },
-  serviceOptionDesc: { color: colors.muted, fontSize: 11, marginTop: 2 },
+  serviceOptionName: { color: palette.text, fontSize: 14, fontWeight: "700" },
+  serviceOptionDesc: { color: palette.textMuted, fontSize: 11, marginTop: 2 },
   serviceOptionPrice: {
-    color: colors.greenDark,
+    color: palette.primary,
     fontSize: 13,
     fontWeight: "800",
   },
@@ -841,25 +917,25 @@ const styles = StyleSheet.create({
     marginBottom: spacing.sm,
   },
   chip: {
-    backgroundColor: colors.paper,
-    borderColor: colors.line,
+    backgroundColor: palette.inputBg,
+    borderColor: palette.border,
     borderRadius: radii.pill,
     borderWidth: 1,
     paddingHorizontal: 11,
     paddingVertical: 6,
   },
   chipSelected: {
-    backgroundColor: colors.greenSoft,
-    borderColor: colors.green,
+    backgroundColor: palette.primarySoft,
+    borderColor: palette.primary,
   },
-  chipText: { color: colors.muted, fontSize: 11, fontWeight: "700" },
-  chipTextSelected: { color: colors.greenDark, fontWeight: "800" },
+  chipText: { color: palette.textMuted, fontSize: 11, fontWeight: "700" },
+  chipTextSelected: { color: palette.primary, fontWeight: "800" },
   input: {
-    backgroundColor: colors.paper,
-    borderColor: colors.line,
+    backgroundColor: palette.inputBg,
+    borderColor: palette.border,
     borderRadius: radii.sm,
     borderWidth: 1,
-    color: colors.ink,
+    color: palette.text,
     fontSize: 13,
     marginBottom: spacing.sm,
     minHeight: 44,
@@ -868,16 +944,30 @@ const styles = StyleSheet.create({
   },
   notesArea: { minHeight: 74, textAlignVertical: "top" },
   errorText: {
-    color: colors.danger,
+    color: palette.danger,
     fontSize: 12,
     fontWeight: "600",
     marginVertical: spacing.xs,
   },
   submitWrap: { marginTop: spacing.md },
   notice: {
-    color: colors.muted,
+    color: palette.textMuted,
     fontSize: 11,
     lineHeight: 16,
     marginTop: spacing.md,
   },
-});
+  noServiceNotice: {
+    backgroundColor: palette.surfaceElevated,
+    borderColor: palette.border,
+    borderRadius: radii.md,
+    borderWidth: 1,
+    marginBottom: spacing.md,
+    padding: spacing.md,
+  },
+  noServiceText: {
+    color: palette.textMuted,
+    fontSize: 13,
+    lineHeight: 19,
+  },
+  });
+}

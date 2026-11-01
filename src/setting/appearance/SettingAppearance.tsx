@@ -26,6 +26,7 @@ export function SettingAppearance({
     largeText,
     reduceMotion,
     palette,
+    scaleFont,
     setThemeMode,
     setLargeText,
     setReduceMotion,
@@ -36,14 +37,8 @@ export function SettingAppearance({
     preferences.appearance === "highContrast"
       ? preferences.appearance
       : themeMode;
-  const currentLargeText =
-    typeof preferences.accessibility?.largeText === "boolean"
-      ? preferences.accessibility.largeText
-      : largeText;
-  const currentReduceMotion =
-    typeof preferences.accessibility?.reduceMotion === "boolean"
-      ? preferences.accessibility.reduceMotion
-      : reduceMotion;
+  const currentLargeText = largeText;
+  const currentReduceMotion = reduceMotion;
 
   const modes: { key: UserPreferences["appearance"]; label: string }[] = [
     { key: "light", label: language === "en" ? "Light" : "Terang" },
@@ -66,7 +61,7 @@ export function SettingAppearance({
       }
       testID="setting-section-appearance"
     >
-      <Text style={[styles.subLabel, { color: palette.text }]}>
+      <Text style={[styles.subLabel, { color: palette.text, fontSize: scaleFont(12) }]}>
         {language === "en" ? "Color theme" : "Tema warna aplikasi"}
       </Text>
       <View style={styles.chipRow}>
@@ -103,7 +98,7 @@ export function SettingAppearance({
               <Text
                 style={[
                   styles.chipText,
-                  { color: palette.text },
+                  { color: palette.text, fontSize: scaleFont(12) },
                   selected && styles.chipTextSelected,
                 ]}
               >
@@ -196,7 +191,6 @@ const styles = StyleSheet.create({
   },
   chipText: {
     color: colors.ink,
-    fontSize: 12,
     fontWeight: "700",
   },
   chipTextSelected: {

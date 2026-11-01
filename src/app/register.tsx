@@ -7,14 +7,16 @@ import { getEmailVerificationRedirectUrl } from '../auth/deepLinking';
 import { isAuthServiceUnavailable } from '../auth/errors';
 import { ensureTechnicianApplicationRow } from '../auth/technicianApplication';
 import { AuthField, AuthLink, AuthNotice, AuthShell, AuthSubmit } from '../components/auth-ui';
+import { useAppearance } from '../context/AppearanceContext';
 import { supabase } from '../data/marketplaceRepository';
 import { useLanguage } from '../i18n/locale';
-import { colors, spacing } from '../theme/tokens';
+import { spacing } from '../theme/tokens';
 
 type AccountType = 'customer' | 'technician';
 
 export default function RegisterScreen() {
   const { t } = useLanguage();
+  const { palette, scaleFont } = useAppearance();
   const params = useLocalSearchParams<{ redirect?: string; technicianId?: string }>();
   const { configurationReady } = useAuth();
   const [displayName, setDisplayName] = useState('');
@@ -160,10 +162,10 @@ export default function RegisterScreen() {
         password
         autoComplete="new-password"
       />
-      <Text style={{ color: colors.muted, fontSize: 12, lineHeight: 18, marginBottom: spacing.lg }}>
+      <Text style={{ color: palette.textMuted, fontSize: scaleFont(12), lineHeight: scaleFont(18), marginBottom: spacing.lg }}>
         {t('auth.passwordRule')}
       </Text>
-      <Text style={{ color: colors.ink, fontSize: 13, fontWeight: '700', marginBottom: spacing.sm }}>
+      <Text style={{ color: palette.text, fontSize: scaleFont(13), fontWeight: '700', marginBottom: spacing.sm }}>
         {t('auth.chooseRole')}
       </Text>
       <View style={{ flexDirection: 'row', gap: spacing.sm, marginBottom: spacing.md }}>
@@ -185,8 +187,8 @@ export default function RegisterScreen() {
               onPress={() => setAccountType(role)}
               style={{
                 alignItems: 'center',
-                backgroundColor: selected ? colors.greenSoft : '#FFFFFF',
-                borderColor: selected ? colors.green : colors.line,
+                backgroundColor: selected ? palette.primarySoft : palette.surfaceElevated,
+                borderColor: selected ? palette.primary : palette.border,
                 borderRadius: 14,
                 borderWidth: 1,
                 flex: 1,
@@ -197,17 +199,17 @@ export default function RegisterScreen() {
               }}
               testID={`role-${role}`}
             >
-              <Text style={{ color: colors.ink, fontSize: 13, fontWeight: '800' }}>
+              <Text style={{ color: palette.text, fontSize: scaleFont(13), fontWeight: '800' }}>
                 {roleLabels[role]}
               </Text>
-              <Text style={{ color: colors.muted, fontSize: 10, marginTop: 2, textAlign: 'center' }}>
+              <Text style={{ color: palette.textMuted, fontSize: scaleFont(10), marginTop: 2, textAlign: 'center' }}>
                 {roleSubtitle}
               </Text>
             </Pressable>
           );
         })}
       </View>
-      <Text style={{ color: colors.muted, fontSize: 12, lineHeight: 18, marginBottom: spacing.md }}>
+      <Text style={{ color: palette.textMuted, fontSize: scaleFont(12), lineHeight: scaleFont(18), marginBottom: spacing.md }}>
         {t('auth.roleHint')}
       </Text>
       <Pressable
@@ -227,7 +229,8 @@ export default function RegisterScreen() {
         <View
           style={{
             alignItems: 'center',
-            borderColor: accepted ? colors.green : colors.line,
+            backgroundColor: accepted ? palette.primary : palette.surface,
+            borderColor: accepted ? palette.primary : palette.border,
             borderRadius: 5,
             borderWidth: 1.5,
             height: 20,
@@ -237,17 +240,17 @@ export default function RegisterScreen() {
           }}
         >
           {accepted ? (
-            <Text style={{ color: colors.greenDark, fontSize: 13, fontWeight: '800' }}>✓</Text>
+            <Text style={{ color: '#FFFFFF', fontSize: scaleFont(13), fontWeight: '800' }}>✓</Text>
           ) : null}
         </View>
-        <Text style={{ color: colors.ink, flex: 1, fontSize: 12, lineHeight: 18 }}>
+        <Text style={{ color: palette.text, flex: 1, fontSize: scaleFont(12), lineHeight: scaleFont(18) }}>
           {t('auth.terms')}
         </Text>
       </Pressable>
       {fieldErrors.accepted ? (
         <Text
           accessibilityLiveRegion="polite"
-          style={{ color: colors.danger, fontSize: 12, lineHeight: 17, marginBottom: spacing.md }}
+          style={{ color: palette.danger, fontSize: scaleFont(12), lineHeight: scaleFont(17), marginBottom: spacing.md }}
         >
           {fieldErrors.accepted}
         </Text>

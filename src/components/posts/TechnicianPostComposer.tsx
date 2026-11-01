@@ -2,6 +2,7 @@ import { useState } from 'react';
 import {
   ActivityIndicator,
   KeyboardAvoidingView,
+  Modal,
   Platform,
   Pressable,
   StyleSheet,
@@ -44,7 +45,7 @@ export function TechnicianPostComposer({
 }: TechnicianPostComposerProps) {
   const { language } = useLanguage();
   const { user, roles } = useAuth();
-  const { palette } = useAppearance();
+  const { palette, reduceMotion, scaleFont } = useAppearance();
 
   const [caption, setCaption] = useState('');
   const [images, setImages] = useState<string[]>([]);
@@ -221,7 +222,14 @@ export function TechnicianPostComposer({
                 : 'Bagikan update pekerjaan atau tips servis...'
             }
             placeholderTextColor={palette.textMuted}
-            style={[styles.textInput, { color: palette.text }]}
+            style={[
+              styles.textInput,
+              {
+                color: palette.text,
+                fontSize: scaleFont(15),
+                lineHeight: scaleFont(23),
+              },
+            ]}
             testID="create-post-caption-input"
             value={caption}
           />
@@ -233,36 +241,58 @@ export function TechnicianPostComposer({
         onRemoveImage={handleRemoveImage}
       />
 
-      {/* Inline Picker View (when toggled via manual picker) */}
-      {showPickerModal ? (
-        <View
-          style={[
-            styles.pickerWrap,
-            { borderTopColor: palette.border },
-          ]}
-          testID="composer-image-picker-wrap"
+      <Modal
+        animationType={reduceMotion ? 'none' : 'slide'}
+        onRequestClose={() => setShowPickerModal(false)}
+        transparent
+        visible={showPickerModal}
+      >
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={language === 'en' ? 'Close photo options' : 'Tutup pilihan foto'}
+          onPress={() => setShowPickerModal(false)}
+          style={styles.pickerOverlay}
+          testID="composer-image-picker-backdrop"
         >
-          <StrictImagePicker
-            label={language === 'en' ? 'Add Photo of Your Work' : 'Tambah Foto Hasil Kerja'}
-            onImageValidated={handleImageValidated}
-            testIDPrefix="post-image-picker"
-          />
           <Pressable
-            accessibilityRole="button"
-            onPress={() => setShowPickerModal(false)}
-            style={styles.cancelPickerBtn}
+            onPress={(event) => event.stopPropagation()}
+            style={[
+              styles.pickerSheet,
+              { backgroundColor: palette.surface, borderColor: palette.border },
+            ]}
+            testID="composer-image-picker-wrap"
           >
-            <Text
-              style={[
-                styles.cancelPickerBtnText,
-                { color: palette.textMuted },
-              ]}
-            >
-              {language === 'en' ? 'Cancel' : 'Batal'}
+            <View style={[styles.pickerHandle, { backgroundColor: palette.border }]} />
+            <Text style={[styles.pickerTitle, { color: palette.text, fontSize: scaleFont(18) }]}>
+              {language === 'en' ? 'Add a photo' : 'Tambahkan foto'}
             </Text>
+            <Text style={[styles.pickerSubtitle, { color: palette.textMuted, fontSize: scaleFont(13) }]}>
+              {language === 'en'
+                ? 'Choose a photo from your device or take one now.'
+                : 'Pilih foto dari perangkat atau ambil foto sekarang.'}
+            </Text>
+            <StrictImagePicker
+              displayMode="actions"
+              onImageValidated={handleImageValidated}
+              testIDPrefix="post-image-picker"
+            />
+            <Pressable
+              accessibilityRole="button"
+              onPress={() => setShowPickerModal(false)}
+              style={[styles.cancelPickerBtn, { borderColor: palette.border }]}
+            >
+              <Text
+                style={[
+                  styles.cancelPickerBtnText,
+                  { color: palette.textMuted, fontSize: scaleFont(13) },
+                ]}
+              >
+                {language === 'en' ? 'Cancel' : 'Batal'}
+              </Text>
+            </Pressable>
           </Pressable>
-        </View>
-      ) : null}
+        </Pressable>
+      </Modal>
 
       {/* Error / Validation Warning */}
       {error ? (
@@ -344,7 +374,7 @@ export function TechnicianPostComposer({
                 <View style={[styles.mediaIconMountain, { borderBottomColor: palette.primary }]} />
               </View>
             </View>
-            <Text style={[styles.mediaActionLabel, { color: palette.primary }]}>
+            <Text style={[styles.mediaActionLabel, { color: palette.primary, fontSize: scaleFont(12) }]}>
               {language === 'en' ? 'Photo' : 'Foto'}
             </Text>
           </View>
@@ -391,7 +421,7 @@ export function TechnicianPostComposer({
           {busy ? (
             <ActivityIndicator size="small" color="#FFFFFF" />
           ) : (
-            <Text style={styles.postBtnText}>
+            <Text style={[styles.postBtnText, { fontSize: scaleFont(13) }]}>
               {language === 'en' ? 'Post' : 'Posting'}
             </Text>
           )}
@@ -463,21 +493,46 @@ const styles = StyleSheet.create({
     padding: 0,
     textAlignVertical: 'top',
   },
-  pickerWrap: {
-    borderTopColor: colors.line,
-    borderTopWidth: 1,
-    marginTop: spacing.sm,
-    paddingTop: spacing.sm,
+  pickerOverlay: {
+    backgroundColor: 'rgba(0, 0, 0, 0.48)',
+    flex: 1,
+    justifyContent: 'flex-end',
+  },
+  pickerSheet: {
+    alignSelf: 'center',
+    borderTopLeftRadius: 18,
+    borderTopRightRadius: 18,
+    borderWidth: 1,
+    maxWidth: 520,
+    paddingBottom: spacing.xl,
+    paddingHorizontal: spacing.lg,
+    paddingTop: spacing.md,
+    width: '100%',
+  },
+  pickerHandle: {
+    alignSelf: 'center',
+    borderRadius: 2,
+    height: 4,
+    marginBottom: spacing.md,
+    width: 40,
+  },
+  pickerTitle: {
+    fontWeight: '800',
+  },
+  pickerSubtitle: {
+    lineHeight: 19,
+    marginBottom: spacing.md,
+    marginTop: spacing.xs,
   },
   cancelPickerBtn: {
     alignItems: 'center',
+    borderRadius: 5,
+    borderWidth: 1,
     justifyContent: 'center',
-    marginTop: spacing.xs,
-    paddingVertical: 6,
+    marginTop: spacing.md,
+    minHeight: 46,
   },
   cancelPickerBtnText: {
-    color: colors.muted,
-    fontSize: 12,
     fontWeight: '600',
   },
   errorText: {

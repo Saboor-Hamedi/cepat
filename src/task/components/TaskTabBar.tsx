@@ -3,11 +3,12 @@ import { Pressable, Text, View } from 'react-native';
 import { SegmentedTabs } from '../../components/SegmentedTabs';
 import { useLanguage } from '../../i18n/locale';
 
-export type JobsTabKey = 'requests' | 'active' | 'history' | 'posts';
+export type TaskTabKey = 'requests' | 'active' | 'history' | 'posts';
+export type JobsTabKey = TaskTabKey;
 
-export interface JobsTabBarProps {
-  activeTab: JobsTabKey;
-  onSelectTab: (tab: JobsTabKey) => void;
+export interface TaskTabBarProps {
+  activeTab: TaskTabKey;
+  onSelectTab: (tab: TaskTabKey) => void;
   counts?: {
     requests?: number;
     active?: number;
@@ -15,11 +16,12 @@ export interface JobsTabBarProps {
     posts?: number;
   };
 }
+export type JobsTabBarProps = TaskTabBarProps;
 
-export function JobsTabBar({ activeTab, onSelectTab, counts }: JobsTabBarProps) {
+export function TaskTabBar({ activeTab, onSelectTab, counts }: TaskTabBarProps) {
   const { language } = useLanguage();
 
-  const tabs: { key: JobsTabKey; label: string; count?: number; testID?: string }[] = [
+  const tabs: { key: TaskTabKey; label: string; count?: number; testID?: string }[] = [
     {
       key: 'requests',
       label: language === 'en' ? 'Requests' : 'Permintaan',
@@ -28,7 +30,7 @@ export function JobsTabBar({ activeTab, onSelectTab, counts }: JobsTabBarProps) 
     },
     {
       key: 'active',
-      label: language === 'en' ? 'Active Jobs' : 'Pekerjaan Aktif',
+      label: language === 'en' ? 'Active Tasks' : 'Tugas Aktif',
       count: counts?.active,
       testID: 'tech-tab-upcoming',
     },
@@ -46,7 +48,7 @@ export function JobsTabBar({ activeTab, onSelectTab, counts }: JobsTabBarProps) 
         activeTab={activeTab}
         onSelectTab={onSelectTab}
         tabs={tabs}
-        testIDPrefix="jobs-tab"
+        testIDPrefix="tasks-tab"
       />
       {/* Hidden hook for automated test harness */}
       <View style={{ position: 'absolute', width: 0, height: 0, opacity: 0, overflow: 'hidden' }}>
@@ -61,3 +63,5 @@ export function JobsTabBar({ activeTab, onSelectTab, counts }: JobsTabBarProps) 
     </View>
   );
 }
+
+export const JobsTabBar = TaskTabBar;

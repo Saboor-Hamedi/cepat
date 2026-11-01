@@ -23,7 +23,7 @@ export function SettingItem({
   testID,
   accessibilityRole = "button",
 }: SettingItemProps) {
-  const { palette } = useAppearance();
+  const { palette, scaleFont } = useAppearance();
   return (
     <Pressable
       accessibilityRole={accessibilityRole}
@@ -39,17 +39,13 @@ export function SettingItem({
       style={[
         styles.row,
         { backgroundColor: palette.surface, borderColor: palette.border },
-        active && {
-          backgroundColor: palette.primarySoft,
-          borderColor: palette.primary,
-        },
       ]}
       testID={testID}
     >
       <View style={styles.copy}>
-        <Text style={[styles.label, { color: palette.text }]}>{label}</Text>
+        <Text style={[styles.label, { color: palette.text, fontSize: scaleFont(13) }]}>{label}</Text>
         {description ? (
-          <Text style={[styles.description, { color: palette.textMuted }]}>
+          <Text style={[styles.description, { color: palette.textMuted, fontSize: scaleFont(11), lineHeight: scaleFont(16) }]}>
             {description}
           </Text>
         ) : null}
@@ -87,12 +83,9 @@ const styles = StyleSheet.create({
     marginRight: spacing.md,
   },
   label: {
-    fontSize: 13,
     fontWeight: "700",
   },
   description: {
-    fontSize: 11,
-    lineHeight: 16,
     marginTop: 2,
   },
   togglePill: {

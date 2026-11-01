@@ -80,8 +80,8 @@ export default function CategoryScreen() {
 
   return (
     <SafeAreaView style={styles.safeArea} edges={["top", "bottom"]}>
-      <AppNavigationBar activeTab="marketplace" />
       <FlatList
+        style={styles.list}
         contentContainerStyle={styles.content}
         data={matches}
         keyExtractor={(item) => item.id}
@@ -185,12 +185,14 @@ export default function CategoryScreen() {
           )
         }
       />
+      <AppNavigationBar activeTab="marketplace" />
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
   safeArea: { backgroundColor: colors.paper, flex: 1 },
+  list: { flex: 1 },
   content: {
     alignSelf: "center",
     maxWidth: 820,
