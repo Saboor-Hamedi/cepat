@@ -32,6 +32,16 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import {
+  Bell,
+  Calendar,
+  CheckCircle2,
+  Handshake,
+  MessageSquare,
+  Trash2,
+  Wrench,
+  X,
+} from 'lucide-react-native';
 import { useAuth } from '../auth/AuthProvider';
 import { AppNavigationBar, EmptyState, LoadingState } from '../components/marketplace-ui';
 import { SegmentedTabs } from '../components/SegmentedTabs';
@@ -346,6 +356,7 @@ export default function NotificationsScreen() {
                 language={language}
                 onDelete={() => void handleDeleteNotification(item.id)}
                 onPress={() => void handleOpenNotification(item)}
+                palette={palette}
                 styles={styles}
               />
             ))}
@@ -360,12 +371,14 @@ export default function NotificationsScreen() {
 function SwipeableNotificationCard({
   item,
   language,
+  palette,
   styles,
   onPress,
   onDelete,
 }: {
   item: CepatNotification;
   language: 'id' | 'en';
+  palette: ThemePalette;
   styles: ReturnType<typeof createStyles>;
   onPress: () => void;
   onDelete: () => void;
@@ -408,7 +421,7 @@ function SwipeableNotificationCard({
           style={styles.deleteButton}
           testID={`delete-notification-${item.id}`}
         >
-          <Text style={styles.deleteIconText}>🗑️</Text>
+          <Trash2 color="#FFFFFF" size={18} />
           <Text style={styles.deleteButtonText}>
             {language === 'en' ? 'Delete' : 'Hapus'}
           </Text>
@@ -444,7 +457,7 @@ function SwipeableNotificationCard({
               !item.readAt && styles.unreadAvatar,
             ]}
           >
-            <Text style={styles.avatarEmoji}>{getNotificationIcon(item)}</Text>
+            <NotificationIcon color={palette.primary} item={item} />
           </View>
 
           {/* Content body */}
@@ -486,7 +499,7 @@ function SwipeableNotificationCard({
             style={styles.inlineDeleteBtn}
             testID={`quick-delete-notification-${item.id}`}
           >
-            <Text style={styles.inlineDeleteText}>×</Text>
+            <X color={palette.textMuted} size={16} />
           </Pressable>
         </View>
       </Animated.View>
@@ -494,14 +507,16 @@ function SwipeableNotificationCard({
   );
 }
 
-function getNotificationIcon(item: CepatNotification): string {
+function NotificationIcon({ item, color }: { item: CepatNotification; color: string }) {
   const event = item.data.event;
-  if (event === 'chat_message') return '💬';
-  if (event === 'booking_requested') return '🛠️';
-  if (event === 'booking_accepted') return '🤝';
-  if (event === 'booking_schedule_confirmed') return '📅';
-  if (event === 'booking_completed') return '✅';
-  return '🔔';
+  if (event === 'chat_message') return <MessageSquare color={color} size={20} />;
+  if (event === 'booking_requested') return <Wrench color={color} size={20} />;
+  if (event === 'booking_accepted') return <Handshake color={color} size={20} />;
+  if (event === 'booking_schedule_confirmed') return <Calendar color={color} size={20} />;
+  if (event === 'booking_completed' || event === 'booking_work_completed') {
+    return <CheckCircle2 color={color} size={20} />;
+  }
+  return <Bell color={color} size={20} />;
 }
 
 function localizedTitle(item: CepatNotification, language: 'id' | 'en') {
@@ -517,7 +532,7 @@ function localizedTitle(item: CepatNotification, language: 'id' | 'en') {
   const suffix = roleLabel ? ` (${roleLabel})` : '';
 
   if (item.type === 'message' || event === 'chat_message') {
-    return actorName ? `💬 ${actorName}${suffix}` : (language === 'en' ? 'New message' : 'Pesan baru');
+    return actorName ? `${actorName}${suffix}` : (language === 'en' ? 'New message' : 'Pesan baru');
   }
   if (event === 'booking_requested') {
     return language === 'en' ? 'New booking request' : 'Permintaan pesanan baru';

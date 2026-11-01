@@ -1,9 +1,11 @@
+import { CheckCircle2, MessageSquare, Play } from 'lucide-react-native';
 import { Alert, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { Avatar } from '../../components/marketplace-ui';
 import { useAppearance } from '../../context/AppearanceContext';
+import { useUserAvatar } from '../../hooks/useUserAvatar';
 import { localizeArea, useLanguage } from '../../i18n/locale';
-import { colors, radii, spacing } from '../../theme/tokens';
+import { radii, spacing } from '../../theme/tokens';
 import type { BookingRecord } from '../../types/marketplace';
 
 export interface TaskActiveCardProps {
@@ -34,6 +36,11 @@ export function TaskActiveCard({
   const { language, t } = useLanguage();
   const { palette } = useAppearance();
 
+  const remoteCustomerAvatar = useUserAvatar(item.customerUserId, item.customerName);
+  const customerAvatarUri =
+    remoteCustomerAvatar ||
+    'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80';
+
   const handleStart = () => {
     if (onStartTask) onStartTask(item.id);
     else if (onStartJob) onStartJob(item.id);
@@ -53,7 +60,7 @@ export function TaskActiveCard({
       testID={`upcoming-job-card-${item.id}`}
     >
       <View style={styles.customerHeaderRow}>
-        <Avatar name={item.customerName} size={42} />
+        <Avatar name={item.customerName} size={44} uri={customerAvatarUri} />
         <View style={{ flex: 1 }}>
           <Text style={[styles.cardCustomer, { color: palette.text }]}>
             {item.customerName}
@@ -78,10 +85,12 @@ export function TaskActiveCard({
         <Text style={[styles.cardTitle, { color: palette.text }]}>
           {item.serviceNameSnapshot}
         </Text>
-        <Text style={styles.statusTag}>{t(`booking.status.${item.status}`)}</Text>
+        <Text style={[styles.statusTag, { color: palette.primary }]}>
+          {t(`booking.status.${item.status}`)}
+        </Text>
       </View>
       <Text
-        style={[styles.unlockedAddressText, { color: palette.text }]}
+        style={[styles.unlockedAddressText, { color: palette.textMuted }]}
         testID={`unlocked-customer-address-${item.id}`}
       >
         {item.customerAddress} ({localizeArea(item.serviceArea, language)})
@@ -90,13 +99,13 @@ export function TaskActiveCard({
         <Pressable
           accessibilityRole="button"
           onPress={() => onOpenChat(item.id)}
-          style={styles.chatActionBtn}
+          style={[styles.chatActionBtn, { backgroundColor: palette.primarySoft }]}
           testID={`dashboard-open-chat-${item.id}`}
         >
-          <View style={styles.chatIconBox}>
-            <View style={styles.chatIconTail} />
-          </View>
-          <Text style={styles.chatActionBtnText}>{t('booking.chatTitle')}</Text>
+          <MessageSquare color={palette.primary} size={15} strokeWidth={2.4} />
+          <Text style={[styles.chatActionBtnText, { color: palette.primary }]}>
+            {t('booking.chatTitle')}
+          </Text>
         </Pressable>
         {item.status === 'confirmed' && (
           <Pressable
@@ -105,6 +114,7 @@ export function TaskActiveCard({
             style={styles.secondaryBtn}
             testID={`dashboard-start-${item.id}`}
           >
+            <Play color="#FFFFFF" size={13} fill="#FFFFFF" strokeWidth={2.2} />
             <Text style={styles.secondaryBtnText}>
               {language === 'en' ? 'Start Task' : 'Mulai Tugas'}
             </Text>
@@ -126,9 +136,14 @@ export function TaskActiveCard({
             }
             handleComplete();
           }}
-          style={[styles.acceptBtn, !item.customerAcceptedWorkDone && { opacity: 0.6 }]}
+          style={[
+            styles.acceptBtn,
+            { backgroundColor: palette.primary },
+            !item.customerAcceptedWorkDone && { opacity: 0.6 },
+          ]}
           testID={`dashboard-complete-${item.id}`}
         >
+          <CheckCircle2 color="#FFFFFF" size={15} strokeWidth={2.2} />
           <Text style={styles.acceptBtnText}>{t('booking.completeJob')}</Text>
         </Pressable>
       </View>
@@ -140,7 +155,7 @@ export const JobActiveCard = TaskActiveCard;
 
 const styles = StyleSheet.create({
   card: {
-    borderRadius: radii.md,
+    borderRadius: 16,
     borderWidth: 1,
     marginBottom: spacing.md,
     padding: spacing.lg,
@@ -152,18 +167,19 @@ const styles = StyleSheet.create({
     marginBottom: spacing.md,
   },
   cardCustomer: {
-    fontSize: 14,
+    fontSize: 15,
     fontWeight: '800',
+    letterSpacing: -0.2,
   },
   cardMeta: {
     fontSize: 12,
     marginTop: 2,
   },
   customerProfileBtn: {
-    borderRadius: radii.sm,
+    borderRadius: radii.pill,
     borderWidth: 1,
-    paddingHorizontal: spacing.sm,
-    paddingVertical: 5,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
   },
   customerProfileBtnText: {
     fontSize: 11,
@@ -177,18 +193,18 @@ const styles = StyleSheet.create({
   },
   cardTitle: {
     flex: 1,
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: '800',
+    letterSpacing: -0.2,
   },
   statusTag: {
-    color: colors.greenDark,
     fontSize: 12,
     fontWeight: '700',
   },
   unlockedAddressText: {
     fontSize: 12,
-    fontWeight: '600',
-    marginBottom: spacing.sm,
+    fontWeight: '500',
+    marginBottom: spacing.md,
   },
   actionRow: {
     flexDirection: 'row',
@@ -197,60 +213,45 @@ const styles = StyleSheet.create({
   },
   chatActionBtn: {
     alignItems: 'center',
-    backgroundColor: colors.greenSoft,
-    borderRadius: radii.sm,
+    borderRadius: 10,
     flexDirection: 'row',
     gap: 6,
     justifyContent: 'center',
-    minHeight: 40,
-    paddingHorizontal: spacing.sm,
+    minHeight: 42,
+    paddingHorizontal: 14,
   },
   chatActionBtnText: {
-    color: colors.greenDark,
-    fontSize: 12,
+    fontSize: 13,
     fontWeight: '800',
-  },
-  chatIconBox: {
-    borderColor: colors.greenDark,
-    borderRadius: 3,
-    borderWidth: 1.5,
-    height: 11,
-    position: 'relative',
-    width: 14,
-  },
-  chatIconTail: {
-    backgroundColor: colors.greenDark,
-    bottom: -3,
-    height: 3,
-    left: 2,
-    position: 'absolute',
-    width: 3,
   },
   secondaryBtn: {
     alignItems: 'center',
-    backgroundColor: colors.orange,
-    borderRadius: radii.sm,
+    backgroundColor: '#F59E0B',
+    borderRadius: 10,
+    flexDirection: 'row',
+    gap: 6,
     justifyContent: 'center',
-    minHeight: 40,
-    paddingHorizontal: spacing.sm,
+    minHeight: 42,
+    paddingHorizontal: 14,
   },
   secondaryBtnText: {
     color: '#FFFFFF',
-    fontSize: 12,
+    fontSize: 13,
     fontWeight: '800',
   },
   acceptBtn: {
     alignItems: 'center',
-    backgroundColor: colors.greenDark,
-    borderRadius: radii.sm,
+    borderRadius: 10,
     flex: 1,
+    flexDirection: 'row',
+    gap: 6,
     justifyContent: 'center',
-    minHeight: 40,
-    paddingHorizontal: spacing.sm,
+    minHeight: 42,
+    paddingHorizontal: 14,
   },
   acceptBtnText: {
     color: '#FFFFFF',
-    fontSize: 12,
+    fontSize: 13,
     fontWeight: '800',
   },
 });

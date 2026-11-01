@@ -1,0 +1,491 @@
+/* ==========================================================================
+   Chat Component Stylesheet (Header, Content, Input Area / Composer, Dropdown)
+   ========================================================================== */
+
+/* ==================== Header ==================== */
+.chat-header-container {
+  width: 100%;
+  position: relative;
+  z-index: 1000;
+}
+
+.chat-header-row {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 12px;
+  border-bottom-width: 1px;
+  border-bottom-style: solid;
+  position: relative;
+  z-index: 1100;
+}
+
+.chat-icon-button {
+  width: 38px;
+  height: 38px;
+  border-radius: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: transparent;
+}
+
+.chat-partner-info-row {
+  flex: 1;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 10px;
+}
+
+.chat-avatar-wrap {
+  position: relative;
+}
+
+.chat-active-online-dot {
+  position: absolute;
+  bottom: 0;
+  right: 0;
+  width: 12px;
+  height: 12px;
+  border-radius: 6px;
+  border-width: 2px;
+  border-style: solid;
+  background-color: #22C55E;
+}
+
+.chat-partner-text-group {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.chat-name-line {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 6px;
+}
+
+.chat-partner-name {
+  font-size: 16px;
+  font-weight: 700;
+  letter-spacing: -0.2px;
+}
+
+.chat-verified-pill {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  padding: 2px 8px;
+  border-radius: 999px;
+}
+
+.chat-verified-pill-text {
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.2px;
+}
+
+.chat-status-row {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 5px;
+}
+
+.chat-status-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 3px;
+  background-color: #22C55E;
+}
+
+.chat-partner-status {
+  font-size: 11px;
+  font-weight: 500;
+}
+
+.chat-pinned-card {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 10px;
+  margin: 8px 12px 6px 12px;
+  padding: 8px 10px;
+  border-radius: 12px;
+  border-width: 1px;
+  border-style: solid;
+  border-left-width: 3px;
+}
+
+.chat-pinned-thumb {
+  width: 44px;
+  height: 44px;
+  border-radius: 8px;
+  object-fit: cover;
+}
+
+.chat-pinned-details {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  justify-content: center;
+}
+
+.chat-pinned-service-title {
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: -0.2px;
+}
+
+.chat-pinned-meta {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 8px;
+}
+
+.chat-pinned-price {
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: -0.2px;
+}
+
+.chat-pinned-divider {
+  width: 1px;
+  height: 12px;
+  opacity: 0.7;
+}
+
+.chat-pinned-address-row {
+  flex: 1;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 3px;
+}
+
+.chat-pinned-address {
+  flex: 1;
+  font-size: 11px;
+  font-weight: 500;
+}
+
+/* ==================== Content ==================== */
+.chat-content-container {
+  flex: 1;
+}
+
+.chat-security-banner {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  margin: 6px 16px 2px 16px;
+  padding: 6px 12px;
+  border-radius: 8px;
+  border-width: 1px;
+  border-style: dashed;
+}
+
+.chat-security-text {
+  font-size: 11px;
+  font-weight: 500;
+  text-align: center;
+}
+
+.chat-messages-list {
+  padding: 12px 16px 20px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.chat-closed-banner {
+  align-self: center;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 6px;
+  margin: 0 20px 12px 20px;
+  padding: 7px 14px;
+  border-radius: 999px;
+  border-width: 1px;
+  border-style: dashed;
+}
+
+.chat-closed-banner-text {
+  font-size: 11px;
+  font-weight: 600;
+  text-align: center;
+}
+
+.chat-cleared-box {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin-top: 12px;
+  padding: 18px 20px;
+  border-radius: 14px;
+  border-width: 1px;
+  border-style: solid;
+}
+
+.chat-cleared-text {
+  font-size: 12px;
+  text-align: center;
+}
+
+.chat-undo-btn {
+  margin-top: 10px;
+  padding: 6px 14px;
+}
+
+.chat-undo-text {
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.chat-empty-box {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 48px 32px;
+}
+
+.chat-empty-icon-wrap {
+  width: 64px;
+  height: 64px;
+  border-radius: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 14px;
+}
+
+.chat-empty-title {
+  font-size: 17px;
+  font-weight: 800;
+  letter-spacing: -0.2px;
+}
+
+.chat-empty-subtitle {
+  font-size: 12.5px;
+  line-height: 18px;
+  margin-top: 5px;
+  max-width: 280px;
+  text-align: center;
+}
+
+.chat-message-row {
+  display: flex;
+  flex-direction: row;
+  align-items: flex-end;
+  margin-bottom: 2px;
+}
+
+.chat-my-row {
+  justify-content: flex-end;
+}
+
+.chat-their-row {
+  justify-content: flex-start;
+}
+
+.chat-group-spacing {
+  margin-top: 8px;
+}
+
+.chat-message-avatar-wrap {
+  margin-bottom: 2px;
+}
+
+.chat-avatar-left {
+  margin-right: 8px;
+}
+
+.chat-avatar-right {
+  margin-left: 8px;
+}
+
+.chat-avatar-spacer {
+  width: 30px;
+}
+
+.chat-my-bubble-wrap {
+  align-items: flex-end;
+  max-width: 82%;
+}
+
+.chat-their-bubble-wrap {
+  align-items: flex-start;
+  max-width: 82%;
+}
+
+.chat-bubble {
+  min-width: 70px;
+  border-radius: 16px;
+  padding: 10px 14px;
+}
+
+.chat-my-bubble {
+  border-bottom-right-radius: 4px;
+}
+
+.chat-their-bubble {
+  border-bottom-left-radius: 4px;
+}
+
+.chat-bubble-sender {
+  font-size: 11px;
+  font-weight: 800;
+  margin-bottom: 2px;
+}
+
+.chat-bubble-body {
+  font-size: 15px;
+  line-height: 21px;
+}
+
+.chat-bubble-time-under {
+  font-size: 10px;
+  font-weight: 500;
+  margin-top: 3px;
+  padding: 0 2px;
+}
+
+.chat-time-under-my {
+  text-align: right;
+}
+
+.chat-time-under-their {
+  text-align: left;
+}
+
+/* ==================== Input Area / Composer ==================== */
+.chat-input-bar {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  border-top-width: 1px;
+  border-top-style: solid;
+}
+
+.chat-input-field {
+  flex: 1;
+  min-height: 38px;
+  max-height: 120px;
+  border-radius: 20px;
+  padding: 8px 12px;
+  font-size: 14.5px;
+  background-color: transparent;
+  outline: none;
+  resize: none;
+  box-shadow: none;
+  border: none;
+  font-family: inherit;
+}
+
+.chat-send-btn {
+  width: 40px;
+  height: 40px;
+  border-radius: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.chat-completed-footer {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 14px 16px;
+  border-top-width: 1px;
+  border-top-style: solid;
+}
+
+.chat-completed-info-row {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 8px;
+}
+
+.chat-completed-check-circle {
+  width: 20px;
+  height: 20px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: #22C55E;
+}
+
+.chat-completed-badge-text {
+  font-size: 14px;
+  font-weight: 800;
+}
+
+.chat-book-again-btn {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  height: 44px;
+  border-radius: 12px;
+}
+
+.chat-book-again-btn-text {
+  color: #FFFFFF;
+  font-size: 14px;
+  font-weight: 800;
+}
+
+/* ==================== Dropdown Menu ==================== */
+.chat-dropdown-container {
+  position: relative;
+  z-index: 100;
+}
+
+.chat-menu-dots-btn {
+  width: 38px;
+  height: 38px;
+  border-radius: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.chat-dropdown-menu {
+  position: absolute;
+  top: 48px;
+  right: 0;
+  min-width: 214px;
+  border-radius: 16px;
+  border-width: 1px;
+  border-style: solid;
+  padding: 6px 0;
+  z-index: 200;
+}
+
+.chat-dropdown-menu-item {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+}
+
+.chat-dropdown-menu-text {
+  font-size: 13px;
+  font-weight: 600;
+}

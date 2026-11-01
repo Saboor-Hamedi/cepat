@@ -12,6 +12,7 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
+import { AlertTriangle, ChevronLeft, MapPin } from "lucide-react-native";
 import { useAuth } from "../../auth/AuthProvider";
 import { BookingLifecyclePanel } from "../../components/BookingLifecyclePanel";
 import { BookingParticipantsHeader } from "../../components/BookingParticipantsHeader";
@@ -325,7 +326,7 @@ export default function BookingEntryScreen() {
       >
         <Pressable
           accessibilityRole="button"
-          accessibilityLabel={t("booking.back")}
+          accessibilityLabel={language === "en" ? "Back" : "Kembali"}
           onPress={() => {
             if (router.canGoBack()) router.back();
             else if (displayedTechnicianId)
@@ -334,24 +335,9 @@ export default function BookingEntryScreen() {
           }}
           style={styles.back}
         >
-          <Text style={[styles.backGlyph, { color: palette.primary }]}>‹</Text>
+          <ChevronLeft color={palette.primary} size={20} />
           <Text style={[styles.backLabel, { color: palette.primary }]}>
-            {t("booking.back")}
-          </Text>
-        </Pressable>
-        <Pressable
-          accessibilityRole="button"
-          onPress={() => router.push("/bookings")}
-          style={[
-            styles.allBookingsLink,
-            { backgroundColor: palette.primarySoft },
-          ]}
-          testID="view-all-bookings-link"
-        >
-          <Text
-            style={[styles.allBookingsLinkText, { color: palette.primary }]}
-          >
-            {t("nav.bookings")}
+            {language === "en" ? "Back" : "Kembali"}
           </Text>
         </Pressable>
       </View>
@@ -395,9 +381,9 @@ export default function BookingEntryScreen() {
               {!activeBooking && technician && (
                 <BookingParticipantsHeader
                   customerAvatarUri={
-                    typeof user?.user_metadata?.avatar_url === "string"
-                      ? user.user_metadata.avatar_url
-                      : undefined
+                    (typeof user?.user_metadata?.avatar_url === "string" &&
+                      user.user_metadata.avatar_url) ||
+                    "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80"
                   }
                   customerName={
                     (typeof user?.user_metadata?.display_name === "string" &&
@@ -410,7 +396,10 @@ export default function BookingEntryScreen() {
                     selectedService?.nameEn ||
                     (language === "en" ? "Service" : "Layanan")
                   }
-                  technicianAvatarUri={technician.avatarUri}
+                  technicianAvatarUri={
+                    technician.avatarUri ||
+                    "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&auto=format&fit=crop&q=80"
+                  }
                   technicianBusinessName={technician.businessName}
                   technicianId={displayedTechnicianId}
                   technicianName={technician.displayName}
@@ -433,7 +422,7 @@ export default function BookingEntryScreen() {
                       },
                     ]}
                   >
-                    <Text style={{ fontSize: 36, marginBottom: 8 }}>⚠️</Text>
+                    <AlertTriangle color="#EAB308" size={36} style={{ marginBottom: 8 }} />
                     <Text style={[styles.stepTitle, { textAlign: "center", marginBottom: 6 }]}>
                       {language === "en"
                         ? "This is your technician profile"
@@ -587,7 +576,7 @@ export default function BookingEntryScreen() {
                         },
                       ]}
                     >
-                      <Text style={{ fontSize: 16 }}>📍</Text>
+                      <MapPin color={palette.primary} size={18} />
                       <View style={{ flex: 1 }}>
                         <Text style={[styles.selectedAddressText, { color: palette.text }]}>
                           {customerAddress}
@@ -770,14 +759,8 @@ function createStyles(palette: ThemePalette) {
     paddingHorizontal: spacing.xl,
     paddingVertical: spacing.xs,
   },
-  back: { alignItems: "center", flexDirection: "row", minHeight: 44 },
-  backGlyph: {
-    color: palette.text,
-    fontSize: 32,
-    lineHeight: 37,
-    marginRight: 7,
-  },
-  backLabel: { color: palette.primary, fontSize: 13, fontWeight: "700" },
+  back: { alignItems: "center", flexDirection: "row", gap: 6, minHeight: 44 },
+  backLabel: { color: palette.primary, fontSize: 14, fontWeight: "700" },
   allBookingsLink: {
     backgroundColor: palette.primarySoft,
     borderRadius: radii.pill,

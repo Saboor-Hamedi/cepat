@@ -446,13 +446,13 @@ const styles = StyleSheet.create({
   },
   activeBar: {
     backgroundColor: "transparent",
-    borderTopLeftRadius: 3,
-    borderTopRightRadius: 3,
-    bottom: 0,
+    borderBottomLeftRadius: 3,
+    borderBottomRightRadius: 3,
     height: 3,
     left: "18%",
     position: "absolute",
     right: "18%",
+    top: 0,
   },
   activeBarVisible: {
     backgroundColor: colors.greenDark,

@@ -1,9 +1,11 @@
 import { router } from 'expo-router';
-import { useState } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { ClipboardList, EllipsisVertical, Trash } from 'lucide-react-native';
+import { useMemo, useState } from 'react';
+import { Pressable, Text, View } from 'react-native';
 
 import { useAppearance } from '../../context/AppearanceContext';
 import { useLanguage } from '../../i18n/locale';
+import { createChatDropdownStyles } from './css/chatStyles';
 
 export interface ChatDropdownProps {
   bookingId: string;
@@ -13,6 +15,7 @@ export interface ChatDropdownProps {
 export function ChatDropdown({ bookingId, onClearHistory }: ChatDropdownProps) {
   const { language } = useLanguage();
   const { palette } = useAppearance();
+  const styles = useMemo(() => createChatDropdownStyles(palette), [palette]);
   const [isOpen, setIsOpen] = useState(false);
 
   return (
@@ -25,24 +28,31 @@ export function ChatDropdown({ bookingId, onClearHistory }: ChatDropdownProps) {
         style={({ pressed }) => [
           styles.menuDotsBtn,
           {
-            backgroundColor: pressed ? palette.pillBg : palette.surfaceElevated,
+            backgroundColor: 'transparent',
+            opacity: pressed ? 0.6 : 1,
           },
         ]}
         testID="chat-menu-toggle-btn"
       >
-        <Text style={[styles.menuDotsText, { color: palette.text }]}>•••</Text>
+        <EllipsisVertical color={palette.text} size={20} strokeWidth={2.2} />
       </Pressable>
 
       {isOpen && (
-        <View
-          style={[
-            styles.dropdownMenu,
-            {
-              backgroundColor: palette.surface,
-              borderColor: palette.border,
-            },
-          ]}
-        >
+        <>
+          <Pressable
+            accessibilityLabel="Close menu"
+            onPress={() => setIsOpen(false)}
+            style={styles.backdrop}
+          />
+          <View
+            style={[
+              styles.dropdownMenu,
+              {
+                backgroundColor: palette.surface,
+                borderColor: palette.border,
+              },
+            ]}
+          >
           <Pressable
             accessibilityRole="button"
             onPress={() => {
@@ -61,7 +71,7 @@ export function ChatDropdown({ bookingId, onClearHistory }: ChatDropdownProps) {
                 { backgroundColor: palette.primarySoft },
               ]}
             >
-              <Text style={styles.itemIcon}>📋</Text>
+              <ClipboardList color={palette.primary} size={15} strokeWidth={2.2} />
             </View>
             <Text style={[styles.dropdownMenuText, { color: palette.text }]}>
               {language === 'en' ? 'View task details' : 'Lihat detail tugas'}
@@ -85,79 +95,15 @@ export function ChatDropdown({ bookingId, onClearHistory }: ChatDropdownProps) {
             testID="delete-chat-history"
           >
             <View style={[styles.itemIconWrap, styles.dangerIconWrap]}>
-              <Text style={styles.itemIcon}>🗑️</Text>
+              <Trash color={palette.danger} size={16} />
             </View>
             <Text style={[styles.dropdownMenuText, { color: palette.danger }]}>
               {language === 'en' ? 'Clear chat history' : 'Hapus riwayat chat'}
             </Text>
           </Pressable>
         </View>
+        </>
       )}
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    position: 'relative',
-    zIndex: 100,
-  },
-  dangerIconWrap: {
-    backgroundColor: 'rgba(240, 40, 73, 0.12)',
-  },
-  divider: {
-    height: StyleSheet.hairlineWidth,
-    marginVertical: 4,
-    opacity: 0.8,
-  },
-  dropdownMenu: {
-    borderRadius: 16,
-    borderWidth: 1,
-    elevation: 10,
-    minWidth: 214,
-    overflow: 'hidden',
-    paddingVertical: 6,
-    position: 'absolute',
-    right: 0,
-    shadowColor: '#000000',
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.18,
-    shadowRadius: 16,
-    top: 50,
-    zIndex: 200,
-  },
-  dropdownMenuItem: {
-    alignItems: 'center',
-    flexDirection: 'row',
-    gap: 10,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-  },
-  dropdownMenuText: {
-    fontSize: 13,
-    fontWeight: '600',
-  },
-  itemIcon: {
-    fontSize: 13,
-  },
-  itemIconWrap: {
-    alignItems: 'center',
-    borderRadius: 9,
-    height: 28,
-    justifyContent: 'center',
-    width: 28,
-  },
-  menuDotsBtn: {
-    alignItems: 'center',
-    borderRadius: 22,
-    height: 44,
-    justifyContent: 'center',
-    width: 44,
-  },
-  menuDotsText: {
-    fontSize: 13,
-    fontWeight: '800',
-    letterSpacing: 1.2,
-    marginTop: -3,
-  },
-});

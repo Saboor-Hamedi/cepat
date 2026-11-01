@@ -192,6 +192,26 @@ export function containsBlockedUrl(messageBody: string): boolean {
   return containsBlockedContactOrUrl(messageBody);
 }
 
+export function maskBlockedContactOrUrl(messageBody: string): string {
+  if (!messageBody) return '';
+  let masked = messageBody;
+
+  // 1. External URLs, schemes, and domains
+  masked = masked.replace(/https?:\/\/\S+/gi, '***');
+  masked = masked.replace(/\bwww\.[a-z0-9-]+(\.[a-z0-9-]+)+(\/\S*)?/gi, '***');
+  masked = masked.replace(/\b(wa\.me|t\.me|bit\.ly|tinyurl\.com|linktr\.ee)\/\S*/gi, '***');
+  masked = masked.replace(/\b[a-z0-9-]+\.(com|id|co\.id|net|org|io|app|me|link|site|xyz)(\/\S*)?/gi, '***');
+
+  // 2. Email addresses
+  masked = masked.replace(/[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}/gi, '***');
+
+  // 3. WhatsApp and phone numbers (7 or more digits)
+  masked = masked.replace(/(\+?62|08)[\s.-]?\d{2,4}[\s.-]?\d{3,4}[\s.-]?\d{3,5}/gi, '***');
+  masked = masked.replace(/\b\d{9,15}\b/g, '***');
+
+  return masked;
+}
+
 function scopeKey(prefix: string, userId?: string | null): string {
   return `${prefix}${userId || 'guest'}`;
 }
@@ -1127,9 +1147,10 @@ export async function sendBookingMessage(input: {
   if (trimmed.length > 1000) {
     throw new Error('message_too_long');
   }
-  if (containsBlockedUrl(trimmed)) {
+  if (containsBlockedContactOrUrl(trimmed)) {
     throw new Error('url_blocked');
   }
+  const sanitizedBody = trimmed;
 
   if (!shouldUseFixtures()) {
     if (!supabase) throw new Error('supabase_unavailable');
@@ -1140,7 +1161,7 @@ export async function sendBookingMessage(input: {
     }
     const { data, error } = await supabase.rpc('send_booking_message', {
       p_booking_id: input.bookingId,
-      p_body: trimmed,
+      p_body: sanitizedBody,
       p_client_message_id:
         input.clientMessageId ??
         `${input.senderUserId}-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`,
@@ -1154,7 +1175,7 @@ export async function sendBookingMessage(input: {
       senderUserId: String(row.sender_user_id),
       senderRole: row.sender_role === 'technician' ? 'technician' : 'customer',
       senderName: String(row.sender_name ?? input.senderName),
-      body: String(row.body ?? trimmed),
+      body: String(row.body ?? sanitizedBody),
       createdAt: String(row.created_at),
     };
   }
@@ -1170,7 +1191,7 @@ export async function sendBookingMessage(input: {
     senderUserId: input.senderUserId,
     senderRole: input.senderRole,
     senderName: input.senderName,
-    body: trimmed,
+    body: sanitizedBody,
     createdAt: new Date().toISOString(),
   };
 
@@ -1191,7 +1212,7 @@ export async function sendBookingMessage(input: {
   await recordLocalMessageNotification(
     recipientUserId,
     input.senderName,
-    trimmed,
+    sanitizedBody,
     input.bookingId,
     input.senderRole,
   );

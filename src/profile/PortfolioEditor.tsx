@@ -1,3 +1,4 @@
+import { Camera } from 'lucide-react-native';
 import { useState } from 'react';
 import {
   Image,
@@ -56,7 +57,7 @@ export function PortfolioEditor({
             <Image source={{ uri: item.imageUri }} style={styles.thumbnail} />
           ) : (
             <View style={[styles.thumbnail, styles.thumbnailPlaceholder]}>
-              <Text style={styles.thumbnailText}>📷</Text>
+              <Camera color={colors.muted} size={20} />
             </View>
           )}
           <View style={styles.info}>

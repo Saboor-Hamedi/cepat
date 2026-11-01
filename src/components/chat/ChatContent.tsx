@@ -1,8 +1,8 @@
+import { Archive, Lock, MessageCircle } from 'lucide-react-native';
 import { useMemo, useRef } from 'react';
 import {
   Pressable,
   ScrollView,
-  StyleSheet,
   Text,
   View,
   type ScrollViewInstance,
@@ -13,6 +13,7 @@ import { useAppearance } from '../../context/AppearanceContext';
 import { useLanguage } from '../../i18n/locale';
 import type { BookingMessage } from '../../types/marketplace';
 import { Avatar } from '../marketplace-ui';
+import { createChatContentStyles } from './css/chatStyles';
 
 export interface ChatContentProps {
   messages: BookingMessage[];
@@ -23,6 +24,7 @@ export interface ChatContentProps {
   onUndoClear: () => void;
   chatError: string | null;
   partnerAvatarUri?: string;
+  senderAvatarUri?: string;
 }
 
 export function ChatContent({
@@ -34,12 +36,20 @@ export function ChatContent({
   onUndoClear,
   chatError,
   partnerAvatarUri,
+  senderAvatarUri,
 }: ChatContentProps) {
   const { language } = useLanguage();
   const { user } = useAuth();
   const { palette } = useAppearance();
-  const styles = useMemo(() => createStyles(palette), [palette]);
+  const styles = useMemo(() => createChatContentStyles(palette), [palette]);
   const scrollRef = useRef<ScrollViewInstance | null>(null);
+  const selfName =
+    (typeof user?.user_metadata?.display_name === 'string' &&
+      user.user_metadata.display_name) ||
+    (typeof user?.user_metadata?.full_name === 'string' &&
+      user.user_metadata.full_name) ||
+    user?.email?.split('@')[0] ||
+    (language === 'en' ? 'You' : 'Anda');
 
   return (
     <View style={styles.container}>
@@ -48,8 +58,8 @@ export function ChatContent({
         style={[styles.securityBanner, { borderColor: palette.border }]}
         testID="chat-security-banner"
       >
+        <Lock color={palette.textMuted} size={12} strokeWidth={2.2} />
         <Text style={[styles.securityText, { color: palette.textMuted }]}>
-          🔒{' '}
           {language === 'en'
             ? 'Protected chat — sharing phone numbers, WhatsApp, or links is disabled.'
             : 'Chat terlindungi — berbagi nomor telepon, WhatsApp, atau tautan dinonaktifkan.'}
@@ -71,10 +81,10 @@ export function ChatContent({
             style={[styles.closedBanner, { borderColor: palette.border }]}
             testID="chat-closed-banner"
           >
+            <Archive color={palette.textMuted} size={12} strokeWidth={2.2} />
             <Text
               style={[styles.closedBannerText, { color: palette.textMuted }]}
             >
-              📦{' '}
               {language === 'en'
                 ? 'Task completed — this conversation is archived.'
                 : 'Tugas selesai — percakapan ini telah diarsipkan.'}
@@ -115,7 +125,7 @@ export function ChatContent({
                 { backgroundColor: palette.primarySoft },
               ]}
             >
-              <Text style={styles.emptyIcon}>💬</Text>
+              <MessageCircle color={palette.primary} size={28} strokeWidth={2.2} />
             </View>
             <Text style={[styles.emptyTitle, { color: palette.text }]}>
               {language === 'en' ? 'No messages yet' : 'Belum ada pesan'}
@@ -136,7 +146,7 @@ export function ChatContent({
             const previous = index > 0 ? messages[index - 1] : undefined;
             const startsGroup =
               !previous || previous.senderUserId !== msg.senderUserId;
-            const timeStr = formatMessageTime(msg.createdAt);
+            const timeStr = formatWhatsAppTime(msg.createdAt, language);
             const bubbleTextColor = isMyMsg ? '#FFFFFF' : palette.text;
 
             return (
@@ -149,7 +159,7 @@ export function ChatContent({
                 ]}
               >
                 {!isMyMsg && (
-                  <View style={styles.messageAvatarWrap}>
+                  <View style={[styles.messageAvatarWrap, styles.avatarLeft]}>
                     {startsGroup ? (
                       <Avatar
                         name={msg.senderName}
@@ -162,43 +172,54 @@ export function ChatContent({
                   </View>
                 )}
 
-                <View
-                  style={[
-                    styles.bubble,
-                    isMyMsg
-                      ? [styles.myBubble, { backgroundColor: palette.primary }]
-                      : [
-                          styles.theirBubble,
-                          { backgroundColor: palette.surfaceElevated },
-                        ],
-                  ]}
-                >
-                  {!isMyMsg && startsGroup && (
-                    <Text
-                      style={[
-                        styles.bubbleSender,
-                        { color: palette.primary },
-                      ]}
-                    >
-                      {msg.senderName}
+                <View style={isMyMsg ? styles.myBubbleWrap : styles.theirBubbleWrap}>
+                  <View
+                    style={[
+                      styles.bubble,
+                      isMyMsg
+                        ? [styles.myBubble, { backgroundColor: palette.primary }]
+                        : [
+                            styles.theirBubble,
+                            { backgroundColor: palette.surfaceElevated },
+                          ],
+                    ]}
+                  >
+                    {!isMyMsg && startsGroup && (
+                      <Text
+                        style={[
+                          styles.bubbleSender,
+                          { color: palette.primary },
+                        ]}
+                      >
+                        {msg.senderName}
+                      </Text>
+                    )}
+                    <Text style={[styles.bubbleBody, { color: bubbleTextColor }]}>
+                      {msg.body}
                     </Text>
-                  )}
-                  <Text style={[styles.bubbleBody, { color: bubbleTextColor }]}>
-                    {msg.body}
-                  </Text>
+                  </View>
                   {timeStr ? (
                     <Text
                       style={[
-                        styles.bubbleTime,
-                        isMyMsg
-                          ? { color: 'rgba(255, 255, 255, 0.72)' }
-                          : { color: palette.textMuted },
+                        styles.bubbleTimeUnder,
+                        isMyMsg ? styles.timeUnderMy : styles.timeUnderTheir,
+                        { color: palette.textMuted },
                       ]}
                     >
                       {timeStr}
                     </Text>
                   ) : null}
                 </View>
+
+                {isMyMsg && (
+                  <View style={[styles.messageAvatarWrap, styles.avatarRight]}>
+                    {startsGroup ? (
+                      <Avatar name={selfName} size={30} uri={senderAvatarUri} />
+                    ) : (
+                      <View style={styles.avatarSpacer} />
+                    )}
+                  </View>
+                )}
               </View>
             );
           })
@@ -218,174 +239,43 @@ export function ChatContent({
   );
 }
 
-function formatMessageTime(createdAt: string): string {
+function formatWhatsAppTime(createdAt: string, language: string): string {
+  if (!createdAt) return '';
   const date = new Date(createdAt);
   if (Number.isNaN(date.getTime())) return '';
-  return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-}
 
-function createStyles(palette: {
-  background: string;
-  surface: string;
-  surfaceElevated: string;
-  text: string;
-  textMuted: string;
-  primary: string;
-  primarySoft: string;
-  border: string;
-  danger: string;
-}) {
-  return StyleSheet.create({
-    avatarSpacer: {
-      width: 30,
-    },
-    bubble: {
-      maxWidth: '75%',
-      paddingHorizontal: 12,
-      paddingVertical: 8,
-    },
-    bubbleBody: {
-      fontSize: 14.5,
-      lineHeight: 20,
-    },
-    bubbleSender: {
-      fontSize: 11,
-      fontWeight: '800',
-      marginBottom: 2,
-    },
-    bubbleTime: {
-      alignSelf: 'flex-end',
-      fontSize: 10,
-      fontWeight: '500',
-      marginTop: 3,
-    },
-    clearedBox: {
-      alignItems: 'center',
-      borderRadius: 14,
-      borderWidth: 1,
-      marginTop: 12,
-      paddingHorizontal: 20,
-      paddingVertical: 18,
-    },
-    clearedText: {
-      fontSize: 12,
-      textAlign: 'center',
-    },
-    closedBanner: {
-      alignSelf: 'center',
-      borderRadius: 999,
-      borderStyle: 'dashed',
-      borderWidth: 1,
-      marginBottom: 12,
-      marginHorizontal: 20,
-      paddingHorizontal: 14,
-      paddingVertical: 7,
-    },
-    closedBannerText: {
-      fontSize: 11,
-      fontWeight: '600',
-      textAlign: 'center',
-    },
-    container: {
-      flex: 1,
-    },
-    emptyBox: {
-      alignItems: 'center',
-      justifyContent: 'center',
-      paddingHorizontal: 32,
-      paddingVertical: 48,
-    },
-    emptyIcon: {
-      fontSize: 30,
-    },
-    emptyIconWrap: {
-      alignItems: 'center',
-      borderRadius: 32,
-      height: 64,
-      justifyContent: 'center',
-      marginBottom: 14,
-      width: 64,
-    },
-    emptySubtitle: {
-      fontSize: 12.5,
-      lineHeight: 18,
-      marginTop: 5,
-      maxWidth: 280,
-      textAlign: 'center',
-    },
-    emptyTitle: {
-      fontSize: 17,
-      fontWeight: '800',
-      letterSpacing: -0.2,
-    },
-    errorText: {
-      fontSize: 12,
-      fontWeight: '600',
-      marginVertical: 8,
-      textAlign: 'center',
-    },
-    groupSpacing: {
-      marginTop: 10,
-    },
-    messageAvatarWrap: {
-      alignSelf: 'flex-end',
-      marginRight: 8,
-    },
-    messageRow: {
-      alignItems: 'flex-end',
-      flexDirection: 'row',
-      marginVertical: 2,
-      width: '100%',
-    },
-    messagesList: {
-      gap: 4,
-      paddingBottom: 20,
-      paddingHorizontal: 14,
-      paddingTop: 12,
-    },
-    myBubble: {
-      borderBottomRightRadius: 4,
-      borderTopLeftRadius: 18,
-      borderTopRightRadius: 18,
-      borderBottomLeftRadius: 18,
-    },
-    myRow: {
-      justifyContent: 'flex-end',
-    },
-    securityBanner: {
-      alignSelf: 'center',
-      borderRadius: 999,
-      borderStyle: 'dashed',
-      borderWidth: 1,
-      marginHorizontal: 20,
-      marginTop: 10,
-      opacity: 0.9,
-      paddingHorizontal: 14,
-      paddingVertical: 6,
-    },
-    securityText: {
-      fontSize: 10.5,
-      fontWeight: '500',
-      lineHeight: 14,
-      textAlign: 'center',
-    },
-    theirBubble: {
-      borderBottomLeftRadius: 4,
-      borderTopLeftRadius: 18,
-      borderTopRightRadius: 18,
-      borderBottomRightRadius: 18,
-    },
-    theirRow: {
-      justifyContent: 'flex-start',
-    },
-    undoBtn: {
-      marginTop: 6,
-      paddingHorizontal: 10,
-      paddingVertical: 5,
-    },
-    undoText: {
-      fontSize: 13,
-      fontWeight: '800',
-    },
-  });
+  const now = new Date();
+  const isToday =
+    date.getDate() === now.getDate() &&
+    date.getMonth() === now.getMonth() &&
+    date.getFullYear() === now.getFullYear();
+
+  const yesterday = new Date(now);
+  yesterday.setDate(now.getDate() - 1);
+  const isYesterday =
+    date.getDate() === yesterday.getDate() &&
+    date.getMonth() === yesterday.getMonth() &&
+    date.getFullYear() === yesterday.getFullYear();
+
+  let hours = date.getHours();
+  const minutes = date.getMinutes();
+  const ampm = hours >= 12 ? 'PM' : 'AM';
+  hours = hours % 12;
+  hours = hours ? hours : 12;
+  const minuteStr = minutes < 10 ? `0${minutes}` : `${minutes}`;
+  const timeStr = `${hours}:${minuteStr} ${ampm}`;
+
+  if (isToday) {
+    return timeStr;
+  }
+  if (isYesterday) {
+    return language === 'en' ? `Yesterday, ${timeStr}` : `Kemarin, ${timeStr}`;
+  }
+  const isSameYear = date.getFullYear() === now.getFullYear();
+  const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+  const monthStr = monthNames[date.getMonth()];
+  if (isSameYear) {
+    return `${date.getDate()} ${monthStr}, ${timeStr}`;
+  }
+  return `${date.getDate()} ${monthStr} ${date.getFullYear()}, ${timeStr}`;
 }

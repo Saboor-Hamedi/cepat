@@ -5,6 +5,7 @@ import {
   KeyboardAvoidingView,
   Platform,
   StyleSheet,
+  View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -13,13 +14,14 @@ import { LoadingState } from '../marketplace-ui';
 import { useAppearance } from '../../context/AppearanceContext';
 import { fixtureTechnicians } from '../../data/fixtures';
 import {
-  loadAccountProfileDetails,
   loadBookingById,
   loadBookingMessages,
+  maskBlockedContactOrUrl,
   sendBookingMessage,
   subscribeToBookingMessages,
 } from '../../data/marketplaceStore';
 import { markBookingNotificationsRead } from '../../data/notifications';
+import { useUserAvatar } from '../../hooks/useUserAvatar';
 import { useLanguage } from '../../i18n/locale';
 import type { BookingMessage, BookingRecord } from '../../types/marketplace';
 
@@ -124,6 +126,12 @@ export function ChatContainer({
     return language === 'en' ? 'Verified Technician' : 'Teknisi Terverifikasi';
   }, [isTechnician, language]);
 
+  const partnerUserId = booking
+    ? isTechnician
+      ? booking.customerUserId
+      : booking.technicianUserId
+    : undefined;
+
   const fallbackAvatarUri = useMemo(() => {
     if (isTechnician || !booking) return undefined;
     return fixtureTechnicians.find(
@@ -131,27 +139,14 @@ export function ChatContainer({
     )?.avatarUri;
   }, [booking, isTechnician]);
 
-  const [remoteAvatarUri, setRemoteAvatarUri] = useState<string | undefined>(
-    undefined,
-  );
+  const remotePartnerAvatarUri = useUserAvatar(partnerUserId, partnerName);
+  const partnerAvatarUri = remotePartnerAvatarUri || fallbackAvatarUri;
 
-  useEffect(() => {
-    let active = true;
-    if (!booking) return;
-    const partnerUserId = isTechnician
-      ? booking.customerUserId
-      : booking.technicianUserId;
-    void loadAccountProfileDetails(partnerUserId, '', partnerName)
-      .then((profile) => {
-        if (active) setRemoteAvatarUri(profile.avatarUri || undefined);
-      })
-      .catch(() => {});
-    return () => {
-      active = false;
-    };
-  }, [booking, isTechnician, partnerName]);
-
-  const partnerAvatarUri = remoteAvatarUri || fallbackAvatarUri;
+  const metadataAvatarUri =
+    typeof user?.user_metadata?.avatar_url === 'string'
+      ? user.user_metadata.avatar_url
+      : undefined;
+  const senderAvatarUri = useUserAvatar(user?.id) || metadataAvatarUri;
 
   const handleBookAgain = useCallback(() => {
     if (onClose) onClose();
@@ -187,6 +182,7 @@ export function ChatContainer({
     setSendingChat(true);
 
     try {
+      const sanitizedBody = maskBlockedContactOrUrl(chatInput.trim());
       const sent = await sendBookingMessage({
         bookingId: booking.id,
         senderUserId:
@@ -194,7 +190,7 @@ export function ChatContainer({
         senderRole: chatSenderRole,
         senderName:
           chatSenderRole === 'customer' ? booking.customerName : booking.technicianName,
-        body: chatInput.trim(),
+        body: sanitizedBody,
         clientMessageId,
       });
 
@@ -237,7 +233,7 @@ export function ChatContainer({
         senderRole: chatSenderRole,
         senderName:
           chatSenderRole === 'customer' ? booking.customerName : booking.technicianName,
-        body: '📷 [Foto Pekerjaan / Perangkat Dilampirkan]',
+        body: '[Foto Pekerjaan / Perangkat Dilampirkan]',
         clientMessageId,
       });
       setMessages((current) =>
@@ -289,45 +285,66 @@ export function ChatContainer({
         keyboardVerticalOffset={Platform.OS === 'ios' ? 24 : 0}
         style={styles.keyboardContainer}
       >
-        <ChatHeader
-          booking={booking}
-          onBack={handleBack}
-          onClearHistory={handleClearHistory}
-          partnerAvatarUri={partnerAvatarUri}
-          partnerName={partnerName}
-          partnerRoleLabel={partnerRoleLabel}
-        />
+        <View
+          style={[
+            styles.chatResponsiveCard,
+            {
+              backgroundColor: palette.surface,
+              borderColor: palette.border,
+            },
+          ]}
+        >
+          <ChatHeader
+            booking={booking}
+            onBack={handleBack}
+            onClearHistory={handleClearHistory}
+            partnerAvatarUri={partnerAvatarUri}
+            partnerName={partnerName}
+            partnerRoleLabel={partnerRoleLabel}
+          />
 
-        <ChatContent
-          chatError={chatError}
-          chatSenderRole={chatSenderRole}
-          historyCleared={historyCleared}
-          isChatClosed={Boolean(isChatClosed)}
-          messages={messages}
-          onUndoClear={() => setHistoryCleared(false)}
-          partnerAvatarUri={partnerAvatarUri}
-          partnerName={partnerName}
-        />
+          <ChatContent
+            chatError={chatError}
+            chatSenderRole={chatSenderRole}
+            historyCleared={historyCleared}
+            isChatClosed={Boolean(isChatClosed)}
+            messages={messages}
+            onUndoClear={() => setHistoryCleared(false)}
+            partnerAvatarUri={partnerAvatarUri}
+            partnerName={partnerName}
+            senderAvatarUri={senderAvatarUri}
+          />
 
-        <ChatComposer
-          chatInput={chatInput}
-          disabled={Boolean(isChatClosed && booking.status !== 'completed')}
-          isCompleted={booking.status === 'completed'}
-          onAttachPhoto={() => void handleSendPhotoAttachment()}
-          onBookAgain={!isTechnician ? handleBookAgain : undefined}
-          onChangeChatInput={setChatInput}
-          onSend={() => void handleSendMessage()}
-          partnerName={partnerName}
-          sendingChat={sendingChat}
-        />
+          <ChatComposer
+            chatInput={chatInput}
+            disabled={Boolean(isChatClosed && booking.status !== 'completed')}
+            isCompleted={booking.status === 'completed'}
+            onAttachPhoto={() => void handleSendPhotoAttachment()}
+            onBookAgain={!isTechnician ? handleBookAgain : undefined}
+            onChangeChatInput={setChatInput}
+            onSend={() => void handleSendMessage()}
+            partnerName={partnerName}
+            sendingChat={sendingChat}
+          />
+        </View>
       </KeyboardAvoidingView>
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  keyboardContainer: {
+  chatResponsiveCard: {
+    alignSelf: 'center',
     flex: 1,
+    maxWidth: 780,
+    position: 'relative',
+    width: '100%',
+    zIndex: 1,
+  },
+  keyboardContainer: {
+    alignItems: 'center',
+    flex: 1,
+    width: '100%',
   },
   safeArea: {
     flex: 1,

@@ -18,12 +18,14 @@ import {
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { Clock, MessageSquare } from "lucide-react-native";
 import { Avatar } from "./marketplace-ui";
 import { BookingParticipantsHeader } from "./BookingParticipantsHeader";
 import { ChatContainer } from "./chat";
 
 import { useAuth } from "../auth/AuthProvider";
 import { useAppearance, type ThemePalette } from "../context/AppearanceContext";
+import { fixtureTechnicians } from "../data/fixtures";
 import { formatRupiah } from "../data/marketplaceRepository";
 import {
   customerAcceptWorkDone,
@@ -36,6 +38,7 @@ import {
   submitBookingReview,
   transitionBookingStatus,
 } from "../data/marketplaceStore";
+import { useUserAvatar } from "../hooks/useUserAvatar";
 import { localizeArea, useLanguage } from "../i18n/locale";
 import {
   BOOKING_TIME_SLOTS,
@@ -316,15 +319,45 @@ export function BookingLifecyclePanel({
     }
   };
 
+  const technicianRecord = fixtureTechnicians.find(
+    (t) => t.id === activeBooking.technicianUserId
+  );
+  const remoteTechAvatar = useUserAvatar(
+    activeBooking.technicianUserId,
+    activeBooking.technicianName
+  );
+  const technicianAvatarUri =
+    technicianRecord?.avatarUri ||
+    remoteTechAvatar ||
+    "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&auto=format&fit=crop&q=80";
+
+  const remoteCustomerAvatar = useUserAvatar(
+    activeBooking.customerUserId,
+    activeBooking.customerName
+  );
+  const metadataAvatarUri =
+    user?.id === activeBooking.customerUserId &&
+    typeof user?.user_metadata?.avatar_url === "string"
+      ? user.user_metadata.avatar_url
+      : undefined;
+  const customerAvatarUri =
+    metadataAvatarUri ||
+    remoteCustomerAvatar ||
+    "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80";
+
   return (
     <View style={styles.lifecycleWrap} testID="booking-status-view">
       <BookingParticipantsHeader
+        customerAvatarUri={customerAvatarUri}
         customerName={activeBooking.customerName}
         serviceName={activeBooking.serviceNameSnapshot}
         statusLabel={t(`booking.status.${activeBooking.status}`)}
+        technicianAvatarUri={technicianAvatarUri}
         technicianBusinessName={activeBooking.technicianBusinessName}
         technicianId={activeBooking.technicianUserId}
         technicianName={activeBooking.technicianName}
+        technicianRating={technicianRecord?.averageRating}
+        technicianReviewCount={technicianRecord?.reviewCount}
       />
       <View style={styles.statusCard}>
         <Text style={styles.statusEyebrow}>{t("booking.statusLabel")}</Text>
@@ -630,11 +663,14 @@ export function BookingLifecyclePanel({
                   style={styles.customerNoticeCard}
                   testID="customer-pending-view"
                 >
-                  <Text style={styles.customerNoticeTitle}>
-                    {language === "en"
-                      ? "⏳ Waiting for Technician Confirmation"
-                      : "⏳ Menunggu Konfirmasi Teknisi"}
-                  </Text>
+                  <View style={{ flexDirection: "row", alignItems: "center", gap: 6, marginBottom: 4 }}>
+                    <Clock color={palette.text} size={16} />
+                    <Text style={styles.customerNoticeTitle}>
+                      {language === "en"
+                        ? "Waiting for Technician Confirmation"
+                        : "Menunggu Konfirmasi Teknisi"}
+                    </Text>
+                  </View>
                   <Text style={styles.customerNoticeBody}>
                     {language === "en"
                       ? "Your booking request has been sent. The technician will review your schedule shortly. You can chat below."
@@ -759,7 +795,7 @@ export function BookingLifecyclePanel({
           style={[styles.chatTriggerBtn, { backgroundColor: palette.primary }]}
           testID="open-booking-chat-btn"
         >
-          <Text style={styles.chatTriggerBtnIcon}>💬</Text>
+          <MessageSquare color="#FFFFFF" size={18} style={{ marginRight: 6 }} />
           <Text style={styles.chatTriggerBtnText}>
             {isTechnician
               ? (language === "en" ? "Chat Customer" : "Chat Pelanggan")

@@ -1,4 +1,5 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { Camera } from "lucide-react-native";
 import { router, useLocalSearchParams } from "expo-router";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
@@ -513,9 +514,12 @@ export default function TechnicianProfileScreen() {
                 style={styles.changeCoverBtn}
                 testID="change-cover-btn"
               >
-                <Text style={styles.changeCoverText}>
-                  📷 {language === "en" ? "Edit Cover" : "Ubah Sampul"}
-                </Text>
+                <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+                  <Camera color="#FFFFFF" size={14} />
+                  <Text style={styles.changeCoverText}>
+                    {language === "en" ? "Edit Cover" : "Ubah Sampul"}
+                  </Text>
+                </View>
               </Pressable>
             )}
           </View>

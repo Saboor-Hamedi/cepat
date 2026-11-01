@@ -10,6 +10,7 @@
 import { useMemo } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 
+import { Zap } from 'lucide-react-native';
 import { useAppearance } from '../context/AppearanceContext';
 import { useLanguage } from '../i18n/locale';
 import { radii, spacing } from '../theme/tokens';
@@ -96,7 +97,7 @@ export function BookingParticipantsHeader({
         <View style={styles.connectionCenter}>
           <View style={[styles.connectLine, { backgroundColor: palette.border }]} />
           <View style={[styles.connectIconWrap, { backgroundColor: palette.surfaceElevated, borderColor: palette.border }]}>
-            <Text style={{ fontSize: 14 }}>⚡</Text>
+            <Zap color={palette.primary} size={14} />
           </View>
           <View style={[styles.connectLine, { backgroundColor: palette.border }]} />
         </View>

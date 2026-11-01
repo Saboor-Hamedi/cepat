@@ -1,8 +1,11 @@
+import { ArrowUp, Check, RotateCcw } from 'lucide-react-native';
 import { useMemo } from 'react';
-import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Platform, Pressable, Text, TextInput, View } from 'react-native';
 
 import { useAppearance } from '../../context/AppearanceContext';
 import { useLanguage } from '../../i18n/locale';
+import { MediaPickerButton } from '../MediaPickerButton';
+import { createChatComposerStyles } from './css/chatStyles';
 
 const SUCCESS = '#22C55E';
 
@@ -31,7 +34,7 @@ export function ChatComposer({
 }: ChatComposerProps) {
   const { language } = useLanguage();
   const { palette } = useAppearance();
-  const styles = useMemo(() => createStyles(palette), [palette]);
+  const styles = useMemo(() => createChatComposerStyles(palette), [palette]);
 
   // When task is completed, replace the composer with "Task has completed" and "Book Again" action
   if (isCompleted) {
@@ -47,7 +50,7 @@ export function ChatComposer({
       >
         <View style={styles.completedInfoRow}>
           <View style={styles.completedCheckCircle}>
-            <Text style={styles.completedCheck}>✓</Text>
+            <Check color="#FFFFFF" size={12} strokeWidth={3.2} />
           </View>
           <Text style={[styles.completedBadgeText, { color: SUCCESS }]}>
             {language === 'en' ? 'Task has completed' : 'Tugas telah selesai'}
@@ -65,7 +68,7 @@ export function ChatComposer({
             ]}
             testID="chat-book-again-btn"
           >
-            <Text style={styles.bookAgainIcon}>↻</Text>
+            <RotateCcw color="#FFFFFF" size={17} strokeWidth={2.4} />
             <Text style={styles.bookAgainBtnText}>
               {language === 'en' ? 'Book Again' : 'Pesan Lagi'}
             </Text>
@@ -80,170 +83,79 @@ export function ChatComposer({
   }
 
   return (
-    <View
-      style={[
-        styles.inputBar,
-        { backgroundColor: palette.surface, borderTopColor: palette.border },
-      ]}
-    >
-      <Pressable
-        accessibilityLabel="Attach photo"
-        accessibilityRole="button"
-        disabled={sendingChat}
-        hitSlop={6}
-        onPress={onAttachPhoto}
-        style={({ pressed }) => [
-          styles.attachBtn,
-          {
-            backgroundColor: pressed ? palette.pillBg : palette.surfaceElevated,
-          },
-        ]}
-        testID="booking-chat-attach"
-      >
-        <Text style={styles.attachIcon}>📷</Text>
-      </Pressable>
-
-      <TextInput
-        editable={!sendingChat}
-        multiline
-        onChangeText={onChangeChatInput}
-        placeholder={
-          language === 'en'
-            ? `Message ${partnerName}…`
-            : `Kirim pesan ke ${partnerName}…`
-        }
-        placeholderTextColor={palette.textMuted}
+    <>
+      <View
         style={[
-          styles.inputField,
-          {
-            backgroundColor: palette.surfaceElevated,
-            color: palette.text,
-          },
+          styles.inputBar,
+          { backgroundColor: palette.surface, borderTopColor: palette.border },
         ]}
-        testID="booking-chat-input"
-        value={chatInput}
-      />
-
-      <Pressable
-        accessibilityRole="button"
-        disabled={sendingChat || !chatInput.trim()}
-        hitSlop={6}
-        onPress={onSend}
-        style={[
-          styles.sendBtn,
-          { backgroundColor: palette.primary },
-          (sendingChat || !chatInput.trim()) && { opacity: 0.4 },
-        ]}
-        testID="booking-chat-send"
       >
-        <Text style={styles.sendBtnIcon}>↑</Text>
-      </Pressable>
-    </View>
+        <View
+          style={[
+            styles.inputPill,
+            {
+              backgroundColor: palette.surfaceElevated,
+              borderColor: palette.border,
+            },
+          ]}
+        >
+          <MediaPickerButton
+            accessibilityLabel="Attach photo"
+            disabled={sendingChat}
+            icon="plus"
+            onImageSelected={() => onAttachPhoto()}
+            sheetTestIDPrefix="chat-photo"
+            testID="booking-chat-attach"
+          />
+
+          <TextInput
+            editable={!sendingChat}
+            multiline
+            onChangeText={onChangeChatInput}
+            onKeyPress={(e) => {
+              if (Platform.OS === 'web' && 'key' in e.nativeEvent) {
+                const webEvent = e.nativeEvent as unknown as {
+                  key: string;
+                  shiftKey: boolean;
+                  preventDefault?: () => void;
+                };
+                if (webEvent.key === 'Enter' && !webEvent.shiftKey) {
+                  if (typeof webEvent.preventDefault === 'function') {
+                    webEvent.preventDefault();
+                  }
+                  if (!sendingChat && chatInput.trim()) {
+                    onSend();
+                  }
+                }
+              }
+            }}
+            placeholder={
+              language === 'en'
+                ? `Message ${partnerName}…`
+                : `Kirim pesan ke ${partnerName}…`
+            }
+            placeholderTextColor={palette.textMuted}
+            style={[styles.inputField, { color: palette.text }]}
+            testID="booking-chat-input"
+            value={chatInput}
+          />
+
+          <Pressable
+            accessibilityRole="button"
+            disabled={sendingChat || !chatInput.trim()}
+            hitSlop={4}
+            onPress={onSend}
+            style={[
+              styles.sendBtn,
+              { backgroundColor: palette.primary },
+              (sendingChat || !chatInput.trim()) && { opacity: 0.4 },
+            ]}
+            testID="booking-chat-send"
+          >
+            <ArrowUp color="#FFFFFF" size={19} strokeWidth={2.8} />
+          </Pressable>
+        </View>
+      </View>
+    </>
   );
-}
-
-function createStyles(palette: {
-  border: string;
-  primary: string;
-  surface: string;
-  surfaceElevated: string;
-  text: string;
-  textMuted: string;
-}) {
-  return StyleSheet.create({
-    attachBtn: {
-      alignItems: 'center',
-      borderRadius: 22,
-      height: 44,
-      justifyContent: 'center',
-      width: 44,
-    },
-    attachIcon: {
-      fontSize: 18,
-    },
-    bookAgainBtn: {
-      alignItems: 'center',
-      borderRadius: 14,
-      flexDirection: 'row',
-      gap: 8,
-      justifyContent: 'center',
-      marginHorizontal: 20,
-      paddingHorizontal: 20,
-      paddingVertical: 14,
-    },
-    bookAgainBtnText: {
-      color: '#FFFFFF',
-      fontSize: 14,
-      fontWeight: '800',
-      letterSpacing: 0.1,
-    },
-    bookAgainIcon: {
-      color: '#FFFFFF',
-      fontSize: 17,
-      fontWeight: '800',
-      marginTop: -1,
-    },
-    completedBadgeText: {
-      fontSize: 12.5,
-      fontWeight: '700',
-      letterSpacing: 0.1,
-    },
-    completedCheck: {
-      color: '#FFFFFF',
-      fontSize: 10,
-      fontWeight: '900',
-    },
-    completedCheckCircle: {
-      alignItems: 'center',
-      backgroundColor: SUCCESS,
-      borderRadius: 9,
-      height: 18,
-      justifyContent: 'center',
-      width: 18,
-    },
-    completedFooter: {
-      alignItems: 'center',
-      borderTopWidth: StyleSheet.hairlineWidth,
-      gap: 12,
-      paddingBottom: 14,
-      paddingTop: 14,
-    },
-    completedInfoRow: {
-      alignItems: 'center',
-      flexDirection: 'row',
-      gap: 7,
-      justifyContent: 'center',
-    },
-    inputBar: {
-      alignItems: 'flex-end',
-      borderTopWidth: StyleSheet.hairlineWidth,
-      flexDirection: 'row',
-      gap: 8,
-      paddingHorizontal: 12,
-      paddingVertical: 10,
-    },
-    inputField: {
-      borderRadius: 22,
-      flex: 1,
-      fontSize: 14.5,
-      maxHeight: 108,
-      minHeight: 44,
-      paddingHorizontal: 16,
-      paddingTop: 12,
-      paddingBottom: 12,
-    },
-    sendBtn: {
-      alignItems: 'center',
-      borderRadius: 22,
-      height: 44,
-      justifyContent: 'center',
-      width: 44,
-    },
-    sendBtnIcon: {
-      color: '#FFFFFF',
-      fontSize: 20,
-      fontWeight: '800',
-      marginTop: -1,
-    },
-  });
 }

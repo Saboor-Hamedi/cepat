@@ -29,6 +29,7 @@ import {
   View,
 } from 'react-native';
 
+import { Bell, ClipboardList, MessageSquare, X } from 'lucide-react-native';
 import { useAuth } from '../auth/AuthProvider';
 import { useAppearance } from '../context/AppearanceContext';
 import {
@@ -152,13 +153,13 @@ export function InAppNotificationBanner() {
         ]}
       >
         <View style={styles.iconContainer}>
-          <Text style={styles.iconText}>
-            {activeNotification.type === 'message'
-              ? '💬'
-              : activeNotification.type === 'booking'
-                ? '📋'
-                : '🔔'}
-          </Text>
+          {activeNotification.type === 'message' ? (
+            <MessageSquare color={palette.primary} size={20} />
+          ) : activeNotification.type === 'booking' ? (
+            <ClipboardList color={palette.primary} size={20} />
+          ) : (
+            <Bell color={palette.primary} size={20} />
+          )}
         </View>
 
         <View style={styles.contentWrap}>
@@ -177,7 +178,7 @@ export function InAppNotificationBanner() {
           onPress={dismissBanner}
           style={styles.closeBtn}
         >
-          <Text style={[styles.closeBtnText, { color: palette.textMuted }]}>✕</Text>
+          <X color={palette.textMuted} size={14} />
         </Pressable>
       </Pressable>
     </Animated.View>
