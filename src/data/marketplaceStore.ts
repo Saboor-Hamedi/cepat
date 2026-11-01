@@ -1266,6 +1266,43 @@ export async function submitBookingReview(input: {
   return review;
 }
 
+export async function submitDirectTechnicianReview(input: {
+  technicianId: string;
+  customerName?: string;
+  rating: number;
+  comment: string;
+}): Promise<TechnicianReview> {
+  const normalizedRating = Math.max(1, Math.min(5, Math.round(input.rating)));
+  const review: TechnicianReview = {
+    id: `review-${Date.now()}`,
+    technicianId: input.technicianId,
+    customerName: input.customerName?.trim() || 'Pelanggan Cepat',
+    rating: normalizedRating,
+    comment: input.comment.trim().slice(0, 1000),
+    createdAt: new Date().toISOString().slice(0, 10),
+  };
+
+  const storedReviews = await getStoredJson<TechnicianReview[]>(REVIEWS_STORAGE_KEY, []);
+  await setStoredJson(REVIEWS_STORAGE_KEY, [review, ...storedReviews]);
+
+  const techIndex = fixtureTechnicians.findIndex((item) => item.id === input.technicianId);
+  if (techIndex >= 0) {
+    const tech = fixtureTechnicians[techIndex];
+    const nextCount = tech.reviewCount + 1;
+    const nextAvg = Number(
+      ((tech.averageRating * tech.reviewCount + normalizedRating) / nextCount).toFixed(1),
+    );
+    fixtureTechnicians[techIndex] = {
+      ...tech,
+      reviewCount: nextCount,
+      averageRating: nextAvg,
+      reviews: [review, ...tech.reviews],
+    };
+  }
+
+  return review;
+}
+
 export async function loadSubmittedReviews(): Promise<TechnicianReview[]> {
   return getStoredJson<TechnicianReview[]>(REVIEWS_STORAGE_KEY, []);
 }

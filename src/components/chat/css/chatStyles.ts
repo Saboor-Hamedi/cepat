@@ -39,10 +39,9 @@ export function createChatHeaderStyles(palette: {
       position: 'relative',
     },
     backBtnText: {
-      fontSize: 28,
+      fontSize: 22,
       fontWeight: '600',
-      lineHeight: 30,
-      marginTop: -2,
+      lineHeight: 26,
     },
     container: {
       position: 'relative',
@@ -135,7 +134,7 @@ export function createChatHeaderStyles(palette: {
     },
     pinnedPrice: {
       fontSize: 12,
-      fontWeight: '800',
+      fontWeight: '700',
       letterSpacing: -0.2,
     },
     pinnedServiceTitle: {
@@ -167,7 +166,7 @@ export function createChatHeaderStyles(palette: {
     },
     verifiedPillText: {
       fontSize: 9,
-      fontWeight: '800',
+      fontWeight: '700',
       letterSpacing: 0.2,
     },
   });
@@ -207,7 +206,7 @@ export function createChatContentStyles(palette: {
     },
     bubbleSender: {
       fontSize: 11,
-      fontWeight: '800',
+      fontWeight: '700',
       marginBottom: 2,
     },
     bubbleTimeUnder: {
@@ -265,15 +264,15 @@ export function createChatContentStyles(palette: {
       width: 64,
     },
     emptySubtitle: {
-      fontSize: 12.5,
+      fontSize: 13,
       lineHeight: 18,
       marginTop: 5,
       maxWidth: 280,
       textAlign: 'center',
     },
     emptyTitle: {
-      fontSize: 17,
-      fontWeight: '800',
+      fontSize: 16,
+      fontWeight: '700',
       letterSpacing: -0.2,
     },
     errorText: {
@@ -380,12 +379,12 @@ export function createChatComposerStyles(palette: {
     bookAgainBtnText: {
       color: '#FFFFFF',
       fontSize: 14,
-      fontWeight: '800',
+      fontWeight: '700',
       letterSpacing: 0.1,
     },
     completedBadgeText: {
-      fontSize: 12.5,
-      fontWeight: '700',
+      fontSize: 13,
+      fontWeight: '600',
       letterSpacing: 0.1,
     },
     completedCheckCircle: {
@@ -420,7 +419,7 @@ export function createChatComposerStyles(palette: {
     inputField: {
       backgroundColor: 'transparent',
       flex: 1,
-      fontSize: 14.5,
+      fontSize: 15,
       maxHeight: 120,
       minHeight: 38,
       paddingHorizontal: 10,
@@ -432,7 +431,7 @@ export function createChatComposerStyles(palette: {
             resize: 'none',
             boxShadow: 'none',
             borderWidth: 0,
-            fontFamily: 'inherit',
+            
           } as unknown as Record<string, unknown>)
         : {}),
     },
@@ -491,8 +490,7 @@ export function createChatDropdownStyles(palette: {
       borderWidth: 1,
       elevation: 25,
       minWidth: 214,
-      overflow: 'hidden',
-      paddingVertical: 6,
+      overflow: 'visible',
       position: 'absolute',
       right: 0,
       shadowColor: '#000000',
@@ -501,6 +499,22 @@ export function createChatDropdownStyles(palette: {
       shadowRadius: 16,
       top: 42,
       zIndex: 9999,
+    },
+    knob: {
+      borderLeftWidth: 1,
+      borderTopWidth: 1,
+      height: 12,
+      position: 'absolute',
+      right: 14,
+      top: -7,
+      transform: [{ rotate: '45deg' }],
+      width: 12,
+      zIndex: 10000,
+    },
+    dropdownInner: {
+      borderRadius: 15,
+      overflow: 'hidden',
+      paddingVertical: 6,
     },
     dropdownMenuItem: {
       alignItems: 'center',
@@ -532,7 +546,7 @@ export function createChatDropdownStyles(palette: {
     },
     menuDotsText: {
       fontSize: 13,
-      fontWeight: '800',
+      fontWeight: '700',
       letterSpacing: 1.2,
       marginTop: -3,
     },

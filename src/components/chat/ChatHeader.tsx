@@ -94,12 +94,7 @@ export function ChatHeader({
         <View style={styles.partnerInfoRow}>
           <View style={styles.avatarWrap}>
             <Avatar name={partnerName} size={40} uri={partnerAvatarUri} />
-            <View
-              style={[
-                styles.activeOnlineDot,
-                { borderColor: palette.surface },
-              ]}
-            />
+            
           </View>
           <View style={styles.partnerTextGroup}>
             <View style={styles.nameLine}>

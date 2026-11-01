@@ -53,18 +53,29 @@ export function ChatDropdown({ bookingId, onClearHistory }: ChatDropdownProps) {
               },
             ]}
           >
-          <Pressable
-            accessibilityRole="button"
-            onPress={() => {
-              setIsOpen(false);
-              router.push(`/booking/${bookingId}`);
-            }}
-            style={({ pressed }) => [
-              styles.dropdownMenuItem,
-              pressed && { backgroundColor: palette.pillBg },
-            ]}
-            testID="view-task-details"
-          >
+            {/* Little knob pointing up to the ellipsis trigger */}
+            <View
+              style={[
+                styles.knob,
+                {
+                  backgroundColor: palette.surface,
+                  borderColor: palette.border,
+                },
+              ]}
+            />
+            <View style={styles.dropdownInner}>
+              <Pressable
+                accessibilityRole="button"
+                onPress={() => {
+                  setIsOpen(false);
+                  router.push(`/booking/${bookingId}`);
+                }}
+                style={({ pressed }) => [
+                  styles.dropdownMenuItem,
+                  pressed && { backgroundColor: palette.pillBg },
+                ]}
+                testID="view-task-details"
+              >
             <View
               style={[
                 styles.itemIconWrap,
@@ -101,7 +112,8 @@ export function ChatDropdown({ bookingId, onClearHistory }: ChatDropdownProps) {
               {language === 'en' ? 'Clear chat history' : 'Hapus riwayat chat'}
             </Text>
           </Pressable>
-        </View>
+            </View>
+          </View>
         </>
       )}
     </View>

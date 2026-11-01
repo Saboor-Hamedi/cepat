@@ -17,46 +17,58 @@ export type ThemeMode = 'light' | 'dark' | 'system';
 export interface ThemePalette {
   background: string;
   surface: string;
+  surfaceSecondary?: string;
   surfaceElevated: string;
   text: string;
+  textSecondary?: string;
   textMuted: string;
   border: string;
   pillBg: string;
   pillText: string;
   primary: string;
+  primaryLight?: string;
   primarySoft: string;
   danger: string;
   inputBg: string;
+  chipBg?: string;
 }
 
 const LIGHT_PALETTE: ThemePalette = {
-  background: '#F0F2F5',
-  surface: '#FFFFFF',
-  surfaceElevated: '#F7F8FA',
-  text: '#050505',
-  textMuted: '#65676B',
-  border: '#CED0D4',
-  pillBg: '#E4E6EB',
-  pillText: '#050505',
-  primary: colors.greenDark,
-  primarySoft: colors.greenSoft,
+  background: '#FFFFFF',
+  surface: '#F5F7F5',
+  surfaceSecondary: '#EEF2EE',
+  surfaceElevated: '#EEF2EE',
+  text: '#111827',
+  textSecondary: '#6B7280',
+  textMuted: '#9CA3AF',
+  border: '#E5E7EB',
+  pillBg: '#F0F4F0',
+  pillText: '#111827',
+  primary: '#10B981',
+  primaryLight: 'rgba(16, 185, 129, 0.1)',
+  primarySoft: 'rgba(16, 185, 129, 0.1)',
   danger: colors.danger,
-  inputBg: '#F0F2F5',
+  inputBg: '#F3F4F6',
+  chipBg: '#F0F4F0',
 };
 
 const DARK_PALETTE: ThemePalette = {
-  background: '#18191A',
-  surface: '#242526',
-  surfaceElevated: '#3A3B3C',
-  text: '#E4E6EB',
-  textMuted: '#B0B3B8',
-  border: '#3E4042',
-  pillBg: '#3A3B3C',
-  pillText: '#E4E6EB',
-  primary: '#2D88FF',
-  primarySoft: '#263951',
+  background: '#0F0F1A',
+  surface: '#1A1A2E',
+  surfaceSecondary: '#252540',
+  surfaceElevated: '#252540',
+  text: '#F9FAFB',
+  textSecondary: '#9CA3AF',
+  textMuted: '#6B7280',
+  border: '#2A2A3E',
+  pillBg: '#252540',
+  pillText: '#F9FAFB',
+  primary: '#10B981',
+  primaryLight: 'rgba(16, 185, 129, 0.15)',
+  primarySoft: 'rgba(16, 185, 129, 0.15)',
   danger: '#F02849',
-  inputBg: '#3A3B3C',
+  inputBg: '#1E1E2E',
+  chipBg: '#252540',
 };
 
 const APPEARANCE_STORAGE_KEY = '@cepat/appearance-context-v1';

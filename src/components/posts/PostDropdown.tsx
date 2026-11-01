@@ -71,34 +71,58 @@ export function PostDropdown({
         <Text style={[styles.triggerText, { color: palette.textMuted }]}>...</Text>
       </Pressable>
       {expanded ? (
-        <View
-          style={[
-            styles.menu,
-            { backgroundColor: palette.surface, borderColor: palette.border },
-          ]}
-        >
-          {actions.map((action) => (
-            <Pressable
-              key={action.testID}
-              accessibilityRole="button"
-              onPress={() => {
-                close();
-                action.onPress();
-              }}
-              style={styles.menuItem}
-              testID={action.testID}
-            >
-              <Text
-                style={[
-                  styles.menuText,
-                  { color: action.tone === 'danger' ? palette.danger : palette.text },
-                ]}
-              >
-                {action.label}
-              </Text>
-            </Pressable>
-          ))}
-        </View>
+        <>
+          {/* Backdrop to close when tapping anywhere outside */}
+          <Pressable
+            accessibilityLabel="Close actions"
+            onPress={close}
+            style={styles.backdrop}
+          />
+          <View
+            style={[
+              styles.menu,
+              { backgroundColor: palette.surface, borderColor: palette.border },
+            ]}
+          >
+            {/* Little knob pointing up to the dots */}
+            <View
+              style={[
+                styles.knob,
+                { backgroundColor: palette.surface, borderColor: palette.border },
+              ]}
+            />
+            <View style={styles.menuInner}>
+              {actions.map((action, idx) => (
+                <View key={action.testID}>
+                  {idx > 0 && (
+                    <View style={[styles.divider, { backgroundColor: palette.border }]} />
+                  )}
+                  <Pressable
+                    accessibilityRole="button"
+                    onPress={() => {
+                      close();
+                      action.onPress();
+                    }}
+                    style={({ pressed }) => [
+                      styles.menuItem,
+                      pressed && { backgroundColor: palette.pillBg },
+                    ]}
+                    testID={action.testID}
+                  >
+                    <Text
+                      style={[
+                        styles.menuText,
+                        { color: action.tone === 'danger' ? palette.danger : palette.text },
+                      ]}
+                    >
+                      {action.label}
+                    </Text>
+                  </Pressable>
+                </View>
+              ))}
+            </View>
+          </View>
+        </>
       ) : null}
     </View>
   );
@@ -112,8 +136,16 @@ const styles = StyleSheet.create({
     zIndex: 2,
   },
   anchorOpen: {
-    elevation: 12,
-    zIndex: 20,
+    elevation: 20,
+    zIndex: 999,
+  },
+  backdrop: {
+    bottom: -3000,
+    left: -3000,
+    position: 'absolute',
+    right: -3000,
+    top: -3000,
+    zIndex: 990,
   },
   trigger: {
     alignItems: 'center',
@@ -126,29 +158,50 @@ const styles = StyleSheet.create({
     fontSize: 20,
     fontWeight: '800',
     letterSpacing: 1,
+    marginTop: -4,
   },
   menu: {
-    borderRadius: 5,
+    borderRadius: 12,
     borderWidth: 1,
-    elevation: 12,
-    minWidth: 160,
-    overflow: 'hidden',
+    elevation: 20,
+    minWidth: 170,
+    overflow: 'visible',
     position: 'absolute',
-    right: -8,
+    right: 0,
     shadowColor: '#000000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.2,
-    shadowRadius: 8,
-    top: -6,
-    zIndex: 30,
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.16,
+    shadowRadius: 14,
+    top: 40,
+    zIndex: 1000,
+  },
+  knob: {
+    borderLeftWidth: 1,
+    borderTopWidth: 1,
+    height: 12,
+    position: 'absolute',
+    right: 14,
+    top: -7,
+    transform: [{ rotate: '45deg' }],
+    width: 12,
+    zIndex: 1001,
+  },
+  menuInner: {
+    borderRadius: 11,
+    overflow: 'hidden',
   },
   menuItem: {
     justifyContent: 'center',
     minHeight: 44,
     paddingHorizontal: spacing.md,
+    paddingVertical: 10,
   },
   menuText: {
     fontSize: 13,
     fontWeight: '700',
+  },
+  divider: {
+    height: StyleSheet.hairlineWidth,
+    width: '100%',
   },
 });

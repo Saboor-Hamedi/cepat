@@ -35,7 +35,7 @@ export interface TechnicianPostComposerProps {
   customImageLauncher?: () => Promise<string | null>;
 }
 
-const MAX_POST_CHARS = 1000;
+const MAX_POST_CHARS = 200;
 const MAX_POST_IMAGES = 4;
 
 export function TechnicianPostComposer({
@@ -214,7 +214,7 @@ export function TechnicianPostComposer({
       >
           <TextInput
             multiline
-            maxLength={MAX_POST_CHARS + 100}
+            maxLength={MAX_POST_CHARS}
             onChangeText={handleTextChange}
             placeholder={
               language === 'en'
@@ -387,7 +387,7 @@ export function TechnicianPostComposer({
 
         {/* Center: Character counter when nearing limit */}
         <View style={styles.centerMeta}>
-          {caption.length > 800 || isOverCharLimit ? (
+          {caption.length > 160 || isOverCharLimit ? (
             <Text
               style={[
                 styles.charCounter,

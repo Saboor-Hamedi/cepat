@@ -35,8 +35,12 @@ import { formatRupiah, loadTechnician } from "../../data/marketplaceRepository";
 import {
   loadBookings,
   loadSubmittedReviews,
+  saveTechnicianWorkspaceProfile,
+  submitDirectTechnicianReview,
   submitTechnicianReport,
+  updateTechnicianPortfolio,
 } from "../../data/marketplaceStore";
+import { StrictImagePicker } from "../../components/StrictImagePicker";
 import {
   createTechnicianPost,
   deleteTechnicianPost,
@@ -103,6 +107,25 @@ export default function TechnicianProfileScreen() {
   const [reportError, setReportError] = useState<string | null>(null);
   const [dynamicCompletedJobs, setDynamicCompletedJobs] = useState<number>(0);
   const [dynamicReviews, setDynamicReviews] = useState<TechnicianReview[]>([]);
+
+  // About Me Editing State
+  const [isEditingAbout, setIsEditingAbout] = useState(false);
+  const [draftHeadline, setDraftHeadline] = useState('');
+  const [draftBio, setDraftBio] = useState('');
+  const [savingAbout, setSavingAbout] = useState(false);
+
+  // Portfolio Creation State
+  const [isAddingPortfolio, setIsAddingPortfolio] = useState(false);
+  const [draftPortfolioTitle, setDraftPortfolioTitle] = useState('');
+  const [draftPortfolioDesc, setDraftPortfolioDesc] = useState('');
+  const [draftPortfolioImage, setDraftPortfolioImage] = useState<string | undefined>(undefined);
+  const [savingPortfolio, setSavingPortfolio] = useState(false);
+
+  // Direct Review Creation State
+  const [isAddingReview, setIsAddingReview] = useState(false);
+  const [draftReviewRating, setDraftReviewRating] = useState(5);
+  const [draftReviewComment, setDraftReviewComment] = useState('');
+  const [savingReview, setSavingReview] = useState(false);
   const feedIsTechnician = roles.includes("technician") || effectiveRole === "technician";
   const feedIsOwner = Boolean(
     user &&
@@ -586,35 +609,124 @@ export default function TechnicianProfileScreen() {
               </View>
             </View>
 
+            {/* Modern Unified Stats Bar */}
             <View
               style={[
-                styles.statsBar,
-                {
-                  backgroundColor: palette.surfaceElevated,
-                  borderColor: palette.border,
-                },
+                styles.modernStatsBar,
+                { backgroundColor: palette.surface, borderColor: palette.border },
               ]}
+              testID="technician-stats-bar"
             >
-              <View style={styles.statCell}>
-                <Rating
-                  value={technician.reviewCount ? technician.averageRating : 0}
-                  count={technician.reviewCount}
-                />
-              </View>
-              <View style={styles.statCell}>
-                <Text style={[styles.statValue, { color: palette.text }]}>
-                  {t("profile.completedJobs", {
-                    count: technician.completedJobsCount,
-                  })}
-                </Text>
-              </View>
-              {technician.serviceAreas[0] && (
-                <View style={styles.statCell}>
-                  <Text style={[styles.statValue, { color: palette.text }]}>
-                    {localizeArea(technician.serviceAreas[0], language)}
+              {/* Rating Column */}
+              <View style={styles.statsBarCol} testID="technician-rating-badge">
+                <View style={styles.statsBarValueRow}>
+                  <Text style={styles.goldStarSmall}>★</Text>
+                  <Text style={[styles.statsBarValue, { color: palette.text }]}>
+                    {technician.reviewCount ? technician.averageRating.toFixed(1) : (technician.averageRating > 0 ? technician.averageRating.toFixed(1) : '5.0')}
                   </Text>
                 </View>
+                <Text style={[styles.statsBarLabel, { color: palette.textMuted }]}>
+                  {technician.reviewCount} {language === "en" ? "reviews" : "ulasan"}
+                </Text>
+              </View>
+
+              <View style={[styles.statsDivider, { backgroundColor: palette.border }]} />
+
+              {/* Tasks Completed Column */}
+              <View style={styles.statsBarCol} testID="technician-tasks-badge">
+                <Text style={[styles.statsBarValue, { color: palette.text }]}>
+                  {technician.completedJobsCount}
+                </Text>
+                <Text style={[styles.statsBarLabel, { color: palette.textMuted }]}>
+                  {language === "en" ? "tasks" : "tugas"}
+                </Text>
+              </View>
+
+              <View style={[styles.statsDivider, { backgroundColor: palette.border }]} />
+
+              {/* Posts Column */}
+              <View style={styles.statsBarCol} testID="technician-posts-badge">
+                <Text style={[styles.statsBarValue, { color: palette.text }]}>
+                  {posts.length}
+                </Text>
+                <Text style={[styles.statsBarLabel, { color: palette.textMuted }]}>
+                  {language === "en" ? "posts" : "postingan"}
+                </Text>
+              </View>
+
+              {technician.serviceAreas[0] && (
+                <>
+                  <View style={[styles.statsDivider, { backgroundColor: palette.border }]} />
+                  {/* Service Area Column */}
+                  <View style={styles.statsBarCol} testID="technician-area-badge">
+                    <Text numberOfLines={1} style={[styles.statsBarValueSmall, { color: palette.primary }]}>
+                      📍 {localizeArea(technician.serviceAreas[0], language)}
+                    </Text>
+                    <Text style={[styles.statsBarLabel, { color: palette.textMuted }]}>
+                      {language === "en" ? "area" : "lokasi"}
+                    </Text>
+                  </View>
+                </>
               )}
+            </View>
+
+            {/* Quick Actions Bar for Profile Management & Engagement */}
+            <View style={styles.quickActionsRow}>
+              {(isProfileOwner || isAdminUser) && (
+                <>
+                  <Pressable
+                    accessibilityRole="button"
+                    onPress={() => {
+                      setActiveProfileTab("posts");
+                    }}
+                    style={[styles.quickActionBtn, { backgroundColor: palette.surface, borderColor: palette.border }]}
+                    testID="quick-action-post"
+                  >
+                    <Text style={[styles.quickActionBtnText, { color: palette.text }]}>
+                      📝 {language === "en" ? "New Post" : "Buat Post"}
+                    </Text>
+                  </Pressable>
+                  <Pressable
+                    accessibilityRole="button"
+                    onPress={() => {
+                      setActiveProfileTab("portfolio");
+                      setIsAddingPortfolio(true);
+                    }}
+                    style={[styles.quickActionBtn, { backgroundColor: palette.surface, borderColor: palette.border }]}
+                    testID="quick-action-portfolio"
+                  >
+                    <Text style={[styles.quickActionBtnText, { color: palette.text }]}>
+                      📷 {language === "en" ? "+ Add Work" : "+ Portofolio"}
+                    </Text>
+                  </Pressable>
+                  <Pressable
+                    accessibilityRole="button"
+                    onPress={() => {
+                      setActiveProfileTab("about");
+                      setIsEditingAbout(true);
+                    }}
+                    style={[styles.quickActionBtn, { backgroundColor: palette.surface, borderColor: palette.border }]}
+                    testID="quick-action-about"
+                  >
+                    <Text style={[styles.quickActionBtnText, { color: palette.text }]}>
+                      ✏️ {language === "en" ? "Edit About" : "Ubah Bio"}
+                    </Text>
+                  </Pressable>
+                </>
+              )}
+              <Pressable
+                accessibilityRole="button"
+                onPress={() => {
+                  setActiveProfileTab("reviews");
+                  setIsAddingReview(true);
+                }}
+                style={[styles.quickActionBtn, { backgroundColor: palette.primarySoft, borderColor: palette.primarySoft }]}
+                testID="quick-action-review"
+              >
+                <Text style={[styles.quickActionBtnText, { color: palette.primary }]}>
+                  ⭐ {language === "en" ? "Write Review" : "Beri Ulasan"}
+                </Text>
+              </Pressable>
             </View>
 
             {technician.services.length > 0 && (
@@ -761,14 +873,96 @@ export default function TechnicianProfileScreen() {
 
           {activeProfileTab === "about" && (
             <View>
-              <SectionHeader
-                eyebrow={t("profile.aboutEyebrow")}
-                title={t("profile.aboutTitle")}
-              />
-              <Text style={[styles.bio, { color: palette.textMuted }]}>
-                {bio ||
-                  t("profile.fallbackBio", { name: technician.displayName })}
-              </Text>
+              <View style={styles.sectionHeaderRow}>
+                <SectionHeader
+                  eyebrow={t("profile.aboutEyebrow")}
+                  title={t("profile.aboutTitle")}
+                />
+                {(isProfileOwner || isAdminUser) && !isEditingAbout && (
+                  <Pressable
+                    accessibilityRole="button"
+                    onPress={() => {
+                      setDraftHeadline(technician.headline || '');
+                      setDraftBio(technician.bio || '');
+                      setIsEditingAbout(true);
+                    }}
+                    style={[styles.smallActionBtn, { backgroundColor: palette.primarySoft }]}
+                    testID="edit-about-btn"
+                  >
+                    <Text style={[styles.smallActionBtnText, { color: palette.primary }]}>
+                      {language === "en" ? "Edit About Me" : "Ubah Tentang"}
+                    </Text>
+                  </Pressable>
+                )}
+              </View>
+
+              {isEditingAbout ? (
+                <View style={[styles.formCard, { backgroundColor: palette.surface, borderColor: palette.border }]} testID="edit-about-form">
+                  <Text style={[styles.formLabel, { color: palette.text }]}>
+                    {language === "en" ? "Headline" : "Keahlian Utama"}
+                  </Text>
+                  <TextInput
+                    value={draftHeadline}
+                    onChangeText={setDraftHeadline}
+                    placeholder={language === "en" ? "e.g. Master AC & Electrical Specialist" : "cth. Spesialis AC & Listrik"}
+                    placeholderTextColor={palette.textMuted}
+                    style={[styles.formInput, { backgroundColor: palette.inputBg, borderColor: palette.border, color: palette.text }]}
+                  />
+
+                  <Text style={[styles.formLabel, { color: palette.text }]}>
+                    {language === "en" ? "Bio / Description" : "Deskripsi Tentang Diri"}
+                  </Text>
+                  <TextInput
+                    multiline
+                    value={draftBio}
+                    onChangeText={setDraftBio}
+                    placeholder={language === "en" ? "Tell clients about your background, experience, and service guarantee..." : "Ceritakan keahlian, pengalaman, dan garansi layanan Anda..."}
+                    placeholderTextColor={palette.textMuted}
+                    style={[styles.formTextarea, { backgroundColor: palette.inputBg, borderColor: palette.border, color: palette.text }]}
+                  />
+
+                  <View style={styles.formButtonRow}>
+                    <Pressable
+                      accessibilityRole="button"
+                      onPress={() => setIsEditingAbout(false)}
+                      style={[styles.formCancelBtn, { borderColor: palette.border }]}
+                    >
+                      <Text style={[styles.formBtnText, { color: palette.textMuted }]}>
+                        {language === "en" ? "Cancel" : "Batal"}
+                      </Text>
+                    </Pressable>
+                    <Pressable
+                      accessibilityRole="button"
+                      disabled={savingAbout}
+                      onPress={async () => {
+                        setSavingAbout(true);
+                        try {
+                          const updated = {
+                            ...technician,
+                            headline: draftHeadline.trim() || undefined,
+                            bio: draftBio.trim() || undefined,
+                          };
+                          await saveTechnicianWorkspaceProfile(technician.id, updated);
+                          setLoadedTechnician((prev) => prev ? { ...prev, headline: updated.headline, bio: updated.bio } : updated);
+                          setIsEditingAbout(false);
+                        } finally {
+                          setSavingAbout(false);
+                        }
+                      }}
+                      style={[styles.formSaveBtn, { backgroundColor: palette.primary }]}
+                      testID="save-about-btn"
+                    >
+                      <Text style={styles.formSaveBtnText}>
+                        {savingAbout ? "..." : (language === "en" ? "Save About Me" : "Simpan")}
+                      </Text>
+                    </Pressable>
+                  </View>
+                </View>
+              ) : (
+                <Text style={[styles.bio, { color: palette.textMuted }]}>
+                  {bio || t("profile.fallbackBio", { name: technician.displayName })}
+                </Text>
+              )}
 
               <SectionHeader
                 eyebrow={t("profile.areasEyebrow")}
@@ -998,13 +1192,115 @@ export default function TechnicianProfileScreen() {
 
           {activeProfileTab === "portfolio" && (
             <View>
-              <SectionHeader
-                eyebrow={t("profile.portfolioEyebrow")}
-                title={t("profile.portfolioTitle")}
-                trailing={t("profile.portfolioCount", {
-                  count: technician.portfolio.length,
-                })}
-              />
+              <View style={styles.sectionHeaderRow}>
+                <SectionHeader
+                  eyebrow={t("profile.portfolioEyebrow")}
+                  title={t("profile.portfolioTitle")}
+                  trailing={t("profile.portfolioCount", {
+                    count: technician.portfolio.length,
+                  })}
+                />
+                {(isProfileOwner || isAdminUser) && !isAddingPortfolio && (
+                  <Pressable
+                    accessibilityRole="button"
+                    onPress={() => {
+                      setDraftPortfolioTitle('');
+                      setDraftPortfolioDesc('');
+                      setDraftPortfolioImage(undefined);
+                      setIsAddingPortfolio(true);
+                    }}
+                    style={[styles.smallActionBtn, { backgroundColor: palette.primarySoft }]}
+                    testID="add-portfolio-trigger-btn"
+                  >
+                    <Text style={[styles.smallActionBtnText, { color: palette.primary }]}>
+                      {language === "en" ? "+ Add Work Photo" : "+ Tambah Portofolio"}
+                    </Text>
+                  </Pressable>
+                )}
+              </View>
+
+              {isAddingPortfolio && (
+                <View style={[styles.formCard, { backgroundColor: palette.surface, borderColor: palette.border }]} testID="add-portfolio-form">
+                  <Text style={[styles.formLabel, { color: palette.text }]}>
+                    {language === "en" ? "Work Title *" : "Judul Pekerjaan *"}
+                  </Text>
+                  <TextInput
+                    value={draftPortfolioTitle}
+                    onChangeText={setDraftPortfolioTitle}
+                    placeholder={language === "en" ? "e.g. AC Installation & Maintenance" : "cth. Pemasangan & Servis AC Unit"}
+                    placeholderTextColor={palette.textMuted}
+                    style={[styles.formInput, { backgroundColor: palette.inputBg, borderColor: palette.border, color: palette.text }]}
+                    testID="portfolio-title-input"
+                  />
+
+                  <Text style={[styles.formLabel, { color: palette.text }]}>
+                    {language === "en" ? "Description" : "Keterangan"}
+                  </Text>
+                  <TextInput
+                    value={draftPortfolioDesc}
+                    onChangeText={setDraftPortfolioDesc}
+                    placeholder={language === "en" ? "Brief description of the work completed..." : "Keterangan singkat pekerjaan..."}
+                    placeholderTextColor={palette.textMuted}
+                    style={[styles.formInput, { backgroundColor: palette.inputBg, borderColor: palette.border, color: palette.text }]}
+                  />
+
+                  <Text style={[styles.formLabel, { color: palette.text }]}>
+                    {language === "en" ? "Photo Attachment" : "Lampiran Foto"}
+                  </Text>
+                  <StrictImagePicker
+                    onImageValidated={(uri) => setDraftPortfolioImage(uri)}
+                    testIDPrefix="portfolio-image-picker"
+                  />
+                  {draftPortfolioImage && (
+                    <View style={styles.portfolioPreviewRow}>
+                      <Image source={{ uri: draftPortfolioImage }} style={styles.portfolioPreviewThumb} />
+                      <Text style={[styles.badgeTextMuted, { color: palette.textMuted }]}>
+                        {language === "en" ? "Photo selected ✓" : "Foto terpilih ✓"}
+                      </Text>
+                    </View>
+                  )}
+
+                  <View style={styles.formButtonRow}>
+                    <Pressable
+                      accessibilityRole="button"
+                      onPress={() => setIsAddingPortfolio(false)}
+                      style={[styles.formCancelBtn, { borderColor: palette.border }]}
+                    >
+                      <Text style={[styles.formBtnText, { color: palette.textMuted }]}>
+                        {language === "en" ? "Cancel" : "Batal"}
+                      </Text>
+                    </Pressable>
+                    <Pressable
+                      accessibilityRole="button"
+                      disabled={savingPortfolio || !draftPortfolioTitle.trim()}
+                      onPress={async () => {
+                        if (!draftPortfolioTitle.trim()) return;
+                        setSavingPortfolio(true);
+                        try {
+                          const newItem: PortfolioItem = {
+                            id: `port-${Date.now()}`,
+                            title: draftPortfolioTitle.trim(),
+                            description: draftPortfolioDesc.trim() || undefined,
+                            imageUri: draftPortfolioImage,
+                          };
+                          const updatedList = [newItem, ...(technician.portfolio || [])];
+                          await updateTechnicianPortfolio(technician.id, updatedList);
+                          setLoadedTechnician((prev) => prev ? { ...prev, portfolio: updatedList } : prev);
+                          setIsAddingPortfolio(false);
+                        } finally {
+                          setSavingPortfolio(false);
+                        }
+                      }}
+                      style={[styles.formSaveBtn, { backgroundColor: palette.primary, opacity: draftPortfolioTitle.trim() ? 1 : 0.6 }]}
+                      testID="save-portfolio-btn"
+                    >
+                      <Text style={styles.formSaveBtnText}>
+                        {savingPortfolio ? "..." : (language === "en" ? "Save to Portfolio" : "Simpan")}
+                      </Text>
+                    </Pressable>
+                  </View>
+                </View>
+              )}
               {technician.portfolio.length ? (
                 <View style={styles.portfolioGrid}>
                   {technician.portfolio.map((item) => {
@@ -1064,6 +1360,13 @@ export default function TechnicianProfileScreen() {
                       ? "Verified work photos will appear here."
                       : "Foto hasil pekerjaan terverifikasi akan tampil di sini."
                   }
+                  actionLabel={language === "en" ? "+ Add Work Photo" : "+ Tambah Foto Pekerjaan"}
+                  onAction={() => {
+                    setDraftPortfolioTitle('');
+                    setDraftPortfolioDesc('');
+                    setDraftPortfolioImage(undefined);
+                    setIsAddingPortfolio(true);
+                  }}
                 />
               )}
             </View>
@@ -1071,17 +1374,169 @@ export default function TechnicianProfileScreen() {
 
           {activeProfileTab === "reviews" && (
             <View>
-              <SectionHeader
-                eyebrow={t("profile.reviewsEyebrow")}
-                title={t("profile.reviewsTitle")}
-                trailing={
-                  technician.reviewCount
-                    ? t("profile.reviewCount", {
-                        count: technician.reviewCount,
-                      })
-                    : undefined
-                }
-              />
+              <View style={styles.sectionHeaderRow}>
+                <SectionHeader
+                  eyebrow={t("profile.reviewsEyebrow")}
+                  title={t("profile.reviewsTitle")}
+                  trailing={
+                    technician.reviewCount
+                      ? t("profile.reviewCount", {
+                          count: technician.reviewCount,
+                        })
+                      : undefined
+                  }
+                />
+                {!isAddingReview && (
+                  <Pressable
+                    accessibilityRole="button"
+                    onPress={() => {
+                      setDraftReviewRating(5);
+                      setDraftReviewComment('');
+                      setIsAddingReview(true);
+                    }}
+                    style={[styles.smallActionBtn, { backgroundColor: palette.primarySoft }]}
+                    testID="add-review-trigger-btn"
+                  >
+                    <Text style={[styles.smallActionBtnText, { color: palette.primary }]}>
+                      {language === "en" ? "+ Write a Review" : "+ Beri Ulasan"}
+                    </Text>
+                  </Pressable>
+                )}
+              </View>
+
+              {/* Performance Stars Breakdown: Shows who gave 5 stars, 4 stars, etc. */}
+              <View
+                style={[
+                  styles.performanceCard,
+                  { backgroundColor: palette.surface, borderColor: palette.border },
+                ]}
+                testID="performance-breakdown-card"
+              >
+                <View style={styles.performanceOverview}>
+                  <Text style={[styles.performanceBigScore, { color: palette.text }]}>
+                    {technician.reviewCount > 0 ? technician.averageRating.toFixed(1) : (technician.averageRating > 0 ? technician.averageRating.toFixed(1) : '5.0')}
+                  </Text>
+                  <View style={styles.starsRow}>
+                    {[1, 2, 3, 4, 5].map((starIdx) => (
+                      <Text key={starIdx} style={styles.goldStarBig}>★</Text>
+                    ))}
+                  </View>
+                  <Text style={[styles.performanceSubtext, { color: palette.textMuted }]}>
+                    {technician.reviewCount} {language === "en" ? "reviews" : "ulasan"}
+                  </Text>
+                  <Text style={[styles.performanceBadgeText, { color: palette.primary }]}>
+                    {technician.completedJobsCount} {language === "en" ? "tasks completed" : "tugas selesai"}
+                  </Text>
+                </View>
+
+                {/* Rating Distribution Bars */}
+                <View style={styles.distributionCol}>
+                  {[5, 4, 3, 2, 1].map((starNum) => {
+                    const count = technician.reviews.filter(
+                      (r) => Math.round(r.rating) === starNum
+                    ).length;
+                    const total = Math.max(1, technician.reviews.length);
+                    const pct = Math.round((count / total) * 100);
+
+                    return (
+                      <View key={starNum} style={styles.distributionRow}>
+                        <Text style={[styles.distributionStarLabel, { color: palette.text }]}>
+                          {starNum} ★
+                        </Text>
+                        <View style={[styles.distributionTrack, { backgroundColor: palette.surfaceElevated }]}>
+                          <View
+                            style={[
+                              styles.distributionFill,
+                              { backgroundColor: palette.primary, width: `${pct}%` },
+                            ]}
+                          />
+                        </View>
+                        <Text style={[styles.distributionCount, { color: palette.textMuted }]}>
+                          {count}
+                        </Text>
+                      </View>
+                    );
+                  })}
+                </View>
+              </View>
+
+              {/* Add Review Form */}
+              {isAddingReview && (
+                <View style={[styles.formCard, { backgroundColor: palette.surface, borderColor: palette.border }]} testID="add-review-form">
+                  <Text style={[styles.formLabel, { color: palette.text }]}>
+                    {language === "en" ? "Your Star Rating" : "Rating Bintang Anda"}
+                  </Text>
+                  <View style={styles.interactiveStarsRow}>
+                    {[1, 2, 3, 4, 5].map((val) => (
+                      <Pressable
+                        key={val}
+                        accessibilityRole="button"
+                        onPress={() => setDraftReviewRating(val)}
+                        style={styles.starTouchBtn}
+                      >
+                        <Text style={val <= draftReviewRating ? styles.interactiveGoldStar : styles.interactiveMutedStar}>
+                          ★
+                        </Text>
+                      </Pressable>
+                    ))}
+                    <Text style={[styles.selectedRatingText, { color: palette.text }]}>
+                      {draftReviewRating}.0 / 5.0
+                    </Text>
+                  </View>
+
+                  <Text style={[styles.formLabel, { color: palette.text }]}>
+                    {language === "en" ? "Your Review / Feedback *" : "Ulasan / Umpan Balik *"}
+                  </Text>
+                  <TextInput
+                    multiline
+                    value={draftReviewComment}
+                    onChangeText={setDraftReviewComment}
+                    placeholder={language === "en" ? "Describe your service experience with this technician..." : "Tulis pengalaman dan kualitas servis teknisi ini..."}
+                    placeholderTextColor={palette.textMuted}
+                    style={[styles.formTextarea, { backgroundColor: palette.inputBg, borderColor: palette.border, color: palette.text }]}
+                    testID="review-comment-input"
+                  />
+
+                  <View style={styles.formButtonRow}>
+                    <Pressable
+                      accessibilityRole="button"
+                      onPress={() => setIsAddingReview(false)}
+                      style={[styles.formCancelBtn, { borderColor: palette.border }]}
+                    >
+                      <Text style={[styles.formBtnText, { color: palette.textMuted }]}>
+                        {language === "en" ? "Cancel" : "Batal"}
+                      </Text>
+                    </Pressable>
+                    <Pressable
+                      accessibilityRole="button"
+                      disabled={savingReview || !draftReviewComment.trim()}
+                      onPress={async () => {
+                        if (!draftReviewComment.trim()) return;
+                        setSavingReview(true);
+                        try {
+                          const newRev = await submitDirectTechnicianReview({
+                            technicianId: technician.id,
+                            customerName: accountDisplayName || (language === "en" ? "Verified Customer" : "Pelanggan Terverifikasi"),
+                            rating: draftReviewRating,
+                            comment: draftReviewComment.trim(),
+                          });
+                          setDynamicReviews((prev) => [newRev, ...prev]);
+                          setIsAddingReview(false);
+                          setDraftReviewComment('');
+                        } finally {
+                          setSavingReview(false);
+                        }
+                      }}
+                      style={[styles.formSaveBtn, { backgroundColor: palette.primary, opacity: draftReviewComment.trim() ? 1 : 0.6 }]}
+                      testID="submit-direct-review-btn"
+                    >
+                      <Text style={styles.formSaveBtnText}>
+                        {savingReview ? "..." : (language === "en" ? "Submit Review" : "Kirim Ulasan")}
+                      </Text>
+                    </Pressable>
+                  </View>
+                </View>
+              )}
               {technician.reviews.length ? (
                 technician.reviews.map((review) => (
                   <View
@@ -1146,6 +1601,12 @@ export default function TechnicianProfileScreen() {
                       ? "Customer feedback will appear here after completed jobs."
                       : "Ulasan pelanggan akan tampil setelah pekerjaan selesai."
                   }
+                  actionLabel={language === "en" ? "+ Write the First Review" : "+ Beri Ulasan Pertama"}
+                  onAction={() => {
+                    setDraftReviewRating(5);
+                    setDraftReviewComment('');
+                    setIsAddingReview(true);
+                  }}
                 />
               )}
 
@@ -2039,4 +2500,274 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
   },
   reportSubmitBtnText: { color: "#FFFFFF", fontSize: 13, fontWeight: "800" },
+
+  modernStatsBar: {
+    alignItems: 'center',
+    borderRadius: 14,
+    borderWidth: 1,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginTop: spacing.md,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+  },
+  statsBarCol: {
+    alignItems: 'center',
+    flex: 1,
+    justifyContent: 'center',
+  },
+  statsBarValueRow: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    gap: 3,
+  },
+  statsBarValue: {
+    fontSize: 15,
+    fontWeight: '700',
+  },
+  statsBarValueSmall: {
+    fontSize: 12,
+    fontWeight: '700',
+  },
+  statsBarLabel: {
+    fontSize: 10,
+    fontWeight: '500',
+    marginTop: 2,
+    textTransform: 'lowercase',
+  },
+  statsDivider: {
+    height: 22,
+    marginHorizontal: 2,
+    width: 1,
+  },
+  goldStarSmall: {
+    color: '#F59E0B',
+    fontSize: 13,
+    fontWeight: '800',
+  },
+  quickActionsRow: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    marginTop: 10,
+  },
+  quickActionBtn: {
+    borderRadius: 18,
+    borderWidth: 1,
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+  },
+  quickActionBtnText: {
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  badgesWrap: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    marginTop: spacing.md,
+  },
+  badgePill: {
+    alignItems: 'center',
+    borderRadius: 20,
+    borderWidth: 1,
+    flexDirection: 'row',
+    gap: 5,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+  },
+  goldStar: {
+    color: '#F59E0B',
+    fontSize: 14,
+    fontWeight: '800',
+  },
+  goldStarBig: {
+    color: '#F59E0B',
+    fontSize: 20,
+  },
+  badgeIcon: {
+    fontSize: 12,
+    fontWeight: '700',
+  },
+  badgeTextBold: {
+    fontSize: 12,
+    fontWeight: '700',
+  },
+  badgeTextMuted: {
+    fontSize: 11,
+    fontWeight: '500',
+  },
+  sectionHeaderRow: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: spacing.xs,
+  },
+  smallActionBtn: {
+    borderRadius: 16,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+  },
+  smallActionBtnText: {
+    fontSize: 12,
+    fontWeight: '700',
+  },
+  formCard: {
+    borderRadius: 14,
+    borderWidth: 1,
+    marginBottom: spacing.md,
+    padding: spacing.md,
+  },
+  formLabel: {
+    fontSize: 12,
+    fontWeight: '700',
+    marginBottom: 4,
+    marginTop: spacing.xs,
+  },
+  formInput: {
+    borderRadius: 8,
+    borderWidth: 1,
+    fontSize: 14,
+    marginBottom: spacing.xs,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: 8,
+  },
+  formTextarea: {
+    borderRadius: 8,
+    borderWidth: 1,
+    fontSize: 14,
+    marginBottom: spacing.sm,
+    minHeight: 80,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: 8,
+    textAlignVertical: 'top',
+  },
+  formButtonRow: {
+    flexDirection: 'row',
+    gap: 10,
+    justifyContent: 'flex-end',
+    marginTop: spacing.sm,
+  },
+  formCancelBtn: {
+    borderRadius: 8,
+    borderWidth: 1,
+    justifyContent: 'center',
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+  },
+  formSaveBtn: {
+    borderRadius: 8,
+    justifyContent: 'center',
+    paddingHorizontal: 18,
+    paddingVertical: 8,
+  },
+  formBtnText: {
+    fontSize: 13,
+    fontWeight: '600',
+  },
+  formSaveBtnText: {
+    color: '#FFFFFF',
+    fontSize: 13,
+    fontWeight: '700',
+  },
+  portfolioPreviewRow: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    gap: 8,
+    marginTop: 6,
+  },
+  portfolioPreviewThumb: {
+    borderRadius: 6,
+    height: 48,
+    width: 48,
+  },
+  performanceCard: {
+    borderRadius: 14,
+    borderWidth: 1,
+    flexDirection: 'row',
+    gap: spacing.md,
+    marginBottom: spacing.md,
+    padding: spacing.md,
+  },
+  performanceOverview: {
+    alignItems: 'center',
+    borderRightWidth: StyleSheet.hairlineWidth,
+    borderRightColor: '#E5E7EB',
+    justifyContent: 'center',
+    paddingRight: spacing.md,
+    minWidth: 110,
+  },
+  performanceBigScore: {
+    fontSize: 32,
+    fontWeight: '800',
+    lineHeight: 36,
+  },
+  starsRow: {
+    flexDirection: 'row',
+    gap: 2,
+    marginVertical: 4,
+  },
+  performanceSubtext: {
+    fontSize: 10,
+    fontWeight: '500',
+  },
+  performanceBadgeText: {
+    fontSize: 11,
+    fontWeight: '700',
+    marginTop: 4,
+  },
+  distributionCol: {
+    flex: 1,
+    justifyContent: 'center',
+    gap: 4,
+  },
+  distributionRow: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    gap: 6,
+  },
+  distributionStarLabel: {
+    fontSize: 11,
+    fontWeight: '600',
+    width: 24,
+  },
+  distributionTrack: {
+    borderRadius: 4,
+    flex: 1,
+    height: 8,
+    overflow: 'hidden',
+  },
+  distributionFill: {
+    borderRadius: 4,
+    height: '100%',
+  },
+  distributionCount: {
+    fontSize: 11,
+    fontWeight: '500',
+    textAlign: 'right',
+    width: 16,
+  },
+  interactiveStarsRow: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    gap: 4,
+    marginBottom: spacing.xs,
+  },
+  starTouchBtn: {
+    padding: 2,
+  },
+  interactiveGoldStar: {
+    color: '#F59E0B',
+    fontSize: 26,
+  },
+  interactiveMutedStar: {
+    color: '#D1D5DB',
+    fontSize: 26,
+  },
+  selectedRatingText: {
+    fontSize: 13,
+    fontWeight: '700',
+    marginLeft: 8,
+  },
 });

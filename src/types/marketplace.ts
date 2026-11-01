@@ -6,6 +6,8 @@ export interface ServiceCategory {
   slug: string;
   description?: string;
   icon: string;
+  imageUrl?: string;
+  itemCount?: number;
 }
 
 export interface TechnicianService {
@@ -217,4 +219,215 @@ export interface Page<T> {
 export interface MarketplaceData<T> {
   items: T[];
   source: DataSource;
+}
+
+// ============================================================================
+// Marketplace Redesign Types (Home / Browse, Search, Profile, & Design System)
+// ============================================================================
+
+/** Supported marketplace themes */
+export type MarketplaceThemeName = 'light' | 'dark' | 'system';
+
+/**
+ * Design system color tokens matching quick.md specifications.
+ */
+export interface MarketplaceThemeTokens {
+  background: string;
+  surface: string;
+  surfaceSecondary: string;
+  primary: string;
+  primaryLight: string;
+  textPrimary: string;
+  textSecondary: string;
+  textMuted: string;
+  border: string;
+  searchBarBg: string;
+  chipBg: string;
+  badgeFeaturedBg?: string;
+  badgeFeaturedText?: string;
+  safetyBannerBg?: string;
+  safetyBannerText?: string;
+}
+
+/** Top Header Bar location indicator */
+export interface MarketplaceHeaderLocation {
+  id?: string;
+  cityName: string;
+  stateOrProvince?: string;
+  displayLabel: string;
+  latitude?: number;
+  longitude?: number;
+}
+
+/** Seller summary embedded in ads and featured cards */
+export interface MarketplaceSeller {
+  id: string;
+  name: string;
+  avatarUri?: string;
+  rating: number;
+  reviewCount?: number;
+  verified?: boolean;
+}
+
+/**
+ * Screen 1 (Browse / Home): Featured Ad Carousel item
+ */
+export interface MarketplaceFeaturedAd {
+  id: string;
+  title: string;
+  titleEn?: string;
+  imageUrl: string;
+  price: number;
+  originalPrice?: number;
+  badgeLabel?: string; // e.g. "⚡ FEATURED"
+  seller: MarketplaceSeller;
+  categorySlug: string;
+  location: string;
+  createdAt?: string;
+}
+
+/**
+ * Screen 1 (Browse / Home): 3-column square category card
+ */
+export interface MarketplaceCategoryCard {
+  id: string;
+  name: string;
+  nameEn?: string;
+  slug: string;
+  imageUrl: string;
+  icon?: string;
+  itemCount?: number;
+}
+
+/**
+ * Screen 1 (Browse / Home): Safety Tip banner
+ */
+export interface MarketplaceSafetyTip {
+  id: string;
+  title: string;
+  subtitle: string;
+  icon?: string;
+  actionUrl?: string;
+}
+
+/**
+ * Screen 1 (Browse / Home) & Screen 2 (Search): Fresh near you / Ad list card
+ */
+export interface MarketplaceFreshAd {
+  id: string;
+  title: string;
+  price: number;
+  originalPrice?: number;
+  thumbnailUrl: string;
+  location: string;
+  timeAgo: string;
+  isFavorite?: boolean;
+  categorySlug?: string;
+  sellerId?: string;
+  sellerName?: string;
+  sellerAvatarUri?: string;
+  sellerRating?: number;
+  createdAt?: string;
+}
+
+/**
+ * Screen 1 (Browse / Home): Aggregated home screen feed payload
+ */
+export interface MarketplaceHomeFeedData {
+  location: MarketplaceHeaderLocation;
+  featuredAds: MarketplaceFeaturedAd[];
+  categories: MarketplaceCategoryCard[];
+  safetyTip: MarketplaceSafetyTip;
+  freshAds: MarketplaceFreshAd[];
+  totalFreshAdsCount?: number;
+}
+
+/**
+ * Screen 2: Trending searches chip
+ */
+export interface MarketplaceTrendingSearch {
+  id: string;
+  term: string;
+  categorySlug?: string;
+  isTrending?: boolean;
+}
+
+/**
+ * Screen 2: Sort options
+ */
+export type MarketplaceSortOption = 'newest' | 'price_asc' | 'price_desc' | 'popular';
+
+/**
+ * Screen 2: Search criteria and active filters
+ */
+export interface MarketplaceSearchFilter {
+  query: string;
+  categorySlug?: string;
+  sort: MarketplaceSortOption;
+  minPrice?: number;
+  maxPrice?: number;
+  location?: string;
+}
+
+/**
+ * Screen 3: Profile statistics
+ */
+export interface MarketplaceProfileStats {
+  activeAdsCount: number;
+  totalViewsCount: number;
+  soldCount: number;
+}
+
+/**
+ * Screen 3: User profile information
+ */
+export interface MarketplaceProfileUser {
+  id: string;
+  username: string;
+  displayName: string;
+  avatarUri?: string;
+  isVerified: boolean;
+  location: string;
+  rating: number;
+  memberSinceYear: number;
+  bio?: string;
+  stats: MarketplaceProfileStats;
+}
+
+/**
+ * Screen 3: Profile menu item
+ */
+export interface MarketplaceProfileMenuItem {
+  id: string;
+  icon: string;
+  title: string;
+  subtitle?: string;
+  badge?: string | number;
+  route?: string;
+  action?: () => void;
+}
+
+/**
+ * Screen 3: Grouped profile menu section (Selling, Shopping, Account)
+ */
+export interface MarketplaceProfileMenuSection {
+  key: 'selling' | 'shopping' | 'account';
+  title: string;
+  items: MarketplaceProfileMenuItem[];
+}
+
+/**
+ * Bottom Navigation Bar tabs (5 tabs)
+ */
+export type MarketplaceBottomTab = 'browse' | 'search' | 'sell' | 'inbox' | 'profile';
+
+/**
+ * Navigation item definition for the 5-tab bottom bar
+ */
+export interface MarketplaceBottomNavItem {
+  key: MarketplaceBottomTab;
+  label: string;
+  icon: string;
+  isCenterAction?: boolean; // Circular elevated "+" button for "Sell"
+  badgeCount?: number;
 }

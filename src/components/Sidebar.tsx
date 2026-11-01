@@ -160,11 +160,6 @@ export function Sidebar({ visible, onClose, avatarUri }: SidebarProps) {
   const handleLogout = async () => {
     await signOut();
     onClose();
-    try {
-      router.replace("/");
-    } catch {
-      // Router may not be mounted in isolated unit component tests.
-    }
   };
 
   return (

@@ -270,7 +270,8 @@ export function Post({
         <View style={styles.editForm} testID={`edit-post-form-${post.id}`}>
           <TextInput
             multiline
-            onChangeText={setDraftCaption}
+            maxLength={200}
+            onChangeText={(text) => setDraftCaption(text.slice(0, 200))}
             placeholder={
               language === "en"
                 ? "Update your post caption..."

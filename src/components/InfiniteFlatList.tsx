@@ -38,19 +38,23 @@ export function InfiniteFlatList<T>({
       onEndReached={hasMore && !loadingMore ? onLoadMore : undefined}
       onEndReachedThreshold={0.4}
       ListFooterComponent={
-        loadingMore ? (
-          <View style={styles.loadingFooter}>
-            <ActivityIndicator color={palette.primary} />
-          </View>
-        ) : (
-          <>{listFooter}</>
-        )
+        <View style={styles.footerContainer}>
+          {loadingMore && (
+            <View style={styles.loadingFooter}>
+              <ActivityIndicator color={palette.primary} />
+            </View>
+          )}
+          {listFooter}
+        </View>
       }
     />
   );
 }
 
 const styles = StyleSheet.create({
+  footerContainer: {
+    width: '100%',
+  },
   loadingFooter: {
     alignItems: 'center',
     justifyContent: 'center',

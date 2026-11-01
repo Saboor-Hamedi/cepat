@@ -62,30 +62,14 @@ export function SettingHeader({
 
   return (
     <View style={styles.headerContainer}>
-      {isAuthenticated && userName ? (
-        <View
-          style={[
-            styles.identityCard,
-            { backgroundColor: palette.surface, borderColor: palette.border },
-          ]}
-          testID="settings-user-identity"
-        >
-          <Avatar uri={avatarUri} name={userName} size={44} />
-          <View style={styles.identityCopy}>
-            <Text style={[styles.identityName, { color: palette.text, fontSize: scaleFont(15) }]} numberOfLines={1}>
-              {userName}
-            </Text>
-            <Text style={[styles.identityRole, { color: palette.textMuted, fontSize: scaleFont(12) }]} numberOfLines={1}>
-              {userRole || (language === "en" ? "Cepat account" : "Akun Cepat")}
-            </Text>
-          </View>
-        </View>
-      ) : null}
-      <Text style={styles.srOnly}>{language === "en" ? "" : "Pengaturan"}</Text>
+      <Text style={styles.srOnly}>{language === "en" ? "Settings" : "Pengaturan"}</Text>
+
+      {/* Categories like Account, Language, etc. are on the VERY TOP */}
       <ScrollView
         horizontal
         showsHorizontalScrollIndicator={false}
         contentContainerStyle={styles.tabRow}
+        testID="settings-category-tabs"
       >
         {visibleTabs.map((tab) => {
           const selected = activeSection === tab.key;
@@ -106,7 +90,7 @@ export function SettingHeader({
                 style={[
                   styles.tabPillText,
                   { color: palette.pillText, fontSize: scaleFont(13) },
-                  selected && { color: "#FFFFFF" },
+                  selected && { color: "#FFFFFF", fontWeight: "700" },
                 ]}
               >
                 {tab.label}
@@ -115,6 +99,27 @@ export function SettingHeader({
           );
         })}
       </ScrollView>
+
+      {/* Account Profile Banner below categories inside the Account tab */}
+      {activeSection === "account" && isAuthenticated && userName ? (
+        <View
+          style={[
+            styles.identityCard,
+            { backgroundColor: palette.surface, borderColor: palette.border, marginTop: spacing.md },
+          ]}
+          testID="settings-user-identity"
+        >
+          <Avatar uri={avatarUri} name={userName} size={44} />
+          <View style={styles.identityCopy}>
+            <Text style={[styles.identityName, { color: palette.text, fontSize: scaleFont(15) }]} numberOfLines={1}>
+              {userName}
+            </Text>
+            <Text style={[styles.identityRole, { color: palette.textMuted, fontSize: scaleFont(12) }]} numberOfLines={1}>
+              {userRole || (language === "en" ? "Cepat account" : "Akun Cepat")}
+            </Text>
+          </View>
+        </View>
+      ) : null}
     </View>
   );
 }
@@ -130,7 +135,6 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     flexDirection: "row",
     gap: spacing.md,
-    marginBottom: spacing.md,
     padding: spacing.md,
   },
   identityCopy: {
