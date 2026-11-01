@@ -4,7 +4,6 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { useAppearance } from '../../context/AppearanceContext';
 import { useLanguage } from '../../i18n/locale';
-import { radii, spacing } from '../../theme/tokens';
 
 export interface ChatDropdownProps {
   bookingId: string;
@@ -21,13 +20,12 @@ export function ChatDropdown({ bookingId, onClearHistory }: ChatDropdownProps) {
       <Pressable
         accessibilityLabel="Chat options"
         accessibilityRole="button"
+        hitSlop={8}
         onPress={() => setIsOpen((prev) => !prev)}
         style={({ pressed }) => [
           styles.menuDotsBtn,
           {
-            backgroundColor: pressed
-              ? palette.pillBg
-              : palette.surfaceElevated,
+            backgroundColor: pressed ? palette.pillBg : palette.surfaceElevated,
           },
         ]}
         testID="chat-menu-toggle-btn"
@@ -49,24 +47,6 @@ export function ChatDropdown({ bookingId, onClearHistory }: ChatDropdownProps) {
             accessibilityRole="button"
             onPress={() => {
               setIsOpen(false);
-              onClearHistory();
-            }}
-            style={({ pressed }) => [
-              styles.dropdownMenuItem,
-              pressed && { backgroundColor: palette.pillBg },
-            ]}
-            testID="delete-chat-history"
-          >
-            <Text style={styles.itemIcon}>🗑️</Text>
-            <Text style={[styles.dropdownMenuText, { color: palette.danger }]}>
-              {language === 'en' ? 'Clear chat history' : 'Hapus riwayat chat'}
-            </Text>
-          </Pressable>
-
-          <Pressable
-            accessibilityRole="button"
-            onPress={() => {
-              setIsOpen(false);
               router.push(`/booking/${bookingId}`);
             }}
             style={({ pressed }) => [
@@ -75,9 +55,40 @@ export function ChatDropdown({ bookingId, onClearHistory }: ChatDropdownProps) {
             ]}
             testID="view-task-details"
           >
-            <Text style={styles.itemIcon}>📋</Text>
+            <View
+              style={[
+                styles.itemIconWrap,
+                { backgroundColor: palette.primarySoft },
+              ]}
+            >
+              <Text style={styles.itemIcon}>📋</Text>
+            </View>
             <Text style={[styles.dropdownMenuText, { color: palette.text }]}>
               {language === 'en' ? 'View task details' : 'Lihat detail tugas'}
+            </Text>
+          </Pressable>
+
+          <View
+            style={[styles.divider, { backgroundColor: palette.border }]}
+          />
+
+          <Pressable
+            accessibilityRole="button"
+            onPress={() => {
+              setIsOpen(false);
+              onClearHistory();
+            }}
+            style={({ pressed }) => [
+              styles.dropdownMenuItem,
+              pressed && { backgroundColor: palette.pillBg },
+            ]}
+            testID="delete-chat-history"
+          >
+            <View style={[styles.itemIconWrap, styles.dangerIconWrap]}>
+              <Text style={styles.itemIcon}>🗑️</Text>
+            </View>
+            <Text style={[styles.dropdownMenuText, { color: palette.danger }]}>
+              {language === 'en' ? 'Clear chat history' : 'Hapus riwayat chat'}
             </Text>
           </Pressable>
         </View>
@@ -91,27 +102,35 @@ const styles = StyleSheet.create({
     position: 'relative',
     zIndex: 100,
   },
+  dangerIconWrap: {
+    backgroundColor: 'rgba(240, 40, 73, 0.12)',
+  },
+  divider: {
+    height: StyleSheet.hairlineWidth,
+    marginVertical: 4,
+    opacity: 0.8,
+  },
   dropdownMenu: {
-    borderRadius: radii.md,
+    borderRadius: 16,
     borderWidth: 1,
-    elevation: 8,
-    minWidth: 190,
+    elevation: 10,
+    minWidth: 214,
     overflow: 'hidden',
-    paddingVertical: spacing.xs,
+    paddingVertical: 6,
     position: 'absolute',
     right: 0,
     shadowColor: '#000000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.15,
-    shadowRadius: 10,
-    top: 44,
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.18,
+    shadowRadius: 16,
+    top: 50,
     zIndex: 200,
   },
   dropdownMenuItem: {
     alignItems: 'center',
     flexDirection: 'row',
-    gap: spacing.sm,
-    paddingHorizontal: spacing.md,
+    gap: 10,
+    paddingHorizontal: 12,
     paddingVertical: 10,
   },
   dropdownMenuText: {
@@ -119,18 +138,26 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   itemIcon: {
-    fontSize: 14,
+    fontSize: 13,
+  },
+  itemIconWrap: {
+    alignItems: 'center',
+    borderRadius: 9,
+    height: 28,
+    justifyContent: 'center',
+    width: 28,
   },
   menuDotsBtn: {
     alignItems: 'center',
-    borderRadius: radii.pill,
-    height: 38,
+    borderRadius: 22,
+    height: 44,
     justifyContent: 'center',
-    width: 38,
+    width: 44,
   },
   menuDotsText: {
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: '800',
-    letterSpacing: 1.5,
+    letterSpacing: 1.2,
+    marginTop: -3,
   },
 });

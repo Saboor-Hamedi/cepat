@@ -19,7 +19,7 @@
  */
 
 import { router } from 'expo-router';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   Animated,
   PanResponder,
@@ -145,7 +145,7 @@ export default function NotificationsScreen() {
     setNotifications((current) => current.filter((item) => item.id !== notificationId));
     try {
       await deleteNotification(userId, notificationId);
-    } catch (delError) {
+    } catch {
       void refresh(true);
     }
   };
@@ -370,7 +370,7 @@ function SwipeableNotificationCard({
   onPress: () => void;
   onDelete: () => void;
 }) {
-  const pan = useRef(new Animated.Value(0)).current;
+  const [pan] = useState(() => new Animated.Value(0));
   const [swipedOpen, setSwipedOpen] = useState(false);
 
   const panResponder = useMemo(
@@ -415,7 +415,12 @@ function SwipeableNotificationCard({
         </Pressable>
       </View>
       <Animated.View
-        style={[styles.swipeForeground, { transform: [{ translateX: pan }] }]}
+        style={[
+          styles.notificationCard,
+          styles.swipeForeground,
+          !item.readAt && styles.unreadCard,
+          { transform: [{ translateX: pan }] },
+        ]}
         {...panResponder.panHandlers}
       >
         <Pressable
@@ -429,10 +434,7 @@ function SwipeableNotificationCard({
               onPress();
             }
           }}
-          style={[
-            styles.notificationCard,
-            !item.readAt && styles.unreadCard,
-          ]}
+          style={styles.cardPressArea}
           testID={`notification-${item.id}`}
         >
           {/* Facebook-style Left Circular Avatar/Icon */}
@@ -471,24 +473,22 @@ function SwipeableNotificationCard({
               {formatNotificationRelativeTime(item.createdAt, language)}
             </Text>
           </View>
-
-          {/* Right section: unread dot + quick delete button */}
-          <View style={styles.rightSection}>
-            {!item.readAt && <View style={styles.unreadDot} />}
-            <Pressable
-              accessibilityLabel="Delete notification"
-              accessibilityRole="button"
-              onPress={(e) => {
-                e?.stopPropagation?.();
-                onDelete();
-              }}
-              style={styles.inlineDeleteBtn}
-              testID={`quick-delete-notification-${item.id}`}
-            >
-              <Text style={styles.inlineDeleteText}>×</Text>
-            </Pressable>
-          </View>
         </Pressable>
+
+        {/* Right section: unread dot + quick delete button */}
+        <View style={styles.rightSection}>
+          {!item.readAt && <View style={styles.unreadDot} />}
+          <Pressable
+            accessibilityLabel="Delete notification"
+            accessibilityRole="button"
+            hitSlop={6}
+            onPress={onDelete}
+            style={styles.inlineDeleteBtn}
+            testID={`quick-delete-notification-${item.id}`}
+          >
+            <Text style={styles.inlineDeleteText}>×</Text>
+          </Pressable>
+        </View>
       </Animated.View>
     </View>
   );
@@ -618,17 +618,7 @@ function formatNotificationRelativeTime(dateString: string, language: 'id' | 'en
   }
 }
 
-function createStyles(palette: {
-  background: string;
-  surface: string;
-  surfaceElevated: string;
-  text: string;
-  textMuted: string;
-  primary: string;
-  primarySoft: string;
-  border: string;
-  danger: string;
-}) {
+function createStyles(palette: ThemePalette) {
   return StyleSheet.create({
     safeArea: { flex: 1 },
     content: {
@@ -684,6 +674,12 @@ function createStyles(palette: {
     errorText: { color: palette.danger, fontSize: 12 },
     retryText: { color: palette.primary, fontSize: 13, fontWeight: '800' },
     notificationList: { gap: spacing.sm },
+    cardPressArea: {
+      alignItems: 'center',
+      flex: 1,
+      flexDirection: 'row',
+      gap: spacing.md,
+    },
     notificationCard: {
       alignItems: 'center',
       backgroundColor: palette.surface,

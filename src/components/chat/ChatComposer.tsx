@@ -3,7 +3,8 @@ import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 
 import { useAppearance } from '../../context/AppearanceContext';
 import { useLanguage } from '../../i18n/locale';
-import { radii, spacing } from '../../theme/tokens';
+
+const SUCCESS = '#22C55E';
 
 export interface ChatComposerProps {
   chatInput: string;
@@ -45,8 +46,11 @@ export function ChatComposer({
         ]}
       >
         <View style={styles.completedInfoRow}>
-          <Text style={[styles.completedBadgeText, { color: palette.primary }]}>
-            ✓ {language === 'en' ? 'Task has completed' : 'Tugas telah selesai'}
+          <View style={styles.completedCheckCircle}>
+            <Text style={styles.completedCheck}>✓</Text>
+          </View>
+          <Text style={[styles.completedBadgeText, { color: SUCCESS }]}>
+            {language === 'en' ? 'Task has completed' : 'Tugas telah selesai'}
           </Text>
         </View>
 
@@ -61,6 +65,7 @@ export function ChatComposer({
             ]}
             testID="chat-book-again-btn"
           >
+            <Text style={styles.bookAgainIcon}>↻</Text>
             <Text style={styles.bookAgainBtnText}>
               {language === 'en' ? 'Book Again' : 'Pesan Lagi'}
             </Text>
@@ -85,6 +90,7 @@ export function ChatComposer({
         accessibilityLabel="Attach photo"
         accessibilityRole="button"
         disabled={sendingChat}
+        hitSlop={6}
         onPress={onAttachPhoto}
         style={({ pressed }) => [
           styles.attachBtn,
@@ -94,23 +100,23 @@ export function ChatComposer({
         ]}
         testID="booking-chat-attach"
       >
-        <Text style={{ fontSize: 18 }}>📷</Text>
+        <Text style={styles.attachIcon}>📷</Text>
       </Pressable>
 
       <TextInput
         editable={!sendingChat}
+        multiline
         onChangeText={onChangeChatInput}
         placeholder={
           language === 'en'
-            ? `Message ${partnerName}...`
-            : `Kirim pesan ke ${partnerName}...`
+            ? `Message ${partnerName}…`
+            : `Kirim pesan ke ${partnerName}…`
         }
         placeholderTextColor={palette.textMuted}
         style={[
           styles.inputField,
           {
             backgroundColor: palette.surfaceElevated,
-            borderColor: palette.border,
             color: palette.text,
           },
         ]}
@@ -121,6 +127,7 @@ export function ChatComposer({
       <Pressable
         accessibilityRole="button"
         disabled={sendingChat || !chatInput.trim()}
+        hitSlop={6}
         onPress={onSend}
         style={[
           styles.sendBtn,
@@ -129,7 +136,7 @@ export function ChatComposer({
         ]}
         testID="booking-chat-send"
       >
-        <Text style={styles.sendBtnIcon}>➤</Text>
+        <Text style={styles.sendBtnIcon}>↑</Text>
       </Pressable>
     </View>
   );
@@ -146,69 +153,97 @@ function createStyles(palette: {
   return StyleSheet.create({
     attachBtn: {
       alignItems: 'center',
-      borderRadius: radii.pill,
-      borderWidth: 0,
-      height: 40,
+      borderRadius: 22,
+      height: 44,
       justifyContent: 'center',
-      width: 40,
+      width: 44,
+    },
+    attachIcon: {
+      fontSize: 18,
     },
     bookAgainBtn: {
       alignItems: 'center',
-      borderRadius: radii.pill,
+      borderRadius: 14,
+      flexDirection: 'row',
+      gap: 8,
       justifyContent: 'center',
-      paddingHorizontal: spacing.xl,
-      paddingVertical: 12,
-      width: '100%',
+      marginHorizontal: 20,
+      paddingHorizontal: 20,
+      paddingVertical: 14,
     },
     bookAgainBtnText: {
       color: '#FFFFFF',
       fontSize: 14,
       fontWeight: '800',
+      letterSpacing: 0.1,
+    },
+    bookAgainIcon: {
+      color: '#FFFFFF',
+      fontSize: 17,
+      fontWeight: '800',
+      marginTop: -1,
     },
     completedBadgeText: {
-      fontSize: 13,
+      fontSize: 12.5,
       fontWeight: '700',
+      letterSpacing: 0.1,
+    },
+    completedCheck: {
+      color: '#FFFFFF',
+      fontSize: 10,
+      fontWeight: '900',
+    },
+    completedCheckCircle: {
+      alignItems: 'center',
+      backgroundColor: SUCCESS,
+      borderRadius: 9,
+      height: 18,
+      justifyContent: 'center',
+      width: 18,
     },
     completedFooter: {
       alignItems: 'center',
-      borderTopWidth: 1,
-      gap: spacing.sm,
-      paddingHorizontal: spacing.md,
-      paddingVertical: spacing.md,
+      borderTopWidth: StyleSheet.hairlineWidth,
+      gap: 12,
+      paddingBottom: 14,
+      paddingTop: 14,
     },
     completedInfoRow: {
       alignItems: 'center',
       flexDirection: 'row',
+      gap: 7,
       justifyContent: 'center',
     },
     inputBar: {
-      alignItems: 'center',
+      alignItems: 'flex-end',
       borderTopWidth: StyleSheet.hairlineWidth,
       flexDirection: 'row',
-      gap: spacing.sm,
-      padding: spacing.md,
+      gap: 8,
+      paddingHorizontal: 12,
+      paddingVertical: 10,
     },
     inputField: {
       borderRadius: 22,
-      borderWidth: 1,
       flex: 1,
-      fontSize: 14,
-      minHeight: 40,
-      paddingHorizontal: spacing.md,
-      paddingVertical: 6,
+      fontSize: 14.5,
+      maxHeight: 108,
+      minHeight: 44,
+      paddingHorizontal: 16,
+      paddingTop: 12,
+      paddingBottom: 12,
     },
     sendBtn: {
       alignItems: 'center',
-      borderRadius: radii.pill,
-      height: 40,
+      borderRadius: 22,
+      height: 44,
       justifyContent: 'center',
-      width: 40,
+      width: 44,
     },
     sendBtnIcon: {
       color: '#FFFFFF',
-      fontSize: 15,
+      fontSize: 20,
       fontWeight: '800',
-      marginLeft: 2,
+      marginTop: -1,
     },
   });
 }

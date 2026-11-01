@@ -5,7 +5,6 @@ import {
   KeyboardAvoidingView,
   Platform,
   StyleSheet,
-  View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -14,6 +13,7 @@ import { LoadingState } from '../marketplace-ui';
 import { useAppearance } from '../../context/AppearanceContext';
 import { fixtureTechnicians } from '../../data/fixtures';
 import {
+  loadAccountProfileDetails,
   loadBookingById,
   loadBookingMessages,
   sendBookingMessage,
@@ -112,7 +112,7 @@ export function ChatContainer({
       active = false;
       unsubscribe?.();
     };
-  }, [bookingId]);
+  }, [bookingId, user?.id]);
 
   const partnerName = useMemo(() => {
     if (!booking) return language === 'en' ? 'User' : 'Pengguna';
@@ -124,13 +124,34 @@ export function ChatContainer({
     return language === 'en' ? 'Verified Technician' : 'Teknisi Terverifikasi';
   }, [isTechnician, language]);
 
-  const partnerAvatarUri = useMemo(() => {
-    if (!isTechnician && booking) {
-      const tech = fixtureTechnicians.find((t) => t.id === booking.technicianUserId);
-      return tech?.avatarUri;
-    }
-    return undefined;
+  const fallbackAvatarUri = useMemo(() => {
+    if (isTechnician || !booking) return undefined;
+    return fixtureTechnicians.find(
+      (tech) => tech.id === booking.technicianUserId,
+    )?.avatarUri;
   }, [booking, isTechnician]);
+
+  const [remoteAvatarUri, setRemoteAvatarUri] = useState<string | undefined>(
+    undefined,
+  );
+
+  useEffect(() => {
+    let active = true;
+    if (!booking) return;
+    const partnerUserId = isTechnician
+      ? booking.customerUserId
+      : booking.technicianUserId;
+    void loadAccountProfileDetails(partnerUserId, '', partnerName)
+      .then((profile) => {
+        if (active) setRemoteAvatarUri(profile.avatarUri || undefined);
+      })
+      .catch(() => {});
+    return () => {
+      active = false;
+    };
+  }, [booking, isTechnician, partnerName]);
+
+  const partnerAvatarUri = remoteAvatarUri || fallbackAvatarUri;
 
   const handleBookAgain = useCallback(() => {
     if (onClose) onClose();
@@ -284,6 +305,7 @@ export function ChatContainer({
           isChatClosed={Boolean(isChatClosed)}
           messages={messages}
           onUndoClear={() => setHistoryCleared(false)}
+          partnerAvatarUri={partnerAvatarUri}
           partnerName={partnerName}
         />
 

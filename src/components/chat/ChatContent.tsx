@@ -1,10 +1,16 @@
-import { useMemo } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { useMemo, useRef } from 'react';
+import {
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
+  type ScrollViewInstance,
+} from 'react-native';
 
 import { useAuth } from '../../auth/AuthProvider';
 import { useAppearance } from '../../context/AppearanceContext';
 import { useLanguage } from '../../i18n/locale';
-import { radii, spacing } from '../../theme/tokens';
 import type { BookingMessage } from '../../types/marketplace';
 import { Avatar } from '../marketplace-ui';
 
@@ -16,6 +22,7 @@ export interface ChatContentProps {
   historyCleared: boolean;
   onUndoClear: () => void;
   chatError: string | null;
+  partnerAvatarUri?: string;
 }
 
 export function ChatContent({
@@ -26,53 +33,65 @@ export function ChatContent({
   historyCleared,
   onUndoClear,
   chatError,
+  partnerAvatarUri,
 }: ChatContentProps) {
   const { language } = useLanguage();
   const { user } = useAuth();
   const { palette } = useAppearance();
   const styles = useMemo(() => createStyles(palette), [palette]);
+  const scrollRef = useRef<ScrollViewInstance | null>(null);
 
   return (
     <View style={styles.container}>
-      {/* Security Notice Banner */}
+      {/* Subtle security notice */}
       <View
-        style={[
-          styles.securityBanner,
-          { backgroundColor: palette.surfaceElevated, borderColor: palette.border },
-        ]}
+        style={[styles.securityBanner, { borderColor: palette.border }]}
         testID="chat-security-banner"
       >
         <Text style={[styles.securityText, { color: palette.textMuted }]}>
+          🔒{' '}
           {language === 'en'
-            ? '🔒 Protected In-App Chat: Sharing external phone numbers, WhatsApp, or links is prohibited.'
-            : '🔒 Chat Terlindungi: Komunikasi langsung dalam aplikasi. Dilarang membagikan kontak luar atau tautan.'}
+            ? 'Protected chat — sharing phone numbers, WhatsApp, or links is disabled.'
+            : 'Chat terlindungi — berbagi nomor telepon, WhatsApp, atau tautan dinonaktifkan.'}
         </Text>
       </View>
 
-      {/* Messages Stream */}
       <ScrollView
+        ref={scrollRef}
         contentContainerStyle={styles.messagesList}
         keyboardDismissMode="on-drag"
         keyboardShouldPersistTaps="handled"
+        onContentSizeChange={() =>
+          scrollRef.current?.scrollToEnd({ animated: false })
+        }
+        showsVerticalScrollIndicator={false}
       >
         {isChatClosed && (
           <View
-            style={[
-              styles.closedBanner,
-              { backgroundColor: palette.surfaceElevated, borderColor: palette.border },
-            ]}
+            style={[styles.closedBanner, { borderColor: palette.border }]}
             testID="chat-closed-banner"
           >
-            <Text style={[styles.closedBannerText, { color: palette.textMuted }]}>
+            <Text
+              style={[styles.closedBannerText, { color: palette.textMuted }]}
+            >
+              📦{' '}
               {language === 'en'
-                ? '✓ Task completed — this conversation is archived.'
-                : '✓ Tugas selesai — percakapan ini telah diarsipkan.'}
+                ? 'Task completed — this conversation is archived.'
+                : 'Tugas selesai — percakapan ini telah diarsipkan.'}
             </Text>
           </View>
         )}
 
         {historyCleared ? (
-          <View style={styles.clearedBox}>
+          <View
+            style={[
+              styles.clearedBox,
+              {
+                backgroundColor: palette.surfaceElevated,
+                borderColor: palette.border,
+              },
+            ]}
+          >
             <Text style={[styles.clearedText, { color: palette.textMuted }]}>
               {language === 'en'
                 ? 'Chat history has been cleared from your view.'
@@ -90,32 +109,56 @@ export function ChatContent({
           </View>
         ) : messages.length === 0 ? (
           <View style={styles.emptyBox}>
-            <Text style={{ fontSize: 36, marginBottom: 8 }}>💬</Text>
+            <View
+              style={[
+                styles.emptyIconWrap,
+                { backgroundColor: palette.primarySoft },
+              ]}
+            >
+              <Text style={styles.emptyIcon}>💬</Text>
+            </View>
             <Text style={[styles.emptyTitle, { color: palette.text }]}>
               {language === 'en' ? 'No messages yet' : 'Belum ada pesan'}
             </Text>
-            <Text style={[styles.emptySubtitle, { color: palette.textMuted }]}>
+            <Text
+              style={[styles.emptySubtitle, { color: palette.textMuted }]}
+            >
               {language === 'en'
                 ? `Send a message to coordinate directly with ${partnerName}.`
                 : `Kirim pesan untuk berkoordinasi langsung dengan ${partnerName}.`}
             </Text>
           </View>
         ) : (
-          messages.map((msg) => {
+          messages.map((msg, index) => {
             const isMyMsg = user
               ? msg.senderUserId === user.id
               : msg.senderRole === chatSenderRole;
+            const previous = index > 0 ? messages[index - 1] : undefined;
+            const startsGroup =
+              !previous || previous.senderUserId !== msg.senderUserId;
             const timeStr = formatMessageTime(msg.createdAt);
+            const bubbleTextColor = isMyMsg ? '#FFFFFF' : palette.text;
 
             return (
               <View
                 key={msg.id}
-                style={[styles.messageRow, isMyMsg ? styles.myRow : styles.theirRow]}
+                style={[
+                  styles.messageRow,
+                  isMyMsg ? styles.myRow : styles.theirRow,
+                  startsGroup && index > 0 && styles.groupSpacing,
+                ]}
               >
-                {/* Circular Avatar on Left of Incoming Message */}
                 {!isMyMsg && (
                   <View style={styles.messageAvatarWrap}>
-                    <Avatar name={msg.senderName} size={32} />
+                    {startsGroup ? (
+                      <Avatar
+                        name={msg.senderName}
+                        size={30}
+                        uri={partnerAvatarUri}
+                      />
+                    ) : (
+                      <View style={styles.avatarSpacer} />
+                    )}
                   </View>
                 )}
 
@@ -126,24 +169,21 @@ export function ChatContent({
                       ? [styles.myBubble, { backgroundColor: palette.primary }]
                       : [
                           styles.theirBubble,
-                          {
-                            backgroundColor: palette.surfaceElevated,
-                            borderColor: palette.border,
-                          },
+                          { backgroundColor: palette.surfaceElevated },
                         ],
                   ]}
                 >
-                  {!isMyMsg && (
-                    <Text style={[styles.bubbleSender, { color: palette.primary }]}>
+                  {!isMyMsg && startsGroup && (
+                    <Text
+                      style={[
+                        styles.bubbleSender,
+                        { color: palette.primary },
+                      ]}
+                    >
                       {msg.senderName}
                     </Text>
                   )}
-                  <Text
-                    style={[
-                      styles.bubbleBody,
-                      isMyMsg ? { color: '#FFFFFF' } : { color: palette.text },
-                    ]}
-                  >
+                  <Text style={[styles.bubbleBody, { color: bubbleTextColor }]}>
                     {msg.body}
                   </Text>
                   {timeStr ? (
@@ -151,7 +191,7 @@ export function ChatContent({
                       style={[
                         styles.bubbleTime,
                         isMyMsg
-                          ? { color: 'rgba(255, 255, 255, 0.75)' }
+                          ? { color: 'rgba(255, 255, 255, 0.72)' }
                           : { color: palette.textMuted },
                       ]}
                     >
@@ -167,7 +207,7 @@ export function ChatContent({
         {chatError && (
           <Text
             accessibilityLiveRegion="polite"
-            style={styles.errorText}
+            style={[styles.errorText, { color: palette.danger }]}
             testID="booking-chat-error"
           >
             {chatError}
@@ -196,66 +236,100 @@ function createStyles(palette: {
   danger: string;
 }) {
   return StyleSheet.create({
-    container: {
-      flex: 1,
+    avatarSpacer: {
+      width: 30,
     },
-    securityBanner: {
-      borderRadius: radii.sm,
-      borderWidth: 1,
-      marginHorizontal: spacing.md,
-      marginTop: spacing.xs,
-      paddingHorizontal: spacing.md,
-      paddingVertical: 6,
+    bubble: {
+      maxWidth: '75%',
+      paddingHorizontal: 12,
+      paddingVertical: 8,
     },
-    securityText: {
+    bubbleBody: {
+      fontSize: 14.5,
+      lineHeight: 20,
+    },
+    bubbleSender: {
       fontSize: 11,
-      fontWeight: '600',
-      lineHeight: 15,
+      fontWeight: '800',
+      marginBottom: 2,
     },
-    messagesList: {
-      gap: spacing.xs,
-      padding: spacing.md,
-      paddingBottom: spacing.xxl,
-    },
-    closedBanner: {
-      borderRadius: radii.sm,
-      borderWidth: 1,
-      marginBottom: spacing.sm,
-      padding: spacing.sm,
-    },
-    closedBannerText: {
-      fontSize: 12,
-      fontWeight: '600',
-      textAlign: 'center',
+    bubbleTime: {
+      alignSelf: 'flex-end',
+      fontSize: 10,
+      fontWeight: '500',
+      marginTop: 3,
     },
     clearedBox: {
       alignItems: 'center',
-      paddingVertical: spacing.lg,
+      borderRadius: 14,
+      borderWidth: 1,
+      marginTop: 12,
+      paddingHorizontal: 20,
+      paddingVertical: 18,
     },
     clearedText: {
-      fontSize: 13,
+      fontSize: 12,
+      textAlign: 'center',
     },
-    undoBtn: {
-      marginTop: spacing.xs,
-      padding: spacing.xs,
+    closedBanner: {
+      alignSelf: 'center',
+      borderRadius: 999,
+      borderStyle: 'dashed',
+      borderWidth: 1,
+      marginBottom: 12,
+      marginHorizontal: 20,
+      paddingHorizontal: 14,
+      paddingVertical: 7,
     },
-    undoText: {
-      fontSize: 13,
-      fontWeight: '800',
+    closedBannerText: {
+      fontSize: 11,
+      fontWeight: '600',
+      textAlign: 'center',
+    },
+    container: {
+      flex: 1,
     },
     emptyBox: {
       alignItems: 'center',
       justifyContent: 'center',
-      paddingVertical: spacing.xxxl,
+      paddingHorizontal: 32,
+      paddingVertical: 48,
+    },
+    emptyIcon: {
+      fontSize: 30,
+    },
+    emptyIconWrap: {
+      alignItems: 'center',
+      borderRadius: 32,
+      height: 64,
+      justifyContent: 'center',
+      marginBottom: 14,
+      width: 64,
+    },
+    emptySubtitle: {
+      fontSize: 12.5,
+      lineHeight: 18,
+      marginTop: 5,
+      maxWidth: 280,
+      textAlign: 'center',
     },
     emptyTitle: {
       fontSize: 17,
       fontWeight: '800',
+      letterSpacing: -0.2,
     },
-    emptySubtitle: {
+    errorText: {
       fontSize: 12,
-      marginTop: 4,
+      fontWeight: '600',
+      marginVertical: 8,
       textAlign: 'center',
+    },
+    groupSpacing: {
+      marginTop: 10,
+    },
+    messageAvatarWrap: {
+      alignSelf: 'flex-end',
+      marginRight: 8,
     },
     messageRow: {
       alignItems: 'flex-end',
@@ -263,54 +337,55 @@ function createStyles(palette: {
       marginVertical: 2,
       width: '100%',
     },
+    messagesList: {
+      gap: 4,
+      paddingBottom: 20,
+      paddingHorizontal: 14,
+      paddingTop: 12,
+    },
+    myBubble: {
+      borderBottomRightRadius: 4,
+      borderTopLeftRadius: 18,
+      borderTopRightRadius: 18,
+      borderBottomLeftRadius: 18,
+    },
     myRow: {
       justifyContent: 'flex-end',
+    },
+    securityBanner: {
+      alignSelf: 'center',
+      borderRadius: 999,
+      borderStyle: 'dashed',
+      borderWidth: 1,
+      marginHorizontal: 20,
+      marginTop: 10,
+      opacity: 0.9,
+      paddingHorizontal: 14,
+      paddingVertical: 6,
+    },
+    securityText: {
+      fontSize: 10.5,
+      fontWeight: '500',
+      lineHeight: 14,
+      textAlign: 'center',
+    },
+    theirBubble: {
+      borderBottomLeftRadius: 4,
+      borderTopLeftRadius: 18,
+      borderTopRightRadius: 18,
+      borderBottomRightRadius: 18,
     },
     theirRow: {
       justifyContent: 'flex-start',
     },
-    messageAvatarWrap: {
-      marginRight: spacing.xs,
-      alignSelf: 'flex-end',
+    undoBtn: {
+      marginTop: 6,
+      paddingHorizontal: 10,
+      paddingVertical: 5,
     },
-    bubble: {
-      maxWidth: '78%',
-      paddingHorizontal: spacing.md,
-      paddingVertical: spacing.sm,
-    },
-    myBubble: {
-      borderBottomLeftRadius: radii.md,
-      borderBottomRightRadius: radii.md,
-      borderTopLeftRadius: radii.md,
-      borderTopRightRadius: 2,
-    },
-    theirBubble: {
-      borderBottomLeftRadius: radii.md,
-      borderBottomRightRadius: radii.md,
-      borderTopLeftRadius: 2,
-      borderTopRightRadius: radii.md,
-      borderWidth: 1,
-    },
-    bubbleSender: {
-      fontSize: 11,
+    undoText: {
+      fontSize: 13,
       fontWeight: '800',
-      marginBottom: 2,
-    },
-    bubbleBody: {
-      fontSize: 14,
-      lineHeight: 20,
-    },
-    bubbleTime: {
-      fontSize: 10,
-      marginTop: 3,
-      textAlign: 'right',
-    },
-    errorText: {
-      color: palette.danger,
-      fontSize: 12,
-      fontWeight: '600',
-      marginVertical: 4,
-      textAlign: 'center',
     },
   });
 }
