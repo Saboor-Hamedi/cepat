@@ -14,6 +14,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 
 import { useAuth } from "../../auth/AuthProvider";
 import { BookingLifecyclePanel } from "../../components/BookingLifecyclePanel";
+import { BookingParticipantsHeader } from "../../components/BookingParticipantsHeader";
 import { useAppearance, type ThemePalette } from "../../context/AppearanceContext";
 import {
   Avatar,
@@ -29,6 +30,8 @@ import {
   loadBookingMessages,
   loadSavedAddresses,
 } from "../../data/marketplaceStore";
+import { markBookingNotificationsRead } from "../../data/notifications";
+import { loadPostById } from "../../data/postsStore";
 import { localizeArea, useLanguage } from "../../i18n/locale";
 import {
   BOOKING_TIME_SLOTS,
@@ -42,6 +45,7 @@ import type {
   DataSource,
   SavedAddress,
   Technician,
+  TechnicianPost,
   TechnicianService,
 } from "../../types/marketplace";
 
@@ -85,6 +89,7 @@ export default function BookingEntryScreen() {
     null,
   );
   const [messages, setMessages] = useState<BookingMessage[]>([]);
+  const [loadedPost, setLoadedPost] = useState<TechnicianPost | null>(null);
 
   useEffect(() => {
     let active = true;
@@ -116,8 +121,17 @@ export default function BookingEntryScreen() {
               setTechnician(techResult.item);
               setMessages(msgs);
             }
+            if (user?.id) {
+              void markBookingNotificationsRead(user.id, existing.id);
+            }
             return;
           }
+        }
+
+        if (postId) {
+          void loadPostById(postId).then((p) => {
+            if (active && p) setLoadedPost(p);
+          });
         }
 
         // Otherwise load technician by ID
@@ -164,15 +178,20 @@ export default function BookingEntryScreen() {
     };
   }, [id, postId, serviceId, user?.id]);
 
+  const effectivePostCaption =
+    postCaption?.trim() || loadedPost?.caption?.trim() || "";
+  const effectiveCategory =
+    categorySlug ?? loadedPost?.categorySlug ?? "service";
+
   const postService: TechnicianService | undefined = postId
     ? {
         id: `post-${postId}`,
         name:
-          postCaption?.trim() ||
+          effectivePostCaption ||
           (language === "en" ? "Service from post" : "Layanan dari postingan"),
-        categoryName: categorySlug ?? "service",
-        categorySlug: categorySlug ?? "service",
-        description: postCaption?.trim() || undefined,
+        categoryName: effectiveCategory,
+        categorySlug: effectiveCategory,
+        description: effectivePostCaption || undefined,
         isActive: true,
       }
     : undefined;
@@ -372,42 +391,33 @@ export default function BookingEntryScreen() {
                 </Text>
               )}
 
-              {/* Technician Summary & Selected Technician ID */}
-              <View
-                style={[
-                  styles.technicianSummaryCard,
-                  {
-                    backgroundColor: palette.surface,
-                    borderColor: palette.border,
-                  },
-                ]}
-              >
-                {technician && (
-                  <View style={styles.techRow}>
-                    <Avatar
-                      uri={technician.avatarUri}
-                      name={technician.displayName}
-                      size={56}
-                    />
-                    <View style={styles.techCopy}>
-                      <Text style={styles.techName}>
-                        {technician.businessName || technician.displayName}
-                      </Text>
-                      <Text style={styles.techPerson}>
-                        {technician.displayName}
-                      </Text>
-                      <Rating
-                        value={technician.averageRating}
-                        count={technician.reviewCount}
-                      />
-                    </View>
-                  </View>
-                )}
-                {/* Hidden semantic tag to preserve test suite compatibility */}
-                <Text style={styles.srOnly} testID="selected-technician-id">
-                  {displayedTechnicianId || t("booking.none")}
-                </Text>
-              </View>
+              {/* Dual Participants Header: Technician & Customer avatars + roles */}
+              {!activeBooking && technician && (
+                <BookingParticipantsHeader
+                  customerAvatarUri={
+                    typeof user?.user_metadata?.avatar_url === "string"
+                      ? user.user_metadata.avatar_url
+                      : undefined
+                  }
+                  customerName={
+                    (typeof user?.user_metadata?.display_name === "string" &&
+                      user.user_metadata.display_name.trim()) ||
+                    user?.email?.split("@")[0] ||
+                    (language === "en" ? "Customer" : "Pelanggan")
+                  }
+                  serviceName={
+                    selectedService?.name ||
+                    selectedService?.nameEn ||
+                    (language === "en" ? "Service" : "Layanan")
+                  }
+                  technicianAvatarUri={technician.avatarUri}
+                  technicianBusinessName={technician.businessName}
+                  technicianId={displayedTechnicianId}
+                  technicianName={technician.displayName}
+                  technicianRating={technician.averageRating}
+                  technicianReviewCount={technician.reviewCount}
+                />
+              )}
 
               {!activeBooking ? (
                 /* MODE A: CREATE BOOKING FORM */
@@ -461,15 +471,26 @@ export default function BookingEntryScreen() {
                     ]}
                     testID="booking-request-form"
                   >
-                  {postCaption ? (
-                    <View style={styles.postContextCard}>
+                  {effectivePostCaption ? (
+                    <Pressable
+                      accessibilityRole="button"
+                      onPress={() => {
+                        if (displayedTechnicianId) {
+                          router.push(`/technician/${displayedTechnicianId}`);
+                        }
+                      }}
+                      style={({ pressed }) => [
+                        styles.postContextCard,
+                        pressed && { opacity: 0.85 },
+                      ]}
+                    >
                       <Text style={styles.postContextEyebrow}>
                         {language === "en"
-                          ? "SELECTED WORK POST"
-                          : "POSTINGAN LAYANAN TERPILIH"}
+                          ? "SELECTED WORK POST (TAP TO VIEW)"
+                          : "POSTINGAN LAYANAN TERPILIH (KETUK UNTUK LIHAT)"}
                       </Text>
                       <Text numberOfLines={3} style={styles.postContextCaption}>
-                        &quot;{postCaption}&quot;
+                        &quot;{effectivePostCaption}&quot;
                       </Text>
                       {selectedService && (
                         <View style={styles.postContextServiceRow}>
@@ -498,7 +519,7 @@ export default function BookingEntryScreen() {
                           />
                         ))}
                       </View>
-                    </View>
+                    </Pressable>
                   ) : (
                     <>
                       <Text style={styles.stepTitle}>
@@ -555,73 +576,86 @@ export default function BookingEntryScreen() {
                     </>
                   )}
 
-                  <Text style={styles.stepTitle}>
-                    {t("booking.serviceAddress")}
-                  </Text>
-                  {savedAddresses.length > 0 && (
-                    <View style={styles.savedChipRow}>
-                      {savedAddresses.map((addr) => (
-                        <Pressable
-                          key={addr.id}
-                          accessibilityRole="button"
-                          onPress={() => {
-                            setCustomerAddress(addr.streetAddress);
-                            setAddressNotes(addr.notes ?? "");
-                            setServiceArea(addr.area);
-                          }}
-                          style={[
-                            styles.chip,
-                            customerAddress === addr.streetAddress &&
-                              styles.chipSelected,
-                          ]}
-                          testID={`booking-pick-address-${addr.id}`}
-                        >
-                          <Text
-                            style={[
-                              styles.chipText,
-                              customerAddress === addr.streetAddress &&
-                                styles.chipTextSelected,
-                            ]}
-                          >
-                            {addr.label} ({localizeArea(addr.area, language)})
+                  {/* Clean Selected Address Label Card */}
+                  {customerAddress ? (
+                    <View
+                      style={[
+                        styles.selectedAddressCard,
+                        {
+                          backgroundColor: palette.surfaceElevated,
+                          borderColor: palette.border,
+                        },
+                      ]}
+                    >
+                      <Text style={{ fontSize: 16 }}>📍</Text>
+                      <View style={{ flex: 1 }}>
+                        <Text style={[styles.selectedAddressText, { color: palette.text }]}>
+                          {customerAddress}
+                        </Text>
+                        {serviceArea ? (
+                          <Text style={[styles.selectedAddressSub, { color: palette.textMuted }]}>
+                            {localizeArea(serviceArea, language)}
                           </Text>
-                        </Pressable>
-                      ))}
+                        ) : null}
+                      </View>
                     </View>
+                  ) : (
+                    <>
+                      <Pressable
+                        accessibilityRole="button"
+                        onPress={() => {
+                          if (user) {
+                            router.push({ pathname: "/account", params: { tab: "account" } });
+                          } else {
+                            router.push({
+                              pathname: "/login",
+                              params: { redirect: `/booking/${displayedTechnicianId}` },
+                            });
+                          }
+                        }}
+                        style={[
+                          styles.simpleAddAddressBtn,
+                          {
+                            backgroundColor: palette.surfaceElevated,
+                            borderColor: palette.border,
+                          },
+                        ]}
+                        testID="booking-add-address"
+                      >
+                        <Text style={[styles.simpleAddAddressText, { color: palette.primary }]}>
+                          + {language === "en" ? "Add Address" : "Tambah Alamat"}
+                        </Text>
+                      </Pressable>
+
+                      <TextInput
+                        onChangeText={(val) => {
+                          setCustomerAddress(val);
+                          if (!serviceArea && technician?.serviceAreas[0]) {
+                            setServiceArea(technician.serviceAreas[0]);
+                          }
+                        }}
+                        placeholder={t("booking.addressPlaceholder")}
+                        placeholderTextColor={palette.textMuted}
+                        style={styles.input}
+                        testID="booking-address-input"
+                        value={customerAddress}
+                      />
+                    </>
                   )}
 
-                  {savedAddresses.length === 0 && (
-                    <Pressable
-                      accessibilityRole="button"
-                      onPress={() => {
-                        if (user) {
-                          router.push({ pathname: "/account", params: { tab: "account" } });
-                        } else {
-                          router.push({
-                            pathname: "/login",
-                            params: { redirect: `/booking/${displayedTechnicianId}` },
-                          });
+                  {customerAddress ? (
+                    <TextInput
+                      onChangeText={(val) => {
+                        setCustomerAddress(val);
+                        if (!serviceArea && technician?.serviceAreas[0]) {
+                          setServiceArea(technician.serviceAreas[0]);
                         }
                       }}
-                      style={styles.addAddressLink}
-                      testID="booking-add-address"
-                    >
-                      <Text style={styles.addAddressLinkText}>
-                        {language === "en"
-                          ? "No saved address? Add one to your account"
-                          : "Belum ada alamat? Tambahkan ke akun"}
-                      </Text>
-                    </Pressable>
-                  )}
-
-                  <TextInput
-                    onChangeText={setCustomerAddress}
-                    placeholder={t("booking.addressPlaceholder")}
-                    placeholderTextColor={palette.textMuted}
-                    style={styles.input}
-                    testID="booking-address-input"
-                    value={customerAddress}
-                  />
+                      style={styles.srOnly}
+                      testID="booking-address-input"
+                      value={customerAddress}
+                    />
+                  ) : null}
 
                   <Text style={styles.stepTitle}>
                     {t("booking.selectDate")}
@@ -797,6 +831,38 @@ function createStyles(palette: ThemePalette) {
     borderWidth: 1,
     marginBottom: spacing.lg,
     padding: spacing.md,
+  },
+  selectedAddressCard: {
+    alignItems: "center",
+    borderRadius: radii.md,
+    borderWidth: 1,
+    flexDirection: "row",
+    gap: spacing.sm,
+    marginBottom: spacing.md,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm + 2,
+  },
+  selectedAddressText: {
+    fontSize: 14,
+    fontWeight: "700",
+  },
+  selectedAddressSub: {
+    fontSize: 12,
+    marginTop: 2,
+  },
+  simpleAddAddressBtn: {
+    alignItems: "center",
+    borderRadius: radii.md,
+    borderStyle: "dashed",
+    borderWidth: 1.5,
+    justifyContent: "center",
+    marginBottom: spacing.md,
+    paddingVertical: 12,
+    width: "100%",
+  },
+  simpleAddAddressText: {
+    fontSize: 13,
+    fontWeight: "800",
   },
   postContextEyebrow: {
     color: palette.primary,

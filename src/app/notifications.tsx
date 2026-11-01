@@ -19,8 +19,10 @@
  */
 
 import { router } from 'expo-router';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
+  Animated,
+  PanResponder,
   Pressable,
   RefreshControl,
   ScrollView,
@@ -33,11 +35,14 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAuth } from '../auth/AuthProvider';
 import { AppNavigationBar, EmptyState, LoadingState } from '../components/marketplace-ui';
 import { SegmentedTabs } from '../components/SegmentedTabs';
-import { useAppearance } from '../context/AppearanceContext';
+import { useAppearance, type ThemePalette } from '../context/AppearanceContext';
 import {
+  deleteNotification,
   loadNotifications,
   markAllNotificationsRead,
+  markBookingNotificationsRead,
   markNotificationRead,
+  subscribeToNotificationChanges,
   subscribeToNotifications,
   type CepatNotification,
 } from '../data/notifications';
@@ -106,9 +111,13 @@ export default function NotificationsScreen() {
     const unsubscribe = subscribeToNotifications(userId, () => {
       void refresh(true);
     });
+    const unsubscribeChanges = subscribeToNotificationChanges(() => {
+      void refresh(true);
+    });
     return () => {
       active = false;
       unsubscribe();
+      unsubscribeChanges();
     };
   }, [refresh, userId]);
 
@@ -130,6 +139,17 @@ export default function NotificationsScreen() {
     }
   };
 
+  const handleDeleteNotification = async (notificationId: string) => {
+    if (!userId) return;
+    // Optimistic delete
+    setNotifications((current) => current.filter((item) => item.id !== notificationId));
+    try {
+      await deleteNotification(userId, notificationId);
+    } catch (delError) {
+      void refresh(true);
+    }
+  };
+
   const handleOpenNotification = async (item: CepatNotification) => {
     if (!userId) return;
     try {
@@ -143,6 +163,7 @@ export default function NotificationsScreen() {
       );
       const bookingId = item.data.booking_id ?? item.data.bookingId;
       if (typeof bookingId === 'string' && bookingId.length > 0) {
+        await markBookingNotificationsRead(userId, bookingId);
         router.push(`/booking/${encodeURIComponent(bookingId)}`);
       }
     } catch (markError) {
@@ -319,63 +340,157 @@ export default function NotificationsScreen() {
         ) : (
           <View style={styles.notificationList}>
             {filteredNotifications.map((item) => (
-              <Pressable
+              <SwipeableNotificationCard
                 key={item.id}
-                accessibilityRole="button"
-                accessibilityState={{ selected: !item.readAt }}
+                item={item}
+                language={language}
+                onDelete={() => void handleDeleteNotification(item.id)}
                 onPress={() => void handleOpenNotification(item)}
-                style={[
-                  styles.notificationCard,
-                  !item.readAt && styles.unreadCard,
-                ]}
-                testID={`notification-${item.id}`}
-              >
-                {/* Facebook-style Left Circular Avatar/Icon */}
-                <View
-                  style={[
-                    styles.notificationAvatar,
-                    !item.readAt && styles.unreadAvatar,
-                  ]}
-                >
-                  <Text style={styles.avatarEmoji}>{getNotificationIcon(item)}</Text>
-                </View>
-
-                {/* Content body */}
-                <View style={styles.notificationContent}>
-                  <View style={styles.notificationTopRow}>
-                    <Text
-                      numberOfLines={1}
-                      style={[
-                        styles.notificationTitle,
-                        !item.readAt && styles.unreadTitle,
-                      ]}
-                    >
-                      {localizedTitle(item, language)}
-                    </Text>
-                  </View>
-                  <Text
-                    numberOfLines={3}
-                    style={[
-                      styles.notificationBody,
-                      !item.readAt && styles.unreadNotificationBody,
-                    ]}
-                  >
-                    {localizedBody(item, language)}
-                  </Text>
-                  <Text style={styles.notificationTime}>
-                    {formatNotificationRelativeTime(item.createdAt, language)}
-                  </Text>
-                </View>
-
-                {/* Unread dot indicator on right */}
-                {!item.readAt && <View style={styles.unreadDot} />}
-              </Pressable>
+                styles={styles}
+              />
             ))}
           </View>
         )}
       </ScrollView>
       <AppNavigationBar activeTab="notifications" />
     </SafeAreaView>
+  );
+}
+
+function SwipeableNotificationCard({
+  item,
+  language,
+  styles,
+  onPress,
+  onDelete,
+}: {
+  item: CepatNotification;
+  language: 'id' | 'en';
+  styles: ReturnType<typeof createStyles>;
+  onPress: () => void;
+  onDelete: () => void;
+}) {
+  const pan = useRef(new Animated.Value(0)).current;
+  const [swipedOpen, setSwipedOpen] = useState(false);
+
+  const panResponder = useMemo(
+    () =>
+      PanResponder.create({
+        onMoveShouldSetPanResponder: (_, gestureState) =>
+          Math.abs(gestureState.dx) > 10 && Math.abs(gestureState.dy) < 10,
+        onPanResponderMove: (_, gestureState) => {
+          if (gestureState.dx < 0) {
+            pan.setValue(Math.max(-90, gestureState.dx));
+          } else if (swipedOpen && gestureState.dx > 0) {
+            pan.setValue(Math.min(0, -90 + gestureState.dx));
+          }
+        },
+        onPanResponderRelease: (_, gestureState) => {
+          if (gestureState.dx < -35) {
+            Animated.spring(pan, { toValue: -90, useNativeDriver: true }).start();
+            setSwipedOpen(true);
+          } else {
+            Animated.spring(pan, { toValue: 0, useNativeDriver: true }).start();
+            setSwipedOpen(false);
+          }
+        },
+      }),
+    [pan, swipedOpen],
+  );
+
+  return (
+    <View style={styles.swipeContainer}>
+      <View style={styles.deleteBackground}>
+        <Pressable
+          accessibilityLabel="Delete notification"
+          accessibilityRole="button"
+          onPress={onDelete}
+          style={styles.deleteButton}
+          testID={`delete-notification-${item.id}`}
+        >
+          <Text style={styles.deleteIconText}>🗑️</Text>
+          <Text style={styles.deleteButtonText}>
+            {language === 'en' ? 'Delete' : 'Hapus'}
+          </Text>
+        </Pressable>
+      </View>
+      <Animated.View
+        style={[styles.swipeForeground, { transform: [{ translateX: pan }] }]}
+        {...panResponder.panHandlers}
+      >
+        <Pressable
+          accessibilityRole="button"
+          accessibilityState={{ selected: !item.readAt }}
+          onPress={() => {
+            if (swipedOpen) {
+              Animated.spring(pan, { toValue: 0, useNativeDriver: true }).start();
+              setSwipedOpen(false);
+            } else {
+              onPress();
+            }
+          }}
+          style={[
+            styles.notificationCard,
+            !item.readAt && styles.unreadCard,
+          ]}
+          testID={`notification-${item.id}`}
+        >
+          {/* Facebook-style Left Circular Avatar/Icon */}
+          <View
+            style={[
+              styles.notificationAvatar,
+              !item.readAt && styles.unreadAvatar,
+            ]}
+          >
+            <Text style={styles.avatarEmoji}>{getNotificationIcon(item)}</Text>
+          </View>
+
+          {/* Content body */}
+          <View style={styles.notificationContent}>
+            <View style={styles.notificationTopRow}>
+              <Text
+                numberOfLines={1}
+                style={[
+                  styles.notificationTitle,
+                  !item.readAt && styles.unreadTitle,
+                ]}
+              >
+                {localizedTitle(item, language)}
+              </Text>
+            </View>
+            <Text
+              numberOfLines={3}
+              style={[
+                styles.notificationBody,
+                !item.readAt && styles.unreadNotificationBody,
+              ]}
+            >
+              {localizedBody(item, language)}
+            </Text>
+            <Text style={styles.notificationTime}>
+              {formatNotificationRelativeTime(item.createdAt, language)}
+            </Text>
+          </View>
+
+          {/* Right section: unread dot + quick delete button */}
+          <View style={styles.rightSection}>
+            {!item.readAt && <View style={styles.unreadDot} />}
+            <Pressable
+              accessibilityLabel="Delete notification"
+              accessibilityRole="button"
+              onPress={(e) => {
+                e?.stopPropagation?.();
+                onDelete();
+              }}
+              style={styles.inlineDeleteBtn}
+              testID={`quick-delete-notification-${item.id}`}
+            >
+              <Text style={styles.inlineDeleteText}>×</Text>
+            </Pressable>
+          </View>
+        </Pressable>
+      </Animated.View>
+    </View>
   );
 }
 
@@ -391,55 +506,86 @@ function getNotificationIcon(item: CepatNotification): string {
 
 function localizedTitle(item: CepatNotification, language: 'id' | 'en') {
   const event = item.data.event;
-  if (language === 'en') {
-    if (event === 'chat_message') return item.title || 'New message';
-    if (event === 'booking_requested') return 'New booking request';
-    if (event === 'booking_accepted') return 'Booking accepted';
-    if (event === 'booking_schedule_confirmed') return 'Schedule confirmed';
-    if (event === 'booking_completed') return 'Job completed';
-    return item.title;
+  const actorName = (item.data.actorName || item.data.senderName) as string | undefined;
+  const actorRole = (item.data.actorRole || item.data.senderRole) as string | undefined;
+  const roleLabel =
+    actorRole === 'technician'
+      ? (language === 'en' ? 'Technician' : 'Teknisi')
+      : actorRole === 'customer'
+        ? (language === 'en' ? 'Customer' : 'Pelanggan')
+        : '';
+  const suffix = roleLabel ? ` (${roleLabel})` : '';
+
+  if (item.type === 'message' || event === 'chat_message') {
+    return actorName ? `💬 ${actorName}${suffix}` : (language === 'en' ? 'New message' : 'Pesan baru');
   }
-  if (event === 'chat_message') return item.title || 'Pesan baru';
-  if (event === 'booking_requested') return 'Permintaan pesanan baru';
-  if (event === 'booking_accepted') return 'Pesanan diterima';
-  if (event === 'booking_schedule_confirmed') return 'Jadwal dikonfirmasi';
-  if (event === 'booking_completed') return 'Pekerjaan selesai';
+  if (event === 'booking_requested') {
+    return language === 'en' ? 'New booking request' : 'Permintaan pesanan baru';
+  }
+  if (event === 'booking_accepted') {
+    return language === 'en' ? 'Booking accepted' : 'Pesanan diterima';
+  }
+  if (event === 'booking_schedule_confirmed') {
+    return language === 'en' ? 'Schedule confirmed' : 'Jadwal dikonfirmasi';
+  }
+  if (event === 'booking_completed' || event === 'booking_work_completed') {
+    return language === 'en' ? 'Job completed' : 'Pekerjaan selesai';
+  }
   return item.title;
 }
 
 function localizedBody(item: CepatNotification, language: 'id' | 'en') {
+  const event = item.data.event;
+  const actorName = (item.data.actorName || item.data.senderName || item.title || (language === 'en' ? 'User' : 'Pengguna')) as string;
+  const actorRole = (item.data.actorRole || item.data.senderRole) as string | undefined;
+  const roleLabel =
+    actorRole === 'technician'
+      ? (language === 'en' ? 'Technician' : 'Teknisi')
+      : actorRole === 'customer'
+        ? (language === 'en' ? 'Customer' : 'Pelanggan')
+        : '';
+  const nameWithRole = roleLabel ? `${actorName} (${roleLabel})` : actorName;
+
   const serviceName =
     typeof item.data.service_name === 'string'
       ? item.data.service_name
       : typeof item.data.serviceName === 'string'
         ? item.data.serviceName
         : '';
-  if (language === 'en') {
-    if (item.data.event === 'chat_message') {
-      return item.body || 'You received a new message.';
+
+  if (item.type === 'message' || event === 'chat_message') {
+    const rawSnippet = item.body || '';
+    const snippet = rawSnippet ? `"${rawSnippet.slice(0, 60)}${rawSnippet.length > 60 ? '...' : ''}"` : '';
+    if (language === 'en') {
+      return snippet
+        ? `${nameWithRole} sent you a message: ${snippet}`
+        : `You have a new message from ${nameWithRole}.`;
+    } else {
+      return snippet
+        ? `${nameWithRole} mengirim pesan: ${snippet}`
+        : `Anda menerima pesan baru dari ${nameWithRole}.`;
     }
-    if (item.data.event === 'booking_requested') {
-      return `A customer requested ${serviceName || 'your service'}.`;
-    }
-    if (item.data.event === 'booking_accepted') {
-      return `The technician accepted ${serviceName || 'your booking'}.`;
-    }
-    if (item.data.event === 'booking_schedule_confirmed') {
-      return `The customer confirmed the proposed schedule for ${serviceName || 'your service'}.`;
-    }
-  } else {
-    if (item.data.event === 'chat_message') {
-      return item.body || 'Anda menerima pesan baru.';
-    }
-    if (item.data.event === 'booking_requested') {
-      return `Pelanggan memesan ${serviceName || 'layanan Anda'}.`;
-    }
-    if (item.data.event === 'booking_accepted') {
-      return `Teknisi menerima pesanan ${serviceName || 'Anda'}.`;
-    }
-    if (item.data.event === 'booking_schedule_confirmed') {
-      return `Pelanggan menyetujui jadwal ${serviceName || 'layanan Anda'}.`;
-    }
+  }
+
+  if (event === 'booking_requested') {
+    return language === 'en'
+      ? `${nameWithRole} sent you a new booking request for ${serviceName || 'your service'}.`
+      : `${nameWithRole} mengirimkan permintaan pesanan baru untuk ${serviceName || 'layanan Anda'}.`;
+  }
+  if (event === 'booking_accepted') {
+    return language === 'en'
+      ? `${nameWithRole} accepted your booking for ${serviceName || 'service'}.`
+      : `${nameWithRole} telah menerima pesanan Anda untuk ${serviceName || 'layanan'}.`;
+  }
+  if (event === 'booking_schedule_confirmed') {
+    return language === 'en'
+      ? `${nameWithRole} confirmed the proposed schedule for ${serviceName || 'service'}.`
+      : `${nameWithRole} telah menyetujui jadwal yang diajukan untuk ${serviceName || 'layanan'}.`;
+  }
+  if (event === 'booking_completed' || event === 'booking_work_completed') {
+    return language === 'en'
+      ? `${nameWithRole} marked the service as complete. Please review and confirm.`
+      : `${nameWithRole} telah menyelesaikan pekerjaan. Silakan tinjau dan konfirmasi.`;
   }
   return item.body ?? '';
 }
@@ -602,6 +748,58 @@ function createStyles(palette: {
       color: palette.textMuted,
       fontSize: 11,
       marginTop: 2,
+    },
+    rightSection: {
+      alignItems: 'center',
+      flexDirection: 'row',
+      gap: spacing.sm,
+    },
+    inlineDeleteBtn: {
+      alignItems: 'center',
+      borderRadius: radii.pill,
+      height: 24,
+      justifyContent: 'center',
+      width: 24,
+    },
+    inlineDeleteText: {
+      color: palette.textMuted,
+      fontSize: 18,
+      fontWeight: '600',
+      lineHeight: 20,
+    },
+    swipeContainer: {
+      borderRadius: radii.lg,
+      overflow: 'hidden',
+      position: 'relative',
+    },
+    deleteBackground: {
+      alignItems: 'center',
+      backgroundColor: '#EF4444',
+      borderRadius: radii.lg,
+      bottom: 0,
+      justifyContent: 'center',
+      position: 'absolute',
+      right: 0,
+      top: 0,
+      width: 90,
+    },
+    deleteButton: {
+      alignItems: 'center',
+      flex: 1,
+      gap: 2,
+      justifyContent: 'center',
+      width: '100%',
+    },
+    deleteIconText: {
+      fontSize: 16,
+    },
+    deleteButtonText: {
+      color: '#FFFFFF',
+      fontSize: 11,
+      fontWeight: '800',
+    },
+    swipeForeground: {
+      width: '100%',
     },
   });
 }

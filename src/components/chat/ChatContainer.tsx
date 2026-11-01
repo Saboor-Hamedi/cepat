@@ -19,6 +19,7 @@ import {
   sendBookingMessage,
   subscribeToBookingMessages,
 } from '../../data/marketplaceStore';
+import { markBookingNotificationsRead } from '../../data/notifications';
 import { useLanguage } from '../../i18n/locale';
 import type { BookingMessage, BookingRecord } from '../../types/marketplace';
 
@@ -81,6 +82,7 @@ export function ChatContainer({
       void loadBookingMessages(bookingId)
         .then((loaded) => {
           if (active) setMessages(loaded);
+          if (user?.id) void markBookingNotificationsRead(user.id, bookingId);
         })
         .catch((err: unknown) => {
           if (active) {
@@ -89,6 +91,7 @@ export function ChatContainer({
         });
     };
 
+    if (user?.id) void markBookingNotificationsRead(user.id, bookingId);
     refreshMessages();
     void subscribeToBookingMessages(
       bookingId,

@@ -1,3 +1,7 @@
+/**
+ * Notifications Data Layer (Local Store & Supabase Sync)
+ */
+
 import { getStoredJson, setStoredJson } from '../storage/kvStorage';
 import { shouldUseFixtures, supabase } from './marketplaceRepository';
 
@@ -33,6 +37,26 @@ export function dispatchInAppNotification(notification: CepatNotification) {
       // ignore listener error
     }
   }
+}
+
+// Global notification change listener for instant badge synchronization across components
+const notificationChangeListeners = new Set<() => void>();
+
+export function notifyNotificationChange() {
+  for (const listener of notificationChangeListeners) {
+    try {
+      listener();
+    } catch {
+      // ignore listener error
+    }
+  }
+}
+
+export function subscribeToNotificationChanges(listener: () => void): () => void {
+  notificationChangeListeners.add(listener);
+  return () => {
+    notificationChangeListeners.delete(listener);
+  };
 }
 
 function nextRealtimeChannelSuffix(): string {
@@ -73,8 +97,8 @@ export async function loadNotifications(userId: string): Promise<CepatNotificati
   return (data ?? []).map((row) => ({
     id: String(row.id),
     userId: String(row.user_id),
-    type: row.type,
-    title: String(row.title),
+    type: (row.type as CepatNotification['type']) ?? 'system',
+    title: String(row.title ?? ''),
     body: row.body ? String(row.body) : undefined,
     data:
       typeof row.data === 'object' && row.data !== null && !Array.isArray(row.data)
@@ -99,6 +123,7 @@ export async function markNotificationRead(
           : item,
       ),
     );
+    notifyNotificationChange();
     return;
   }
   if (!supabase) throw new Error('supabase_unavailable');
@@ -110,6 +135,7 @@ export async function markNotificationRead(
     .eq('user_id', userId)
     .is('read_at', null);
   if (error) throw new Error(`notification_mark_read_failed: ${error.message}`);
+  notifyNotificationChange();
 }
 
 export async function markAllNotificationsRead(userId: string): Promise<void> {
@@ -120,6 +146,7 @@ export async function markAllNotificationsRead(userId: string): Promise<void> {
       localKey(userId),
       notifications.map((item) => (item.readAt ? item : { ...item, readAt })),
     );
+    notifyNotificationChange();
     return;
   }
   if (!supabase) throw new Error('supabase_unavailable');
@@ -130,6 +157,73 @@ export async function markAllNotificationsRead(userId: string): Promise<void> {
     .eq('user_id', userId)
     .is('read_at', null);
   if (error) throw new Error(`notifications_mark_all_read_failed: ${error.message}`);
+  notifyNotificationChange();
+}
+
+export async function markBookingNotificationsRead(
+  userId: string,
+  bookingId: string,
+): Promise<void> {
+  if (!userId || !bookingId) return;
+  const readAt = new Date().toISOString();
+  try {
+    const notifications = await getStoredJson<CepatNotification[]>(localKey(userId), []);
+    let hasChanges = false;
+    const updated = notifications.map((item) => {
+      const itemBookingId = item.data.bookingId ?? item.data.booking_id;
+      if (itemBookingId === bookingId && !item.readAt) {
+        hasChanges = true;
+        return { ...item, readAt };
+      }
+      return item;
+    });
+    if (hasChanges) {
+      await setStoredJson(localKey(userId), updated);
+    }
+  } catch {
+    // ignore local storage error
+  }
+
+  if (supabase && !shouldUseFixtures()) {
+    try {
+      await supabase
+        .from('notifications')
+        .update({ read_at: readAt })
+        .eq('user_id', userId)
+        .is('read_at', null)
+        .or(`data->>bookingId.eq.${bookingId},data->>booking_id.eq.${bookingId}`);
+    } catch {
+      // ignore supabase error
+    }
+  }
+  notifyNotificationChange();
+}
+
+export async function deleteNotification(
+  userId: string,
+  notificationId: string,
+): Promise<void> {
+  if (!userId || !notificationId) return;
+  try {
+    const notifications = await getStoredJson<CepatNotification[]>(localKey(userId), []);
+    const filtered = notifications.filter((item) => item.id !== notificationId);
+    await setStoredJson(localKey(userId), filtered);
+  } catch {
+    // ignore local storage error
+  }
+
+  if (supabase && !shouldUseFixtures()) {
+    try {
+      await supabase
+        .from('notifications')
+        .delete()
+        .eq('id', notificationId)
+        .eq('user_id', userId);
+    } catch {
+      // ignore supabase delete error
+    }
+  }
+  notifyNotificationChange();
 }
 
 export async function recordLocalBookingNotification(
@@ -137,6 +231,8 @@ export async function recordLocalBookingNotification(
   event: string,
   bookingId: string,
   serviceName: string,
+  actorName?: string,
+  actorRole?: 'customer' | 'technician',
 ): Promise<void> {
   if (!userId) return;
   const notifications = await getStoredJson<CepatNotification[]>(localKey(userId), []);
@@ -147,29 +243,46 @@ export async function recordLocalBookingNotification(
   const isBookingAccepted = event === 'booking_accepted';
   const isScheduleConfirmed = event === 'booking_schedule_confirmed';
   const isWorkCompleted = event === 'booking_work_completed';
+
+  const roleLabel =
+    actorRole === 'technician' ? 'Teknisi' : actorRole === 'customer' ? 'Pelanggan' : '';
+  const actorWithRole = actorName
+    ? roleLabel
+      ? `${actorName} (${roleLabel})`
+      : actorName
+    : roleLabel || 'Pengguna';
+
+  const title = actorName || (
+    isBookingAccepted
+      ? 'Pesanan diterima'
+      : isScheduleConfirmed
+        ? 'Jadwal dikonfirmasi'
+        : isWorkCompleted
+          ? 'Pekerjaan selesai'
+          : 'Permintaan pesanan baru'
+  );
+
+  const body = isBookingAccepted
+    ? `${actorWithRole} telah menerima pesanan ${serviceName}.`
+    : isScheduleConfirmed
+      ? `${actorWithRole} telah menyetujui jadwal untuk ${serviceName}.`
+      : isWorkCompleted
+        ? `${actorWithRole} menandai ${serviceName} telah selesai. Silakan periksa.`
+        : `${actorWithRole} memesan layanan ${serviceName}.`;
+
   const notification: CepatNotification = {
     id: `local-${dedupeKey}`,
     userId,
     type: 'booking',
-    title: isBookingAccepted
-      ? 'Booking accepted'
-      : isScheduleConfirmed
-        ? 'Schedule confirmed'
-        : isWorkCompleted
-          ? 'Work ready for confirmation'
-          : 'New booking request',
-    body: isBookingAccepted
-      ? `The technician accepted ${serviceName}.`
-      : isScheduleConfirmed
-        ? `The customer accepted the proposed schedule for ${serviceName}.`
-        : isWorkCompleted
-          ? `The technician marked ${serviceName} as complete. Please review and confirm.`
-          : `A customer requested ${serviceName}.`,
+    title,
+    body,
     data: {
       event,
       bookingId,
       booking_id: bookingId,
       serviceName,
+      actorName,
+      actorRole,
       dedupeKey,
       target_route: `/booking/${bookingId}`,
     },
@@ -179,6 +292,7 @@ export async function recordLocalBookingNotification(
     localKey(userId),
     [notification, ...notifications].slice(0, MAX_NOTIFICATIONS),
   );
+  notifyNotificationChange();
   dispatchInAppNotification(notification);
 }
 
@@ -187,20 +301,29 @@ export async function recordLocalMessageNotification(
   senderName: string,
   messageBody: string,
   bookingId: string,
+  senderRole?: 'customer' | 'technician',
 ): Promise<void> {
   if (!recipientUserId) return;
   const notifications = await getStoredJson<CepatNotification[]>(localKey(recipientUserId), []);
   const notificationId = `local-msg-${Date.now()}`;
+  const roleLabel =
+    senderRole === 'technician' ? 'Teknisi' : senderRole === 'customer' ? 'Pelanggan' : '';
+  const senderWithRole = roleLabel ? `${senderName} (${roleLabel})` : senderName;
+
   const notification: CepatNotification = {
     id: notificationId,
     userId: recipientUserId,
     type: 'message',
-    title: senderName || 'Pesan Baru',
+    title: senderWithRole || 'Pesan Baru',
     body: messageBody.slice(0, 100),
     data: {
       event: 'chat_message',
       bookingId,
       booking_id: bookingId,
+      actorName: senderName,
+      actorRole: senderRole,
+      senderName,
+      senderRole,
       target_route: `/booking/${bookingId}`,
     },
     createdAt: new Date().toISOString(),
@@ -209,47 +332,68 @@ export async function recordLocalMessageNotification(
     localKey(recipientUserId),
     [notification, ...notifications].slice(0, MAX_NOTIFICATIONS),
   );
+  notifyNotificationChange();
   dispatchInAppNotification(notification);
 }
 
 export function subscribeToNotifications(
   userId: string,
-  onChange: () => void,
+  onNotification: (notification: CepatNotification) => void,
+  onError?: (message: string) => void,
 ): () => void {
-  if (!userId || shouldUseFixtures() || !supabase) return () => {};
+  if (!userId) {
+    return () => {};
+  }
+  if (shouldUseFixtures()) {
+    let lastTopId: string | null = null;
+    const checkTimer = setInterval(async () => {
+      try {
+        const notifs = await getStoredJson<CepatNotification[]>(localKey(userId), []);
+        if (notifs[0] && notifs[0].id !== lastTopId) {
+          lastTopId = notifs[0].id;
+          onNotification(notifs[0]);
+        }
+      } catch {
+        // ignore polling error
+      }
+    }, 4000);
+    return () => clearInterval(checkTimer);
+  }
+  if (!supabase) {
+    return () => {};
+  }
 
   const channel = supabase
-    .channel(`notifications:${userId}:${nextRealtimeChannelSuffix()}`)
+    .channel(`notifications-${userId}-${nextRealtimeChannelSuffix()}`)
     .on(
       'postgres_changes',
       {
-        event: '*',
+        event: 'INSERT',
         schema: 'public',
         table: 'notifications',
         filter: `user_id=eq.${userId}`,
       },
       (payload) => {
-        if (payload.eventType === 'INSERT') {
-          const row = payload.new as Record<string, unknown>;
-          const notif: CepatNotification = {
-            id: String(row.id),
-            userId: String(row.user_id),
-            type: row.type as CepatNotification['type'],
-            title: String(row.title),
-            body: row.body ? String(row.body) : undefined,
-            data:
-              typeof row.data === 'object' && row.data !== null && !Array.isArray(row.data)
-                ? (row.data as Record<string, unknown>)
-                : {},
-            readAt: row.read_at ? String(row.read_at) : undefined,
-            createdAt: String(row.created_at),
-          };
-          dispatchInAppNotification(notif);
-        }
-        onChange();
+        const row = payload.new as Record<string, unknown>;
+        const mapped: CepatNotification = {
+          id: String(row.id),
+          userId: String(row.user_id),
+          type: (row.type as CepatNotification['type']) ?? 'system',
+          title: String(row.title ?? ''),
+          body: row.body ? String(row.body) : undefined,
+          data:
+            typeof row.data === 'object' && row.data !== null && !Array.isArray(row.data)
+              ? (row.data as Record<string, unknown>)
+              : {},
+          readAt: row.read_at ? String(row.read_at) : undefined,
+          createdAt: String(row.created_at),
+        };
+        onNotification(mapped);
       },
     )
-    .subscribe();
+    .subscribe((status, err) => {
+      if (err) onError?.(`notifications_subscribe_error: ${err.message}`);
+    });
 
   return () => {
     void supabase?.removeChannel(channel);

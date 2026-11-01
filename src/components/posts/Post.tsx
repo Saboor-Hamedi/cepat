@@ -411,8 +411,8 @@ export function Post({
                 params: {
                   id: post.technicianId,
                   postId: post.id,
-                  postCaption: post.caption || post.content || "",
-                  categorySlug: post.categorySlug || "plumbing",
+
+
                 },
               })
             }

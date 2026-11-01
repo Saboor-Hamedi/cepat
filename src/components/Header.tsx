@@ -6,6 +6,7 @@ import { useAuth } from "../auth/AuthProvider";
 import { useAppearance } from "../context/AppearanceContext";
 import {
   loadNotifications,
+  subscribeToNotificationChanges,
   subscribeToNotifications,
 } from "../data/notifications";
 import { useLanguage } from "../i18n/locale";
@@ -168,15 +169,9 @@ export function Header({ activeTab }: { activeTab: NavigationTabKey }) {
   useEffect(() => {
     if (!user?.id) return;
     let mounted = true;
-    void loadNotifications(user.id)
-      .then((items) => {
-        if (mounted) {
-          setUnreadNotifCount(items.filter((item) => !item.readAt).length);
-        }
-      })
-      .catch(() => {});
 
-    const unsubscribe = subscribeToNotifications(user.id, () => {
+    const refreshBadge = () => {
+      if (!user?.id) return;
       void loadNotifications(user.id)
         .then((items) => {
           if (mounted) {
@@ -184,11 +179,22 @@ export function Header({ activeTab }: { activeTab: NavigationTabKey }) {
           }
         })
         .catch(() => {});
+    };
+
+    refreshBadge();
+
+    const unsubscribe = subscribeToNotifications(user.id, () => {
+      refreshBadge();
+    });
+
+    const unsubscribeChanges = subscribeToNotificationChanges(() => {
+      refreshBadge();
     });
 
     return () => {
       mounted = false;
       unsubscribe();
+      unsubscribeChanges();
     };
   }, [user?.id]);
 

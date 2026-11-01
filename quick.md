@@ -1,81 +1,61 @@
-remove this 'ccess notes (optional, e.g. black gate)' this is the booking also, above this we have another input change that lable shows lists of the address of the customer and allow which address the customer wants to select.
+You are an expert React Native UI/UX designer and developer. Your task is to completely redesign the visual interface of my chat screen to make it look modern, clean, and professional.
 
-- we have South Jakarta
-  Central Jakarta
-  Depok under the input remove that these redudant we dont need those.
-- [StandaloneMessenger.tsx](file;file:///b%3A/react-native/Cepat/src/components/chat/StandaloneMessenger.tsx) -> are you fucking serious abou the name? we rename it to ChatContianer.tsx this is the main container, now make ChatHeader.tsx, ChatComposer.tsx this is where the textarea and button appears, ChatContent, this is where the message appears..
-  please do not be stupid, you're a react native developer
-  __
-  ERROR SyntaxError: B:\react-native\Cepat\src\components\BookingLifecyclePanel.tsx: Expected corresponding JSX closing tag for <View>. (871:12)
+🚨 STRICT CONSTRAINTS:
 
-869 | >
-870 | {t("booking.reviewSubmitted")}
+1. UI AND STYLING ONLY. Do not change any business logic, state management, API calls, or data flow.
+2. Keep all existing props, variables, and function calls exactly as they are. If you change a `View` to a `TouchableOpacity`, ensure you preserve the existing `onPress` handlers.
+3. Do not add new dependencies. Use standard React Native components (`View`, `Text`, `Image`, `TouchableOpacity`, `StyleSheet`) and Flexbox for layout.
 
-> 871 | </Text>
-> | ^
-> 872 | ) : (
-> 873 | <>
-> 874 | <View style={styles.starsRow}>
-> __
-> i have already created the components @chat folder
-> Android Bundling failed 871ms node_modules\expo-router\entry.js (1 module)
-> ERROR SyntaxError: B:\react-native\Cepat\src\components\BookingLifecyclePanel.tsx: Expected corresponding JSX closing tag for <View>. (871:12)
+🎨 DESIGN SYSTEM & THEME:
 
-869 | >
-870 | {t("booking.reviewSubmitted")}
+- Keep the dark theme but elevate it.
+- Background: Deep dark (e.g., #0f0f1a or #121212)
+- Surface/Cards: Slightly lighter dark (e.g., #1a1a2e or #1E1E2E)
+- Primary Accent: Vibrant Blue (e.g., #3B82F6)
+- Success Accent: Soft Green (e.g., #4CAF50)
+- Text Primary: White/Off-white
+- Text Secondary: Muted Gray (e.g., #888888 or #A0A0A0)
+- Spacing: Use consistent padding (12px to 16px) and border-radius (8px to 16px) for a modern feel.
 
-> 871 | </Text>
-> | ^
-> 872 | ) : (
-> 873 | <>
-> 874 | <View style={styles.starsRow}>
-> at constructor (B:\react-native\Cepat\node_modules\@babel\parser\lib\index.js:369:19)
-> at TypeScriptParserMixin.raise (B:\react-native\Cepat\node_modules\@babel\parser\lib\index.js:6600:19)
-> at TypeScriptParserMixin.jsxParseElementAt (B:\react-native\Cepat\node_modules\@babel\parser\lib\index.js:4749:16)
-> at TypeScriptParserMixin.jsxParseElement (B:\react-native\Cepat\node_modules\@babel\parser\lib\index.js:4771:17)
-> at TypeScriptParserMixin.parseExprAtom (B:\react-native\Cepat\node_modules\@babel\parser\lib\index.js:4781:19)
-> at TypeScriptParserMixin.parseExprSubscripts (B:\react-native\Cepat\node_modules\@babel\parser\lib\index.js:7985:23)
-> at TypeScriptParserMixin.parseUpdate (B:\react-native\Cepat\node_modules\@babel\parser\lib\index.js:7970:21)
-> at TypeScriptParserMixin.parseMaybeUnary (B:\react-native\Cepat\node_modules\@babel\parser\lib\index.js:7950:23)
-> at TypeScriptParserMixin.parseMaybeUnary (B:\react-native\Cepat\node_modules\@babel\parser\lib\index.js:13606:18)
-> at TypeScriptParserMixin.parseMaybeUnaryOrPrivate (B:\react-native\Cepat\node_modules\@babel\parser\lib\index.js:7796:61)
-> at TypeScriptParserMixin.parseExprOps (B:\react-native\Cepat\node_modules\@babel\parser\lib\index.js:7801:23)
-> at TypeScriptParserMixin.parseMaybeConditional (B:\react-native\Cepat\node_modules\@babel\parser\lib\index.js:7778:23)
-> at TypeScriptParserMixin.parseMaybeAssign (B:\react-native\Cepat\node_modules\@babel\parser\lib\index.js:7728:21)
-> at B:\react-native\Cepat\node_modules\@babel\parser\lib\index.js:13544:39
-> at TypeScriptParserMixin.tryParse (B:\react-native\Cepat\node_modules\@babel\parser\lib\index.js:6937:20)
-> at TypeScriptParserMixin.parseMaybeAssign (B:\react-native\Cepat\node_modules\@babel\parser\lib\index.js:13544:18)
-> at B:\react-native\Cepat\node_modules\@babel\parser\lib\index.js:7697:39
-> at TypeScriptParserMixin.allowInAnd (B:\react-native\Cepat\node_modules\@babel\parser\lib\index.js:9345:12)
-> at TypeScriptParserMixin.parseMaybeAssignAllowIn (B:\react-native\Cepat\node_modules\@babel\parser\lib\index.js:7697:17)
-> at TypeScriptParserMixin.parseMaybeAssignAllowInOrVoidPattern (B:\react-native\Cepat\node_modules\@babel\parser\lib\index.js:9412:17)
-> at TypeScriptParserMixin.parseParenAndDistinguishExpression (B:\react-native\Cepat\node_modules\@babel\parser\lib\index.js:8584:28)
-> at TypeScriptParserMixin.parseExprAtom (B:\react-native\Cepat\node_modules\@babel\parser\lib\index.js:8240:23)
-> at TypeScriptParserMixin.parseExprAtom (B:\react-native\Cepat\node_modules\@babel\parser\lib\index.js:4786:20)
-> at TypeScriptParserMixin.parseExprSubscripts (B:\react-native\Cepat\node_modules\@babel\parser\lib\index.js:7985:23)
-> at TypeScriptParserMixin.parseUpdate (B:\react-native\Cepat\node_modules\@babel\parser\lib\index.js:7970:21)
-> at TypeScriptParserMixin.parseMaybeUnary (B:\react-native\Cepat\node_modules\@babel\parser\lib\index.js:7950:23)
-> at TypeScriptParserMixin.parseMaybeUnary (B:\react-native\Cepat\node_modules\@babel\parser\lib\index.js:13606:18)
-> at TypeScriptParserMixin.parseMaybeUnaryOrPrivate (B:\react-native\Cepat\node_modules\@babel\parser\lib\index.js:7796:61)
-> at TypeScriptParserMixin.parseExprOps (B:\react-native\Cepat\node_modules\@babel\parser\lib\index.js:7801:23)
-> at TypeScriptParserMixin.parseMaybeConditional (B:\react-native\Cepat\node_modules\@babel\parser\lib\index.js:7778:23)
-> at TypeScriptParserMixin.parseMaybeAssign (B:\react-native\Cepat\node_modules\@babel\parser\lib\index.js:7728:21)
-> at TypeScriptParserMixin.parseMaybeAssign (B:\react-native\Cepat\node_modules\@babel\parser\lib\index.js:13555:20)
-> at TypeScriptParserMixin.parseExpressionBase (B:\react-native\Cepat\node_modules\@babel\parser\lib\index.js:7681:23)
-> at B:\react-native\Cepat\node_modules\@babel\parser\lib\index.js:7677:39
-> at TypeScriptParserMixin.allowInAnd (B:\react-native\Cepat\node_modules\@babel\parser\lib\index.js:9340:16)
-> at TypeScriptParserMixin.parseExpression (B:\react-native\Cepat\node_modules\@babel\parser\lib\index.js:7677:17)
-> at TypeScriptParserMixin.parseReturnStatement (B:\react-native\Cepat\node_modules\@babel\parser\lib\index.js:10073:28)
-> at TypeScriptParserMixin.parseStatementContent (B:\react-native\Cepat\node_modules\@babel\parser\lib\index.js:9717:21)
-> at TypeScriptParserMixin.parseStatementContent (B:\react-native\Cepat\node_modules\@babel\parser\lib\index.js:13277:18)
-> at TypeScriptParserMixin.parseStatementLike (B:\react-native\Cepat\node_modules\@babel\parser\lib\index.js:9686:17)
-> at TypeScriptParserMixin.parseStatementListItem (B:\react-native\Cepat\node_modules\@babel\parser\lib\index.js:9666:17)
-> at TypeScriptParserMixin.parseBlockOrModuleBlockBody (B:\react-native\Cepat\node_modules\@babel\parser\lib\index.js:10247:61)
-> at TypeScriptParserMixin.parseBlockBody (B:\react-native\Cepat\node_modules\@babel\parser\lib\index.js:10240:10)
-> at TypeScriptParserMixin.parseBlock (B:\react-native\Cepat\node_modules\@babel\parser\lib\index.js:10228:10)
-> at TypeScriptParserMixin.parseFunctionBody (B:\react-native\Cepat\node_modules\@babel\parser\lib\index.js:9016:24)
-> at TypeScriptParserMixin.parseFunctionBodyAndFinish (B:\react-native\Cepat\node_modules\@babel\parser\lib\index.js:9002:10)
-> at TypeScriptParserMixin.parseFunctionBodyAndFinish (B:\react-native\Cepat\node_modules\@babel\parser\lib\index.js:12941:18)
-> at B:\react-native\Cepat\node_modules\@babel\parser\lib\index.js:10375:12
-> at TypeScriptParserMixin.withSmartMixTopicForbiddingContext (B:\react-native\Cepat\node_modules\@babel\parser\lib\index.js:9322:14)
-> at TypeScriptParserMixin.parseFunction (B:\react-native\Cepat\node_modules\@babel\parser\lib\index.js:10374:10)
+🛠️ COMPONENT-SPECIFIC UI INSTRUCTIONS:
+
+1. Header Section:
+
+- Make the layout more spacious and breathable.
+- The avatar should be slightly larger with a clean green status dot overlapping the bottom-right edge (with a border matching the background).
+- The "Verified Technician" text should look like a modern, subtle pill badge with a small checkmark icon.
+- Ensure the back button and menu button have adequate touch targets (at least 44x44).
+
+2. Task Info Banner (Top Section):
+
+- Redesign the top task description area to look like a proper UI card.
+- Add a subtle left border accent (e.g., 3px green border on the left) to indicate status.
+- The "Completed" badge should look like a modern tag (low opacity green background with green text).
+- Make the location text smaller and muted.
+
+3. System Notices (Protected Chat & Archived Banners):
+
+- These are currently too heavy and distracting. Make them subtle.
+- Use a very low opacity background or a subtle dashed border.
+- Center the text, make the font size smaller (11px-12px), and use muted gray text.
+- Add a small lock icon for the protected notice and an archive icon for the archived notice.
+
+4. Chat Messages (Bubbles):
+
+- Received Messages: Use a dark gray surface color. Round all corners except the bottom-left corner.
+- Sent Messages: Use the primary blue color. Round all corners except the bottom-right corner.
+- Remove the redundant "Technical" name label from every single message bubble. If needed, only show it on the very first message in a sequence.
+- Move the timestamp inside the bubble, aligned to the bottom right, with a slightly transparent/smaller font.
+- Ensure bubbles have a `maxWidth` (e.g., 75%) so they don't stretch across the whole screen.
+
+5. Bottom Action Bar:
+
+- The "Task has completed" text should be subtle, centered, and use the success green color with a small checkmark icon.
+- The "Book Again" button should not look like a massive, overwhelming block. Give it proper horizontal margins (e.g., 20px on the sides), add a refresh/reload icon next to the text, and ensure the padding is comfortable (e.g., 14px vertical).
+
+📝 EXECUTION STEPS:
+
+1. First, analyze the current code and identify the StyleSheet.
+2. Update the JSX structure ONLY where necessary to achieve the new layout (e.g., wrapping elements in new Views for flexbox alignment).
+3. Completely rewrite the `StyleSheet.create` object to implement the new design system.
+4. Ensure the code is clean, well-formatted, and ready to run.

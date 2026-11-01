@@ -140,6 +140,26 @@ function paginateLocalPosts(
 /**
  * Loads all posts authored by a specific technician (including drafts/unpublished for the owner).
  */
+export async function loadPostById(postId: string): Promise<TechnicianPost | null> {
+  if (!postId) return null;
+  if (supabase && !shouldUseFixtures()) {
+    try {
+      const { data, error } = await supabase
+        .from('technician_posts')
+        .select('*')
+        .eq('id', postId)
+        .maybeSingle();
+      if (!error && data) {
+        return mapSupabasePost(data as Record<string, unknown>);
+      }
+    } catch {
+      // fallback to local
+    }
+  }
+  const all = await loadAllStoredPosts();
+  return all.find((p) => p.id === postId) || null;
+}
+
 export async function loadTechnicianPosts(
   technicianId: string,
   includeUnpublished = true,

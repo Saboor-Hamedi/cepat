@@ -861,6 +861,8 @@ export async function createBookingRequest(input: CreateBookingInput): Promise<B
     'booking_requested',
     newBooking.id,
     newBooking.serviceNameSnapshot,
+    newBooking.customerName,
+    'customer',
   );
   return newBooking;
 }
@@ -966,6 +968,8 @@ export async function transitionBookingStatus(
       'booking_accepted',
       target.id,
       target.serviceNameSnapshot,
+      target.technicianName,
+      'technician',
     );
   } else if (nextStatus === 'confirmed' && target.status === 'alternative_proposed') {
     await recordLocalBookingNotification(
@@ -973,6 +977,8 @@ export async function transitionBookingStatus(
       'booking_schedule_confirmed',
       target.id,
       target.serviceNameSnapshot,
+      target.customerName,
+      'customer',
     );
   }
   return updatedRecord;
@@ -1035,6 +1041,8 @@ export async function submitBookingWorkForAcceptance(
     'booking_work_completed',
     target.id,
     target.serviceNameSnapshot,
+    target.technicianName,
+    'technician',
   );
   return updatedRecord;
 }
@@ -1185,6 +1193,7 @@ export async function sendBookingMessage(input: {
     input.senderName,
     trimmed,
     input.bookingId,
+    input.senderRole,
   );
   return message;
 }

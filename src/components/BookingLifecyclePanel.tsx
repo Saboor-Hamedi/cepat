@@ -19,6 +19,7 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Avatar } from "./marketplace-ui";
+import { BookingParticipantsHeader } from "./BookingParticipantsHeader";
 import { ChatContainer } from "./chat";
 
 import { useAuth } from "../auth/AuthProvider";
@@ -317,6 +318,14 @@ export function BookingLifecyclePanel({
 
   return (
     <View style={styles.lifecycleWrap} testID="booking-status-view">
+      <BookingParticipantsHeader
+        customerName={activeBooking.customerName}
+        serviceName={activeBooking.serviceNameSnapshot}
+        statusLabel={t(`booking.status.${activeBooking.status}`)}
+        technicianBusinessName={activeBooking.technicianBusinessName}
+        technicianId={activeBooking.technicianUserId}
+        technicianName={activeBooking.technicianName}
+      />
       <View style={styles.statusCard}>
         <Text style={styles.statusEyebrow}>{t("booking.statusLabel")}</Text>
         <Text style={styles.statusHeadline} testID="booking-current-status">
