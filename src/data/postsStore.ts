@@ -272,14 +272,11 @@ export async function loadMarketplacePublishedPosts(filters?: {
   const q = filters?.query?.trim().toLowerCase() ?? '';
   const cat = filters?.categorySlug?.trim().toLowerCase() ?? '';
 
-  return allPosts.filter((post) => {
+  const filteredPosts = allPosts.filter((post) => {
     if (!post.published || post.suspended) return false;
     if (post.accountStatus && post.accountStatus !== 'active') return false;
     if (blockedOrSuspendedIds.has(post.technicianId)) return false;
 
-    if (canonicalArea && post.serviceArea !== canonicalArea) {
-      return false;
-    }
     if (cat && post.categorySlug.toLowerCase() !== cat) {
       return false;
     }
@@ -297,6 +294,14 @@ export async function loadMarketplacePublishedPosts(filters?: {
     }
     return true;
   });
+
+  if (canonicalArea) {
+    const matchingArea = filteredPosts.filter((post) => post.serviceArea === canonicalArea);
+    const otherPosts = filteredPosts.filter((post) => post.serviceArea !== canonicalArea);
+    return [...matchingArea, ...otherPosts];
+  }
+
+  return filteredPosts;
 }
 
 export async function loadMarketplacePublishedPostsPage(

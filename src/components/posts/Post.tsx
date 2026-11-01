@@ -267,7 +267,10 @@ export function Post({
 
       {/* Editing State or Content Body */}
       {isEditing ? (
-        <View style={styles.editForm} testID={`edit-post-form-${post.id}`}>
+        <View
+          style={[styles.editForm, showAuthorHeader && styles.bodyContentIndented]}
+          testID={`edit-post-form-${post.id}`}
+        >
           <TextInput
             multiline
             maxLength={200}
@@ -335,7 +338,7 @@ export function Post({
           </View>
         </View>
       ) : (
-        <View style={styles.bodyContent}>
+        <View style={[styles.bodyContent, showAuthorHeader && styles.bodyContentIndented]}>
           {post.isServicePost ? (
             <View
               style={[
@@ -401,6 +404,7 @@ export function Post({
         <View
           style={[
             styles.postBookingRow,
+            styles.bodyContentIndented,
             { borderTopColor: palette.border },
           ]}
         >
@@ -603,6 +607,9 @@ const styles = StyleSheet.create({
   },
   bodyContent: {
     marginTop: spacing.xs,
+  },
+  bodyContentIndented: {
+    paddingLeft: 50,
   },
   servicePostBadge: {
     alignSelf: "flex-start",

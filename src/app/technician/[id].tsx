@@ -1,5 +1,5 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { Camera } from "lucide-react-native";
+import { ArrowLeft, Camera, CheckCircle, FileText, MapPin, Pencil, PlusSquare, Star } from "lucide-react-native";
 import { router, useLocalSearchParams } from "expo-router";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
@@ -61,6 +61,17 @@ import type {
   TechnicianReview,
 } from "../../types/marketplace";
 import { colors, getProfileTheme, radii, spacing } from "../../theme/tokens";
+
+function formatCompactNumber(num: number): string {
+  if (!num || Number.isNaN(num)) return "0";
+  if (num >= 1000000) {
+    return (num / 1000000).toFixed(1).replace(/\.0$/, "") + "M";
+  }
+  if (num >= 1000) {
+    return (num / 1000).toFixed(1).replace(/\.0$/, "") + "k";
+  }
+  return String(num);
+}
 
 const WEEKDAY_NAMES_ID = [
   "Minggu",
@@ -534,11 +545,16 @@ export default function TechnicianProfileScreen() {
                   language === "en" ? "Change cover photo" : "Ubah foto sampul"
                 }
                 onPress={handleChangeCover}
-                style={styles.changeCoverBtn}
+                style={[
+                  styles.changeCoverBtn,
+                  { backgroundColor: "rgba(0, 0, 0, 0.55)", borderColor: palette.primary },
+                ]}
                 testID="change-cover-btn"
               >
                 <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
-                  <Camera color="#FFFFFF" size={14} />
+                  <View style={[styles.cameraAccentBadge, { backgroundColor: palette.primary }]}>
+                    <Camera color="#FFFFFF" size={12} strokeWidth={2.2} />
+                  </View>
                   <Text style={styles.changeCoverText}>
                     {language === "en" ? "Edit Cover" : "Ubah Sampul"}
                   </Text>
@@ -609,122 +625,180 @@ export default function TechnicianProfileScreen() {
               </View>
             </View>
 
-            {/* Modern Unified Stats Bar */}
-            <View
-              style={[
-                styles.modernStatsBar,
-                { backgroundColor: palette.surface, borderColor: palette.border },
-              ]}
-              testID="technician-stats-bar"
-            >
-              {/* Rating Column */}
-              <View style={styles.statsBarCol} testID="technician-rating-badge">
-                <View style={styles.statsBarValueRow}>
-                  <Text style={styles.goldStarSmall}>★</Text>
-                  <Text style={[styles.statsBarValue, { color: palette.text }]}>
+            {/* 4 Badges in a single horizontal line, radius 5px */}
+            <View style={styles.singleLineBadgesRow} testID="technician-stats-bar">
+              {/* 1. Rating Badge */}
+              <View
+                style={[
+                  styles.singleBadgeItem,
+                  { backgroundColor: palette.surface, borderColor: palette.border },
+                ]}
+                testID="technician-rating-badge"
+              >
+                <View style={styles.badgeTopRow}>
+                  <Text style={styles.badgeGoldStar}>★</Text>
+                  <Text style={[styles.badgeValueText, { color: palette.text }]}>
                     {technician.reviewCount ? technician.averageRating.toFixed(1) : (technician.averageRating > 0 ? technician.averageRating.toFixed(1) : '5.0')}
                   </Text>
                 </View>
-                <Text style={[styles.statsBarLabel, { color: palette.textMuted }]}>
-                  {technician.reviewCount} {language === "en" ? "reviews" : "ulasan"}
+                <Text numberOfLines={1} style={[styles.badgeLabelText, { color: palette.textMuted }]}>
+                  {formatCompactNumber(technician.reviewCount)} {language === "en" ? "rev" : "ul"}
                 </Text>
               </View>
 
-              <View style={[styles.statsDivider, { backgroundColor: palette.border }]} />
-
-              {/* Tasks Completed Column */}
-              <View style={styles.statsBarCol} testID="technician-tasks-badge">
-                <Text style={[styles.statsBarValue, { color: palette.text }]}>
-                  {technician.completedJobsCount}
-                </Text>
-                <Text style={[styles.statsBarLabel, { color: palette.textMuted }]}>
+              {/* 2. Tasks Completed Badge */}
+              <View
+                style={[
+                  styles.singleBadgeItem,
+                  { backgroundColor: palette.surface, borderColor: palette.border },
+                ]}
+                testID="technician-tasks-badge"
+              >
+                <View style={styles.badgeTopRow}>
+                  <CheckCircle size={12} color={palette.primary} strokeWidth={2.2} />
+                  <Text style={[styles.badgeValueText, { color: palette.text }]}>
+                    {formatCompactNumber(technician.completedJobsCount)}
+                  </Text>
+                </View>
+                <Text numberOfLines={1} style={[styles.badgeLabelText, { color: palette.textMuted }]}>
                   {language === "en" ? "tasks" : "tugas"}
                 </Text>
               </View>
 
-              <View style={[styles.statsDivider, { backgroundColor: palette.border }]} />
-
-              {/* Posts Column */}
-              <View style={styles.statsBarCol} testID="technician-posts-badge">
-                <Text style={[styles.statsBarValue, { color: palette.text }]}>
-                  {posts.length}
-                </Text>
-                <Text style={[styles.statsBarLabel, { color: palette.textMuted }]}>
-                  {language === "en" ? "posts" : "postingan"}
+              {/* 3. Posts Created Badge */}
+              <View
+                style={[
+                  styles.singleBadgeItem,
+                  { backgroundColor: palette.surface, borderColor: palette.border },
+                ]}
+                testID="technician-posts-badge"
+              >
+                <View style={styles.badgeTopRow}>
+                  <FileText size={12} color={palette.primary} strokeWidth={2.2} />
+                  <Text style={[styles.badgeValueText, { color: palette.text }]}>
+                    {formatCompactNumber(posts.length)}
+                  </Text>
+                </View>
+                <Text numberOfLines={1} style={[styles.badgeLabelText, { color: palette.textMuted }]}>
+                  {language === "en" ? "posts" : "post"}
                 </Text>
               </View>
 
-              {technician.serviceAreas[0] && (
-                <>
-                  <View style={[styles.statsDivider, { backgroundColor: palette.border }]} />
-                  {/* Service Area Column */}
-                  <View style={styles.statsBarCol} testID="technician-area-badge">
-                    <Text numberOfLines={1} style={[styles.statsBarValueSmall, { color: palette.primary }]}>
-                      📍 {localizeArea(technician.serviceAreas[0], language)}
-                    </Text>
-                    <Text style={[styles.statsBarLabel, { color: palette.textMuted }]}>
-                      {language === "en" ? "area" : "lokasi"}
-                    </Text>
-                  </View>
-                </>
-              )}
+              {/* 4. Service Area Badge */}
+              <View
+                style={[
+                  styles.singleBadgeItem,
+                  { backgroundColor: palette.surface, borderColor: palette.border },
+                ]}
+                testID="technician-area-badge"
+              >
+                <View style={styles.badgeTopRow}>
+                  <MapPin size={12} color={palette.primary} strokeWidth={2.2} />
+                  <Text numberOfLines={1} style={[styles.badgeValueArea, { color: palette.text }]}>
+                    {technician.serviceAreas[0] ? localizeArea(technician.serviceAreas[0], language).split(' ')[0] : (language === "en" ? "Area" : "Area")}
+                  </Text>
+                </View>
+                <Text numberOfLines={1} style={[styles.badgeLabelText, { color: palette.textMuted }]}>
+                  {technician.serviceAreas[0] ? localizeArea(technician.serviceAreas[0], language) : (language === "en" ? "All areas" : "Semua")}
+                </Text>
+              </View>
             </View>
 
-            {/* Quick Actions Bar for Profile Management & Engagement */}
-            <View style={styles.quickActionsRow}>
-              {(isProfileOwner || isAdminUser) && (
-                <>
-                  <Pressable
-                    accessibilityRole="button"
-                    onPress={() => {
-                      setActiveProfileTab("posts");
-                    }}
-                    style={[styles.quickActionBtn, { backgroundColor: palette.surface, borderColor: palette.border }]}
-                    testID="quick-action-post"
-                  >
-                    <Text style={[styles.quickActionBtnText, { color: palette.text }]}>
-                      📝 {language === "en" ? "New Post" : "Buat Post"}
-                    </Text>
-                  </Pressable>
-                  <Pressable
-                    accessibilityRole="button"
-                    onPress={() => {
-                      setActiveProfileTab("portfolio");
-                      setIsAddingPortfolio(true);
-                    }}
-                    style={[styles.quickActionBtn, { backgroundColor: palette.surface, borderColor: palette.border }]}
-                    testID="quick-action-portfolio"
-                  >
-                    <Text style={[styles.quickActionBtnText, { color: palette.text }]}>
-                      📷 {language === "en" ? "+ Add Work" : "+ Portofolio"}
-                    </Text>
-                  </Pressable>
-                  <Pressable
-                    accessibilityRole="button"
-                    onPress={() => {
-                      setActiveProfileTab("about");
-                      setIsEditingAbout(true);
-                    }}
-                    style={[styles.quickActionBtn, { backgroundColor: palette.surface, borderColor: palette.border }]}
-                    testID="quick-action-about"
-                  >
-                    <Text style={[styles.quickActionBtnText, { color: palette.text }]}>
-                      ✏️ {language === "en" ? "Edit About" : "Ubah Bio"}
-                    </Text>
-                  </Pressable>
-                </>
-              )}
+            {/* Quick Actions Bar - 4 Equal-width Badges in a Single Line, Radius 5px */}
+            <View style={styles.singleLineActionsRow}>
+              <Pressable
+                accessibilityRole="button"
+                onPress={() => {
+                  setActiveProfileTab("posts");
+                }}
+                style={[
+                  styles.singleActionBadge,
+                  { backgroundColor: palette.surface, borderColor: palette.border },
+                ]}
+                testID="quick-action-post"
+              >
+                <PlusSquare size={12} color={palette.primary} strokeWidth={2.2} />
+                <Text
+                  numberOfLines={1}
+                  style={[styles.actionBadgeText, { color: palette.text }]}
+                >
+                  {isProfileOwner || isAdminUser
+                    ? (language === "en" ? "New Post" : "Buat Post")
+                    : (language === "en" ? "Posts" : "Post")}
+                </Text>
+              </Pressable>
+
+              <Pressable
+                accessibilityRole="button"
+                onPress={() => {
+                  setActiveProfileTab("portfolio");
+                  if (isProfileOwner || isAdminUser) {
+                    setIsAddingPortfolio(true);
+                  }
+                }}
+                style={[
+                  styles.singleActionBadge,
+                  { backgroundColor: palette.surface, borderColor: palette.border },
+                ]}
+                testID="quick-action-portfolio"
+              >
+                <Camera size={12} color={palette.primary} strokeWidth={2.2} />
+                <Text
+                  numberOfLines={1}
+                  style={[styles.actionBadgeText, { color: palette.text }]}
+                >
+                  {isProfileOwner || isAdminUser
+                    ? (language === "en" ? "Add Work" : "+ Portofolio")
+                    : (language === "en" ? "Work" : "Portofolio")}
+                </Text>
+              </Pressable>
+
+              <Pressable
+                accessibilityRole="button"
+                onPress={() => {
+                  setActiveProfileTab("about");
+                  if (isProfileOwner || isAdminUser) {
+                    setIsEditingAbout(true);
+                  }
+                }}
+                style={[
+                  styles.singleActionBadge,
+                  { backgroundColor: palette.surface, borderColor: palette.border },
+                ]}
+                testID="quick-action-about"
+              >
+                <Pencil size={12} color={palette.primary} strokeWidth={2.2} />
+                <Text
+                  numberOfLines={1}
+                  style={[styles.actionBadgeText, { color: palette.text }]}
+                >
+                  {isProfileOwner || isAdminUser
+                    ? (language === "en" ? "Edit About" : "Ubah Bio")
+                    : (language === "en" ? "About" : "Bio")}
+                </Text>
+              </Pressable>
+
               <Pressable
                 accessibilityRole="button"
                 onPress={() => {
                   setActiveProfileTab("reviews");
                   setIsAddingReview(true);
                 }}
-                style={[styles.quickActionBtn, { backgroundColor: palette.primarySoft, borderColor: palette.primarySoft }]}
+                style={[
+                  styles.singleActionBadge,
+                  {
+                    backgroundColor: palette.primarySoft,
+                    borderColor: palette.primarySoft,
+                  },
+                ]}
                 testID="quick-action-review"
               >
-                <Text style={[styles.quickActionBtnText, { color: palette.primary }]}>
-                  ⭐ {language === "en" ? "Write Review" : "Beri Ulasan"}
+                <Star size={12} color={palette.primary} strokeWidth={2.2} />
+                <Text
+                  numberOfLines={1}
+                  style={[styles.actionBadgeText, { color: palette.primary, fontWeight: '700' }]}
+                >
+                  {language === "en" ? "Review" : "Ulasan"}
                 </Text>
               </Pressable>
             </View>
@@ -750,85 +824,67 @@ export default function TechnicianProfileScreen() {
                 </Text>
               </View>
             )}
-            {isProfileOwner && (
-              <Pressable
-                accessibilityRole="button"
-                onPress={() =>
-                  router.push(
-                    isAdminUser
-                      ? "/admin"
-                      : "/account",
-                  )
-                }
-                style={[
-                  styles.ownerEditBtn,
-                  { backgroundColor: palette.primary },
-                ]}
-                testID="owner-edit-profile-btn"
-              >
-                <Text style={styles.ownerEditBtnText}>
-                  {isAdminUser
-                    ? language === "en"
-                      ? "Admin Console"
-                      : "Konsol Admin"
-                    : language === "en"
-                      ? "Account Settings"
-                      : "Pengaturan Akun"}
-                </Text>
-              </Pressable>
-            )}
           </View>
         </View>
 
         <View
           style={[
-            styles.profileTabBar,
+            styles.profileTabBarWrap,
             {
               backgroundColor: palette.surface,
               borderBottomColor: palette.border,
             },
           ]}
-          testID="profile-tab-bar"
         >
-          {(
-            [
-              ["posts", language === "en" ? "Posts" : "Postingan"],
-              ["services", language === "en" ? "Services" : "Layanan"],
-              ["portfolio", language === "en" ? "Portfolio" : "Portofolio"],
-              ["reviews", language === "en" ? "Reviews" : "Ulasan"],
-              ["about", language === "en" ? "About" : "Tentang"],
-            ] as const
-          ).map(([key, label]) => {
-            const selected = activeProfileTab === key;
-            return (
-              <Pressable
-                key={key}
-                accessibilityRole="tab"
-                accessibilityState={{ selected }}
-                onPress={() => setActiveProfileTab(key)}
-                style={styles.profileTab}
-                testID={`profile-tab-${key}`}
-              >
-                <Text
-                  style={[
-                    styles.profileTabText,
-                    { color: selected ? palette.primary : palette.textMuted },
-                    selected && styles.profileTabTextSelected,
-                  ]}
+          <View
+            style={[
+              styles.profileTabBar,
+              {
+                backgroundColor: palette.surface,
+              },
+            ]}
+            testID="profile-tab-bar"
+          >
+            {(
+              [
+                ["posts", language === "en" ? "Posts" : "Postingan"],
+                ["services", language === "en" ? "Services" : "Layanan"],
+                ["portfolio", language === "en" ? "Portfolio" : "Portofolio"],
+                ["reviews", language === "en" ? "Reviews" : "Ulasan"],
+                ["about", language === "en" ? "About" : "Tentang"],
+              ] as const
+            ).map(([key, label]) => {
+              const selected = activeProfileTab === key;
+              return (
+                <Pressable
+                  key={key}
+                  accessibilityRole="tab"
+                  accessibilityState={{ selected }}
+                  onPress={() => setActiveProfileTab(key)}
+                  style={styles.profileTab}
+                  testID={`profile-tab-${key}`}
                 >
-                  {label}
-                </Text>
-                {selected && (
-                  <View
+                  <Text
                     style={[
-                      styles.profileTabIndicator,
-                      { backgroundColor: palette.primary },
+                      styles.profileTabText,
+                      { color: selected ? palette.primary : palette.textMuted },
+                      selected && styles.profileTabTextSelected,
                     ]}
-                  />
-                )}
-              </Pressable>
-            );
-          })}
+                  >
+                    {label}
+                  </Text>
+                  {selected && (
+                    <View
+                      style={[
+                        styles.profileTabIndicator,
+                        { backgroundColor: palette.primary },
+                      ]}
+                    />
+                  )}
+                </Pressable>
+              );
+            })}
+          </View>
         </View>
 
         <View style={styles.contentWidth}>
@@ -1422,10 +1478,10 @@ export default function TechnicianProfileScreen() {
                     ))}
                   </View>
                   <Text style={[styles.performanceSubtext, { color: palette.textMuted }]}>
-                    {technician.reviewCount} {language === "en" ? "reviews" : "ulasan"}
+                    {formatCompactNumber(technician.reviewCount)} {language === "en" ? "reviews" : "ulasan"}
                   </Text>
                   <Text style={[styles.performanceBadgeText, { color: palette.primary }]}>
-                    {technician.completedJobsCount} {language === "en" ? "tasks completed" : "tugas selesai"}
+                    {formatCompactNumber(technician.completedJobsCount)} {language === "en" ? "tasks completed" : "tugas selesai"}
                   </Text>
                 </View>
 
@@ -1452,7 +1508,7 @@ export default function TechnicianProfileScreen() {
                           />
                         </View>
                         <Text style={[styles.distributionCount, { color: palette.textMuted }]}>
-                          {count}
+                          {formatCompactNumber(count)}
                         </Text>
                       </View>
                     );
@@ -1961,24 +2017,20 @@ function Header({
         accessibilityLabel={t("profile.back")}
         onPress={onBack}
         style={[
-          styles.navBack,
+          styles.sleekBackBtn,
           {
             backgroundColor: overlay
-              ? "rgba(255,255,255,0.22)"
+              ? "rgba(0, 0, 0, 0.45)"
               : palette.surface,
+            borderColor: overlay ? "rgba(255,255,255,0.25)" : palette.border,
           },
-          overlay && styles.navBackOverlay,
         ]}
       >
-        <Text
-          style={[
-            styles.navBackGlyph,
-            { color: overlay ? "#FFFFFF" : palette.text },
-            overlay && styles.navBackGlyphOverlay,
-          ]}
-        >
-          ‹
-        </Text>
+        <ArrowLeft
+          size={18}
+          color={overlay ? "#FFFFFF" : palette.text}
+          strokeWidth={2.2}
+        />
       </Pressable>
       {!overlay && <View style={styles.navBalance} />}
     </View>
@@ -2072,7 +2124,7 @@ const styles = StyleSheet.create({
   },
   changeCoverBtn: {
     backgroundColor: "rgba(0,0,0,0.6)",
-    borderRadius: radii.pill,
+    borderRadius: 5,
     paddingHorizontal: 12,
     paddingVertical: 6,
     position: "absolute",
@@ -2099,12 +2151,19 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     gap: spacing.lg,
   },
+  profileTabBarWrap: {
+    borderBottomWidth: 1,
+    width: "100%",
+  },
   profileTabBar: {
     alignItems: "stretch",
-    borderBottomWidth: 1,
+    alignSelf: "center",
     flexDirection: "row",
     justifyContent: "space-around",
+    maxWidth: 820,
     minHeight: 48,
+    paddingHorizontal: spacing.xl,
+    width: "100%",
     zIndex: 1,
   },
   profileTab: {
@@ -2501,6 +2560,64 @@ const styles = StyleSheet.create({
   },
   reportSubmitBtnText: { color: "#FFFFFF", fontSize: 13, fontWeight: "800" },
 
+
+  singleLineBadgesRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 6,
+    marginTop: spacing.md,
+    width: '100%',
+  },
+  singleBadgeItem: {
+    flex: 1,
+    minWidth: 0,
+    borderRadius: 5,
+    borderWidth: 1,
+    paddingVertical: 8,
+    paddingHorizontal: 4,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  badgeTopRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3,
+  },
+  badgeGoldStar: {
+    color: '#F59E0B',
+    fontSize: 13,
+    fontWeight: '800',
+  },
+  badgeValueText: {
+    fontSize: 13,
+    fontWeight: '700',
+  },
+  badgeValueArea: {
+    fontSize: 11,
+    fontWeight: '700',
+  },
+  badgeLabelText: {
+    fontSize: 10,
+    fontWeight: '500',
+    marginTop: 2,
+    textTransform: 'lowercase',
+  },
+  sleekBackBtn: {
+    alignItems: 'center',
+    borderRadius: 18,
+    borderWidth: 1,
+    height: 36,
+    justifyContent: 'center',
+    width: 36,
+  },
+  cameraAccentBadge: {
+    alignItems: 'center',
+    borderRadius: 3,
+    height: 18,
+    justifyContent: 'center',
+    width: 18,
+  },
   modernStatsBar: {
     alignItems: 'center',
     borderRadius: 14,
@@ -2545,6 +2662,30 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '800',
   },
+  singleLineActionsRow: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    gap: 6,
+    justifyContent: 'space-between',
+    marginTop: 8,
+    width: '100%',
+  },
+  singleActionBadge: {
+    alignItems: 'center',
+    borderRadius: 5,
+    borderWidth: 1,
+    flex: 1,
+    flexDirection: 'row',
+    gap: 4,
+    justifyContent: 'center',
+    minWidth: 0,
+    paddingHorizontal: 4,
+    paddingVertical: 7,
+  },
+  actionBadgeText: {
+    fontSize: 11,
+    fontWeight: '600',
+  },
   quickActionsRow: {
     alignItems: 'center',
     flexDirection: 'row',
@@ -2553,7 +2694,7 @@ const styles = StyleSheet.create({
     marginTop: 10,
   },
   quickActionBtn: {
-    borderRadius: 18,
+    borderRadius: 5,
     borderWidth: 1,
     paddingHorizontal: 12,
     paddingVertical: 7,

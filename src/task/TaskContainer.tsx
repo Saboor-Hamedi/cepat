@@ -1,4 +1,5 @@
 import { router } from "expo-router";
+import { ArrowLeft, Bell } from "lucide-react-native";
 import { useMemo, useState } from "react";
 import { Modal, Pressable, StyleSheet, Text, View } from "react-native";
 
@@ -114,6 +115,58 @@ export function TaskContainer({
 
   return (
     <View style={styles.container}>
+      {/* Sleek Header with Back Button, Title, and Booking Notification Bell */}
+      <View style={styles.headerBar} testID="tasks-screen-header">
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={language === "en" ? "Back" : "Kembali"}
+          onPress={() => {
+            if (router.canGoBack()) {
+              router.back();
+            } else {
+              router.replace("/");
+            }
+          }}
+          style={[
+            styles.headerBackBtn,
+            { backgroundColor: palette.surface, borderColor: palette.border },
+          ]}
+          testID="tasks-header-back-btn"
+        >
+          <ArrowLeft size={18} color={palette.text} strokeWidth={2.2} />
+        </Pressable>
+
+        <View style={styles.headerTitleWrap}>
+          <Text style={[styles.headerTitle, { color: palette.text }]}>
+            {language === "en" ? "Tasks & Bookings" : "Tugas & Pesanan"}
+          </Text>
+        </View>
+
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={
+            language === "en" ? "Booking notifications" : "Notifikasi pesanan"
+          }
+          onPress={() => setTab("requests")}
+          style={[
+            styles.headerNotifBtn,
+            { backgroundColor: palette.surface, borderColor: palette.border },
+          ]}
+          testID="tasks-header-notif-btn"
+        >
+          <Bell size={18} color={palette.text} strokeWidth={2.2} />
+          {incomingRequests.length > 0 && (
+            <View
+              style={[styles.notifBadge, { backgroundColor: palette.primary }]}
+            >
+              <Text style={styles.notifBadgeText}>
+                {incomingRequests.length > 9 ? "9+" : incomingRequests.length}
+              </Text>
+            </View>
+          )}
+        </Pressable>
+      </View>
+
       <TaskTabBar
         activeTab={tab}
         onSelectTab={setTab}
@@ -400,6 +453,56 @@ export const JobsContainer = TaskContainer;
 const styles = StyleSheet.create({
   container: {
     width: "100%",
+  },
+  headerBar: {
+    alignItems: "center",
+    flexDirection: "row",
+    justifyContent: "space-between",
+    marginBottom: spacing.md,
+    paddingHorizontal: 4,
+    width: "100%",
+  },
+  headerBackBtn: {
+    alignItems: "center",
+    borderRadius: 18,
+    borderWidth: 1,
+    height: 36,
+    justifyContent: "center",
+    width: 36,
+  },
+  headerTitleWrap: {
+    alignItems: "center",
+    flex: 1,
+    justifyContent: "center",
+  },
+  headerTitle: {
+    fontSize: 16,
+    fontWeight: "700",
+  },
+  headerNotifBtn: {
+    alignItems: "center",
+    borderRadius: 18,
+    borderWidth: 1,
+    height: 36,
+    justifyContent: "center",
+    position: "relative",
+    width: 36,
+  },
+  notifBadge: {
+    alignItems: "center",
+    borderRadius: 7,
+    height: 14,
+    justifyContent: "center",
+    minWidth: 14,
+    paddingHorizontal: 3,
+    position: "absolute",
+    right: -2,
+    top: -2,
+  },
+  notifBadgeText: {
+    color: "#FFFFFF",
+    fontSize: 9,
+    fontWeight: "800",
   },
   modalOverlay: {
     alignItems: "center",

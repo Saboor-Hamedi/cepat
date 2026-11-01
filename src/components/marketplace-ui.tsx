@@ -5,6 +5,7 @@ import {
   Text,
   View,
 } from 'react-native';
+import { CheckCircle, MapPin } from 'lucide-react-native';
 
 import { useAppearance } from '../context/AppearanceContext';
 import { colors, radii, spacing } from '../theme/tokens';
@@ -203,37 +204,20 @@ export function TechnicianCard({
       ]}
     >
       <View style={styles.avatarColumn}>
-        <Avatar uri={technician.avatarUri} name={technician.displayName} size={74} />
-        <View
-          style={[
-            styles.statusPill,
-            technician.available ? styles.statusPillOpen : styles.statusPillBusy,
-            {
-              backgroundColor: technician.available
-                ? palette.primarySoft
-                : palette.surfaceElevated,
-            },
-          ]}
-        >
-          <View
-            style={[
-              styles.statusDot,
-              {
-                backgroundColor: technician.available
-                  ? palette.primary
-                  : palette.textMuted,
-              },
-            ]}
-          />
-          <Text style={[styles.statusPillText, { color: palette.text }]}>
-            {technician.available
-              ? language === 'en'
-                ? 'Active'
-                : 'Aktif'
-              : language === 'en'
-                ? 'Busy'
-                : 'Penuh'}
-          </Text>
+        <View style={styles.avatarWrap}>
+          <Avatar uri={technician.avatarUri} name={technician.displayName} size={64} />
+          {technician.available && (
+            <View
+              style={[
+                styles.onlineAvatarBlob,
+                {
+                  backgroundColor: '#10B981',
+                  borderColor: palette.surface,
+                },
+              ]}
+              testID={`tech-online-blob-${technician.id}`}
+            />
+          )}
         </View>
       </View>
 
@@ -246,9 +230,11 @@ export function TechnicianCard({
             {name}
           </Text>
           {technician.verified && (
-            <Text style={styles.verified} accessibilityLabel="Terverifikasi">
-              ✓
-            </Text>
+            <View style={[styles.verifiedBadge, { backgroundColor: palette.primarySoft }]}>
+              <Text style={[styles.verifiedBadgeText, { color: palette.primary }]}>
+                ✓
+              </Text>
+            </View>
           )}
         </View>
         {technician.businessName && technician.businessName !== technician.displayName && (
@@ -268,11 +254,37 @@ export function TechnicianCard({
         </Text>
 
         <View style={styles.metricsRow}>
-          <Rating value={technician.averageRating} count={technician.reviewCount} />
-          {technician.completedJobsCount > 0 && (
-            <Text style={[styles.jobsCountBadge, { color: palette.textMuted }]}>
-              • {technician.completedJobsCount} {language === 'en' ? 'jobs' : 'pekerjaan'}
+          <View
+            style={[
+              styles.compactRatingBadge,
+              { backgroundColor: palette.surfaceElevated, borderColor: palette.border },
+            ]}
+          >
+            <Text style={styles.goldStarSmall}>★</Text>
+            <Text style={[styles.ratingValueText, { color: palette.text }]}>
+              {technician.reviewCount
+                ? technician.averageRating.toFixed(1)
+                : technician.averageRating > 0
+                ? technician.averageRating.toFixed(1)
+                : '5.0'}
             </Text>
+            <Text style={[styles.ratingCountText, { color: palette.textMuted }]}>
+              ({technician.reviewCount || 0})
+            </Text>
+          </View>
+
+          {technician.completedJobsCount > 0 && (
+            <View
+              style={[
+                styles.compactTasksBadge,
+                { backgroundColor: palette.surfaceElevated, borderColor: palette.border },
+              ]}
+            >
+              <CheckCircle size={11} color={palette.primary} strokeWidth={2.4} />
+              <Text style={[styles.tasksBadgeText, { color: palette.text }]}>
+                {technician.completedJobsCount} {language === 'en' ? 'tasks' : 'tugas'}
+              </Text>
+            </View>
           )}
         </View>
 
@@ -298,15 +310,18 @@ export function TechnicianCard({
         )}
 
         <View style={[styles.cardFooter, { borderTopColor: palette.border }]}>
-          <Text
-            numberOfLines={1}
-            style={[styles.cardArea, { color: palette.textMuted }]}
-          >
-            {technician.serviceAreas[0]
-              ? localizeArea(technician.serviceAreas[0], language)
-              : t('technician.areaFallback')}
-            {technician.serviceAreas.length > 1 ? ` +${technician.serviceAreas.length - 1}` : ''}
-          </Text>
+          <View style={styles.cardAreaRow}>
+            <MapPin size={12} color={palette.textMuted} strokeWidth={2} />
+            <Text
+              numberOfLines={1}
+              style={[styles.cardArea, { color: palette.textMuted }]}
+            >
+              {technician.serviceAreas[0]
+                ? localizeArea(technician.serviceAreas[0], language)
+                : t('technician.areaFallback')}
+              {technician.serviceAreas.length > 1 ? ` +${technician.serviceAreas.length - 1}` : ''}
+            </Text>
+          </View>
           <View
             style={[styles.priceBadge, { backgroundColor: palette.primarySoft }]}
           >
@@ -662,7 +677,21 @@ const styles = StyleSheet.create({
     marginBottom: spacing.md,
     padding: spacing.lg,
   },
-  avatarColumn: { alignItems: 'center', gap: 6 },
+  avatarColumn: { alignItems: 'center' },
+  avatarWrap: {
+    position: 'relative',
+    alignSelf: 'flex-start',
+  },
+  onlineAvatarBlob: {
+    borderRadius: 7,
+    borderWidth: 2,
+    bottom: 0,
+    height: 14,
+    position: 'absolute',
+    right: 0,
+    width: 14,
+    zIndex: 2,
+  },
   statusPill: {
     alignItems: 'center',
     borderRadius: radii.pill,
@@ -680,6 +709,59 @@ const styles = StyleSheet.create({
   nameRow: { alignItems: 'center', flexDirection: 'row', gap: 6 },
   technicianName: { color: colors.ink, flexShrink: 1, fontSize: 17, fontWeight: '800', letterSpacing: -0.3 },
   personSubname: { color: colors.muted, fontSize: 11, fontWeight: '600', marginTop: 1 },
+  verifiedBadge: {
+    alignItems: 'center',
+    borderRadius: 4,
+    height: 16,
+    justifyContent: 'center',
+    width: 16,
+  },
+  verifiedBadgeText: {
+    fontSize: 10,
+    fontWeight: '900',
+  },
+  compactRatingBadge: {
+    alignItems: 'center',
+    borderRadius: 5,
+    borderWidth: 1,
+    flexDirection: 'row',
+    gap: 3,
+    paddingHorizontal: 6,
+    paddingVertical: 3,
+  },
+  goldStarSmall: {
+    color: '#F59E0B',
+    fontSize: 11,
+    fontWeight: '800',
+  },
+  ratingValueText: {
+    fontSize: 11,
+    fontWeight: '700',
+  },
+  ratingCountText: {
+    fontSize: 10,
+    fontWeight: '500',
+  },
+  compactTasksBadge: {
+    alignItems: 'center',
+    borderRadius: 5,
+    borderWidth: 1,
+    flexDirection: 'row',
+    gap: 3,
+    paddingHorizontal: 6,
+    paddingVertical: 3,
+  },
+  tasksBadgeText: {
+    fontSize: 11,
+    fontWeight: '600',
+  },
+  cardAreaRow: {
+    alignItems: 'center',
+    flex: 1,
+    flexDirection: 'row',
+    gap: 4,
+    marginRight: 8,
+  },
   verified: {
     alignItems: 'center',
     backgroundColor: colors.green,

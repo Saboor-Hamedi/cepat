@@ -10,12 +10,13 @@ import {
   TextInput,
   View,
 } from 'react-native';
+import { Briefcase, Image as ImageIcon } from 'lucide-react-native';
 
 import { useAuth } from '../../auth/AuthProvider';
 import { useAppearance } from '../../context/AppearanceContext';
 import { containsBlockedContactOrUrl } from '../../data/marketplaceStore';
 import { useLanguage } from '../../i18n/locale';
-import { colors, spacing } from '../../theme/tokens';
+import { colors, radii, spacing } from '../../theme/tokens';
 import { Avatar } from '../marketplace-ui';
 import { StrictImagePicker } from '../StrictImagePicker';
 import { TechnicianPostImagePreview } from './TechnicianPostImagePreview';
@@ -57,7 +58,9 @@ export function TechnicianPostComposer({
   // Section 6 Authorization Check:
   // If technicianProfile is provided and user is authenticated as a different account, do not render composer
   if (technicianProfile && user) {
-    const isDifferentUser = user.id !== technicianProfile.id && !technicianProfile.id.startsWith('demo-');
+    const isDifferentUser =
+      user.id !== technicianProfile.id &&
+      !technicianProfile.id.startsWith('demo-');
     if (isDifferentUser && roles && !roles.includes('technician')) {
       return null;
     }
@@ -71,6 +74,7 @@ export function TechnicianPostComposer({
   const canSubmit = hasContent && !isOverCharLimit && !hasUrl && !busy;
 
   const handleTextChange = (text: string) => {
+    // Strictly cap at MAX_POST_CHARS unless user somehow bypasses (then isOverCharLimit handles it)
     setCaption(text);
     if (containsBlockedContactOrUrl(text)) {
       setError(
@@ -167,8 +171,15 @@ export function TechnicianPostComposer({
     (typeof user?.user_metadata?.display_name === 'string' &&
       user.user_metadata.display_name.trim()) ||
     user?.email?.split('@')[0] ||
-    'Teknisi Cepat';
-  const authorAvatarUri = technicianProfile?.avatarUri || (typeof user?.user_metadata?.avatar_url === 'string' ? user.user_metadata.avatar_url : undefined);
+    (language === 'en' ? 'Technician' : 'Teknisi Cepat');
+
+  const firstName = authorName.split(' ')[0] || authorName;
+
+  const authorAvatarUri =
+    technicianProfile?.avatarUri ||
+    (typeof user?.user_metadata?.avatar_url === 'string'
+      ? user.user_metadata.avatar_url
+      : undefined);
 
   return (
     <KeyboardAvoidingView
@@ -179,6 +190,7 @@ export function TechnicianPostComposer({
       ]}
       testID="technician-post-composer"
     >
+      {/* Author Header */}
       <View style={styles.composerHeader}>
         <View
           style={[
@@ -200,47 +212,192 @@ export function TechnicianPostComposer({
               style={[styles.audienceDot, { backgroundColor: palette.primary }]}
             />
             <Text style={[styles.audienceText, { color: palette.textMuted }]}>
-              {language === 'en' ? 'Marketplace' : 'Marketplace'}
+              {language === 'en' ? 'Public • Marketplace' : 'Publik • Marketplace'}
             </Text>
           </View>
         </View>
       </View>
 
+      {/* Unified Textarea Box with Inner Footer */}
       <View
         style={[
-          styles.inputShell,
+          styles.textareaContainer,
           { backgroundColor: palette.inputBg, borderColor: palette.border },
         ]}
       >
-          <TextInput
-            multiline
-            maxLength={MAX_POST_CHARS}
-            onChangeText={handleTextChange}
-            placeholder={
-              language === 'en'
-                ? "What's happening? Share a job update..."
-                : 'Bagikan update pekerjaan atau tips servis...'
-            }
-            placeholderTextColor={palette.textMuted}
-            style={[
-              styles.textInput,
-              {
-                color: palette.text,
-                fontSize: scaleFont(15),
-                lineHeight: scaleFont(23),
-              },
-            ]}
-            testID="create-post-caption-input"
-            value={caption}
-          />
+        <TextInput
+          multiline
+          maxLength={MAX_POST_CHARS}
+          onChangeText={handleTextChange}
+          placeholder={
+            language === 'en'
+              ? `${firstName}, what's on your mind?`
+              : `${firstName}, apa yang Anda pikirkan?`
+          }
+          placeholderTextColor={palette.textMuted}
+          style={[
+            styles.textInput,
+            {
+              color: palette.text,
+              fontSize: scaleFont(15),
+              lineHeight: scaleFont(22),
+            },
+          ]}
+          testID="create-post-caption-input"
+          value={caption}
+        />
+
+        {/* Pre-upload Image Attachment Strip (Inside the container) */}
+        {images.length > 0 && (
+          <View style={styles.imagesInsideContainer}>
+            <TechnicianPostImagePreview
+              images={images}
+              onRemoveImage={handleRemoveImage}
+            />
+          </View>
+        )}
+
+        {/* Footer inside the textarea container */}
+        <View
+          style={[
+            styles.textareaFooter,
+            { borderTopColor: palette.border },
+          ]}
+        >
+          {/* Left: Photo Button & Service Toggle */}
+          <View style={styles.footerLeftActions}>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel={
+                language === 'en' ? 'Attach photo' : 'Lampirkan foto'
+              }
+              disabled={busy || images.length >= MAX_POST_IMAGES}
+              onPress={handleAddImage}
+              style={[
+                styles.mediaBtn,
+                { backgroundColor: palette.surface, borderColor: palette.border },
+                images.length >= MAX_POST_IMAGES && styles.mediaBtnDisabled,
+              ]}
+              testID="add-image-btn"
+            >
+              <View style={styles.mediaActionContent}>
+                <View
+                  testID="toggle-post-photo-picker-btn"
+                  style={[
+                    styles.mediaIconCanvas,
+                    { backgroundColor: palette.primarySoft },
+                  ]}
+                >
+                  <ImageIcon size={15} color={palette.primary} />
+                </View>
+                <Text
+                  style={[
+                    styles.mediaActionLabel,
+                    { color: palette.text, fontSize: scaleFont(12) },
+                  ]}
+                >
+                  {language === 'en' ? 'Photo' : 'Foto'}
+                </Text>
+                {images.length > 0 && (
+                  <View style={[styles.mediaCountBadge, { backgroundColor: palette.primary }]}>
+                    <Text style={styles.mediaCountBadgeText}>
+                      {images.length}
+                    </Text>
+                  </View>
+                )}
+              </View>
+            </Pressable>
+
+            <Pressable
+              accessibilityRole="switch"
+              accessibilityState={{ checked: isServicePost }}
+              disabled={busy}
+              onPress={() => setIsServicePost((value) => !value)}
+              style={[
+                styles.servicePillToggle,
+                {
+                  backgroundColor: isServicePost ? palette.primarySoft : palette.surface,
+                  borderColor: isServicePost ? palette.primary : palette.border,
+                },
+              ]}
+              testID="service-post-toggle"
+            >
+              <Briefcase
+                size={13}
+                color={isServicePost ? palette.primary : palette.textMuted}
+              />
+              <Text
+                style={[
+                  styles.servicePillText,
+                  {
+                    color: isServicePost ? palette.primary : palette.textMuted,
+                    fontSize: scaleFont(12),
+                  },
+                ]}
+              >
+                {language === 'en' ? 'Offer Service' : 'Tawarkan Layanan'}
+              </Text>
+            </Pressable>
+          </View>
+
+          {/* Right: Live Character counter & Post button */}
+          <View style={styles.footerRightActions}>
+            {(caption.length > 0 || isOverCharLimit) && (
+              <Text
+                style={[
+                  styles.charCounter,
+                  {
+                    color: isOverCharLimit
+                      ? palette.danger
+                      : caption.length > 160
+                        ? '#F59E0B'
+                        : palette.textMuted,
+                    fontWeight: isOverCharLimit ? '700' : '500',
+                  },
+                ]}
+                testID={isOverCharLimit ? 'char-count-warning' : 'char-counter'}
+              >
+                {MAX_POST_CHARS - caption.length}
+              </Text>
+            )}
+
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel={language === 'en' ? 'Post' : 'Posting'}
+              disabled={!canSubmit}
+              onPress={() => {
+                void handlePublish();
+              }}
+              style={[
+                styles.postBtn,
+                { backgroundColor: palette.primary },
+                !canSubmit && styles.postBtnDisabled,
+              ]}
+              testID="submit-new-post-btn"
+            >
+              {busy ? (
+                <ActivityIndicator size="small" color="#FFFFFF" />
+              ) : (
+                <Text style={[styles.postBtnText, { fontSize: scaleFont(13) }]}>
+                  {language === 'en' ? 'Post' : 'Posting'}
+                </Text>
+              )}
+            </Pressable>
+          </View>
+        </View>
       </View>
 
-      {/* Pre-upload Image Attachment Strip */}
-      <TechnicianPostImagePreview
-        images={images}
-        onRemoveImage={handleRemoveImage}
-      />
+      {/* Error / Validation Warning */}
+      {error ? (
+        <Text
+          style={[styles.errorText, { color: palette.danger }]}
+          testID="create-post-error"
+        >
+          {error}
+        </Text>
+      ) : null}
 
+      {/* Modal Photo Picker */}
       <Modal
         animationType={reduceMotion ? 'none' : 'slide'}
         onRequestClose={() => setShowPickerModal(false)}
@@ -264,12 +421,12 @@ export function TechnicianPostComposer({
           >
             <View style={[styles.pickerHandle, { backgroundColor: palette.border }]} />
             <Text style={[styles.pickerTitle, { color: palette.text, fontSize: scaleFont(18) }]}>
-              {language === 'en' ? 'Add a photo' : 'Tambahkan foto'}
+              {language === 'en' ? 'Add Photo to Post' : 'Tambah Foto ke Postingan'}
             </Text>
             <Text style={[styles.pickerSubtitle, { color: palette.textMuted, fontSize: scaleFont(13) }]}>
               {language === 'en'
-                ? 'Choose a photo from your device or take one now.'
-                : 'Pilih foto dari perangkat atau ambil foto sekarang.'}
+                ? 'Take a work photo or choose from your device gallery.'
+                : 'Ambil foto pekerjaan atau pilih dari galeri perangkat Anda.'}
             </Text>
             <StrictImagePicker
               displayMode="actions"
@@ -293,140 +450,6 @@ export function TechnicianPostComposer({
           </Pressable>
         </Pressable>
       </Modal>
-
-      {/* Error / Validation Warning */}
-      {error ? (
-        <Text
-          style={[styles.errorText, { color: palette.danger }]}
-          testID="create-post-error"
-        >
-          {error}
-        </Text>
-      ) : null}
-
-      <Pressable
-        accessibilityRole="switch"
-        accessibilityState={{ checked: isServicePost }}
-        disabled={busy}
-        onPress={() => setIsServicePost((value) => !value)}
-        style={[
-          styles.servicePostOption,
-          {
-            backgroundColor: palette.surfaceElevated,
-            borderColor: palette.border,
-          },
-        ]}
-        testID="service-post-toggle"
-      >
-        <View
-          style={[
-            styles.servicePostCheckbox,
-            {
-              backgroundColor: isServicePost ? palette.primary : palette.surface,
-              borderColor: isServicePost ? palette.primary : palette.border,
-            },
-          ]}
-        >
-          {isServicePost ? (
-            <Text style={styles.servicePostCheckmark}>✓</Text>
-          ) : null}
-        </View>
-        <View style={styles.servicePostCopy}>
-          <Text style={[styles.servicePostTitle, { color: palette.text }]}>
-            {language === 'en' ? 'Offer this as a service' : 'Tawarkan sebagai layanan'}
-          </Text>
-          <Text style={[styles.servicePostDescription, { color: palette.textMuted }]}>
-            {language === 'en'
-              ? 'Allow people to book from this post.'
-              : 'Izinkan orang memesan dari postingan ini.'}
-          </Text>
-        </View>
-      </Pressable>
-
-      {/* Bottom Action Bar */}
-      <View
-        style={[styles.actionBar, { borderTopColor: palette.border }]}
-      >
-        {/* Left: Media upload icon button */}
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel={
-            language === 'en' ? 'Attach photo' : 'Lampirkan foto'
-          }
-          disabled={busy || images.length >= MAX_POST_IMAGES}
-          onPress={handleAddImage}
-          style={[
-            styles.mediaBtn,
-            images.length >= MAX_POST_IMAGES && styles.mediaBtnDisabled,
-          ]}
-          testID="add-image-btn"
-        >
-          <View style={styles.mediaActionContent}>
-            <View
-              testID="toggle-post-photo-picker-btn"
-              style={[
-                styles.mediaIconCanvas,
-                { backgroundColor: palette.primarySoft },
-              ]}
-            >
-              <View style={[styles.mediaIconFrame, { borderColor: palette.primary }]}>
-                <View style={[styles.mediaIconSun, { backgroundColor: palette.primary }]} />
-                <View style={[styles.mediaIconMountain, { borderBottomColor: palette.primary }]} />
-              </View>
-            </View>
-            <Text style={[styles.mediaActionLabel, { color: palette.primary, fontSize: scaleFont(12) }]}>
-              {language === 'en' ? 'Photo' : 'Foto'}
-            </Text>
-          </View>
-          {images.length > 0 ? (
-            <Text style={[styles.mediaBadgeText, { color: palette.primary }]}>
-              {images.length}/{MAX_POST_IMAGES}
-            </Text>
-          ) : null}
-        </Pressable>
-
-        {/* Center: Character counter when nearing limit */}
-        <View style={styles.centerMeta}>
-          {caption.length > 160 || isOverCharLimit ? (
-            <Text
-              style={[
-                styles.charCounter,
-                {
-                  color: isOverCharLimit ? palette.danger : palette.textMuted,
-                  fontWeight: isOverCharLimit ? '800' : '600',
-                },
-              ]}
-              testID={isOverCharLimit ? 'char-count-warning' : 'char-counter'}
-            >
-              {MAX_POST_CHARS - caption.length}
-            </Text>
-          ) : null}
-        </View>
-
-        {/* Right: Pill-shaped Post button */}
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel={language === 'en' ? 'Post' : 'Posting'}
-          disabled={!canSubmit}
-          onPress={() => {
-            void handlePublish();
-          }}
-          style={[
-            styles.postBtn,
-            { backgroundColor: palette.primary },
-            !canSubmit && styles.postBtnDisabled,
-          ]}
-          testID="submit-new-post-btn"
-        >
-          {busy ? (
-            <ActivityIndicator size="small" color="#FFFFFF" />
-          ) : (
-            <Text style={[styles.postBtnText, { fontSize: scaleFont(13) }]}>
-              {language === 'en' ? 'Post' : 'Posting'}
-            </Text>
-          )}
-        </Pressable>
-      </View>
     </KeyboardAvoidingView>
   );
 }
@@ -449,11 +472,11 @@ const styles = StyleSheet.create({
   },
   avatarRing: {
     alignItems: 'center',
-    borderRadius: 28,
+    borderRadius: 5,
     borderWidth: 1,
-    height: 50,
+    height: 46,
     justifyContent: 'center',
-    width: 50,
+    width: 46,
   },
   authorInfo: {
     flex: 1,
@@ -462,7 +485,7 @@ const styles = StyleSheet.create({
   },
   authorName: {
     fontSize: 14,
-    fontWeight: '800',
+    fontWeight: '700',
   },
   audienceTag: {
     alignItems: 'center',
@@ -470,28 +493,125 @@ const styles = StyleSheet.create({
     gap: 5,
   },
   audienceDot: {
-    borderRadius: 4,
-    height: 7,
-    width: 7,
+    borderRadius: 3,
+    height: 6,
+    width: 6,
   },
   audienceText: {
     fontSize: 11,
-    fontWeight: '600',
+    fontWeight: '500',
   },
-  inputShell: {
+  textareaContainer: {
     borderRadius: 5,
     borderWidth: 1,
-    minHeight: 98,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
+    overflow: 'hidden',
   },
   textInput: {
     fontSize: 15,
-    lineHeight: 23,
-    maxHeight: 180,
-    minHeight: 78,
-    padding: 0,
+    lineHeight: 22,
+    minHeight: 80,
+    paddingHorizontal: spacing.md,
+    paddingTop: spacing.md,
+    paddingBottom: spacing.sm,
     textAlignVertical: 'top',
+  },
+  imagesInsideContainer: {
+    paddingHorizontal: spacing.sm,
+    paddingBottom: spacing.xs,
+  },
+  textareaFooter: {
+    alignItems: 'center',
+    borderTopWidth: StyleSheet.hairlineWidth,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    paddingHorizontal: spacing.sm,
+    paddingVertical: spacing.sm,
+  },
+  footerLeftActions: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    gap: 8,
+    flexWrap: 'wrap',
+  },
+  footerRightActions: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    gap: 10,
+  },
+  mediaBtn: {
+    alignItems: 'center',
+    borderRadius: 5,
+    borderWidth: 1,
+    justifyContent: 'center',
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+  },
+  mediaActionContent: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    gap: 6,
+  },
+  mediaActionLabel: {
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  mediaBtnDisabled: {
+    opacity: 0.4,
+  },
+  mediaIconCanvas: {
+    alignItems: 'center',
+    borderRadius: 4,
+    height: 22,
+    justifyContent: 'center',
+    width: 22,
+  },
+  mediaCountBadge: {
+    borderRadius: 8,
+    height: 16,
+    justifyContent: 'center',
+    alignItems: 'center',
+    minWidth: 16,
+    paddingHorizontal: 4,
+  },
+  mediaCountBadgeText: {
+    color: '#FFFFFF',
+    fontSize: 10,
+    fontWeight: '700',
+  },
+  servicePillToggle: {
+    alignItems: 'center',
+    borderRadius: 5,
+    borderWidth: 1,
+    flexDirection: 'row',
+    gap: 6,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+  },
+  servicePillText: {
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  charCounter: {
+    fontSize: 12,
+    fontWeight: '600',
+    textAlign: 'right',
+  },
+  postBtn: {
+    alignItems: 'center',
+    borderRadius: 5,
+    justifyContent: 'center',
+    minHeight: 32,
+    minWidth: 70,
+    paddingHorizontal: 16,
+    paddingVertical: 6,
+  },
+  postBtnDisabled: {
+    opacity: 0.45,
+  },
+  postBtnText: {
+    color: '#FFFFFF',
+    fontSize: 13,
+    fontWeight: '700',
   },
   pickerOverlay: {
     backgroundColor: 'rgba(0, 0, 0, 0.48)',
@@ -517,7 +637,7 @@ const styles = StyleSheet.create({
     width: 40,
   },
   pickerTitle: {
-    fontWeight: '800',
+    fontWeight: '700',
   },
   pickerSubtitle: {
     lineHeight: 19,
@@ -526,158 +646,18 @@ const styles = StyleSheet.create({
   },
   cancelPickerBtn: {
     alignItems: 'center',
-    borderRadius: 5,
+    borderRadius: radii.md,
     borderWidth: 1,
     justifyContent: 'center',
     marginTop: spacing.md,
-    minHeight: 46,
+    minHeight: 44,
   },
   cancelPickerBtnText: {
     fontWeight: '600',
   },
   errorText: {
-    color: colors.danger,
     fontSize: 12,
-    fontWeight: '600',
+    fontWeight: '500',
     marginTop: spacing.xs,
-  },
-  servicePostOption: {
-    alignItems: 'center',
-    borderRadius: 5,
-    borderWidth: 1,
-    flexDirection: 'row',
-    gap: spacing.sm,
-    marginTop: spacing.md,
-    minHeight: 58,
-    paddingHorizontal: spacing.sm,
-    paddingVertical: spacing.xs,
-  },
-  servicePostCheckbox: {
-    alignItems: 'center',
-    borderRadius: 5,
-    borderWidth: 1,
-    height: 20,
-    justifyContent: 'center',
-    width: 20,
-  },
-  servicePostCheckmark: {
-    color: '#FFFFFF',
-    fontSize: 13,
-    fontWeight: '800',
-    lineHeight: 16,
-  },
-  servicePostCopy: {
-    flex: 1,
-  },
-  servicePostTitle: {
-    fontSize: 12,
-    fontWeight: '700',
-  },
-  servicePostDescription: {
-    fontSize: 11,
-    marginTop: 1,
-  },
-  actionBar: {
-    alignItems: 'center',
-    borderTopColor: '#F1F5F9',
-    borderTopWidth: 1,
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginTop: spacing.sm,
-    paddingTop: spacing.sm,
-  },
-  mediaBtn: {
-    alignItems: 'center',
-    minHeight: 36,
-    justifyContent: 'center',
-    paddingHorizontal: spacing.xs,
-    paddingVertical: spacing.xs,
-  },
-  mediaActionContent: {
-    alignItems: 'center',
-    flexDirection: 'row',
-    gap: spacing.xs,
-  },
-  mediaActionLabel: {
-    fontSize: 12,
-    fontWeight: '700',
-  },
-  mediaBtnDisabled: {
-    opacity: 0.4,
-  },
-  mediaIconCanvas: {
-    alignItems: 'center',
-    borderRadius: 5,
-    height: 30,
-    justifyContent: 'center',
-    width: 30,
-  },
-  mediaIconFrame: {
-    borderColor: colors.greenDark,
-    borderRadius: 4,
-    borderWidth: 1.8,
-    height: 18,
-    overflow: 'hidden',
-    position: 'relative',
-    width: 20,
-  },
-  mediaIconSun: {
-    backgroundColor: colors.greenDark,
-    borderRadius: 2,
-    height: 3,
-    position: 'absolute',
-    right: 3,
-    top: 3,
-    width: 3,
-  },
-  mediaIconMountain: {
-    borderBottomColor: colors.greenDark,
-    borderBottomWidth: 7,
-    borderLeftColor: 'transparent',
-    borderLeftWidth: 6,
-    borderRightColor: 'transparent',
-    borderRightWidth: 6,
-    bottom: 0,
-    height: 0,
-    left: 2,
-    position: 'absolute',
-    width: 0,
-  },
-  mediaBadgeText: {
-    color: colors.greenDark,
-    fontSize: 11,
-    fontWeight: '700',
-  },
-  centerMeta: {
-    flex: 1,
-    paddingHorizontal: spacing.sm,
-  },
-  charCounter: {
-    color: colors.muted,
-    fontSize: 12,
-    fontWeight: '600',
-    textAlign: 'right',
-  },
-  charCounterLimit: {
-    color: colors.danger,
-    fontWeight: '800',
-  },
-  postBtn: {
-    alignItems: 'center',
-    backgroundColor: colors.greenDark,
-    borderRadius: 5,
-    justifyContent: 'center',
-    minHeight: 34,
-    minWidth: 76,
-    paddingHorizontal: 18,
-    paddingVertical: 8,
-  },
-  postBtnDisabled: {
-    opacity: 0.5,
-  },
-  postBtnText: {
-    color: '#FFFFFF',
-    fontSize: 13,
-    fontWeight: '800',
   },
 });

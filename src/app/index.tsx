@@ -274,10 +274,9 @@ export default function MarketplaceScreen() {
   const marketplaceItems = useMemo<MarketplaceListItem[]>(() => {
     const items: MarketplaceListItem[] = [];
 
-    // Stable, robust recommendations: pick top available or top-rated technicians
-    const effectivePool = visibleTechnicians.length > 0 ? visibleTechnicians : technicians;
-    const availablePool = effectivePool.filter((technician) => technician.available);
-    const candidatePool = availablePool.length > 0 ? availablePool : effectivePool;
+    // Pick top available or top-rated technicians from visibleTechnicians
+    const availablePool = visibleTechnicians.filter((technician) => technician.available);
+    const candidatePool = availablePool.length > 0 ? availablePool : visibleTechnicians;
     // Prioritize demo-rizky if in candidatePool so tests and users always have a solid recommendation
     const prioritized = [...candidatePool].sort((a, b) => {
       if (a.id === 'demo-rizky') return -1;
@@ -310,23 +309,18 @@ export default function MarketplaceScreen() {
       }
     }
 
-    // 3. Technicians to Consider (Section 3 - All matching technicians)
-    const techniciansToConsider =
-      visibleTechnicians.length > recommendations.length
-        ? visibleTechnicians.filter((t) => !recommendationIds.has(t.id))
-        : visibleTechnicians.length > 0
-          ? visibleTechnicians
-          : effectivePool;
+    // 3. Technicians to Consider (Section 3 - All remaining matching technicians without duplication)
+    const remainingTechnicians = visibleTechnicians.filter((t) => !recommendationIds.has(t.id));
 
-    if (techniciansToConsider.length > 0) {
+    if (remainingTechnicians.length > 0) {
       items.push({ key: 'technicians-heading', kind: 'technicians-heading' });
-      for (const technician of techniciansToConsider) {
+      for (const technician of remainingTechnicians) {
         items.push({ key: `technician-${technician.id}`, kind: 'technician', technician });
       }
     }
 
     return items;
-  }, [postFeed.items, technicians, visibleTechnicians]);
+  }, [postFeed.items, visibleTechnicians]);
 
   const handlePullToRefresh = useCallback(async () => {
     if (refreshInFlightRef.current || isLoading) return;

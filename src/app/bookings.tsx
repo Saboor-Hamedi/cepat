@@ -1,4 +1,5 @@
 import { router } from "expo-router";
+import { ArrowLeft, Bell } from "lucide-react-native";
 import { useEffect, useMemo, useState } from "react";
 import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -169,6 +170,61 @@ export default function CustomerBookingsScreen() {
         contentContainerStyle={styles.scrollContent}
       >
         <View style={styles.container}>
+          {/* Header with Back button, Title, and Booking Notification */}
+          <View style={styles.headerBar} testID="customer-bookings-header">
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel={language === "en" ? "Back" : "Kembali"}
+              onPress={() => {
+                if (router.canGoBack()) {
+                  router.back();
+                } else {
+                  router.replace("/");
+                }
+              }}
+              style={[
+                styles.headerBackBtn,
+                { backgroundColor: palette.surface, borderColor: palette.border },
+              ]}
+              testID="customer-bookings-back-btn"
+            >
+              <ArrowLeft size={18} color={palette.text} strokeWidth={2.2} />
+            </Pressable>
+
+            <View style={styles.headerTitleWrap}>
+              <Text style={[styles.headerTitle, { color: palette.text }]}>
+                {t("dashboard.customerTitle")}
+              </Text>
+            </View>
+
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel={
+                language === "en" ? "Notifications" : "Notifikasi"
+              }
+              onPress={() => setTab("current")}
+              style={[
+                styles.headerNotifBtn,
+                { backgroundColor: palette.surface, borderColor: palette.border },
+              ]}
+              testID="customer-bookings-notif-btn"
+            >
+              <Bell size={18} color={palette.text} strokeWidth={2.2} />
+              {currentBookings.length > 0 && (
+                <View
+                  style={[
+                    styles.notifBadge,
+                    { backgroundColor: palette.primary },
+                  ]}
+                >
+                  <Text style={styles.notifBadgeText}>
+                    {currentBookings.length > 9 ? "9+" : currentBookings.length}
+                  </Text>
+                </View>
+              )}
+            </Pressable>
+          </View>
+
           {/* Hidden semantic tag to preserve test compatibility */}
           <Text style={styles.srOnly} testID="bookings-heading">
             {t("dashboard.customerTitle")}
@@ -604,6 +660,56 @@ const styles = StyleSheet.create({
     fontWeight: "800",
     paddingHorizontal: 10,
     paddingVertical: 4,
+  },
+  headerBar: {
+    alignItems: "center",
+    flexDirection: "row",
+    justifyContent: "space-between",
+    marginBottom: spacing.md,
+    paddingHorizontal: 4,
+    width: "100%",
+  },
+  headerBackBtn: {
+    alignItems: "center",
+    borderRadius: 18,
+    borderWidth: 1,
+    height: 36,
+    justifyContent: "center",
+    width: 36,
+  },
+  headerTitleWrap: {
+    alignItems: "center",
+    flex: 1,
+    justifyContent: "center",
+  },
+  headerTitle: {
+    fontSize: 16,
+    fontWeight: "700",
+  },
+  headerNotifBtn: {
+    alignItems: "center",
+    borderRadius: 18,
+    borderWidth: 1,
+    height: 36,
+    justifyContent: "center",
+    position: "relative",
+    width: 36,
+  },
+  notifBadge: {
+    alignItems: "center",
+    borderRadius: 7,
+    height: 14,
+    justifyContent: "center",
+    minWidth: 14,
+    paddingHorizontal: 3,
+    position: "absolute",
+    right: -2,
+    top: -2,
+  },
+  notifBadgeText: {
+    color: "#FFFFFF",
+    fontSize: 9,
+    fontWeight: "800",
   },
   sectionList: { gap: spacing.sm },
   sectionSubheading: {
