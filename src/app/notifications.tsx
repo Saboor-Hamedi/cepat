@@ -290,28 +290,19 @@ export default function NotificationsScreen() {
             </Text>
           </View>
 
-          <View style={{ width: 36 }} />
-        </View>
-
-        <View style={styles.headingRow}>
-          <View style={styles.headingCopy}>
-            <Text style={styles.subheading}>
-              {language === 'en'
-                ? `${unreadCount} unread`
-                : `${unreadCount} belum dibaca`}
-            </Text>
-          </View>
-          {unreadCount > 0 && (
+          {unreadCount > 0 ? (
             <Pressable
               accessibilityRole="button"
               onPress={() => void handleMarkAllRead()}
-              style={styles.markAllButton}
+              style={[styles.markAllButton, { paddingVertical: 6, paddingHorizontal: 10 }]}
               testID="notifications-mark-all-read"
             >
               <Text style={styles.markAllText}>
-                {language === 'en' ? 'Mark all read' : 'Tandai dibaca'}
+                {language === 'en' ? 'Mark read' : 'Tandai dibaca'}
               </Text>
             </Pressable>
+          ) : (
+            <View style={{ width: 36 }} />
           )}
         </View>
 

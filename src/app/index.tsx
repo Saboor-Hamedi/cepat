@@ -367,6 +367,7 @@ export default function MarketplaceScreen() {
       postId: post.id,
       caption: newCaption,
       imageUri: newImageUri,
+      mediaUrls: newImageUri ? [newImageUri] : [],
     });
     await postFeed.refresh();
   };

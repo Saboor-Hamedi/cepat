@@ -15,6 +15,7 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import {
+  Avatar,
   EmptyState,
   LoadingState,
   PrimaryButton,
@@ -144,6 +145,7 @@ export default function TechnicianProfileScreen() {
   const [draftPortfolioDesc, setDraftPortfolioDesc] = useState('');
   const [draftPortfolioImage, setDraftPortfolioImage] = useState<string | undefined>(undefined);
   const [savingPortfolio, setSavingPortfolio] = useState(false);
+  const [portfolioSheetVisible, setPortfolioSheetVisible] = useState(false);
 
   // Review State & Permissions
   const [isAddingReview, setIsAddingReview] = useState(false);
@@ -464,9 +466,8 @@ export default function TechnicianProfileScreen() {
     (isProfileOwner && typeof user?.user_metadata?.username === "string" && user.user_metadata.username.trim()) ||
     accountUsername ||
     rawTechnician?.username ||
-    (technician?.displayName ? technician.displayName.toLowerCase().replace(/[^a-z0-9_]/g, '') : '') ||
-    'technician';
-  const formattedTechHandle = `@${rawTechUsername.replace(/^@/, '')}`;
+    '';
+  const formattedTechHandle = rawTechUsername ? `@${rawTechUsername.replace(/^@/, '')}` : '';
 
   const theme = getProfileTheme(technician.theme);
   const startingPrice = firstPrice(technician.services);
@@ -529,6 +530,7 @@ export default function TechnicianProfileScreen() {
       postId: post.id,
       caption: newCaption,
       imageUri: newImageUri,
+      mediaUrls: newImageUri ? [newImageUri] : [],
     });
     await postFeed.refresh();
   };
@@ -600,7 +602,7 @@ export default function TechnicianProfileScreen() {
                   onPress={() => setCoverMenuVisible(true)}
                   style={[
                     styles.coverIconBtn,
-                    { backgroundColor: "rgba(0, 0, 0, 0.55)", borderColor: palette.primary },
+                    { backgroundColor: palette.primary, borderColor: "#FFFFFF" },
                   ]}
                   testID="change-cover-btn"
                 >
@@ -615,7 +617,7 @@ export default function TechnicianProfileScreen() {
                   onPress={() => router.push("/account")}
                   style={[
                     styles.coverIconBtn,
-                    { backgroundColor: "rgba(0, 0, 0, 0.55)", borderColor: palette.primary },
+                    { backgroundColor: palette.primary, borderColor: "#FFFFFF" },
                   ]}
                   testID="profile-settings-btn"
                 >
@@ -670,28 +672,37 @@ export default function TechnicianProfileScreen() {
                     </View>
                   ) : null}
                 </View>
-                <Text
-                  style={[styles.profileHandle, { color: palette.textMuted }]}
-                  testID="technician-profile-handle"
-                >
-                  {user ? formattedTechHandle : rawTechUsername}
-                </Text>
-                {technician.businessName &&
-                  cleanTechnicianTypo(technician.businessName) !== cleanTechnicianTypo(technician.displayName) && (
-                    <Text
-                      style={[
-                        styles.businessName,
-                        { color: palette.textMuted },
-                      ]}
-                    >
-                      {cleanTechnicianTypo(technician.businessName)}
-                    </Text>
-                  )}
-                <Text style={[styles.profileHeadline, { color: palette.primary }]}>
-                  {cleanTechnicianTypo(headline || t("technician.serviceFallback"))}
-                </Text>
+                {formattedTechHandle ? (
+                  <Text
+                    style={[styles.profileHandle, { color: palette.textMuted }]}
+                    testID="technician-profile-handle"
+                  >
+                    {user ? formattedTechHandle : rawTechUsername}
+                  </Text>
+                ) : null}
               </View>
             </View>
+
+            {/* Headline and Bio in the same line under the profile image */}
+            {(headline || bio) ? (
+              <View style={styles.heroBioRow}>
+                <Text style={styles.heroBioText} numberOfLines={2}>
+                  {headline ? (
+                    <Text style={[styles.heroHeadlineText, { color: palette.primary }]}>
+                      {cleanTechnicianTypo(headline)}
+                    </Text>
+                  ) : null}
+                  {headline && bio ? (
+                    <Text style={{ color: palette.textMuted }}> : </Text>
+                  ) : null}
+                  {bio ? (
+                    <Text style={[styles.heroBioInlineText, { color: palette.text }]}>
+                      {cleanTechnicianTypo(bio)}
+                    </Text>
+                  ) : null}
+                </Text>
+              </View>
+            ) : null}
 
             {/* 4 Badges in a single horizontal line, radius 5px */}
             <View style={styles.singleLineBadgesRow} testID="technician-stats-bar">
@@ -850,9 +861,6 @@ export default function TechnicianProfileScreen() {
                 accessibilityRole="button"
                 onPress={() => {
                   setActiveProfileTab("reviews");
-                  if (canAddReview) {
-                    setIsAddingReview(true);
-                  }
                 }}
                 style={[
                   styles.singleActionBadge,
@@ -1576,12 +1584,7 @@ export default function TechnicianProfileScreen() {
                       <Pressable
                         accessibilityRole="button"
                         accessibilityLabel={language === "en" ? "Attach work photo" : "Lampirkan foto karya"}
-                        onPress={async () => {
-                          const picked = await pickImageSafely("gallery");
-                          if (picked?.uri) {
-                            setDraftPortfolioImage(picked.uri);
-                          }
-                        }}
+                        onPress={() => setPortfolioSheetVisible(true)}
                         style={[
                           styles.attachPhotoBtn,
                           {
@@ -1616,7 +1619,10 @@ export default function TechnicianProfileScreen() {
                   <View style={styles.formButtonRow}>
                     <Pressable
                       accessibilityRole="button"
-                      onPress={() => setIsAddingPortfolio(false)}
+                      onPress={() => {
+                        setIsAddingPortfolio(false);
+                        setEditingPortfolioItem(null);
+                      }}
                       style={[
                         styles.formCancelBtnModern,
                         { borderColor: palette.border, backgroundColor: palette.surfaceElevated },
@@ -1633,16 +1639,39 @@ export default function TechnicianProfileScreen() {
                         if (!draftPortfolioTitle.trim()) return;
                         setSavingPortfolio(true);
                         try {
-                          const newItem: PortfolioItem = {
-                            id: `port-${Date.now()}`,
-                            title: draftPortfolioTitle.trim(),
-                            description: draftPortfolioDesc.trim() || undefined,
-                            imageUri: draftPortfolioImage,
-                          };
-                          const updatedList = [newItem, ...(technician.portfolio || [])];
-                          await updateTechnicianPortfolio(technician.id, updatedList);
-                          setLoadedTechnician((prev) => prev ? { ...prev, portfolio: updatedList } : prev);
+                          if (editingPortfolioItem) {
+                            const updatedList = (technician.portfolio || []).map((p) =>
+                              p.id === editingPortfolioItem.id
+                                ? {
+                                    ...p,
+                                    title: draftPortfolioTitle.trim(),
+                                    description: draftPortfolioDesc.trim() || undefined,
+                                    imageUri: draftPortfolioImage,
+                                  }
+                                : p,
+                            );
+                            await updateTechnicianPortfolio(technician.id, updatedList);
+                            setLoadedTechnician((prev) =>
+                              prev ? { ...prev, portfolio: updatedList } : prev,
+                            );
+                            setEditingPortfolioItem(null);
+                          } else {
+                            const newItem: PortfolioItem = {
+                              id: `port-${Date.now()}`,
+                              title: draftPortfolioTitle.trim(),
+                              description: draftPortfolioDesc.trim() || undefined,
+                              imageUri: draftPortfolioImage,
+                            };
+                            const updatedList = [newItem, ...(technician.portfolio || [])];
+                            await updateTechnicianPortfolio(technician.id, updatedList);
+                            setLoadedTechnician((prev) =>
+                              prev ? { ...prev, portfolio: updatedList } : prev,
+                            );
+                          }
                           setIsAddingPortfolio(false);
+                          setDraftPortfolioTitle('');
+                          setDraftPortfolioDesc('');
+                          setDraftPortfolioImage(undefined);
                         } finally {
                           setSavingPortfolio(false);
                         }
@@ -1668,7 +1697,7 @@ export default function TechnicianProfileScreen() {
                 </View>
               )}
               {technician.portfolio.length ? (
-                <View style={styles.portfolioGrid}>
+                <View style={styles.portfolioFeedWrap}>
                   {technician.portfolio.map((item) => {
                     const title =
                       language === "en"
@@ -1679,12 +1708,10 @@ export default function TechnicianProfileScreen() {
                         ? item.descriptionEn || item.description
                         : item.description;
                     return (
-                      <Pressable
+                      <View
                         key={item.id}
-                        accessibilityRole="button"
-                        onPress={() => setExpandedPortfolio(item)}
                         style={[
-                          styles.modernPortfolioCard,
+                          styles.postCardLike,
                           {
                             backgroundColor: palette.surface,
                             borderColor: palette.border,
@@ -1692,34 +1719,64 @@ export default function TechnicianProfileScreen() {
                         ]}
                         testID={`portfolio-item-${item.id}`}
                       >
-                        <View style={styles.portfolioCardPhotoFrame}>
-                          <PortfolioPhoto
-                            uri={item.imageUri}
-                            title={title}
-                            fallbackLabel={t("profile.portfolioPhoto")}
-                            large
-                          />
-                        </View>
-                        <View style={styles.portfolioCardBody}>
-                          <Text
-                            numberOfLines={1}
-                            style={[styles.portfolioTitleModern, { color: palette.text }]}
-                          >
-                            {title}
-                          </Text>
-                          {desc && (
-                            <Text
-                              numberOfLines={3}
-                              style={[
-                                styles.portfolioDescModern,
-                                { color: palette.textMuted },
-                              ]}
+                        <View style={styles.portfolioItemHeader}>
+                          <View style={styles.portfolioAuthorRow}>
+                            <Avatar uri={technician.avatarUri} name={technician.displayName} size={36} />
+                            <View style={{ marginLeft: 8 }}>
+                              <Text style={[styles.portfolioAuthorName, { color: palette.text }]}>
+                                {cleanTechnicianTypo(technician.displayName)}
+                              </Text>
+                              <Text style={[styles.portfolioAuthorSub, { color: palette.textMuted }]}>
+                                {language === "en" ? "Verified Portfolio" : "Portofolio Terverifikasi"}
+                              </Text>
+                            </View>
+                          </View>
+                          {(isProfileOwner || isAdminUser) && (
+                            <Pressable
+                              accessibilityRole="button"
+                              onPress={() => {
+                                setDraftPortfolioTitle(item.title);
+                                setDraftPortfolioDesc(item.description || '');
+                                setDraftPortfolioImage(item.imageUri);
+                                setEditingPortfolioItem(item);
+                                setIsAddingPortfolio(true);
+                              }}
+                              style={[styles.smallEditPortfolioBtn, { backgroundColor: palette.primarySoft }]}
+                              testID={`edit-portfolio-btn-${item.id}`}
                             >
-                              {desc}
-                            </Text>
+                              <Pencil size={12} color={palette.primary} strokeWidth={2.2} />
+                              <Text style={[styles.smallEditPortfolioText, { color: palette.primary }]}>
+                                {language === "en" ? "Edit" : "Ubah"}
+                              </Text>
+                            </Pressable>
                           )}
                         </View>
-                      </Pressable>
+
+                        <View style={styles.portfolioTextBody}>
+                          <Text style={[styles.portfolioTitleText, { color: palette.text }]}>
+                            {title}
+                          </Text>
+                          {desc ? (
+                            <Text style={[styles.portfolioDescText, { color: palette.textMuted }]}>
+                              {desc}
+                            </Text>
+                          ) : null}
+                        </View>
+
+                        {item.imageUri ? (
+                          <Pressable
+                            accessibilityRole="button"
+                            onPress={() => setExpandedPortfolio(item)}
+                            style={styles.portfolioPhotoWrap}
+                          >
+                            <Image
+                              source={{ uri: item.imageUri }}
+                              style={styles.portfolioLargePhoto}
+                              resizeMode="cover"
+                            />
+                          </Pressable>
+                        ) : null}
+                      </View>
                     );
                   })}
                 </View>
@@ -1757,25 +1814,9 @@ export default function TechnicianProfileScreen() {
                       : undefined
                   }
                 />
-                {!isAddingReview && canAddReview && (
-                  <Pressable
-                    accessibilityRole="button"
-                    onPress={() => {
-                      setDraftReviewRating(5);
-                      setDraftReviewComment('');
-                      setIsAddingReview(true);
-                    }}
-                    style={[styles.smallActionBtn, { backgroundColor: palette.primarySoft }]}
-                    testID="add-review-trigger-btn"
-                  >
-                    <Text style={[styles.smallActionBtnText, { color: palette.primary }]}>
-                      {language === "en" ? "+ Write a Review" : "+ Beri Ulasan"}
-                    </Text>
-                  </Pressable>
-                )}
               </View>
 
-              {!canAddReview && !isProfileOwner && (
+              {!isProfileOwner && (
                 <View
                   style={[
                     styles.modernCard,
@@ -1793,8 +1834,8 @@ export default function TechnicianProfileScreen() {
                   <ShieldCheck size={16} color={palette.primary} strokeWidth={2.2} />
                   <Text style={{ color: palette.textMuted, fontSize: 12, flex: 1 }}>
                     {language === "en"
-                      ? "Feedback is allowed only after a customer completes a task with this technician."
-                      : "Ulasan hanya dapat diberikan setelah pelanggan menyelesaikan tugas dengan teknisi ini."}
+                      ? "Feedback is allowed only upon task completion by the customer."
+                      : "Ulasan hanya dapat diberikan oleh pelanggan saat menyelesaikan tugas."}
                   </Text>
                 </View>
               )}
@@ -1855,84 +1896,6 @@ export default function TechnicianProfileScreen() {
                 </View>
               </View>
 
-              {/* Add Review Form */}
-              {isAddingReview && (
-                <View style={[styles.formCard, { backgroundColor: palette.surface, borderColor: palette.border }]} testID="add-review-form">
-                  <Text style={[styles.formLabel, { color: palette.text }]}>
-                    {language === "en" ? "Your Star Rating" : "Rating Bintang Anda"}
-                  </Text>
-                  <View style={styles.interactiveStarsRow}>
-                    {[1, 2, 3, 4, 5].map((val) => (
-                      <Pressable
-                        key={val}
-                        accessibilityRole="button"
-                        onPress={() => setDraftReviewRating(val)}
-                        style={styles.starTouchBtn}
-                      >
-                        <Text style={val <= draftReviewRating ? styles.interactiveGoldStar : styles.interactiveMutedStar}>
-                          ★
-                        </Text>
-                      </Pressable>
-                    ))}
-                    <Text style={[styles.selectedRatingText, { color: palette.text }]}>
-                      {draftReviewRating}.0 / 5.0
-                    </Text>
-                  </View>
-
-                  <Text style={[styles.formLabel, { color: palette.text }]}>
-                    {language === "en" ? "Your Review / Feedback *" : "Ulasan / Umpan Balik *"}
-                  </Text>
-                  <TextInput
-                    multiline
-                    value={draftReviewComment}
-                    onChangeText={setDraftReviewComment}
-                    placeholder={language === "en" ? "Describe your service experience with this technician..." : "Tulis pengalaman dan kualitas servis teknisi ini..."}
-                    placeholderTextColor={palette.textMuted}
-                    style={[styles.formTextarea, { backgroundColor: palette.inputBg, borderColor: palette.border, color: palette.text }]}
-                    testID="review-comment-input"
-                  />
-
-                  <View style={styles.formButtonRow}>
-                    <Pressable
-                      accessibilityRole="button"
-                      onPress={() => setIsAddingReview(false)}
-                      style={[styles.formCancelBtn, { borderColor: palette.border }]}
-                    >
-                      <Text style={[styles.formBtnText, { color: palette.textMuted }]}>
-                        {language === "en" ? "Cancel" : "Batal"}
-                      </Text>
-                    </Pressable>
-                    <Pressable
-                      accessibilityRole="button"
-                      disabled={savingReview || !draftReviewComment.trim()}
-                      onPress={async () => {
-                        if (!draftReviewComment.trim()) return;
-                        setSavingReview(true);
-                        try {
-                          const newRev = await submitDirectTechnicianReview({
-                            technicianId: technician.id,
-                            customerName: accountDisplayName || (language === "en" ? "Verified Customer" : "Pelanggan Terverifikasi"),
-                            rating: draftReviewRating,
-                            comment: draftReviewComment.trim(),
-                          });
-                          setDynamicReviews((prev) => [newRev, ...prev]);
-                          setIsAddingReview(false);
-                          setDraftReviewComment('');
-                          setHasCompletedTaskWithTech(false);
-                        } finally {
-                          setSavingReview(false);
-                        }
-                      }}
-                      style={[styles.formSaveBtn, { backgroundColor: palette.primary, opacity: draftReviewComment.trim() ? 1 : 0.6 }]}
-                      testID="submit-direct-review-btn"
-                    >
-                      <Text style={styles.formSaveBtnText}>
-                        {savingReview ? "..." : (language === "en" ? "Submit Review" : "Kirim Ulasan")}
-                      </Text>
-                    </Pressable>
-                  </View>
-                </View>
-              )}
               {technician.reviews.length ? (
                 technician.reviews.map((review) => (
                   <View
@@ -2294,6 +2257,24 @@ export default function TechnicianProfileScreen() {
         title={language === "en" ? "Update Cover Photo" : "Ubah Foto Sampul"}
         visible={coverMenuVisible}
       />
+
+      <ImageSourceSheet
+        allowFallbackUri
+        backdropTestID="portfolio-photo-sheet-backdrop"
+        onClose={() => setPortfolioSheetVisible(false)}
+        onImageSelected={(nextUri) => {
+          setPortfolioSheetVisible(false);
+          setDraftPortfolioImage(nextUri);
+        }}
+        subtitle={
+          language === "en"
+            ? "Choose a photo to showcase your work."
+            : "Pilih foto untuk menampilkan hasil pekerjaan Anda."
+        }
+        testIDPrefix="portfolio"
+        title={language === "en" ? "Select Work Photo" : "Pilih Foto Karya"}
+        visible={portfolioSheetVisible}
+      />
     </SafeAreaView>
   );
 }
@@ -2436,11 +2417,11 @@ const styles = StyleSheet.create({
   },
   coverIconBtn: {
     alignItems: "center",
-    borderRadius: 5,
-    borderWidth: 1,
-    height: 34,
+    borderRadius: 18,
+    borderWidth: 1.5,
+    height: 36,
     justifyContent: "center",
-    width: 34,
+    width: 36,
   },
   changeCoverBtn: {
     backgroundColor: "rgba(0,0,0,0.6)",
@@ -2887,7 +2868,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     gap: 8,
-    marginTop: spacing.md,
+    marginTop: 22,
+    marginBottom: 6,
     width: '100%',
   },
   singleBadgeItem: {
@@ -2988,8 +2970,95 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     gap: 8,
     justifyContent: 'space-between',
-    marginVertical: 12,
+    marginTop: 8,
+    marginBottom: 16,
     width: '100%',
+  },
+  heroBioRow: {
+    marginTop: 10,
+    paddingHorizontal: 16,
+    width: "100%",
+  },
+  heroBioText: {
+    fontSize: 13,
+    lineHeight: 18,
+  },
+  heroHeadlineText: {
+    fontSize: 13,
+    fontWeight: "700",
+  },
+  heroBioInlineText: {
+    fontSize: 13,
+    fontWeight: "400",
+  },
+  portfolioFeedWrap: {
+    gap: 12,
+    marginTop: spacing.sm,
+    width: "100%",
+  },
+  postCardLike: {
+    borderRadius: 5,
+    borderWidth: 1,
+    marginBottom: 12,
+    overflow: "hidden",
+    padding: spacing.md,
+    width: "100%",
+  },
+  portfolioItemHeader: {
+    alignItems: "center",
+    flexDirection: "row",
+    justifyContent: "space-between",
+    marginBottom: 8,
+    width: "100%",
+  },
+  portfolioAuthorRow: {
+    alignItems: "center",
+    flexDirection: "row",
+  },
+  portfolioAuthorName: {
+    fontSize: 14,
+    fontWeight: "700",
+  },
+  portfolioAuthorSub: {
+    fontSize: 11,
+    fontWeight: "500",
+    marginTop: 1,
+  },
+  smallEditPortfolioBtn: {
+    alignItems: "center",
+    borderRadius: 5,
+    flexDirection: "row",
+    gap: 4,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+  },
+  smallEditPortfolioText: {
+    fontSize: 11,
+    fontWeight: "700",
+  },
+  portfolioTextBody: {
+    marginBottom: 8,
+  },
+  portfolioTitleText: {
+    fontSize: 15,
+    fontWeight: "700",
+    marginBottom: 3,
+  },
+  portfolioDescText: {
+    fontSize: 13,
+    lineHeight: 19,
+  },
+  portfolioPhotoWrap: {
+    borderRadius: 5,
+    marginTop: 4,
+    overflow: "hidden",
+    width: "100%",
+  },
+  portfolioLargePhoto: {
+    aspectRatio: 16 / 9,
+    borderRadius: 5,
+    height: 220,
+    width: "100%",
   },
   singleActionBadge: {
     alignItems: 'center',

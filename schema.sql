@@ -68,6 +68,7 @@ $$;
 create table public.profiles (
   id uuid primary key references auth.users(id) on delete cascade,
   display_name text not null check (char_length(display_name) between 1 and 80),
+  username text unique,
   avatar_path text,
   locale text not null default 'id-ID',
   created_at timestamptz not null default now(),

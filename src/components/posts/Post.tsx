@@ -14,7 +14,7 @@ import {
 import { useAuth } from "../../auth/AuthProvider";
 import { useAppearance } from "../../context/AppearanceContext";
 import { localizeArea, useLanguage } from "../../i18n/locale";
-import { pickImageSafely } from "../../profile";
+import { ImageSourceSheet } from "../ImageSourceSheet";
 import { colors, radii, spacing } from "../../theme/tokens";
 import type { TechnicianPost } from "../../types/post";
 import { Avatar } from "../marketplace-ui";
@@ -100,6 +100,7 @@ export function Post({
   const [busy, setBusy] = useState(false);
   const [imageError, setImageError] = useState(false);
   const [confirmDeleteVisible, setConfirmDeleteVisible] = useState(false);
+  const [editImageMenuVisible, setEditImageMenuVisible] = useState(false);
 
   const isAdminUser = Boolean(
     isAdmin || roles.includes("admin") || effectiveRole === "admin",
@@ -229,7 +230,11 @@ export function Post({
                           testID: `edit-post-btn-${post.id}`,
                           onPress: () => {
                             setDraftCaption(post.content || post.caption || "");
-                            setDraftImageUri(post.imageUri || (post.mediaUrls && post.mediaUrls[0]));
+                            setDraftImageUri(
+                              images.length > 0
+                                ? images[0]
+                                : (post.imageUri || (post.mediaUrls && post.mediaUrls[0]) || undefined)
+                            );
                             setIsEditing(true);
                           },
                         },
@@ -354,12 +359,7 @@ export function Post({
               <Pressable
                 accessibilityRole="button"
                 accessibilityLabel={language === "en" ? "Change photo" : "Ganti foto"}
-                onPress={async () => {
-                  const picked = await pickImageSafely("gallery");
-                  if (picked?.uri) {
-                    setDraftImageUri(picked.uri);
-                  }
-                }}
+                onPress={() => setEditImageMenuVisible(true)}
                 style={[
                   styles.editImageChangeBtn,
                   { backgroundColor: palette.surface, borderColor: palette.border },
@@ -376,12 +376,7 @@ export function Post({
             <Pressable
               accessibilityRole="button"
               accessibilityLabel={language === "en" ? "Add photo" : "Tambah foto"}
-              onPress={async () => {
-                const picked = await pickImageSafely("gallery");
-                if (picked?.uri) {
-                  setDraftImageUri(picked.uri);
-                }
-              }}
+              onPress={() => setEditImageMenuVisible(true)}
               style={[
                 styles.editAddPhotoBtn,
                 { backgroundColor: palette.surface, borderColor: palette.border },
@@ -394,6 +389,24 @@ export function Post({
               </Text>
             </Pressable>
           )}
+
+          <ImageSourceSheet
+            allowFallbackUri
+            backdropTestID={`edit-post-sheet-backdrop-${post.id}`}
+            onClose={() => setEditImageMenuVisible(false)}
+            onImageSelected={(nextUri) => {
+              setEditImageMenuVisible(false);
+              setDraftImageUri(nextUri);
+            }}
+            subtitle={
+              language === "en"
+                ? "Choose a photo to attach to your post."
+                : "Pilih foto untuk dilampirkan pada postingan Anda."
+            }
+            testIDPrefix={`edit-post-image-${post.id}`}
+            title={language === "en" ? "Select Photo" : "Pilih Foto"}
+            visible={editImageMenuVisible}
+          />
           <View style={styles.editActions}>
             <Pressable
               accessibilityRole="button"
@@ -870,6 +883,7 @@ const styles = StyleSheet.create({
   editImagePreview: {
     aspectRatio: 16 / 9,
     borderRadius: 5,
+    height: 200,
     width: "100%",
   },
   editImageRemoveBtn: {
