@@ -10,6 +10,7 @@ export interface TechnicianPost {
   id: string;
   technicianId: string;
   technicianName: string;
+  technicianUsername?: string;
   technicianBusinessName?: string;
   technicianAvatarUri?: string;
   technicianVerified: boolean;

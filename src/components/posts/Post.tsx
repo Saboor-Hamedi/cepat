@@ -120,6 +120,12 @@ export function Post({
         ? [post.imageUri]
         : [];
   const displayName = cleanTechnicianTypo(authorName || post.technicianName);
+  const rawAuthorHandle =
+    post.technicianUsername ||
+    (isActualOwner && typeof user?.user_metadata?.username === "string" && user.user_metadata.username.trim()) ||
+    displayName.toLowerCase().replace(/[^a-z0-9_]/g, "") ||
+    "technician";
+  const authorHandle = `@${rawAuthorHandle.replace(/^@/, "")}`;
   const displayAvatar = authorAvatarUri || post.technicianAvatarUri;
   const displayBusinessName = cleanTechnicianTypo(post.technicianBusinessName);
   const displayContent = cleanTechnicianTypo(
@@ -197,9 +203,10 @@ export function Post({
                 numberOfLines={1}
                 style={[styles.authorSub, { color: palette.textMuted }]}
               >
-                {displayBusinessName ? `${displayBusinessName} · ` : ""}
+                {authorHandle}
+                {displayBusinessName ? ` · ${displayBusinessName}` : ""}
                 {post.serviceArea
-                  ? `${localizeArea(post.serviceArea, language)}`
+                  ? ` · ${localizeArea(post.serviceArea, language)}`
                   : ""}
               </Text>
             </View>

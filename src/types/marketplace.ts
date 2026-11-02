@@ -56,6 +56,7 @@ export type ProfileThemePreset = 'sand' | 'sage' | 'clay';
 export interface Technician {
   id: string;
   displayName: string;
+  username?: string;
   businessName?: string;
   headline?: string;
   headlineEn?: string;
@@ -191,6 +192,7 @@ export interface TechnicianPost {
   id: string;
   technicianId: string;
   technicianName: string;
+  technicianUsername?: string;
   technicianBusinessName?: string;
   technicianAvatarUri?: string;
   technicianVerified: boolean;

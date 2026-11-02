@@ -1,4 +1,5 @@
 import { router } from "expo-router";
+import { useEffect, useState } from "react";
 import {
   Modal,
   Pressable,
@@ -10,6 +11,7 @@ import {
 
 import { useAuth } from "../auth/AuthProvider";
 import { useAppearance } from "../context/AppearanceContext";
+import { loadAccountProfileDetails } from "../data/marketplaceStore";
 import { useLanguage } from "../i18n/locale";
 import { colors, radii, spacing } from "../theme/tokens";
 import { Avatar } from "./Avatar";
@@ -127,10 +129,33 @@ export function Sidebar({ visible, onClose, avatarUri }: SidebarProps) {
       ? "Guest Visitor"
       : "Pengunjung Tamu";
 
-  const rawEmailPart = (
-    user?.email?.split("@")[0] || "cepat_member"
-  ).toLowerCase();
-  const strippedUsername = rawEmailPart.replace(/\d+/g, "");
+  const [profileUsername, setProfileUsername] = useState<string>("");
+
+  useEffect(() => {
+    let active = true;
+    if (user?.id) {
+      void loadAccountProfileDetails(user.id).then((details) => {
+        if (active && details.username) {
+          setProfileUsername(details.username);
+        }
+      });
+    }
+    return () => {
+      active = false;
+    };
+  }, [user?.id]);
+
+  const rawMetaUsername =
+    typeof user?.user_metadata?.username === "string"
+      ? user.user_metadata.username.trim()
+      : "";
+  const rawHandle =
+    profileUsername ||
+    rawMetaUsername ||
+    (user?.email ? user.email.split("@")[0].toLowerCase().replace(/[^a-z0-9_]/g, "") : "") ||
+    "user";
+  const formattedHandle = `@${rawHandle.replace(/^@/, "")}`;
+
   const userMetadataAvatar =
     (typeof user?.user_metadata?.avatar_url === "string" && user.user_metadata.avatar_url) ||
     (typeof user?.user_metadata?.avatar_path === "string" && user.user_metadata.avatar_path) ||
@@ -140,7 +165,7 @@ export function Sidebar({ visible, onClose, avatarUri }: SidebarProps) {
   const effectiveAvatarUri = avatarUri || hookAvatar || userMetadataAvatar || undefined;
 
   const accountIdentifier = isAuthenticated
-    ? strippedUsername || rawEmailPart
+    ? formattedHandle
     : language === "en"
       ? "Not signed in"
       : "Belum masuk";

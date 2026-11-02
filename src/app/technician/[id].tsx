@@ -1,5 +1,5 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { ArrowLeft, Camera, CheckCircle, FileText, MapPin, Pencil, PlusSquare, ShieldCheck, Star, X } from "lucide-react-native";
+import { ArrowLeft, Camera, CheckCircle, FileText, MapPin, Pencil, PlusSquare, Settings, ShieldCheck, Star, X } from "lucide-react-native";
 import { router, useLocalSearchParams } from "expo-router";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
@@ -21,6 +21,7 @@ import {
   Rating,
   ServiceCategoryGlyph,
 } from "../../components/marketplace-ui";
+import { ImageSourceSheet } from "../../components/ImageSourceSheet";
 import { InfiniteFlatList } from "../../components/InfiniteFlatList";
 import {
   pickImageSafely,
@@ -34,6 +35,7 @@ import {
 } from "../../components/TechnicianPostCard";
 import { formatRupiah, loadTechnician } from "../../data/marketplaceRepository";
 import {
+  loadAccountProfileDetails,
   loadBookings,
   loadSubmittedReviews,
   saveTechnicianWorkspaceProfile,
@@ -126,6 +128,8 @@ export default function TechnicianProfileScreen() {
   const [reportError, setReportError] = useState<string | null>(null);
   const [dynamicCompletedJobs, setDynamicCompletedJobs] = useState<number>(0);
   const [dynamicReviews, setDynamicReviews] = useState<TechnicianReview[]>([]);
+  const [coverMenuVisible, setCoverMenuVisible] = useState(false);
+  const [accountUsername, setAccountUsername] = useState<string>('');
 
   // About Me Editing State
   const [isEditingAbout, setIsEditingAbout] = useState(false);
@@ -201,6 +205,9 @@ export default function TechnicianProfileScreen() {
       });
       void AsyncStorage.getItem(`@cepat_cover_${targetId}`).then((saved) => {
         if (active && saved) setCoverUri(saved);
+      });
+      void loadAccountProfileDetails(targetId).then((details) => {
+        if (active && details.username) setAccountUsername(details.username);
       });
     }
     return () => {
@@ -425,17 +432,15 @@ export default function TechnicianProfileScreen() {
     }
   };
 
-  const handleChangeCover = async () => {
-    try {
-      const picked = await pickImageSafely("gallery");
-      if (picked?.uri) {
-        setCoverUri(picked.uri);
-        const targetId = id || user?.id;
-        if (targetId) {
-          await AsyncStorage.setItem(`@cepat_cover_${targetId}`, picked.uri);
-        }
-      }
-    } catch {}
+  const handleCoverSelected = async (newUri: string) => {
+    setCoverMenuVisible(false);
+    setCoverUri(newUri);
+    const targetId = id || user?.id;
+    if (targetId) {
+      try {
+        await AsyncStorage.setItem(`@cepat_cover_${targetId}`, newUri);
+      } catch {}
+    }
   };
 
   if (!technician) {
@@ -454,6 +459,14 @@ export default function TechnicianProfileScreen() {
       </SafeAreaView>
     );
   }
+
+  const rawTechUsername =
+    (isProfileOwner && typeof user?.user_metadata?.username === "string" && user.user_metadata.username.trim()) ||
+    accountUsername ||
+    rawTechnician?.username ||
+    (technician?.displayName ? technician.displayName.toLowerCase().replace(/[^a-z0-9_]/g, '') : '') ||
+    'technician';
+  const formattedTechHandle = `@${rawTechUsername.replace(/^@/, '')}`;
 
   const theme = getProfileTheme(technician.theme);
   const startingPrice = firstPrice(technician.services);
@@ -578,27 +591,37 @@ export default function TechnicianProfileScreen() {
             )}
             <Header onBack={goBack} overlay />
             {isProfileOwner && (
-              <Pressable
-                accessibilityRole="button"
-                accessibilityLabel={
-                  language === "en" ? "Change cover photo" : "Ubah foto sampul"
-                }
-                onPress={handleChangeCover}
-                style={[
-                  styles.changeCoverBtn,
-                  { backgroundColor: "rgba(0, 0, 0, 0.55)", borderColor: palette.primary, borderRadius: 5, padding: 8 },
-                ]}
-                testID="change-cover-btn"
-              >
-                <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
-                  <View style={[styles.cameraAccentBadge, { backgroundColor: palette.primary }]}>
-                    <Camera color="#FFFFFF" size={12} strokeWidth={2.2} />
-                  </View>
-                  <Text style={styles.changeCoverText}>
-                    {language === "en" ? "Edit Cover" : "Ubah Sampul"}
-                  </Text>
-                </View>
-              </Pressable>
+              <View style={styles.coverTopRightRow}>
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel={
+                    language === "en" ? "Change cover photo" : "Ubah foto sampul"
+                  }
+                  onPress={() => setCoverMenuVisible(true)}
+                  style={[
+                    styles.coverIconBtn,
+                    { backgroundColor: "rgba(0, 0, 0, 0.55)", borderColor: palette.primary },
+                  ]}
+                  testID="change-cover-btn"
+                >
+                  <Camera color="#FFFFFF" size={16} strokeWidth={2.2} />
+                </Pressable>
+
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel={
+                    language === "en" ? "Settings" : "Pengaturan"
+                  }
+                  onPress={() => router.push("/account")}
+                  style={[
+                    styles.coverIconBtn,
+                    { backgroundColor: "rgba(0, 0, 0, 0.55)", borderColor: palette.primary },
+                  ]}
+                  testID="profile-settings-btn"
+                >
+                  <Settings color="#FFFFFF" size={16} strokeWidth={2.2} />
+                </Pressable>
+              </View>
             )}
           </View>
 
@@ -647,6 +670,12 @@ export default function TechnicianProfileScreen() {
                     </View>
                   ) : null}
                 </View>
+                <Text
+                  style={[styles.profileHandle, { color: palette.textMuted }]}
+                  testID="technician-profile-handle"
+                >
+                  {user ? formattedTechHandle : rawTechUsername}
+                </Text>
                 {technician.businessName &&
                   cleanTechnicianTypo(technician.businessName) !== cleanTechnicianTypo(technician.displayName) && (
                     <Text
@@ -2248,6 +2277,23 @@ export default function TechnicianProfileScreen() {
           </Pressable>
         </Pressable>
       </Modal>
+
+      <ImageSourceSheet
+        allowFallbackUri
+        backdropTestID="cover-photo-sheet-backdrop"
+        onClose={() => setCoverMenuVisible(false)}
+        onImageSelected={(nextUri) => {
+          void handleCoverSelected(nextUri);
+        }}
+        subtitle={
+          language === "en"
+            ? "Choose a photo for your profile banner."
+            : "Pilih foto untuk sampul profil Anda."
+        }
+        testIDPrefix="cover"
+        title={language === "en" ? "Update Cover Photo" : "Ubah Foto Sampul"}
+        visible={coverMenuVisible}
+      />
     </SafeAreaView>
   );
 }
@@ -2378,6 +2424,23 @@ const styles = StyleSheet.create({
     top: -50,
     transform: [{ rotate: "25deg" }],
     width: "75%",
+  },
+  coverTopRightRow: {
+    alignItems: "center",
+    flexDirection: "row",
+    gap: 8,
+    position: "absolute",
+    right: 16,
+    top: 16,
+    zIndex: 10,
+  },
+  coverIconBtn: {
+    alignItems: "center",
+    borderRadius: 5,
+    borderWidth: 1,
+    height: 34,
+    justifyContent: "center",
+    width: 34,
   },
   changeCoverBtn: {
     backgroundColor: "rgba(0,0,0,0.6)",
