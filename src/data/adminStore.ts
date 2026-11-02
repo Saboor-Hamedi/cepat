@@ -262,7 +262,7 @@ export async function loadAdminAccounts(): Promise<AdminAccountRecord[]> {
             displayName: techInfo?.businessName
               ? `${p.display_name} (${techInfo.businessName})`
               : p.display_name,
-            email: p.username ? `@${p.username}` : `${p.id.slice(0, 8)}@cepat.id`,
+            email: p.username ? `@${p.username}` : '',
             role,
             area: 'Jakarta Selatan',
             status,
@@ -563,35 +563,74 @@ export interface AdminDeletionFeedback {
   deletedAt: string;
 }
 
-const DEFAULT_DELETION_FEEDBACKS: AdminDeletionFeedback[] = [
+export const DEFAULT_DELETION_FEEDBACKS: AdminDeletionFeedback[] = [
   {
-    id: 'feedback-seed-1',
-    userDisplayName: 'Rendra Kusuma',
-    userEmail: 'rendra.k@example.com',
+    id: 'feedback-record-1',
+    userDisplayName: 'Customer User',
     userRole: 'customer',
     reasonCategory: 'relocated',
-    feedbackNotes: 'Moving abroad next week. Cepat has been very helpful during my stay in Jakarta.',
+    feedbackNotes: 'Relocated outside the service area. The platform was very reliable during my stay.',
     deletedAt: '2026-10-31T11:20:00.000Z',
   },
   {
-    id: 'feedback-seed-2',
-    userDisplayName: 'Bayu Pratama',
-    userEmail: 'bayu.p@example.com',
+    id: 'feedback-record-2',
+    userDisplayName: 'Technician Partner',
     userRole: 'technician',
     reasonCategory: 'career_change',
-    feedbackNotes: 'Transitioning to an offline engineering leadership job at a commercial builder.',
+    feedbackNotes: 'Accepted full-time corporate role at an engineering firm.',
     deletedAt: '2026-10-29T15:40:00.000Z',
   },
   {
-    id: 'feedback-seed-3',
-    userDisplayName: 'Dewi Lestari',
-    userEmail: 'dewi.lestari@example.com',
+    id: 'feedback-record-3',
+    userDisplayName: 'Customer User',
     userRole: 'customer',
-    reasonCategory: 'rarely_used',
-    feedbackNotes: 'Downsizing apps on my mobile device.',
+    reasonCategory: 'no_need',
+    feedbackNotes: 'No longer have equipment or appliances requiring regular maintenance.',
     deletedAt: '2026-10-28T09:10:00.000Z',
   },
 ];
+
+export async function recordAdminDeletionFeedback(input: {
+  userId?: string;
+  userEmail?: string;
+  userDisplayName?: string;
+  userRole?: string;
+  reasonCategory: string;
+  feedbackNotes?: string;
+}): Promise<void> {
+  const newRecord: AdminDeletionFeedback = {
+    id: `deletion-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+    userId: input.userId,
+    userEmail: input.userEmail && input.userEmail.trim().length > 0 ? input.userEmail.trim() : undefined,
+    userDisplayName: input.userDisplayName && input.userDisplayName.trim().length > 0 ? input.userDisplayName.trim() : 'User',
+    userRole: input.userRole || 'customer',
+    reasonCategory: input.reasonCategory,
+    feedbackNotes: input.feedbackNotes && input.feedbackNotes.trim().length > 0 ? input.feedbackNotes.trim() : undefined,
+    deletedAt: new Date().toISOString(),
+  };
+
+  const existing = await getStoredJson<AdminDeletionFeedback[]>(
+    '@cepat/admin-deletion-feedbacks',
+    DEFAULT_DELETION_FEEDBACKS,
+  );
+  const updated = [newRecord, ...existing];
+  await setStoredJson('@cepat/admin-deletion-feedbacks', updated);
+
+  if (supabase && !shouldUseFixtures()) {
+    try {
+      await supabase.from('account_deletion_feedbacks').insert({
+        user_id: input.userId,
+        user_email: input.userEmail && input.userEmail.trim().length > 0 ? input.userEmail.trim() : null,
+        user_display_name: input.userDisplayName || 'User',
+        user_role: input.userRole || 'customer',
+        reason_category: input.reasonCategory,
+        feedback_notes: input.feedbackNotes,
+      });
+    } catch {
+      // ignore
+    }
+  }
+}
 
 export async function loadAdminDeletionFeedbacks(): Promise<AdminDeletionFeedback[]> {
   if (supabase && !shouldUseFixtures()) {
@@ -605,11 +644,11 @@ export async function loadAdminDeletionFeedbacks(): Promise<AdminDeletionFeedbac
         return data.map((item) => ({
           id: String(item.id),
           userId: item.user_id ? String(item.user_id) : undefined,
-          userEmail: item.user_email ? String(item.user_email) : undefined,
-          userDisplayName: String(item.user_display_name || 'Deleted User'),
+          userEmail: item.user_email && String(item.user_email).trim() ? String(item.user_email).trim() : undefined,
+          userDisplayName: item.user_display_name && String(item.user_display_name).trim() ? String(item.user_display_name).trim() : 'User',
           userRole: String(item.user_role || 'customer'),
           reasonCategory: String(item.reason_category || 'other'),
-          feedbackNotes: item.feedback_notes ? String(item.feedback_notes) : undefined,
+          feedbackNotes: item.feedback_notes && String(item.feedback_notes).trim() ? String(item.feedback_notes).trim() : undefined,
           deletedAt: String(item.deleted_at || new Date().toISOString()),
         }));
       }

@@ -14,6 +14,7 @@ import {
 
 import { useAuth } from "../../auth/AuthProvider";
 import { useAppearance } from "../../context/AppearanceContext";
+import { recordAdminDeletionFeedback } from "../../data/adminStore";
 import { supabase } from "../../data/marketplaceRepository";
 import { useLanguage } from "../../i18n/locale";
 import { radii, spacing } from "../../theme/tokens";
@@ -150,6 +151,20 @@ export function SettingDeleteAccount({
             // Ignore fallback errors
           }
         }
+      }
+
+      // Record departure feedback for Admin Console review
+      try {
+        await recordAdminDeletionFeedback({
+          userId: user?.id,
+          userEmail: userEmail || user?.email,
+          userDisplayName: (user?.user_metadata as { display_name?: string } | undefined)?.display_name,
+          userRole: user?.role,
+          reasonCategory: selectedReason || 'other',
+          feedbackNotes: finalReason,
+        });
+      } catch {
+        // Non-blocking
       }
 
       // 3. Log out from the app
