@@ -13,6 +13,7 @@ import { useAppearance } from "../context/AppearanceContext";
 import { useLanguage } from "../i18n/locale";
 import { colors, radii, spacing } from "../theme/tokens";
 import { Avatar } from "./Avatar";
+import { useUserAvatar } from "../hooks/useUserAvatar";
 
 export interface SidebarProps {
   visible: boolean;
@@ -130,6 +131,14 @@ export function Sidebar({ visible, onClose, avatarUri }: SidebarProps) {
     user?.email?.split("@")[0] || "cepat_member"
   ).toLowerCase();
   const strippedUsername = rawEmailPart.replace(/\d+/g, "");
+  const userMetadataAvatar =
+    (typeof user?.user_metadata?.avatar_url === "string" && user.user_metadata.avatar_url) ||
+    (typeof user?.user_metadata?.avatar_path === "string" && user.user_metadata.avatar_path) ||
+    (typeof user?.user_metadata?.avatar === "string" && user.user_metadata.avatar) ||
+    undefined;
+  const hookAvatar = useUserAvatar(user?.id, displayName, avatarUri || userMetadataAvatar);
+  const effectiveAvatarUri = avatarUri || hookAvatar || userMetadataAvatar || undefined;
+
   const accountIdentifier = isAuthenticated
     ? strippedUsername || rawEmailPart
     : language === "en"
@@ -183,7 +192,7 @@ export function Sidebar({ visible, onClose, avatarUri }: SidebarProps) {
           <View style={styles.profileHeader}>
             <View style={styles.avatarTopRow}>
               <Avatar
-                uri={isAuthenticated ? avatarUri : undefined}
+                uri={isAuthenticated ? effectiveAvatarUri : undefined}
                 name={displayName}
                 size={48}
               />
@@ -293,20 +302,6 @@ export function Sidebar({ visible, onClose, avatarUri }: SidebarProps) {
                 {language === "en" ? "Account preferences" : "Preferensi akun"}
               </Text>
             </Pressable>
-
-            {isAuthenticated && (
-              <Pressable
-                accessibilityRole="button"
-                onPress={() => navigateAndClose("/notifications")}
-                style={styles.menuItem}
-                testID="sidebar-notifications"
-              >
-                <SidebarItemIcon kind="notifications" color={palette.text} />
-                <Text style={[styles.menuItemText, { color: palette.text }]}>
-                  {language === "en" ? "Notifications" : "Notifikasi"}
-                </Text>
-              </Pressable>
-            )}
 
             {isTechnician ? (
               <Pressable

@@ -385,32 +385,52 @@ export default function MarketplaceScreen() {
 
   const Header = (
     <View style={styles.contentWidth}>
-      <View
-        style={[
-          styles.searchBox,
-          { backgroundColor: palette.inputBg, borderColor: palette.border },
-        ]}
-        testID="marketplace-search-shell"
-      >
-        <View style={styles.searchIconBox}>
-          <View
-            style={[styles.searchCircle, { borderColor: palette.textMuted }]}
+      {/* Search Bar + Location Button (Split layout) */}
+      <View style={styles.searchRow}>
+        <View
+          style={[
+            styles.searchBox,
+            { backgroundColor: palette.inputBg, borderColor: palette.border },
+          ]}
+          testID="marketplace-search-shell"
+        >
+          <View style={styles.searchIconBox}>
+            <View
+              style={[styles.searchCircle, { borderColor: palette.textMuted }]}
+            />
+            <View
+              style={[styles.searchHandle, { backgroundColor: palette.textMuted }]}
+            />
+          </View>
+          <TextInput
+            accessibilityLabel={t('home.search')}
+            autoCapitalize="none"
+            onChangeText={setQuery}
+            placeholder={t('home.search')}
+            placeholderTextColor={palette.textMuted}
+            returnKeyType="search"
+            style={[styles.searchInput, { color: palette.text }]}
+            testID="marketplace-search"
+            value={query}
           />
-          <View
-            style={[styles.searchHandle, { backgroundColor: palette.textMuted }]}
-          />
+          {query.length > 0 && (
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel={t('home.clearSearch')}
+              onPress={() => setQuery('')}
+              style={[
+                styles.clearSearch,
+                { backgroundColor: palette.pillBg },
+              ]}
+              testID="clear-search"
+            >
+              <Text style={[styles.clearSearchText, { color: palette.textMuted }]}>
+                ×
+              </Text>
+            </Pressable>
+          )}
         </View>
-        <TextInput
-          accessibilityLabel={t('home.search')}
-          autoCapitalize="none"
-          onChangeText={setQuery}
-          placeholder={t('home.search')}
-          placeholderTextColor={palette.textMuted}
-          returnKeyType="search"
-          style={[styles.searchInput, { color: palette.text }]}
-          testID="marketplace-search"
-          value={query}
-        />
+
         <Pressable
           accessibilityRole="button"
           accessibilityLabel={`${t('home.areaLabel')}: ${
@@ -421,7 +441,10 @@ export default function MarketplaceScreen() {
           onPress={() => setAreaModalVisible(true)}
           style={[
             styles.searchLocationButton,
-            { borderColor: palette.border },
+            {
+              backgroundColor: palette.surfaceElevated,
+              borderColor: palette.border,
+            },
           ]}
           testID="area-picker-trigger"
         >
@@ -446,24 +469,7 @@ export default function MarketplaceScreen() {
               ? t('home.allAreasOption')
               : localizeArea(area, language)}
           </Text>
-          
         </Pressable>
-        {query.length > 0 && (
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel={t('home.clearSearch')}
-            onPress={() => setQuery('')}
-            style={[
-              styles.clearSearch,
-              { backgroundColor: palette.pillBg },
-            ]}
-            testID="clear-search"
-          >
-            <Text style={[styles.clearSearchText, { color: palette.textMuted }]}>
-              ×
-            </Text>
-          </Pressable>
-        )}
       </View>
 
       <ScrollView
@@ -480,13 +486,14 @@ export default function MarketplaceScreen() {
               accessibilityRole="tab"
               accessibilityState={{ selected }}
               onPress={() => setSelectedCategory(category.slug)}
-              style={[
+              style={({ pressed }) => [
                 styles.categoryFilter,
                 {
                   backgroundColor: selected
                     ? palette.primary
-                    : palette.surface,
+                    : 'transparent',
                   borderColor: selected ? palette.primary : palette.border,
+                  transform: [{ scale: pressed ? 0.96 : 1 }],
                 },
               ]}
               testID={`category-${category.slug}`}
@@ -494,7 +501,10 @@ export default function MarketplaceScreen() {
               <Text
                 style={[
                   styles.categoryFilterText,
-                  { color: selected ? '#FFFFFF' : palette.text },
+                  {
+                    color: selected ? '#FFFFFF' : palette.textMuted,
+                    fontWeight: selected ? '800' : '600',
+                  },
                 ]}
               >
                 {category.label}
@@ -693,13 +703,15 @@ export default function MarketplaceScreen() {
             return (
               <View style={styles.feedSectionTitle} testID="marketplace-posts-section">
                 <SectionTitle
-                  eyebrow={language === 'en' ? 'TECHNICIAN WORK FEED' : 'FEED PEKERJAAN TEKNISI'}
                   title={
                     language === 'en'
-                      ? 'Recent Work Posts from Technicians'
-                      : 'Postingan Pekerjaan Terbaru Teknisi'
+                      ? 'Recent Work Posts'
+                      : 'Postingan Pekerjaan Terbaru'
                   }
-                  
+                  trailing={language === 'en' ? 'View all →' : 'Lihat semua →'}
+                  onTrailingPress={() => {
+                    setSelectedCategory('all');
+                  }}
                 />
               </View>
             );
@@ -841,16 +853,21 @@ const styles = StyleSheet.create({
     paddingTop: 5,
     width: '100%',
   },
+  searchRow: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    gap: 8,
+    width: '100%',
+  },
   searchLocationButton: {
     alignItems: 'center',
-    borderLeftWidth: 1,
+    borderRadius: 12,
+    borderWidth: 1,
     flexDirection: 'row',
     gap: 6,
-    marginLeft: spacing.xs,
-    maxWidth: 140,
-    minWidth: 80,
-    paddingLeft: spacing.sm,
-    paddingRight: 4,
+    height: 48,
+    maxWidth: 160,
+    paddingHorizontal: spacing.sm,
   },
   locationPinBox: {
     alignItems: 'center',
@@ -879,10 +896,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     backgroundColor: colors.paper,
     borderColor: colors.line,
+    borderRadius: 12,
     borderWidth: 1,
+    flex: 1,
     flexDirection: 'row',
-    borderRadius: 5,
-    height: 52,
+    height: 48,
     paddingHorizontal: spacing.sm,
     width: '100%',
   },
@@ -955,20 +973,22 @@ const styles = StyleSheet.create({
     marginTop: spacing.sm,
   },
   categoryFilters: {
-    gap: spacing.xs,
+    flexDirection: 'row',
+    gap: 8,
     paddingBottom: spacing.xs,
     paddingRight: spacing.md,
     paddingTop: spacing.sm,
   },
   categoryFilter: {
-    borderRadius: radii.pill,
+    alignItems: 'center',
+    borderRadius: 20,
     borderWidth: 1,
-    paddingHorizontal: spacing.md,
-    paddingVertical: 8,
+    justifyContent: 'center',
+    paddingHorizontal: 14,
+    paddingVertical: 7,
   },
   categoryFilterText: {
-    fontSize: 12,
-    fontWeight: '700',
+    fontSize: 13,
   },
   popularGrid: {
     flexDirection: 'row',

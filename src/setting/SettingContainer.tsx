@@ -270,6 +270,10 @@ export function SettingContainer() {
                     bookingPreferences,
                   });
                 }}
+                onUpdateNotifications={(notifications) => {
+                  void setInAppPushEnabled(notifications.push);
+                  void handleUpdatePrefs({ ...preferences, notifications });
+                }}
               />
             </>
           )}

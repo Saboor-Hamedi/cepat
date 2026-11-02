@@ -286,10 +286,16 @@ export function AuthProvider({ children }: PropsWithChildren) {
         if (supabase) {
           const { data } = await supabase
             .from('profiles')
-            .select('avatar_path, display_name')
+            .select('*')
             .eq('id', user.id)
             .maybeSingle();
-          if (data?.avatar_path) remote = data.avatar_path;
+          const remoteCandidate =
+            (typeof data?.avatar_path === 'string' && data.avatar_path) ||
+            (typeof data?.avatar_url === 'string' && data.avatar_url) ||
+            (typeof data?.avatar === 'string' && data.avatar) ||
+            (typeof data?.avatar_uri === 'string' && data.avatar_uri) ||
+            null;
+          if (remoteCandidate) remote = remoteCandidate;
         }
         const avatar = remote || local;
         if (active && avatar && (!user.user_metadata?.avatar_url || user.user_metadata.avatar_url !== avatar)) {

@@ -1,238 +1,123 @@
-You are an expert React Native UI/UX designer. Your task is to completely redesign the marketplace front page (Browse/Home screen), Search screen, and Profile screen to match a modern, clean marketplace app design (similar to OfferUp/Facebook Marketplace).
+# Honest Review of Your Marketplace Screen
 
-🚨 STRICT CONSTRAINTS:
+It's **functional and has a clear structure**, which is good — but there are several issues holding it back from looking professional. Here's my breakdown:
 
-1. UI AND STYLING ONLY. Do not change any business logic, state management, API calls, navigation structure, or data flow.
-2. Keep all existing props, variables, function calls, and component imports exactly as they are.
-3. Do not add new npm dependencies. Use only standard React Native components and your existing icon library.
-4. The app supports 3 themes: white (light), dark, and system (follows device setting). You MUST implement all 3 themes properly using the existing theme system. Do not hardcode colors — use theme variables.
+---
 
-🎨 DESIGN SYSTEM (apply to all 3 themes):
+## 🔴 Critical Issues (Must Fix)
 
-Light Theme:
+### 1. **"Techinician" is misspelled** — appears 3 times
 
-- Background: #FFFFFF
-- Surface/Card: #F5F7F5 (very light mint-gray)
-- Surface Secondary: #EEF2EE
-- Primary Accent: #10B981 (emerald green)
-- Primary Light: rgba(16, 185, 129, 0.1)
-- Text Primary: #111827
-- Text Secondary: #6B7280
-- Text Muted: #9CA3AF
-- Border: #E5E7EB
-- Search Bar BG: #F3F4F6
-- Chip BG: #F0F4F0
+It should be **"Technician"**. This is a trust-killer for users. A marketplace with typos in the main heading feels unprofessional.
 
-Dark Theme:
+### 2. **"BOOKABLE SERVICE" badge is cut off** on the 3rd card
 
-- Background: #0F0F1A
-- Surface/Card: #1A1A2E
-- Surface Secondary: #252540
-- Primary Accent: #10B981
-- Primary Light: rgba(16, 185, 129, 0.15)
-- Text Primary: #F9FAFB
-- Text Secondary: #9CA3AF
-- Text Muted: #6B7280
-- Border: #2A2A3E
-- Search Bar BG: #1E1E2E
-- Chip BG: #252540
+The text is clipping at the bottom. This is a layout bug — the card needs more bottom padding or the badge needs proper spacing.
 
-System Theme:
+### 3. **Random gear/settings icon on the image**
 
-- Automatically uses Light or Dark based on device appearance setting. Use Appearance API or your existing theme hook.
+The second post has a ⚙️ icon floating over the image. This looks like a debug artifact or misplaced button. It confuses users.
 
-General Rules:
+---
 
-- Border radius: 12px for cards, 16px for large cards, 24px for search bar, 50% for avatars/circles
-- Spacing: 16px standard padding, 12px between items, 8px for small gaps
-- Font: Use your existing font system. Headings: bold/700, Body: 400/500
-- Shadows: Very subtle on light mode (elevation 1-2), none on dark mode
-- All touch targets minimum 44x44
+## 🟡 Design Issues (Should Fix)
 
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-📱 SCREEN 1: BROWSE / HOME SCREEN
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+### 4. **Category chips feel basic**
 
-1. Top Header Bar:
+- The "All" chip is just a flat green rectangle — no border radius, no polish
+- Inactive chips have no visual feedback state
+- They look like buttons from 2015
 
-- Left side: Location indicator with a small map pin icon, city name in bold, and a small chevron-down (dropdown indicator). Example: "📍 Portland, OR ▾"
-- Right side: Notification bell icon inside a subtle circular button
-- Keep it clean, no heavy background — just the theme background color
-- Add proper top padding for safe area (status bar)
+### 5. **Search bar location indicator is clunky**
 
-2. Search Bar:
+The green dot + "East Jakarta" feels shoved in. It should either be a separate location button or integrated more elegantly.
 
-- Full width with horizontal margins (16px)
-- Rounded pill shape (borderRadius: 24)
-- Light gray/muted background (Search Bar BG color from theme)
-- Magnifying glass icon on the left (muted color)
-- Placeholder text: "Find sneakers, cameras, furniture..."
-- Height: ~48px
-- NO filter button attached to it — keep it clean
+### 6. **Cards lack visual hierarchy**
 
-3. Featured Ads Carousel (Horizontal Scroll):
+- The avatar, name, subtitle, badge, and text all compete for attention
+- No clear separation between sections inside the card
+- The three-dots menu is too subtle (gray on dark = hard to tap)
 
-- Section title: "FEATURED" with a small lightning bolt icon, displayed as a badge on each card
-- Horizontal ScrollView/FlatList with horizontal paging or snap
-- Each featured card:
-  - Large image taking up most of the card (aspect ratio ~16:10)
-  - Image has rounded corners (16px)
-  - "⚡ FEATURED" badge overlaid on top-left of image (yellow/amber background, dark text, small pill)
-  - Title overlaid at bottom of image in white text with text shadow for readability
-  - Below image (or overlaid at bottom): Price in large bold text, original price with strikethrough in smaller muted text
-  - Seller row: small circular avatar (24px), seller name, star rating with star icon
-  - Card width: ~80% of screen width so next card peeks in
-  - Gap between cards: 12px
-  - Horizontal padding: 16px
+### 7. **Bottom nav "Profile" shows a real avatar**
 
-4. Browse Categories Section:
+This is unusual. Most apps show a person icon. If you want the avatar, make it smaller and cleaner. Also, the active state (green house icon) is good, but the inactive icons are too thin/light.
 
-- Section header: "BROWSE CATEGORIES" in small uppercase muted text on left, "Show all →" link on right (primary green color)
-- Grid layout: 3 columns, 2 rows visible
-- Each category card:
-  - Square aspect ratio (1:1)
-  - Background image with dark gradient overlay at bottom for text readability
-  - Category name at bottom-left in white bold text
-  - Rounded corners (12px)
-  - Gap: 12px between cards
-- Categories: Electronics, Fashion, Home & Garden, Sneakers, Books, Vintage (use your existing category data)
+### 8. **Section header is too loud**
 
-5. Safety Tip Banner:
+"TECHNICIAN WORK FEED" in all-caps green + "Recent Work Posts from Technicians" in large white = redundant. Pick one.
 
-- Full width card with light amber/yellow background (light mode) or dark amber (dark mode)
-- Small shield icon on left
-- Title: "Stay safe — meet smart" (bold)
-- Subtitle: "Public spot, daylight, and never wire money. Tap for tips →" (smaller, muted)
-- Rounded corners (12px)
-- Margin: 16px horizontal
+---
 
-6. "Fresh Near You" Section:
+## 🟢 What's Working Well
 
-- Section header: "Fresh near you" in bold on left, "X ads" count in muted text on right
-- List of ad cards (vertical):
-  - Each card: horizontal layout
-  - Left: Square image thumbnail (80x80, borderRadius 12)
-  - Right: Price (bold, large), Title (1 line, truncate), Location + time ago (small, muted, with pin icon)
-  - Far right: Heart/favorite icon (outline)
-  - Card background: Surface color
-  - Border radius: 12px
-  - Margin bottom: 12px
-  - Padding inside card: 12px
+- ✅ Dark theme is consistent
+- ✅ Green accent color is used purposefully
+- ✅ Card-based layout is the right approach
+- ✅ Bottom nav has 5 clear sections
+- ✅ Location awareness in search bar
 
-7. Bottom Navigation Bar:
+---
 
-- 5 tabs: Browse, Search, Sell, Inbox, Profile
-- Icons above labels
-- Active tab: Primary green color for both icon and label
-- Inactive tab: Muted gray color
-- Sell button: Circular button with "+" icon, slightly elevated, primary green background with white icon
-- Height: ~60px with safe area bottom padding
-- Top border: subtle 1px line
+## 🎯 Recommended Prompt for Your Agent
 
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-📱 SCREEN 2: SEARCH SCREEN
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Here's a prompt to fix all of this:
 
-1. Header:
+```text
+You are an expert React Native UI developer. Redesign the Marketplace screen to look modern and professional. UI ONLY — do not change any logic, data flow, or navigation.
 
-- Large bold title "Search"
-- No back button needed (it's a tab)
+🚨 FIX THESE BUGS FIRST:
+1. Fix the typo "Techinician" → "Technician" everywhere (appears 3 times in post cards)
+2. Fix the "BOOKABLE SERVICE" badge being cut off — add proper bottom padding to cards
+3. Remove the random gear/settings icon overlaid on post images
 
-2. Search Bar:
+🎨 DESIGN IMPROVEMENTS:
 
-- Same style as home screen search bar
-- Placeholder: "Find anything in your city"
-- Filter/settings icon button on the right (green circular button with sliders icon)
+1. Search Bar:
+- Split into two parts: search input (flex: 1) with magnifying glass icon, and a separate location button on the right
+- Location button: small pin icon + "East Jakarta" text, subtle background, rounded
+- Overall search bar: borderRadius 12, subtle border
 
-3. Trending Searches:
+2. Category Chips:
+- "All" active chip: green background, white text, borderRadius 20, padding 10px horizontal
+- Inactive chips: transparent background with subtle border (1px, muted color), borderRadius 20
+- Horizontal ScrollView with gap 8px between chips
+- Add slight scale animation on press
 
-- Section label: "TRENDING SEARCHES" with a small trending-up icon, uppercase, muted, small font
-- Horizontal wrapping chips/row of chips
-- Each chip: rounded pill (borderRadius 20), light background (Chip BG color), padding horizontal 14px vertical 8px
-- Text: regular weight, theme text color
-- Gap between chips: 8px
+3. Section Header:
+- Remove the redundant "TECHNICIAN WORK FEED" label
+- Keep only "Recent Work Posts" as the title (bold, large)
+- Add a "View all →" link on the right in green
 
-4. Sort Options:
+4. Post Cards:
+- Increase card borderRadius to 16px
+- Add subtle border (1px, muted color) to separate cards from background
+- Inside card layout:
+  - Top row: Avatar (40px) + Name (bold) + Time ago (muted, right-aligned) + three-dots menu (make it more visible)
+  - Second row: Location + service type (muted, small)
+  - Third row: "Bookable Service" badge — small pill, green background with low opacity, green text, borderRadius 12, padding 6px horizontal
+  - Fourth row: Post text (regular weight, good line height)
+  - Fifth row (if image exists): Image with borderRadius 12, aspect ratio 16:9, NO overlay icons
+- Add proper padding: 16px inside card, 12px gap between cards
 
-- Horizontal row of pill buttons: "Newest", "Price ↑", "Price ↓", "Popular"
-- Active sort: Dark/black background (light mode) or white background (dark mode) with white/black text
-- Inactive: Transparent/light background with border
-- Border radius: 20px
-- Gap: 8px
+5. Bottom Navigation:
+- Remove the avatar from Profile tab — use a person icon instead
+- Active tab: green icon + green label, bold
+- Inactive tabs: muted gray icon + muted gray label
+- Icons should be slightly thicker/more visible
+- Height: 60px + safe area bottom padding
 
-5. Search Results List:
+6. Theme Support:
+- Ensure all colors use your existing theme system (light/dark/system)
+- The current dark colors look good — keep the same palette but apply it consistently
 
-- Same card style as "Fresh near you" on home screen
-- Image thumbnail left, details right, heart icon far right
-- Price bold and prominent
+📝 EXECUTION:
+1. Read existing Marketplace screen code
+2. Fix the 3 bugs listed above
+3. Update JSX structure and StyleSheet
+4. Do NOT change any business logic, API calls, or navigation
+5. Ensure it works on both iOS and Android
+```
 
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-📱 SCREEN 3: PROFILE SCREEN
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+---
 
-1. Header:
-
-- Large bold title "Profile"
-- Settings gear icon on the right (circular button, subtle background)
-
-2. Profile Info Section:
-
-- Large circular avatar (80x80) with green checkmark badge overlapping bottom-right (verified indicator)
-- Username in large bold text
-- Location row: pin icon + city name (muted)
-- Rating row: star icon + rating number + "Since 2024" with calendar icon
-- Bio/description text below (muted, italic style optional)
-
-3. Stats Row:
-
-- 3 columns separated by subtle vertical dividers
-- Each: large bold number on top, small muted label below
-- Stats: Active ads, Total views, Sold
-
-4. Action Buttons:
-
-- Two buttons side by side (50/50 split with gap)
-- "Edit profile": Solid primary green background, white text, rounded (12px)
-- "Share profile": Transparent with green border, green text, rounded (12px)
-- Height: ~48px
-
-5. Menu Sections (grouped):
-
-- Section labels: "SELLING", "SHOPPING", "ACCOUNT" — small uppercase muted text
-- Each menu item:
-  - Row layout: Icon on left (in a small circular subtle background), Title bold, Subtitle/description small muted below title, Chevron right on far right
-  - Background: Surface color (slightly different from main bg)
-  - Padding: 16px
-  - Border radius: 12px
-  - Gap between items in same group: 0 (they stack as one card with dividers) OR 8px gap between separate cards
-  - Divider between items: 1px subtle line
-
-6. Bottom Navigation:
-
-- Same as home screen, with "Profile" tab active (green)
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-📝 EXECUTION STEPS:
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-1. First, read and understand the existing code structure, theme system, and all current components.
-2. Identify which files correspond to Browse/Home, Search, and Profile screens.
-3. For each screen, update the JSX layout to match the new structure described above. Keep all existing data sources, handlers, and navigation calls.
-4. Create or update StyleSheet objects using theme-aware colors. If your app uses a theme hook/context (like useTheme()), use it. If it uses a theme object passed via props, use that.
-5. For the 3-theme support: ensure every color value comes from the theme object, never hardcoded. The theme object should have values for light, dark, and the system hook should switch between them.
-6. Test that the layout works on both iOS and Android (use Platform-specific adjustments only if necessary, e.g., safe area handling).
-7. Ensure horizontal ScrollView for featured ads and category grid work smoothly.
-8. Do NOT remove any existing functionality — only change visuals and layout structure.
-
-🎯 FINAL CHECKLIST:
-
-- [ ] All 3 themes (light, dark, system) work correctly
-- [ ] No hardcoded colors — all from theme
-- [ ] No logic/behavior changes
-- [ ] iOS and Android compatible
-- [ ] Safe areas handled (notch, home indicator)
-- [ ] Touch targets ≥ 44px
-- [ ] Text is readable in both themes
-- [ ] Horizontal scroll works for featured ads
-- [ ] Category grid is 3 columns
-- [ ] Bottom nav has 5 tabs with Sell as centered circle button
+**Bottom line:** Your app has good bones — the structure is right, the dark theme works, and the green accent is consistent. But the typos, layout bugs, and basic styling are making it look amateur. Fix those and it'll look 10x better. Want me to refine the prompt further?

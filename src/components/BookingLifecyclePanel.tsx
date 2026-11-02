@@ -329,7 +329,7 @@ export function BookingLifecyclePanel({
   const technicianAvatarUri =
     technicianRecord?.avatarUri ||
     remoteTechAvatar ||
-    "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&auto=format&fit=crop&q=80";
+    undefined;
 
   const remoteCustomerAvatar = useUserAvatar(
     activeBooking.customerUserId,
@@ -343,7 +343,7 @@ export function BookingLifecyclePanel({
   const customerAvatarUri =
     metadataAvatarUri ||
     remoteCustomerAvatar ||
-    "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80";
+    undefined;
 
   return (
     <View style={styles.lifecycleWrap} testID="booking-status-view">
@@ -360,10 +360,30 @@ export function BookingLifecyclePanel({
         technicianReviewCount={technicianRecord?.reviewCount}
       />
       <View style={styles.statusCard}>
-        <Text style={styles.statusEyebrow}>{t("booking.statusLabel")}</Text>
-        <Text style={styles.statusHeadline} testID="booking-current-status">
-          {t(`booking.status.${activeBooking.status}`)}
-        </Text>
+        <View style={styles.statusHeaderRow}>
+          <View style={{ flex: 1, paddingRight: spacing.sm }}>
+            <Text style={styles.statusEyebrow}>{t("booking.statusLabel")}</Text>
+            <Text style={styles.statusHeadline} testID="booking-current-status">
+              {t(`booking.status.${activeBooking.status}`)}
+            </Text>
+          </View>
+          <Pressable
+            accessibilityRole="button"
+            onPress={() => {
+              setIsChatModalOpen(true);
+            }}
+            style={styles.cardChatBtn}
+            testID="open-booking-chat-btn"
+          >
+            <MessageSquare color="#FFFFFF" size={13} style={{ marginRight: 4 }} />
+            <Text style={styles.cardChatBtnText}>Chat</Text>
+            {messages.length > 0 && (
+              <View style={styles.cardChatBadge}>
+                <Text style={styles.cardChatBadgeText}>{messages.length}</Text>
+              </View>
+            )}
+          </Pressable>
+        </View>
         <View style={styles.bookingMetaBox}>
           <Text style={styles.bookingMetaLine}>
             {activeBooking.serviceNameSnapshot}
@@ -403,16 +423,16 @@ export function BookingLifecyclePanel({
               </Text>
               {activeBooking.status === "requested" && (
                 <>
-                  <View style={styles.actionRow}>
+                  <View style={styles.centeredActionRow}>
                     <Pressable
                       accessibilityRole="button"
                       onPress={() => {
                         void handleTransition("confirmed", "technician");
                       }}
-                      style={styles.acceptBtn}
+                      style={styles.smallAcceptBtn}
                       testID="tech-accept-booking"
                     >
-                      <Text style={styles.acceptBtnText}>
+                      <Text style={styles.smallAcceptBtnText}>
                         {t("booking.acceptRequest")}
                       </Text>
                     </Pressable>
@@ -421,22 +441,33 @@ export function BookingLifecyclePanel({
                       onPress={() => {
                         void handleTransition("declined", "technician");
                       }}
-                      style={styles.declineBtn}
+                      style={styles.smallDeclineBtn}
                       testID="tech-decline-booking"
                     >
-                      <Text style={styles.declineBtnText}>
+                      <Text style={styles.smallDeclineBtnText}>
                         {t("booking.declineRequest")}
                       </Text>
                     </Pressable>
                   </View>
 
                   <View style={styles.schedulePanel}>
-                    <Text style={styles.scheduleLabel}>
-                      {language === "en"
-                        ? "Choose an alternative date and time"
-                        : "Pilih tanggal dan waktu alternatif"}
+                    <View style={styles.scheduleHeaderRow}>
+                      <Clock size={13} color={palette.primary} />
+                      <Text style={styles.scheduleLabel}>
+                        {language === "en"
+                          ? "Choose an alternative date and time"
+                          : "Pilih tanggal dan waktu alternatif"}
+                      </Text>
+                    </View>
+
+                    <Text style={styles.scheduleSubSectionLabel}>
+                      {language === "en" ? "DATE" : "TANGGAL"}
                     </Text>
-                    <View style={styles.scheduleRow}>
+                    <ScrollView
+                      horizontal
+                      showsHorizontalScrollIndicator={false}
+                      contentContainerStyle={styles.scheduleChipsRow}
+                    >
                       {dateOptions.map((option) => (
                         <Pressable
                           key={option.value}
@@ -465,8 +496,16 @@ export function BookingLifecyclePanel({
                           </Text>
                         </Pressable>
                       ))}
-                    </View>
-                    <View style={styles.scheduleRow}>
+                    </ScrollView>
+
+                    <Text style={styles.scheduleSubSectionLabel}>
+                      {language === "en" ? "TIME" : "WAKTU"}
+                    </Text>
+                    <ScrollView
+                      horizontal
+                      showsHorizontalScrollIndicator={false}
+                      contentContainerStyle={styles.scheduleChipsRow}
+                    >
                       {BOOKING_TIME_SLOTS.map((time) => (
                         <Pressable
                           key={time}
@@ -487,27 +526,30 @@ export function BookingLifecyclePanel({
                                 styles.scheduleChipTextSelected,
                             ]}
                           >
-                            {time}
+                            {time} WIB
                           </Text>
                         </Pressable>
                       ))}
+                    </ScrollView>
+
+                    <View style={styles.proposeBtnWrap}>
+                      <Pressable
+                        accessibilityRole="button"
+                        onPress={() => {
+                          void handleTransition(
+                            "alternative_proposed",
+                            "technician",
+                            toIndonesiaDateTime(proposedDate, proposedTime),
+                          );
+                        }}
+                        style={styles.smallProposeBtn}
+                        testID="tech-propose-time"
+                      >
+                        <Text style={styles.smallProposeBtnText}>
+                          {t("booking.proposeTime")}
+                        </Text>
+                      </Pressable>
                     </View>
-                    <Pressable
-                      accessibilityRole="button"
-                      onPress={() => {
-                        void handleTransition(
-                          "alternative_proposed",
-                          "technician",
-                          toIndonesiaDateTime(proposedDate, proposedTime),
-                        );
-                      }}
-                      style={styles.proposeBtn}
-                      testID="tech-propose-time"
-                    >
-                      <Text style={styles.proposeBtnText}>
-                        {t("booking.proposeTime")}
-                      </Text>
-                    </Pressable>
                   </View>
                 </>
               )}
@@ -701,16 +743,16 @@ export function BookingLifecyclePanel({
                   <Text style={styles.customerNoticeBody}>
                     {activeBooking.proposedStartAt}
                   </Text>
-                  <View style={styles.actionRow}>
+                  <View style={styles.centeredActionRow}>
                     <Pressable
                       accessibilityRole="button"
                       onPress={() => {
                         void handleTransition("confirmed", "customer");
                       }}
-                      style={styles.acceptBtn}
+                      style={styles.smallAcceptBtn}
                       testID="customer-accept-alternative"
                     >
-                      <Text style={styles.acceptBtnText}>
+                      <Text style={styles.smallAcceptBtnText}>
                         {t("booking.acceptAlternative")}
                       </Text>
                     </Pressable>
@@ -719,10 +761,10 @@ export function BookingLifecyclePanel({
                       onPress={() => {
                         void handleTransition("cancelled", "customer");
                       }}
-                      style={styles.declineBtn}
+                      style={styles.smallDeclineBtn}
                       testID="customer-cancel-booking"
                     >
-                      <Text style={styles.declineBtnText}>
+                      <Text style={styles.smallDeclineBtnText}>
                         {t("booking.cancelBooking")}
                       </Text>
                     </Pressable>
@@ -758,55 +800,6 @@ export function BookingLifecyclePanel({
               )}
             </View>
           )}
-      </View>
-
-      {/* Standalone Chat Trigger: Clean single button based on logged in role */}
-      <View
-        style={[
-          styles.chatTriggerCard,
-          { backgroundColor: palette.surface, borderColor: palette.border },
-        ]}
-      >
-        <View style={styles.chatTriggerPartnerInfo}>
-          <View style={styles.avatarWithStatus}>
-            <Avatar
-              name={isCustomer ? activeBooking.technicianName : activeBooking.customerName}
-              size={46}
-            />
-            <View style={styles.activeOnlineDot} />
-          </View>
-          <View style={styles.chatTriggerCopy}>
-            <Text style={[styles.chatTriggerPartnerName, { color: palette.text }]}>
-              {isCustomer ? activeBooking.technicianName : activeBooking.customerName}
-            </Text>
-            <Text style={[styles.chatTriggerSubtitle, { color: palette.textMuted }]}>
-              {isTechnician
-                ? (language === "en" ? "Customer • Direct messaging" : "Pelanggan • Percakapan langsung")
-                : (language === "en" ? "Technician • Direct messaging" : "Teknisi • Percakapan langsung")}
-            </Text>
-          </View>
-        </View>
-
-        <Pressable
-          accessibilityRole="button"
-          onPress={() => {
-            setIsChatModalOpen(true);
-          }}
-          style={[styles.chatTriggerBtn, { backgroundColor: palette.primary }]}
-          testID="open-booking-chat-btn"
-        >
-          <MessageSquare color="#FFFFFF" size={18} style={{ marginRight: 6 }} />
-          <Text style={styles.chatTriggerBtnText}>
-            {isTechnician
-              ? (language === "en" ? "Chat Customer" : "Chat Pelanggan")
-              : (language === "en" ? "Chat Technician" : "Chat Teknisi")}
-          </Text>
-          {messages.length > 0 && (
-            <View style={styles.chatTriggerBadge}>
-              <Text style={styles.chatTriggerBadgeText}>{messages.length}</Text>
-            </View>
-          )}
-        </Pressable>
       </View>
 
       {/* Standalone Robust Facebook-style Chat Component Modal */}
@@ -946,13 +939,47 @@ export function BookingLifecyclePanel({
 
 function createStyles(palette: ThemePalette) {
   return StyleSheet.create({
-  lifecycleWrap: { gap: spacing.lg, marginTop: spacing.lg },
+  lifecycleWrap: { gap: spacing.md, marginTop: spacing.sm, width: "100%" },
   statusCard: {
     backgroundColor: palette.surface,
     borderColor: palette.border,
-    borderRadius: radii.lg,
+    borderRadius: 5,
     borderWidth: 1,
-    padding: spacing.xl,
+    padding: spacing.md,
+    width: "100%",
+  },
+  statusHeaderRow: {
+    alignItems: "center",
+    flexDirection: "row",
+    justifyContent: "space-between",
+    marginBottom: spacing.xs,
+  },
+  cardChatBtn: {
+    alignItems: "center",
+    backgroundColor: palette.primary,
+    borderRadius: 5,
+    flexDirection: "row",
+    justifyContent: "center",
+    minHeight: 30,
+    paddingHorizontal: 12,
+    paddingVertical: 5,
+  },
+  cardChatBtnText: {
+    color: "#FFFFFF",
+    fontSize: 12,
+    fontWeight: "800",
+  },
+  cardChatBadge: {
+    backgroundColor: "#FFFFFF",
+    borderRadius: 9999,
+    marginLeft: 6,
+    paddingHorizontal: 5,
+    paddingVertical: 1,
+  },
+  cardChatBadgeText: {
+    color: palette.primary,
+    fontSize: 10,
+    fontWeight: "900",
   },
   statusEyebrow: {
     color: palette.primary,
@@ -962,23 +989,60 @@ function createStyles(palette: ThemePalette) {
   },
   statusHeadline: {
     color: palette.text,
-    fontSize: 20,
+    fontSize: 18,
     fontWeight: "800",
-    marginTop: 4,
+    marginTop: 2,
   },
   bookingMetaBox: {
     backgroundColor: palette.surfaceElevated,
-    borderRadius: radii.sm,
-    marginTop: spacing.md,
+    borderRadius: 5,
+    marginTop: spacing.sm,
     padding: spacing.md,
   },
-  bookingMetaLine: { color: palette.text, fontSize: 14, fontWeight: "700" },
+  bookingMetaLine: { color: palette.text, fontSize: 13, fontWeight: "700" },
   bookingMetaSub: { color: palette.textMuted, fontSize: 12, marginTop: 3 },
   proposedScheduleNote: {
     color: palette.primary,
     fontSize: 12,
     fontWeight: "700",
     marginTop: 6,
+  },
+  centeredActionRow: {
+    alignItems: "center",
+    flexDirection: "row",
+    justifyContent: "center",
+    gap: 12,
+    marginVertical: 10,
+  },
+  smallAcceptBtn: {
+    alignItems: "center",
+    backgroundColor: palette.primary,
+    borderRadius: 5,
+    justifyContent: "center",
+    minHeight: 34,
+    paddingHorizontal: 18,
+    paddingVertical: 6,
+  },
+  smallAcceptBtnText: {
+    color: "#FFFFFF",
+    fontSize: 12,
+    fontWeight: "800",
+  },
+  smallDeclineBtn: {
+    alignItems: "center",
+    backgroundColor: palette.surfaceElevated,
+    borderColor: palette.danger,
+    borderRadius: 5,
+    borderWidth: 1,
+    justifyContent: "center",
+    minHeight: 34,
+    paddingHorizontal: 18,
+    paddingVertical: 6,
+  },
+  smallDeclineBtnText: {
+    color: palette.danger,
+    fontSize: 12,
+    fontWeight: "800",
   },
   stepTitle: {
     color: palette.text,
@@ -990,7 +1054,7 @@ function createStyles(palette: ThemePalette) {
   chip: {
     backgroundColor: palette.inputBg,
     borderColor: palette.border,
-    borderRadius: radii.pill,
+    borderRadius: 5,
     borderWidth: 1,
     paddingHorizontal: 11,
     paddingVertical: 6,
@@ -1004,7 +1068,7 @@ function createStyles(palette: ThemePalette) {
   input: {
     backgroundColor: palette.inputBg,
     borderColor: palette.border,
-    borderRadius: radii.sm,
+    borderRadius: 5,
     borderWidth: 1,
     color: palette.text,
     fontSize: 13,
@@ -1023,64 +1087,83 @@ function createStyles(palette: ThemePalette) {
   actionGroup: {
     borderTopColor: palette.border,
     borderTopWidth: 1,
-    marginTop: spacing.lg,
-    paddingTop: spacing.md,
+    marginTop: spacing.md,
+    paddingTop: spacing.sm,
   },
   actionGroupTitle: {
     color: palette.textMuted,
     fontSize: 11,
     fontWeight: "800",
     letterSpacing: 0.7,
-    marginBottom: spacing.sm,
+    marginBottom: spacing.xs,
     textTransform: "uppercase",
   },
   actionRow: { flexDirection: "row", flexWrap: "wrap", gap: spacing.sm },
   acceptBtn: {
     alignItems: "center",
     backgroundColor: palette.primary,
-    borderRadius: radii.sm,
+    borderRadius: 5,
     justifyContent: "center",
-    minHeight: 42,
+    minHeight: 38,
     paddingHorizontal: spacing.lg,
-    paddingVertical: 9,
+    paddingVertical: 8,
   },
   acceptBtnText: { color: "#FFFFFF", fontSize: 13, fontWeight: "800" },
   declineBtn: {
     alignItems: "center",
     backgroundColor: palette.surfaceElevated,
     borderColor: palette.danger,
-    borderRadius: radii.sm,
+    borderRadius: 5,
     borderWidth: 1,
     justifyContent: "center",
-    minHeight: 42,
+    minHeight: 38,
     paddingHorizontal: spacing.lg,
-    paddingVertical: 9,
+    paddingVertical: 8,
   },
   declineBtnText: { color: palette.danger, fontSize: 13, fontWeight: "800" },
   proposeBtn: {
     alignItems: "center",
     backgroundColor: palette.primarySoft,
     borderColor: palette.primary,
-    borderRadius: radii.sm,
+    borderRadius: 5,
     borderWidth: 1,
     justifyContent: "center",
-    minHeight: 42,
+    minHeight: 38,
     paddingHorizontal: spacing.md,
   },
   proposeBtnText: { color: palette.primary, fontSize: 12, fontWeight: "800" },
   schedulePanel: {
     backgroundColor: palette.surfaceElevated,
     borderColor: palette.border,
-    borderRadius: radii.sm,
+    borderRadius: 5,
     borderWidth: 1,
     gap: spacing.xs,
     marginTop: spacing.sm,
-    padding: spacing.sm,
+    padding: spacing.sm + 2,
+  },
+  scheduleHeaderRow: {
+    alignItems: "center",
+    flexDirection: "row",
+    gap: 6,
+    marginBottom: 4,
   },
   scheduleLabel: {
+    color: palette.text,
+    fontSize: 12,
+    fontWeight: "800",
+  },
+  scheduleSubSectionLabel: {
     color: palette.textMuted,
-    fontSize: 11,
-    fontWeight: "700",
+    fontSize: 10,
+    fontWeight: "800",
+    letterSpacing: 0.8,
+    marginTop: 6,
+    marginBottom: 4,
+  },
+  scheduleChipsRow: {
+    flexDirection: "row",
+    gap: 6,
+    paddingVertical: 2,
   },
   scheduleRow: {
     flexDirection: "row",
@@ -1090,12 +1173,12 @@ function createStyles(palette: ThemePalette) {
   scheduleChip: {
     backgroundColor: palette.surface,
     borderColor: palette.border,
-    borderRadius: radii.pill,
+    borderRadius: 5,
     borderWidth: 1,
-    minHeight: 34,
+    minHeight: 30,
     justifyContent: "center",
-    paddingHorizontal: spacing.sm,
-    paddingVertical: 6,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
   },
   scheduleChipSelected: {
     backgroundColor: palette.primarySoft,
@@ -1109,6 +1192,40 @@ function createStyles(palette: ThemePalette) {
   scheduleChipTextSelected: {
     color: palette.primary,
     fontWeight: "800",
+  },
+  proposeBtnWrap: {
+    alignItems: "center",
+    marginTop: 8,
+  },
+  smallProposeBtn: {
+    alignItems: "center",
+    backgroundColor: palette.primarySoft,
+    borderColor: palette.primary,
+    borderRadius: 5,
+    borderWidth: 1,
+    justifyContent: "center",
+    minHeight: 32,
+    paddingHorizontal: 18,
+    paddingVertical: 6,
+  },
+  smallProposeBtnText: {
+    color: palette.primary,
+    fontSize: 12,
+    fontWeight: "800",
+  },
+  customerNoticeCard: {
+    backgroundColor: palette.surfaceElevated,
+    borderColor: palette.border,
+    borderRadius: 5,
+    borderWidth: 1,
+    padding: spacing.md,
+  },
+  customerConfirmedCard: {
+    backgroundColor: palette.primarySoft,
+    borderColor: palette.border,
+    borderRadius: 5,
+    borderWidth: 1,
+    padding: spacing.md,
   },
   chatHeaderRow: {
     flexDirection: 'row',
@@ -1634,26 +1751,12 @@ function createStyles(palette: ThemePalette) {
     color: "#F59E0B",
   },
   reviewDoneText: { color: palette.primary, fontSize: 13, fontWeight: "700" },
-  customerNoticeCard: {
-    backgroundColor: palette.surfaceElevated,
-    borderColor: palette.border,
-    borderRadius: radii.md,
-    borderWidth: 1,
-    padding: spacing.lg,
-  },
   customerNoticeTitle: { color: palette.text, fontSize: 14, fontWeight: "800" },
   customerNoticeBody: {
     color: palette.textMuted,
     fontSize: 12,
     lineHeight: 18,
     marginTop: 4,
-  },
-  customerConfirmedCard: {
-    backgroundColor: palette.primarySoft,
-    borderColor: palette.border,
-    borderRadius: radii.md,
-    borderWidth: 1,
-    padding: spacing.lg,
   },
   customerConfirmedTitle: {
     color: palette.primary,

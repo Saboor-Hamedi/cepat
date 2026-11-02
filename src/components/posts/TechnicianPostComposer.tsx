@@ -19,6 +19,7 @@ import { useLanguage } from '../../i18n/locale';
 import { colors, radii, spacing } from '../../theme/tokens';
 import { Avatar } from '../marketplace-ui';
 import { StrictImagePicker } from '../StrictImagePicker';
+import { Toggle } from '../toggle';
 import { TechnicianPostImagePreview } from './TechnicianPostImagePreview';
 
 export interface TechnicianPostComposerProps {
@@ -192,14 +193,7 @@ export function TechnicianPostComposer({
     >
       {/* Author Header */}
       <View style={styles.composerHeader}>
-        <View
-          style={[
-            styles.avatarRing,
-            { backgroundColor: palette.primarySoft, borderColor: palette.border },
-          ]}
-        >
-          <Avatar uri={authorAvatarUri} name={authorName} size={42} />
-        </View>
+        <Avatar uri={authorAvatarUri} name={authorName} size={40} />
         <View style={styles.authorInfo}>
           <Text
             numberOfLines={1}
@@ -337,6 +331,9 @@ export function TechnicianPostComposer({
               >
                 {language === 'en' ? 'Offer Service' : 'Tawarkan Layanan'}
               </Text>
+              <View pointerEvents="none" style={{ marginLeft: 6 }}>
+                <Toggle checked={isServicePost} size="sm" disabled={busy} />
+              </View>
             </Pressable>
           </View>
 

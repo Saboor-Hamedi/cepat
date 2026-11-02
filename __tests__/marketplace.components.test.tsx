@@ -61,11 +61,10 @@ describe("marketplace reusable components, unified header, sidebar, and modular 
       wrapper: LanguageWrapper,
     });
 
-    // Single-character avatar 'A' for Andi Wijaya
-    expect(screen.getByText("A")).toBeTruthy();
-
     await fireEvent.press(screen.getByTestId("account-entry"));
     expect(await screen.findByTestId("profile-sidebar-modal")).toBeTruthy();
+    // Profile Sidebar displays the letter avatar 'A' for Andi Wijaya
+    expect(screen.getByText("A")).toBeTruthy();
     expect(screen.getByText("Andi Wijaya")).toBeTruthy();
     expect(screen.getByTestId("sidebar-view-profile")).toBeTruthy();
     expect(screen.getByTestId("sidebar-settings")).toBeTruthy();
@@ -116,7 +115,6 @@ describe("marketplace reusable components, unified header, sidebar, and modular 
 
   it("lets any role choose English in the dedicated Language tab and updates the modular settings interface", async () => {
     await render(<AccountEntryScreen />, { wrapper: LanguageWrapper });
-    await fireEvent.press(screen.getByTestId("setting-tab-language"));
     await fireEvent.press(screen.getByTestId("language-en"));
     expect(screen.queryByTestId("nav-settings")).toBeNull();
     expect(screen.getByText("App language")).toBeTruthy();
@@ -188,8 +186,8 @@ describe("marketplace reusable components, unified header, sidebar, and modular 
       />,
       { wrapper: LanguageWrapper },
     );
-    expect(await screen.findByTestId("settings-user-identity")).toBeTruthy();
-    expect(screen.getByText("Rizky Pratama")).toBeTruthy();
+    expect(screen.queryByTestId("settings-user-identity")).toBeNull();
+
     expect(screen.queryByTestId("setting-tab-profile")).toBeNull();
   });
 

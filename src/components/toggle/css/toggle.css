@@ -1,0 +1,85 @@
+/* ==========================================================================
+   Cepat Unified Toggle Switch Component Stylesheet
+   ========================================================================== */
+
+.cepat-toggle-container {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  user-select: none;
+  touch-action: manipulation;
+  vertical-align: middle;
+}
+
+.cepat-toggle-track {
+  width: 44px;
+  height: 24px;
+  border-radius: 9999px;
+  padding: 2px;
+  box-sizing: border-box;
+  transition: background-color 0.2s cubic-bezier(0.4, 0, 0.2, 1),
+              border-color 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  display: flex;
+  align-items: center;
+  border-width: 1px;
+  border-style: solid;
+  position: relative;
+}
+
+.cepat-toggle-track--checked {
+  background-color: #0F766E;
+  border-color: #0F766E;
+}
+
+.cepat-toggle-track--unchecked {
+  background-color: #CBD5E1;
+  border-color: #94A3B8;
+}
+
+.cepat-toggle-track--disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.cepat-toggle-knob {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background-color: #FFFFFF;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.25);
+  transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.cepat-toggle-knob--checked {
+  transform: translateX(20px);
+}
+
+.cepat-toggle-knob--unchecked {
+  transform: translateX(0px);
+}
+
+/* Size Variants */
+.cepat-toggle-track--sm {
+  width: 36px;
+  height: 20px;
+}
+.cepat-toggle-knob--sm {
+  width: 16px;
+  height: 16px;
+}
+.cepat-toggle-knob--sm.cepat-toggle-knob--checked {
+  transform: translateX(16px);
+}
+
+.cepat-toggle-track--lg {
+  width: 52px;
+  height: 28px;
+}
+.cepat-toggle-knob--lg {
+  width: 24px;
+  height: 24px;
+}
+.cepat-toggle-knob--lg.cepat-toggle-knob--checked {
+  transform: translateX(24px);
+}

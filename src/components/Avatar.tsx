@@ -1,7 +1,9 @@
 import { useState } from 'react';
-import { Image, StyleSheet, Text, View } from 'react-native';
+import { Image, StyleSheet, View } from 'react-native';
 
 import { useAppearance } from '../context/AppearanceContext';
+import { resolveImageUrl } from '../data/marketplaceRepository';
+import { UserLetterAvatar } from './UserLetterAvatar';
 
 export interface AvatarProps {
   uri?: string;
@@ -16,9 +18,27 @@ export function Avatar({
 }: AvatarProps) {
   const { palette } = useAppearance();
   const [failedUri, setFailedUri] = useState<string | null>(null);
-  const imageFailed = Boolean(uri && failedUri === uri);
-  const trimmed = name.trim();
-  const initial = (trimmed.charAt(0) || 'C').toLocaleUpperCase('id-ID');
+
+  // If uri is empty or an unwanted default placeholder, treat it as null to show single letter
+  const isDefaultPlaceholder =
+    typeof uri === 'string' &&
+    (uri.includes('default-avatar') ||
+      uri.includes('placeholder') ||
+      uri.trim() === '');
+
+  const resolvedUri =
+    uri && !isDefaultPlaceholder
+      ? resolveImageUrl(uri) ||
+        (uri.includes('://') || uri.startsWith('/') || uri.startsWith('data:')
+          ? uri
+          : undefined)
+      : undefined;
+
+  const imageFailed = Boolean(resolvedUri && failedUri === resolvedUri);
+
+  if (!resolvedUri || imageFailed) {
+    return <UserLetterAvatar name={name} size={size} />;
+  }
 
   return (
     <View
@@ -30,27 +50,19 @@ export function Avatar({
           width: size,
           height: size,
           borderRadius: size / 2,
-          backgroundColor: palette.primarySoft,
+          backgroundColor: 'transparent',
         },
       ]}
     >
-      {uri && !imageFailed ? (
-        <Image
-          source={{ uri }}
-          style={[styles.avatarImage, { width: size, height: size, borderRadius: size / 2 }]}
-          resizeMode="cover"
-          onError={() => setFailedUri(uri ?? null)}
-        />
-      ) : (
-        <Text
-          style={[
-            styles.avatarInitials,
-            { color: palette.primary, fontSize: Math.round(size * 0.42) },
-          ]}
-        >
-          {initial}
-        </Text>
-      )}
+      <Image
+        source={{ uri: resolvedUri }}
+        style={[
+          styles.avatarImage,
+          { width: size, height: size, borderRadius: size / 2 },
+        ]}
+        resizeMode="cover"
+        onError={() => setFailedUri(resolvedUri ?? null)}
+      />
     </View>
   );
 }
@@ -66,8 +78,5 @@ const styles = StyleSheet.create({
     height: '100%',
     overflow: 'hidden',
     width: '100%',
-  },
-  avatarInitials: {
-    fontWeight: '800',
   },
 });

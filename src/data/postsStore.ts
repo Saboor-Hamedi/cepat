@@ -283,6 +283,7 @@ export async function loadMarketplacePublishedPosts(filters?: {
     if (q) {
       const haystack = [
         post.caption,
+        post.content ?? '',
         post.technicianName,
         post.technicianBusinessName ?? '',
         post.categorySlug,
@@ -295,7 +296,7 @@ export async function loadMarketplacePublishedPosts(filters?: {
     return true;
   });
 
-  if (canonicalArea) {
+  if (canonicalArea && !q) {
     const matchingArea = filteredPosts.filter((post) => post.serviceArea === canonicalArea);
     const otherPosts = filteredPosts.filter((post) => post.serviceArea !== canonicalArea);
     return [...matchingArea, ...otherPosts];
@@ -326,13 +327,12 @@ export async function loadMarketplacePublishedPostsPage(
       .eq('published', true)
       .order('created_at', { ascending: false })
       .order('id', { ascending: false })
-      .range(0, pageSize);
-    if (canonicalArea) query = query.eq('service_area', canonicalArea);
+      .range(0, Math.max(pageSize * 3, 50));
     if (category) query = query.eq('category_slug', category);
     if (search) {
       const term = `%${search}%`;
       query = query.or(
-        `caption.ilike.${term},technician_name.ilike.${term},technician_business_name.ilike.${term},category_slug.ilike.${term},service_area.ilike.${term}`,
+        `caption.ilike.${term},content.ilike.${term},technician_name.ilike.${term},technician_business_name.ilike.${term},category_slug.ilike.${term},service_area.ilike.${term}`,
       );
     }
     const position = cursor ? decodePostCursor(cursor) : null;
@@ -345,18 +345,24 @@ export async function loadMarketplacePublishedPostsPage(
     const { data, error } = await query;
     if (error) {
       if (!shouldUseFixtures()) throw new Error(postTableErrorMessage(error));
-    } else if (Array.isArray(data)) {
+    } else if (Array.isArray(data) && data.length > 0) {
       const rows = data.map((row) =>
         mapSupabasePost(row as Record<string, unknown>),
       );
-      const items = rows.slice(0, pageSize);
+      let orderedRows = rows;
+      if (canonicalArea && !search) {
+        const matchingArea = rows.filter((post) => post.serviceArea === canonicalArea);
+        const otherPosts = rows.filter((post) => post.serviceArea !== canonicalArea);
+        orderedRows = [...matchingArea, ...otherPosts];
+      }
+      const items = orderedRows.slice(0, pageSize);
       return {
         items,
         nextCursor:
-          rows.length > pageSize && items.length > 0
+          orderedRows.length > pageSize && items.length > 0
             ? encodePostCursor(items[items.length - 1])
             : null,
-        hasMore: rows.length > pageSize,
+        hasMore: orderedRows.length > pageSize,
       };
     }
   }

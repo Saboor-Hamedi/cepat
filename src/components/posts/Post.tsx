@@ -1,4 +1,4 @@
-import { router } from 'expo-router';
+import { router } from "expo-router";
 import { useState } from "react";
 import {
   Image,
@@ -32,6 +32,13 @@ export interface TechnicianPostCardProps {
   showAuthorHeader?: boolean;
   authorName?: string;
   authorAvatarUri?: string;
+}
+
+function cleanTechnicianTypo(text?: string): string {
+  if (!text) return "";
+  return text
+    .replace(/Techinician/g, "Technician")
+    .replace(/techinician/g, "technician");
 }
 
 function formatPostTime(dateString: string, language: "id" | "en"): string {
@@ -108,8 +115,12 @@ export function Post({
       : post.imageUri
         ? [post.imageUri]
         : [];
-  const displayName = authorName || post.technicianName;
+  const displayName = cleanTechnicianTypo(authorName || post.technicianName);
   const displayAvatar = authorAvatarUri || post.technicianAvatarUri;
+  const displayBusinessName = cleanTechnicianTypo(post.technicianBusinessName);
+  const displayContent = cleanTechnicianTypo(
+    post.content || post.caption || "",
+  );
 
   const handleSaveEdit = async () => {
     if (!onEdit || !draftCaption.trim()) return;
@@ -151,7 +162,7 @@ export function Post({
             style={styles.authorTouchArea}
             testID={`post-author-link-${post.id}`}
           >
-            <Avatar uri={displayAvatar} name={displayName} size={42} />
+            <Avatar uri={displayAvatar} name={displayName} size={40} />
             <View style={styles.authorMeta}>
               <View style={styles.nameRow}>
                 <Text
@@ -167,7 +178,12 @@ export function Post({
                       { backgroundColor: palette.primarySoft },
                     ]}
                   >
-                    <Text style={[styles.verifiedBadgeText, { color: palette.primary }]}>
+                    <Text
+                      style={[
+                        styles.verifiedBadgeText,
+                        { color: palette.primary },
+                      ]}
+                    >
                       ✓
                     </Text>
                   </View>
@@ -177,98 +193,112 @@ export function Post({
                 numberOfLines={1}
                 style={[styles.authorSub, { color: palette.textMuted }]}
               >
-                {post.technicianBusinessName
-                  ? `${post.technicianBusinessName} · `
-                  : ""}
+                {displayBusinessName ? `${displayBusinessName} · ` : ""}
                 {post.serviceArea
-                  ? `${localizeArea(post.serviceArea, language)} · `
+                  ? `${localizeArea(post.serviceArea, language)}`
                   : ""}
-                {formatPostTime(post.createdAt, language)}
               </Text>
             </View>
           </Pressable>
 
-          {(isActualOwner && (onEdit || onDelete)) ||
-          (isAdminUser && onSuspend) ? (
-            <PostDropdown
-              postId={post.id}
-              actions={[
-                ...(isActualOwner && onEdit
-                  ? [
-                      {
-                        label: language === "en" ? "Edit post" : "Edit postingan",
-                        testID: `edit-post-btn-${post.id}`,
-                        onPress: () => {
-                          setDraftCaption(post.content || post.caption || "");
-                          setDraftImageUri(post.imageUri);
-                          setIsEditing(true);
+          <View style={styles.topRightRow}>
+            <Text style={[styles.timeAgoText, { color: palette.textMuted }]}>
+              {formatPostTime(post.createdAt, language)}
+            </Text>
+            {(isActualOwner && (onEdit || onDelete)) ||
+            (isAdminUser && onSuspend) ? (
+              <PostDropdown
+                postId={post.id}
+                actions={[
+                  ...(isActualOwner && onEdit
+                    ? [
+                        {
+                          label:
+                            language === "en" ? "Edit post" : "Edit postingan",
+                          testID: `edit-post-btn-${post.id}`,
+                          onPress: () => {
+                            setDraftCaption(post.content || post.caption || "");
+                            setDraftImageUri(post.imageUri);
+                            setIsEditing(true);
+                          },
                         },
-                      },
-                    ]
-                  : []),
-                ...(isActualOwner && onDelete
-                  ? [
-                      {
-                        label: language === "en" ? "Delete post" : "Hapus postingan",
-                        testID: `delete-post-btn-${post.id}`,
-                        tone: "danger" as const,
-                        onPress: handleDeletePress,
-                      },
-                    ]
-                  : []),
-                ...(isAdminUser && !isActualOwner && onSuspend
-                  ? [
-                      {
-                        label: post.suspended
-                          ? language === "en"
-                            ? "Restore post"
-                            : "Pulihkan postingan"
-                          : language === "en"
-                            ? "Suspend post"
-                            : "Tangguhkan postingan",
-                        testID: post.suspended
-                          ? `unsuspend-post-btn-${post.id}`
-                          : `suspend-post-btn-${post.id}`,
-                        onPress: () => void onSuspend(post.id, !post.suspended),
-                      },
-                    ]
-                  : []),
-              ]}
-            />
-          ) : isOwner ? (
-            <View
-              style={[
-                styles.statusPill,
-                {
-                  backgroundColor: post.published
-                    ? palette.primarySoft
-                    : palette.surfaceElevated,
-                },
-              ]}
-            >
-              <Text
+                      ]
+                    : []),
+                  ...(isActualOwner && onDelete
+                    ? [
+                        {
+                          label:
+                            language === "en"
+                              ? "Delete post"
+                              : "Hapus postingan",
+                          testID: `delete-post-btn-${post.id}`,
+                          tone: "danger" as const,
+                          onPress: handleDeletePress,
+                        },
+                      ]
+                    : []),
+                  ...(isAdminUser && !isActualOwner && onSuspend
+                    ? [
+                        {
+                          label: post.suspended
+                            ? language === "en"
+                              ? "Restore post"
+                              : "Pulihkan postingan"
+                            : language === "en"
+                              ? "Suspend post"
+                              : "Tangguhkan postingan",
+                          testID: post.suspended
+                            ? `unsuspend-post-btn-${post.id}`
+                            : `suspend-post-btn-${post.id}`,
+                          onPress: () =>
+                            void onSuspend(post.id, !post.suspended),
+                        },
+                      ]
+                    : []),
+                ]}
+              />
+            ) : isOwner ? (
+              <View
                 style={[
-                styles.statusPillText,
-                { color: post.published ? palette.primary : palette.textMuted },
+                  styles.statusPill,
+                  {
+                    backgroundColor: post.published
+                      ? palette.primarySoft
+                      : palette.surfaceElevated,
+                  },
                 ]}
               >
-                {post.published
-                  ? language === "en"
-                    ? "Published"
-                    : "Tayang"
-                  : language === "en"
-                    ? "Draft"
-                    : "Draf"}
-              </Text>
-            </View>
-          ) : null}
+                <Text
+                  style={[
+                    styles.statusPillText,
+                    {
+                      color: post.published
+                        ? palette.primary
+                        : palette.textMuted,
+                    },
+                  ]}
+                >
+                  {post.published
+                    ? language === "en"
+                      ? "Published"
+                      : "Tayang"
+                    : language === "en"
+                      ? "Draft"
+                      : "Draf"}
+                </Text>
+              </View>
+            ) : null}
+          </View>
         </View>
       )}
 
       {/* Editing State or Content Body */}
       {isEditing ? (
         <View
-          style={[styles.editForm, showAuthorHeader && styles.bodyContentIndented]}
+          style={[
+            styles.editForm,
+            showAuthorHeader && styles.bodyContentIndented,
+          ]}
           testID={`edit-post-form-${post.id}`}
         >
           <TextInput
@@ -303,7 +333,10 @@ export function Post({
               }}
               style={[
                 styles.actionBtn,
-                { backgroundColor: palette.surfaceElevated, borderColor: palette.border },
+                {
+                  backgroundColor: palette.surfaceElevated,
+                  borderColor: palette.border,
+                },
               ]}
               testID={`cancel-edit-post-btn-${post.id}`}
             >
@@ -321,7 +354,10 @@ export function Post({
               style={[
                 styles.actionBtn,
                 styles.actionPrimaryBtn,
-                { backgroundColor: palette.primary, borderColor: palette.primary },
+                {
+                  backgroundColor: palette.primary,
+                  borderColor: palette.primary,
+                },
               ]}
               testID={`save-edited-post-btn-${post.id}`}
             >
@@ -338,7 +374,7 @@ export function Post({
           </View>
         </View>
       ) : (
-        <View style={[styles.bodyContent, showAuthorHeader && styles.bodyContentIndented]}>
+        <View style={styles.bodyContent}>
           {post.isServicePost ? (
             <View
               style={[
@@ -346,14 +382,21 @@ export function Post({
                 { backgroundColor: palette.primarySoft },
               ]}
             >
-              <Text style={[styles.servicePostBadgeText, { color: palette.primary }]}>
-                {language === "en" ? "BOOKABLE SERVICE" : "LAYANAN DAPAT DIPESAN"}
+              <Text
+                style={[
+                  styles.servicePostBadgeText,
+                  { color: palette.primary },
+                ]}
+              >
+                {language === "en"
+                  ? "Bookable Service"
+                  : "Layanan Dapat Dipesan"}
               </Text>
             </View>
           ) : null}
-          {Boolean(post.content || post.caption) && (
+          {Boolean(displayContent) && (
             <Text style={[styles.caption, { color: palette.text }]}>
-              {post.content || post.caption}
+              {displayContent}
             </Text>
           )}
 
@@ -412,12 +455,10 @@ export function Post({
             accessibilityRole="button"
             onPress={() =>
               router.push({
-                pathname: "/booking/[id]",
+                pathname: `/booking/${encodeURIComponent(post.technicianId)}` as any,
                 params: {
                   id: post.technicianId,
                   postId: post.id,
-
-
                 },
               })
             }
@@ -446,15 +487,17 @@ export function Post({
       >
         <View style={styles.modalOverlay}>
           <View
-            style={[
-              styles.confirmDialog,
-              { backgroundColor: palette.surface },
-            ]}
+            style={[styles.confirmDialog, { backgroundColor: palette.surface }]}
           >
             <Text style={[styles.confirmDialogTitle, { color: palette.text }]}>
               {language === "en" ? "Delete Post?" : "Hapus Postingan?"}
             </Text>
-            <Text style={[styles.confirmDialogMessage, { color: palette.textMuted }]}>
+            <Text
+              style={[
+                styles.confirmDialogMessage,
+                { color: palette.textMuted },
+              ]}
+            >
               {language === "en"
                 ? "This post will be permanently removed from your profile and the Marketplace feed."
                 : "Postingan ini akan dihapus permanen dari profil Anda dan beranda Marketplace."}
@@ -465,7 +508,12 @@ export function Post({
                 onPress={() => setConfirmDeleteVisible(false)}
                 style={styles.confirmDialogCancelBtn}
               >
-                <Text style={[styles.confirmDialogCancelText, { color: palette.text }]}>
+                <Text
+                  style={[
+                    styles.confirmDialogCancelText,
+                    { color: palette.text },
+                  ]}
+                >
                   {language === "en" ? "Cancel" : "Batal"}
                 </Text>
               </Pressable>
@@ -491,10 +539,10 @@ export function Post({
 const styles = StyleSheet.create({
   card: {
     borderColor: "#E2E8F0",
-    borderRadius: radii.md,
+    borderRadius: 16,
     borderWidth: 1,
-    marginBottom: spacing.md,
-    padding: spacing.md,
+    marginBottom: 12,
+    padding: 16,
     width: "100%",
   },
   headerRow: {
@@ -605,37 +653,48 @@ const styles = StyleSheet.create({
   statusPillTextDraft: {
     color: colors.muted,
   },
+  topRightRow: {
+    alignItems: "center",
+    flexDirection: "row",
+    gap: spacing.xs,
+  },
+  timeAgoText: {
+    fontSize: 11,
+    fontWeight: "500",
+  },
   bodyContent: {
-    marginTop: spacing.xs,
+    marginTop: spacing.sm,
   },
   bodyContentIndented: {
-    paddingLeft: 50,
+    paddingLeft: 0,
   },
   servicePostBadge: {
     alignSelf: "flex-start",
-    borderRadius: radii.sm,
+    borderRadius: 12,
     marginBottom: spacing.xs,
-    paddingHorizontal: spacing.sm,
-    paddingVertical: 5,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
   },
   servicePostBadgeText: {
-    fontSize: 10,
+    fontSize: 11,
     fontWeight: "800",
-    letterSpacing: 0.4,
+    letterSpacing: 0.3,
+    lineHeight: 15,
   },
   caption: {
     color: colors.ink,
     fontSize: 14,
-    lineHeight: 22,
+    fontWeight: "400",
+    lineHeight: 21,
   },
   mediaContainer: {
     marginTop: spacing.sm,
     width: "100%",
   },
   singleImageFrame: {
+    aspectRatio: 16 / 9,
     backgroundColor: colors.paper,
-    borderRadius: radii.md,
-    height: 220,
+    borderRadius: 12,
     overflow: "hidden",
     width: "100%",
   },
@@ -645,9 +704,9 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   gridImageFrame: {
+    aspectRatio: 16 / 9,
     backgroundColor: colors.paper,
-    borderRadius: radii.sm,
-    height: 140,
+    borderRadius: 12,
     overflow: "hidden",
     width: "48%",
   },

@@ -15,6 +15,7 @@ import { Avatar } from './Avatar';
 import { AppNavigationBar, Header } from './Header';
 
 export { Avatar, AppNavigationBar, Header };
+export { Toggle } from './toggle';
 
 export function SourceBadge({ source }: { source: DataSource }) {
   const { t } = useLanguage();

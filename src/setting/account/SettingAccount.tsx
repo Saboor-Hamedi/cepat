@@ -3,10 +3,13 @@ import { useState } from "react";
 import { Pressable, StyleSheet, Text, TextInput, View } from "react-native";
 
 import { useAuth } from "../../auth/AuthProvider";
+import { Toggle } from "../../components/toggle";
 import { useAppearance } from "../../context/AppearanceContext";
-import { localizeArea, useLanguage } from "../../i18n/locale";
+import { DEFAULT_PREFERENCES } from "../../data/marketplaceStore";
+import { localizeArea, useLanguage, type Language } from "../../i18n/locale";
 import { colors, radii, spacing } from "../../theme/tokens";
 import type { SavedAddress, UserPreferences } from "../../types/marketplace";
+import { SettingItem } from "../components/SettingItem";
 import { SettingSection } from "../components/SettingSection";
 
 export interface SettingAccountProps {
@@ -28,6 +31,7 @@ export interface SettingAccountProps {
   onUpdateBookingPrefs?: (next: UserPreferences["bookingPreferences"]) => void;
   isTechnicianAvailable?: boolean;
   onToggleTechnicianAvailability?: () => void;
+  onUpdateNotifications?: (next: UserPreferences["notifications"]) => void;
 }
 
 export function SettingAccount({
@@ -37,12 +41,185 @@ export function SettingAccount({
   onDeleteAddress,
   onSetDefaultAddress,
   addressFeedback,
+  preferences,
   isTechnicianAvailable = true,
   onToggleTechnicianAvailability,
+  onUpdateNotifications,
 }: SettingAccountProps) {
-  const { language } = useLanguage();
+  const { language, setLanguage, t } = useLanguage();
   const { palette } = useAppearance();
   const { user, effectiveRole } = useAuth();
+
+  const [localAvailable, setLocalAvailable] = useState(true);
+  const isAvail = onToggleTechnicianAvailability
+    ? isTechnicianAvailable
+    : localAvailable;
+  const handleToggleAvail =
+    onToggleTechnicianAvailability ??
+    (() => setLocalAvailable((prev) => !prev));
+
+  const activePrefs = preferences ?? DEFAULT_PREFERENCES;
+
+  const languageOptions: {
+    code: Language;
+    label: string;
+    nativeLabel: string;
+    region: string;
+    flag: string;
+    testID: string;
+  }[] = [
+    {
+      code: "id",
+      label: t("settings.indonesian"),
+      nativeLabel: "Bahasa Indonesia",
+      region: "Indonesia (ID)",
+      flag: "🇮🇩",
+      testID: "language-id",
+    },
+    {
+      code: "en",
+      label: t("settings.english"),
+      nativeLabel: "English",
+      region: "International (US/UK)",
+      flag: "🌐",
+      testID: "language-en",
+    },
+  ];
+
+  const renderLanguageSection = () => (
+    <View
+      style={[
+        styles.cardSectionBox,
+        {
+          backgroundColor: palette.surfaceElevated,
+          borderColor: palette.border,
+        },
+      ]}
+      testID="account-language-section"
+    >
+      <Text
+        style={[
+          styles.availabilityToggleTitle,
+          { color: palette.text },
+        ]}
+      >
+        {t("settings.languageTitle")}
+      </Text>
+      <Text
+        style={[
+          styles.availabilityToggleSub,
+          { color: palette.textMuted, marginBottom: spacing.md },
+        ]}
+      >
+        {language === "en"
+          ? "Choose interface language for the app."
+          : "Pilih bahasa tampilan untuk aplikasi."}
+      </Text>
+
+      <View style={styles.languageOptionsWrap}>
+        {languageOptions.map((opt) => {
+          const selected = language === opt.code;
+          return (
+            <Pressable
+              key={opt.code}
+              accessibilityRole="radio"
+              accessibilityState={{ selected }}
+              onPress={() => {
+                void setLanguage(opt.code);
+              }}
+              style={[
+                styles.languageOption,
+                {
+                  backgroundColor: palette.surface,
+                  borderColor: palette.border,
+                },
+                selected && {
+                  backgroundColor: palette.primarySoft,
+                  borderColor: palette.primary,
+                },
+              ]}
+              testID={opt.testID}
+            >
+              <Text style={styles.flagIcon}>{opt.flag}</Text>
+              <View style={styles.textWrap}>
+                <Text
+                  style={[
+                    styles.languageName,
+                    { color: selected ? palette.primary : palette.text },
+                    selected && styles.languageNameSelected,
+                  ]}
+                >
+                  {opt.label}
+                </Text>
+                <Text
+                  style={[styles.languageSub, { color: palette.textMuted }]}
+                >
+                  {opt.nativeLabel} · {opt.region}
+                </Text>
+              </View>
+              <View
+                style={[
+                  styles.radio,
+                  {
+                    borderColor: selected
+                      ? palette.primary
+                      : palette.border,
+                  },
+                ]}
+              >
+                {selected && (
+                  <View
+                    style={[
+                      styles.radioDot,
+                      { backgroundColor: palette.primary },
+                    ]}
+                  />
+                )}
+              </View>
+            </Pressable>
+          );
+        })}
+      </View>
+    </View>
+  );
+
+  const notificationItems: {
+    key: keyof UserPreferences["notifications"];
+    label: string;
+    description: string;
+  }[] = [
+    {
+      key: "push",
+      label:
+        language === "en"
+          ? "Push notifications"
+          : "Notifikasi perangkat (Push)",
+      description:
+        language === "en"
+          ? "Receive instant alerts for service activity."
+          : "Terima peringatan instan di perangkat.",
+    },
+    {
+      key: "booking",
+      label:
+        language === "en"
+          ? "Booking status updates"
+          : "Pembaruan status pesanan",
+      description:
+        language === "en"
+          ? "Get notified when a job status changes."
+          : "Beritahu saat status pesanan berubah.",
+    },
+    {
+      key: "messages",
+      label:
+        language === "en" ? "Chat message alerts" : "Pesan koordinasi kerja",
+      description:
+        language === "en"
+          ? "Alerts for new messages in active booking chats."
+          : "Peringatan untuk pesan baru pada percakapan pesanan.",
+    },
+  ];
 
   const [completeAddress, setCompleteAddress] = useState("");
 
@@ -84,7 +261,7 @@ export function SettingAccount({
           <View style={styles.actionRow}>
             <Pressable
               accessibilityRole="button"
-              onPress={() => router.push("/login")}
+              onPress={() => router.push("/login" as any)}
               style={styles.primaryActionBtn}
               testID="account-login"
             >
@@ -94,7 +271,7 @@ export function SettingAccount({
             </Pressable>
             <Pressable
               accessibilityRole="button"
-              onPress={() => router.push("/register")}
+              onPress={() => router.push("/register" as any)}
               style={styles.secondaryBtn}
               testID="account-register"
             >
@@ -104,6 +281,8 @@ export function SettingAccount({
             </Pressable>
           </View>
         </View>
+
+        {renderLanguageSection()}
       </SettingSection>
     );
   }
@@ -120,73 +299,102 @@ export function SettingAccount({
       testID="setting-section-account"
     >
       <View testID="account-session-card">
-        {/* Availability Toggle for Technicians */}
-        {effectiveRole === "technician" && onToggleTechnicianAvailability && (
-          <View
-            style={[
-              styles.availabilityToggleBox,
-              {
-                backgroundColor: palette.surfaceElevated,
-                borderColor: palette.border,
-              },
-            ]}
-            testID="technician-availability-setting"
-          >
-            <View style={{ flex: 1 }}>
-              <Text
-                style={[
-                  styles.availabilityToggleTitle,
-                  { color: palette.text },
-                ]}
-              >
-                {language === "en"
-                  ? "Service Availability"
-                  : "Ketersediaan Menerima Pesanan"}
-              </Text>
-              <Text
-                style={[
-                  styles.availabilityToggleSub,
-                  { color: palette.textMuted },
-                ]}
-              >
-                {isTechnicianAvailable
-                  ? language === "en"
-                    ? "Available to accept customer bookings"
-                    : "Aktif menerima permintaan pesanan pelanggan"
-                  : language === "en"
-                    ? "Currently offline"
-                    : "Sedang tidak menerima pesanan (offline)"}
-              </Text>
-            </View>
-            <Pressable
-              accessibilityRole="switch"
-              accessibilityState={{ checked: isTechnicianAvailable }}
-              onPress={onToggleTechnicianAvailability}
+        {/* 1. STATUS: Service Availability */}
+        <View
+          style={[
+            styles.availabilityToggleBox,
+            {
+              backgroundColor: palette.surfaceElevated,
+              borderColor: palette.border,
+            },
+          ]}
+          testID="technician-availability-setting"
+        >
+          <View style={{ flex: 1, paddingRight: spacing.md }}>
+            <Text
               style={[
-                styles.availToggleBtn,
-                isTechnicianAvailable
-                  ? styles.availToggleBtnActive
-                  : styles.availToggleBtnInactive,
+                styles.availabilityToggleTitle,
+                { color: palette.text },
               ]}
-              testID="settings-availability-toggle"
             >
-              <Text
-                style={[
-                  styles.availToggleBtnText,
-                  isTechnicianAvailable && styles.availToggleBtnTextActive,
-                ]}
-              >
-                {isTechnicianAvailable
-                  ? language === "en"
-                    ? "Available"
-                    : "Aktif"
-                  : language === "en"
-                    ? "Offline"
-                    : "Nonaktif"}
-              </Text>
-            </Pressable>
+              {language === "en"
+                ? "Service Availability"
+                : "Ketersediaan Menerima Pesanan"}
+            </Text>
+            <Text
+              style={[
+                styles.availabilityToggleSub,
+                { color: palette.textMuted },
+              ]}
+            >
+              {isAvail
+                ? language === "en"
+                  ? "Available to accept customer bookings"
+                  : "Aktif menerima permintaan pesanan pelanggan"
+                : language === "en"
+                  ? "Currently offline"
+                  : "Sedang tidak menerima pesanan (offline)"}
+            </Text>
           </View>
-        )}
+          <Toggle
+            checked={isAvail}
+            onChange={handleToggleAvail}
+            testID="settings-availability-toggle"
+          />
+        </View>
+
+        {/* 2. LANGUAGE */}
+        {renderLanguageSection()}
+
+        {/* 3. NOTIFICATION */}
+        <View
+          style={[
+            styles.cardSectionBox,
+            {
+              backgroundColor: palette.surfaceElevated,
+              borderColor: palette.border,
+            },
+          ]}
+          testID="account-notification-section"
+        >
+          <Text
+            style={[
+              styles.availabilityToggleTitle,
+              { color: palette.text },
+            ]}
+          >
+            {language === "en" ? "Notifications" : "Notifikasi"}
+          </Text>
+          <Text
+            style={[
+              styles.availabilityToggleSub,
+              { color: palette.textMuted, marginBottom: spacing.md },
+            ]}
+          >
+            {language === "en"
+              ? "Manage booking status alerts and coordination message notifications."
+              : "Atur notifikasi pembaruan pesanan dan pesan koordinasi."}
+          </Text>
+
+          {notificationItems.map((item) => (
+            <SettingItem
+              key={item.key}
+              accessibilityRole="switch"
+              active={activePrefs.notifications[item.key]}
+              description={item.description}
+              label={item.label}
+              onPress={() => {
+                if (onUpdateNotifications) {
+                  onUpdateNotifications({
+                    ...activePrefs.notifications,
+                    [item.key]: !activePrefs.notifications[item.key],
+                  });
+                }
+              }}
+              testID={`pref-notif-${item.key}`}
+            />
+          ))}
+        </View>
 
         {/* Customer Address Management */}
         {isCustomerRole && effectiveRole === "customer" && (
@@ -396,6 +604,56 @@ const styles = StyleSheet.create({
     color: colors.muted,
     fontSize: 12,
     marginTop: 2,
+  },
+  cardSectionBox: {
+    backgroundColor: colors.paper,
+    borderColor: colors.line,
+    borderRadius: radii.md,
+    borderWidth: 1,
+    marginBottom: spacing.md,
+    padding: spacing.md,
+  },
+  languageOptionsWrap: {
+    gap: spacing.sm,
+  },
+  languageOption: {
+    alignItems: "center",
+    borderRadius: radii.md,
+    borderWidth: 1,
+    flexDirection: "row",
+    gap: spacing.md,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+  },
+  flagIcon: {
+    fontSize: 22,
+  },
+  textWrap: {
+    flex: 1,
+  },
+  languageName: {
+    fontSize: 13,
+    fontWeight: "700",
+  },
+  languageNameSelected: {
+    fontWeight: "800",
+  },
+  languageSub: {
+    fontSize: 11,
+    marginTop: 2,
+  },
+  radio: {
+    alignItems: "center",
+    borderRadius: radii.pill,
+    borderWidth: 2,
+    height: 18,
+    justifyContent: "center",
+    width: 18,
+  },
+  radioDot: {
+    borderRadius: radii.pill,
+    height: 9,
+    width: 9,
   },
   availToggleBtn: {
     borderRadius: radii.pill,

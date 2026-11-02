@@ -153,17 +153,64 @@ function getAreaNames(value: unknown): string[] {
     .filter((name): name is string => name !== undefined);
 }
 
-function imageUrl(value: unknown): string | undefined {
+export function resolveImageUrl(value: unknown): string | undefined {
   const candidate = stringValue(value);
   if (!candidate) return undefined;
-  if (candidate.startsWith('file://') || candidate.startsWith('content://')) {
-    return candidate;
+  const trimmed = candidate.trim();
+  if (!trimmed) return undefined;
+
+  // Local filesystem, camera/gallery file paths, base64 data URIs, blob URIs
+  if (
+    trimmed.startsWith('file://') ||
+    trimmed.startsWith('content://') ||
+    trimmed.startsWith('data:') ||
+    trimmed.startsWith('blob:')
+  ) {
+    return trimmed;
   }
-  try {
-    return new URL(candidate).protocol === 'https:' ? candidate : undefined;
-  } catch {
-    return undefined;
+
+  // Full HTTP / HTTPS URLs (e.g. localhost, local Supabase, remote CDN, Unsplash)
+  if (trimmed.startsWith('http://') || trimmed.startsWith('https://')) {
+    return trimmed;
   }
+
+  // Web root-relative URLs or native asset protocols
+  if (
+    trimmed.startsWith('/') ||
+    trimmed.startsWith('asset:/') ||
+    trimmed.startsWith('ph://')
+  ) {
+    return trimmed;
+  }
+
+  // Supabase public storage bucket relative paths (e.g. "avatars/...", "portfolio/...")
+  if (
+    trimmed.startsWith('avatars/') ||
+    trimmed.startsWith('portfolio/') ||
+    trimmed.startsWith('public/avatars/') ||
+    trimmed.startsWith('public/portfolio/')
+  ) {
+    if (supabase) {
+      try {
+        const isPortfolio = trimmed.includes('portfolio/');
+        const bucket = isPortfolio ? 'portfolio' : 'avatars';
+        const cleanPath = trimmed.replace(/^(public\/)?(avatars|portfolio)\//, '');
+        const { data } = supabase.storage.from(bucket).getPublicUrl(cleanPath);
+        if (data?.publicUrl) {
+          return data.publicUrl;
+        }
+      } catch {
+        // Fallback
+      }
+    }
+    return trimmed;
+  }
+
+  return undefined;
+}
+
+function imageUrl(value: unknown): string | undefined {
+  return resolveImageUrl(value);
 }
 
 export function mapTechnician(
@@ -180,7 +227,15 @@ export function mapTechnician(
     businessName: stringValue(row.business_name),
     headline: stringValue(row.headline),
     bio: stringValue(row.bio),
-    avatarUri: imageUrl(profile?.avatar_path),
+    avatarUri: resolveImageUrl(
+      profile?.avatar_path ||
+      profile?.avatar_url ||
+      profile?.avatar ||
+      profile?.avatar_uri ||
+      row.avatar_uri ||
+      row.avatar_url ||
+      row.avatar_path,
+    ),
     yearsExperience: numberValue(row.years_experience),
     verified: booleanValue(row.is_verified) ?? false,
     available: booleanValue(row.is_available) ?? false,
@@ -439,7 +494,7 @@ export async function loadTechnician(id: string): Promise<{ item: Technician | n
   try {
     const profileResult = await supabase
       .from('profiles')
-      .select('id, display_name, avatar_path')
+      .select('*')
       .eq('id', id)
       .maybeSingle();
     profileRecord = record(profileResult.data);
@@ -448,12 +503,21 @@ export async function loadTechnician(id: string): Promise<{ item: Technician | n
   }
 
   const row = record(data);
+  const avatarPath =
+    profileRecord?.avatar_path ||
+    profileRecord?.avatar_url ||
+    profileRecord?.avatar ||
+    profileRecord?.avatar_uri ||
+    row?.avatar_uri ||
+    row?.avatar_url ||
+    row?.avatar_path;
+
   if (!row) {
     return {
       item: {
         id,
         displayName: stringValue(profileRecord?.display_name) ?? 'Pengguna Cepat',
-        avatarUri: imageUrl(profileRecord?.avatar_path),
+        avatarUri: resolveImageUrl(avatarPath),
         verified: false,
         available: false,
         averageRating: 0,

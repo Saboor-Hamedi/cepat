@@ -172,7 +172,7 @@ function createStyles(palette: {
       paddingHorizontal: spacing.xs,
     },
     container: {
-      borderRadius: radii.lg,
+      borderRadius: 5,
       borderWidth: 1,
       marginBottom: spacing.md,
       padding: spacing.md,
@@ -199,7 +199,7 @@ function createStyles(palette: {
       marginTop: 2,
     },
     rolePill: {
-      borderRadius: radii.pill,
+      borderRadius: 5,
       paddingHorizontal: 8,
       paddingVertical: 2,
     },
@@ -213,7 +213,7 @@ function createStyles(palette: {
       fontWeight: '800',
     },
     statusBadge: {
-      borderRadius: radii.pill,
+      borderRadius: 5,
       paddingHorizontal: 8,
       paddingVertical: 3,
     },

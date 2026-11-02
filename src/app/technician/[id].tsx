@@ -1,5 +1,5 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { ArrowLeft, Camera, CheckCircle, FileText, MapPin, Pencil, PlusSquare, Star } from "lucide-react-native";
+import { ArrowLeft, Camera, CheckCircle, FileText, MapPin, Pencil, PlusSquare, Star, X } from "lucide-react-native";
 import { router, useLocalSearchParams } from "expo-router";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
@@ -180,13 +180,22 @@ export default function TechnicianProfileScreen() {
     };
   }, [id, retryKey, user?.id]);
 
+  const [cachedAvatarUri, setCachedAvatarUri] = useState<string | null>(null);
+
   useEffect(() => {
+    let active = true;
     const targetId = id || user?.id;
     if (targetId) {
+      void AsyncStorage.getItem(`@cepat_avatar_${targetId}`).then((saved) => {
+        if (active && saved) setCachedAvatarUri(saved);
+      });
       void AsyncStorage.getItem(`@cepat_cover_${targetId}`).then((saved) => {
-        if (saved) setCoverUri(saved);
+        if (active && saved) setCoverUri(saved);
       });
     }
+    return () => {
+      active = false;
+    };
   }, [id, user?.id]);
 
   useEffect(() => {
@@ -355,15 +364,20 @@ export default function TechnicianProfileScreen() {
     dynamicCompletedJobs,
   );
 
+  const postAvatarFallback =
+    posts.find((p) => p.technicianId === id && p.technicianAvatarUri)
+      ?.technicianAvatarUri;
+
   const technician: Technician | null = rawTechnician
     ? {
         ...rawTechnician,
         displayName:
           (isProfileOwner && accountDisplayName) || rawTechnician.displayName,
         avatarUri:
-          isProfileOwner && user?.user_metadata?.avatar_url
-            ? user.user_metadata.avatar_url
-            : rawTechnician.avatarUri,
+          (isProfileOwner && user?.user_metadata?.avatar_url) ||
+          rawTechnician.avatarUri ||
+          cachedAvatarUri ||
+          postAvatarFallback,
         reviews: mergedReviews,
         reviewCount: effectiveReviewCount,
         averageRating: effectiveAverageRating,
@@ -933,6 +947,7 @@ export default function TechnicianProfileScreen() {
                 <SectionHeader
                   eyebrow={t("profile.aboutEyebrow")}
                   title={t("profile.aboutTitle")}
+                  compact
                 />
                 {(isProfileOwner || isAdminUser) && !isEditingAbout && (
                   <Pressable
@@ -946,47 +961,105 @@ export default function TechnicianProfileScreen() {
                     testID="edit-about-btn"
                   >
                     <Text style={[styles.smallActionBtnText, { color: palette.primary }]}>
-                      {language === "en" ? "Edit About Me" : "Ubah Tentang"}
+                      {language === "en" ? "Edit About" : "Ubah Bio"}
                     </Text>
                   </Pressable>
                 )}
               </View>
 
               {isEditingAbout ? (
-                <View style={[styles.formCard, { backgroundColor: palette.surface, borderColor: palette.border }]} testID="edit-about-form">
-                  <Text style={[styles.formLabel, { color: palette.text }]}>
-                    {language === "en" ? "Headline" : "Keahlian Utama"}
-                  </Text>
+                <View
+                  style={[
+                    styles.formCardModern,
+                    { backgroundColor: palette.surface, borderColor: palette.border },
+                  ]}
+                  testID="edit-about-form"
+                >
+                  <View style={styles.formHeaderRow}>
+                    <Text style={[styles.formTitleModern, { color: palette.text }]}>
+                      {language === "en" ? "Edit About" : "Ubah Informasi Bio"}
+                    </Text>
+                  </View>
+
                   <TextInput
                     value={draftHeadline}
                     onChangeText={setDraftHeadline}
-                    placeholder={language === "en" ? "e.g. Master AC & Electrical Specialist" : "cth. Spesialis AC & Listrik"}
+                    placeholder={
+                      language === "en"
+                        ? "Headline (e.g. Master AC & Electrical Specialist)"
+                        : "Keahlian utama (cth. Spesialis AC & Listrik)"
+                    }
                     placeholderTextColor={palette.textMuted}
-                    style={[styles.formInput, { backgroundColor: palette.inputBg, borderColor: palette.border, color: palette.text }]}
+                    style={[
+                      styles.formInputModern,
+                      {
+                        backgroundColor: palette.inputBg,
+                        borderColor: palette.border,
+                        color: palette.text,
+                      },
+                    ]}
                   />
 
-                  <Text style={[styles.formLabel, { color: palette.text }]}>
-                    {language === "en" ? "Bio / Description" : "Deskripsi Tentang Diri"}
-                  </Text>
-                  <TextInput
-                    multiline
-                    value={draftBio}
-                    onChangeText={setDraftBio}
-                    placeholder={language === "en" ? "Tell clients about your background, experience, and service guarantee..." : "Ceritakan keahlian, pengalaman, dan garansi layanan Anda..."}
-                    placeholderTextColor={palette.textMuted}
-                    style={[styles.formTextarea, { backgroundColor: palette.inputBg, borderColor: palette.border, color: palette.text }]}
-                  />
+                  {/* Unified Textarea Box with Inner Footer & Live 200 Char Counter (NO image upload) */}
+                  <View
+                    style={[
+                      styles.composerTextareaBox,
+                      { backgroundColor: palette.inputBg, borderColor: palette.border },
+                    ]}
+                  >
+                    <TextInput
+                      multiline
+                      maxLength={200}
+                      value={draftBio}
+                      onChangeText={(text) => setDraftBio(text.slice(0, 200))}
+                      placeholder={
+                        language === "en"
+                          ? "Tell clients about your background, experience, and service guarantee..."
+                          : "Ceritakan keahlian, pengalaman, dan garansi layanan Anda..."
+                      }
+                      placeholderTextColor={palette.textMuted}
+                      style={[
+                        styles.composerTextInput,
+                        { color: palette.text },
+                      ]}
+                      testID="edit-about-bio-input"
+                    />
 
+                    {/* Footer inside the textarea box with live character countdown (NO IMAGE BUTTON) */}
+                    <View
+                      style={[
+                        styles.composerFooterRow,
+                        { borderTopColor: palette.border, justifyContent: "flex-end" },
+                      ]}
+                    >
+                      <Text
+                        style={[
+                          styles.charCounterText,
+                          draftBio.length > 170
+                            ? styles.charCounterWarning
+                            : { color: palette.textMuted },
+                        ]}
+                      >
+                        {200 - draftBio.length}
+                      </Text>
+                    </View>
+                  </View>
+
+                  {/* Save & Cancel Action Buttons */}
                   <View style={styles.formButtonRow}>
                     <Pressable
                       accessibilityRole="button"
                       onPress={() => setIsEditingAbout(false)}
-                      style={[styles.formCancelBtn, { borderColor: palette.border }]}
+                      style={[
+                        styles.formCancelBtnModern,
+                        { borderColor: palette.border, backgroundColor: palette.surfaceElevated },
+                      ]}
                     >
-                      <Text style={[styles.formBtnText, { color: palette.textMuted }]}>
+                      <Text style={[styles.formBtnTextModern, { color: palette.text }]}>
                         {language === "en" ? "Cancel" : "Batal"}
                       </Text>
                     </Pressable>
+
                     <Pressable
                       accessibilityRole="button"
                       disabled={savingAbout}
@@ -999,30 +1072,47 @@ export default function TechnicianProfileScreen() {
                             bio: draftBio.trim() || undefined,
                           };
                           await saveTechnicianWorkspaceProfile(technician.id, updated);
-                          setLoadedTechnician((prev) => prev ? { ...prev, headline: updated.headline, bio: updated.bio } : updated);
+                          setLoadedTechnician((prev) =>
+                            prev ? { ...prev, headline: updated.headline, bio: updated.bio } : updated,
+                          );
                           setIsEditingAbout(false);
                         } finally {
                           setSavingAbout(false);
                         }
                       }}
-                      style={[styles.formSaveBtn, { backgroundColor: palette.primary }]}
+                      style={[
+                        styles.formSaveBtnModern,
+                        { backgroundColor: palette.primary },
+                      ]}
                       testID="save-about-btn"
                     >
-                      <Text style={styles.formSaveBtnText}>
-                        {savingAbout ? "..." : (language === "en" ? "Save About Me" : "Simpan")}
+                      <Text style={styles.formSaveBtnTextModern}>
+                        {savingAbout
+                          ? "..."
+                          : language === "en"
+                          ? "Save About"
+                          : "Simpan"}
                       </Text>
                     </Pressable>
                   </View>
                 </View>
               ) : (
-                <Text style={[styles.bio, { color: palette.textMuted }]}>
-                  {bio || t("profile.fallbackBio", { name: technician.displayName })}
-                </Text>
+                <View
+                  style={[
+                    styles.modernCard,
+                    { backgroundColor: palette.surface, borderColor: palette.border },
+                  ]}
+                >
+                  <Text style={[styles.bio, { color: palette.text }]}>
+                    {bio || t("profile.fallbackBio", { name: technician.displayName })}
+                  </Text>
+                </View>
               )}
 
               <SectionHeader
                 eyebrow={t("profile.areasEyebrow")}
                 title={t("profile.areasTitle")}
+                compact
               />
               {technician.serviceAreas.length ? (
                 <View style={styles.areaList}>
@@ -1255,6 +1345,7 @@ export default function TechnicianProfileScreen() {
                   trailing={t("profile.portfolioCount", {
                     count: technician.portfolio.length,
                   })}
+                  compact
                 />
                 {(isProfileOwner || isAdminUser) && !isAddingPortfolio && (
                   <Pressable
@@ -1269,60 +1360,147 @@ export default function TechnicianProfileScreen() {
                     testID="add-portfolio-trigger-btn"
                   >
                     <Text style={[styles.smallActionBtnText, { color: palette.primary }]}>
-                      {language === "en" ? "+ Add Work Photo" : "+ Tambah Portofolio"}
+                      {language === "en" ? "+ Add Work" : "+ Portofolio"}
                     </Text>
                   </Pressable>
                 )}
               </View>
 
               {isAddingPortfolio && (
-                <View style={[styles.formCard, { backgroundColor: palette.surface, borderColor: palette.border }]} testID="add-portfolio-form">
-                  <Text style={[styles.formLabel, { color: palette.text }]}>
-                    {language === "en" ? "Work Title *" : "Judul Pekerjaan *"}
-                  </Text>
+                <View
+                  style={[
+                    styles.formCardModern,
+                    { backgroundColor: palette.surface, borderColor: palette.border },
+                  ]}
+                  testID="add-portfolio-form"
+                >
+                  <View style={styles.formHeaderRow}>
+                    <Text style={[styles.formTitleModern, { color: palette.text }]}>
+                      {language === "en" ? "Add Work to Portfolio" : "Tambah Karya ke Portofolio"}
+                    </Text>
+                  </View>
+
                   <TextInput
                     value={draftPortfolioTitle}
                     onChangeText={setDraftPortfolioTitle}
-                    placeholder={language === "en" ? "e.g. AC Installation & Maintenance" : "cth. Pemasangan & Servis AC Unit"}
+                    placeholder={
+                      language === "en"
+                        ? "Work title (e.g. Master AC Installation & Repair)"
+                        : "Judul pekerjaan (cth. Pemasangan & Servis AC Unit)"
+                    }
                     placeholderTextColor={palette.textMuted}
-                    style={[styles.formInput, { backgroundColor: palette.inputBg, borderColor: palette.border, color: palette.text }]}
+                    style={[
+                      styles.formInputModern,
+                      {
+                        backgroundColor: palette.inputBg,
+                        borderColor: palette.border,
+                        color: palette.text,
+                      },
+                    ]}
                     testID="portfolio-title-input"
                   />
 
-                  <Text style={[styles.formLabel, { color: palette.text }]}>
-                    {language === "en" ? "Description" : "Keterangan"}
-                  </Text>
-                  <TextInput
-                    value={draftPortfolioDesc}
-                    onChangeText={setDraftPortfolioDesc}
-                    placeholder={language === "en" ? "Brief description of the work completed..." : "Keterangan singkat pekerjaan..."}
-                    placeholderTextColor={palette.textMuted}
-                    style={[styles.formInput, { backgroundColor: palette.inputBg, borderColor: palette.border, color: palette.text }]}
-                  />
+                  {/* Unified Textarea Box with Inner Footer & Live 200 Char Counter */}
+                  <View
+                    style={[
+                      styles.composerTextareaBox,
+                      { backgroundColor: palette.inputBg, borderColor: palette.border },
+                    ]}
+                  >
+                    <TextInput
+                      multiline
+                      maxLength={200}
+                      value={draftPortfolioDesc}
+                      onChangeText={(text) => setDraftPortfolioDesc(text.slice(0, 200))}
+                      placeholder={
+                        language === "en"
+                          ? "Brief description of the work completed..."
+                          : "Keterangan singkat pekerjaan yang diselesaikan..."
+                      }
+                      placeholderTextColor={palette.textMuted}
+                      style={[
+                        styles.composerTextInput,
+                        { color: palette.text },
+                      ]}
+                      testID="portfolio-desc-input"
+                    />
 
-                  <Text style={[styles.formLabel, { color: palette.text }]}>
-                    {language === "en" ? "Photo Attachment" : "Lampiran Foto"}
-                  </Text>
-                  <StrictImagePicker
-                    onImageValidated={(uri) => setDraftPortfolioImage(uri)}
-                    testIDPrefix="portfolio-image-picker"
-                  />
-                  {draftPortfolioImage && (
-                    <View style={styles.portfolioPreviewRow}>
-                      <Image source={{ uri: draftPortfolioImage }} style={styles.portfolioPreviewThumb} />
-                      <Text style={[styles.badgeTextMuted, { color: palette.textMuted }]}>
-                        {language === "en" ? "Photo selected ✓" : "Foto terpilih ✓"}
+                    {/* Pre-upload Image Preview inside container */}
+                    {draftPortfolioImage && (
+                      <View style={styles.composerImagePreviewWrap}>
+                        <Image
+                          source={{ uri: draftPortfolioImage }}
+                          style={styles.composerImageThumb}
+                          resizeMode="cover"
+                        />
+                        <Pressable
+                          accessibilityRole="button"
+                          accessibilityLabel="Remove photo"
+                          onPress={() => setDraftPortfolioImage(undefined)}
+                          style={styles.removeImageBadge}
+                        >
+                          <X size={12} color="#FFFFFF" strokeWidth={2.5} />
+                        </Pressable>
+                      </View>
+                    )}
+
+                    {/* Footer inside the textarea container */}
+                    <View
+                      style={[
+                        styles.composerFooterRow,
+                        { borderTopColor: palette.border },
+                      ]}
+                    >
+                      <Pressable
+                        accessibilityRole="button"
+                        accessibilityLabel={language === "en" ? "Attach work photo" : "Lampirkan foto karya"}
+                        onPress={async () => {
+                          const picked = await pickImageSafely("gallery");
+                          if (picked?.uri) {
+                            setDraftPortfolioImage(picked.uri);
+                          }
+                        }}
+                        style={[
+                          styles.attachPhotoBtn,
+                          {
+                            backgroundColor: draftPortfolioImage ? palette.primarySoft : palette.surface,
+                            borderColor: palette.border,
+                          },
+                        ]}
+                        testID="portfolio-image-picker"
+                      >
+                        <Camera size={14} color={palette.primary} strokeWidth={2.2} />
+                        <Text style={[styles.attachPhotoText, { color: palette.primary }]}>
+                          {draftPortfolioImage
+                            ? (language === "en" ? "Change Photo" : "Ganti Foto")
+                            : (language === "en" ? "Add Photo" : "Pilih Foto")}
+                        </Text>
+                      </Pressable>
+
+                      {/* Live Counter (Remaining characters out of 200) */}
+                      <Text
+                        style={[
+                          styles.charCounterText,
+                          draftPortfolioDesc.length > 170
+                            ? styles.charCounterWarning
+                            : { color: palette.textMuted },
+                        ]}
+                      >
+                        {200 - draftPortfolioDesc.length}
                       </Text>
                     </View>
-                  )}
+                  </View>
 
                   <View style={styles.formButtonRow}>
                     <Pressable
                       accessibilityRole="button"
                       onPress={() => setIsAddingPortfolio(false)}
-                      style={[styles.formCancelBtn, { borderColor: palette.border }]}
+                      style={[
+                        styles.formCancelBtnModern,
+                        { borderColor: palette.border, backgroundColor: palette.surfaceElevated },
+                      ]}
                     >
-                      <Text style={[styles.formBtnText, { color: palette.textMuted }]}>
+                      <Text style={[styles.formBtnTextModern, { color: palette.text }]}>
                         {language === "en" ? "Cancel" : "Batal"}
                       </Text>
                     </Pressable>
@@ -1347,11 +1525,21 @@ export default function TechnicianProfileScreen() {
                           setSavingPortfolio(false);
                         }
                       }}
-                      style={[styles.formSaveBtn, { backgroundColor: palette.primary, opacity: draftPortfolioTitle.trim() ? 1 : 0.6 }]}
+                      style={[
+                        styles.formSaveBtnModern,
+                        {
+                          backgroundColor: palette.primary,
+                          opacity: draftPortfolioTitle.trim() ? 1 : 0.6,
+                        },
+                      ]}
                       testID="save-portfolio-btn"
                     >
-                      <Text style={styles.formSaveBtnText}>
-                        {savingPortfolio ? "..." : (language === "en" ? "Save to Portfolio" : "Simpan")}
+                      <Text style={styles.formSaveBtnTextModern}>
+                        {savingPortfolio
+                          ? "..."
+                          : language === "en"
+                          ? "Save Work"
+                          : "Simpan"}
                       </Text>
                     </Pressable>
                   </View>
@@ -1374,7 +1562,7 @@ export default function TechnicianProfileScreen() {
                         accessibilityRole="button"
                         onPress={() => setExpandedPortfolio(item)}
                         style={[
-                          styles.portfolioCard,
+                          styles.modernPortfolioCard,
                           {
                             backgroundColor: palette.surface,
                             borderColor: palette.border,
@@ -1382,28 +1570,33 @@ export default function TechnicianProfileScreen() {
                         ]}
                         testID={`portfolio-item-${item.id}`}
                       >
-                        <PortfolioPhoto
-                          uri={item.imageUri}
-                          title={title}
-                          fallbackLabel={t("profile.portfolioPhoto")}
-                        />
-                        <Text
-                          numberOfLines={2}
-                          style={[styles.portfolioTitle, { color: palette.text }]}
-                        >
-                          {title}
-                        </Text>
-                        {desc && (
+                        <View style={styles.portfolioCardPhotoFrame}>
+                          <PortfolioPhoto
+                            uri={item.imageUri}
+                            title={title}
+                            fallbackLabel={t("profile.portfolioPhoto")}
+                            large
+                          />
+                        </View>
+                        <View style={styles.portfolioCardBody}>
                           <Text
-                            numberOfLines={2}
-                            style={[
-                              styles.portfolioDescription,
-                              { color: palette.textMuted },
-                            ]}
+                            numberOfLines={1}
+                            style={[styles.portfolioTitleModern, { color: palette.text }]}
                           >
-                            {desc}
+                            {title}
                           </Text>
-                        )}
+                          {desc && (
+                            <Text
+                              numberOfLines={3}
+                              style={[
+                                styles.portfolioDescModern,
+                                { color: palette.textMuted },
+                              ]}
+                            >
+                              {desc}
+                            </Text>
+                          )}
+                        </View>
                       </Pressable>
                     );
                   })}
@@ -2096,12 +2289,12 @@ const styles = StyleSheet.create({
   contentWidth: {
     alignSelf: "center",
     maxWidth: 820,
-    paddingHorizontal: spacing.xl,
-    paddingTop: spacing.lg,
+    paddingHorizontal: 5,
+    paddingTop: 6,
     width: "100%",
   },
   postComposerWrap: {
-    marginHorizontal: -15,
+    marginHorizontal: 0,
   },
   profileHero: { borderRadius: 0, width: "100%" },
   coverContainer: { height: 140, position: "relative", width: "100%" },
@@ -2162,7 +2355,7 @@ const styles = StyleSheet.create({
     justifyContent: "space-around",
     maxWidth: 820,
     minHeight: 48,
-    paddingHorizontal: spacing.xl,
+    paddingHorizontal: 5,
     width: "100%",
     zIndex: 1,
   },
@@ -2910,5 +3103,149 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '700',
     marginLeft: 8,
+  },
+  formCardModern: {
+    borderRadius: 5,
+    borderWidth: 1,
+    padding: 12,
+    marginBottom: 12,
+    marginTop: 6,
+    width: "100%",
+  },
+  formHeaderRow: {
+    marginBottom: 8,
+  },
+  formTitleModern: {
+    fontSize: 14,
+    fontWeight: "700",
+  },
+  formInputModern: {
+    borderRadius: 5,
+    borderWidth: 1,
+    fontSize: 13,
+    minHeight: 42,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    marginBottom: 8,
+    width: "100%",
+  },
+  composerTextareaBox: {
+    borderRadius: 5,
+    borderWidth: 1,
+    padding: 10,
+    width: "100%",
+  },
+  composerTextInput: {
+    fontSize: 13,
+    lineHeight: 18,
+    minHeight: 68,
+    textAlignVertical: "top",
+    width: "100%",
+  },
+  composerImagePreviewWrap: {
+    alignSelf: "flex-start",
+    borderRadius: 4,
+    marginTop: 8,
+    overflow: "hidden",
+    position: "relative",
+  },
+  composerImageThumb: {
+    borderRadius: 4,
+    height: 90,
+    width: 120,
+  },
+  removeImageBadge: {
+    alignItems: "center",
+    backgroundColor: "rgba(0, 0, 0, 0.65)",
+    borderRadius: 10,
+    height: 20,
+    justifyContent: "center",
+    position: "absolute",
+    right: 4,
+    top: 4,
+    width: 20,
+  },
+  composerFooterRow: {
+    alignItems: "center",
+    borderTopWidth: 1,
+    flexDirection: "row",
+    justifyContent: "space-between",
+    marginTop: 8,
+    paddingTop: 8,
+  },
+  attachPhotoBtn: {
+    alignItems: "center",
+    borderRadius: 4,
+    borderWidth: 1,
+    flexDirection: "row",
+    gap: 5,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+  },
+  attachPhotoText: {
+    fontSize: 11,
+    fontWeight: "600",
+  },
+  charCounterText: {
+    fontSize: 11,
+    fontWeight: "700",
+  },
+  charCounterWarning: {
+    color: "#E11D48",
+  },
+  formCancelBtnModern: {
+    alignItems: "center",
+    borderRadius: 5,
+    borderWidth: 1,
+    justifyContent: "center",
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+  },
+  formSaveBtnModern: {
+    alignItems: "center",
+    borderRadius: 5,
+    justifyContent: "center",
+    paddingHorizontal: 18,
+    paddingVertical: 8,
+  },
+  formBtnTextModern: {
+    fontSize: 12,
+    fontWeight: "700",
+  },
+  formSaveBtnTextModern: {
+    color: "#FFFFFF",
+    fontSize: 12,
+    fontWeight: "800",
+  },
+  modernCard: {
+    borderRadius: 5,
+    borderWidth: 1,
+    padding: 14,
+    width: "100%",
+    marginBottom: 10,
+  },
+  modernPortfolioCard: {
+    borderRadius: 5,
+    borderWidth: 1,
+    overflow: "hidden",
+    width: "100%",
+    marginBottom: 8,
+  },
+  portfolioCardPhotoFrame: {
+    height: 180,
+    width: "100%",
+    overflow: "hidden",
+  },
+  portfolioCardBody: {
+    padding: 12,
+  },
+  portfolioTitleModern: {
+    fontSize: 15,
+    fontWeight: "700",
+  },
+  portfolioDescModern: {
+    fontSize: 13,
+    lineHeight: 18,
+    marginTop: 4,
   },
 });

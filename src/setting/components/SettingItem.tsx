@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 
+import { Toggle } from "../../components/toggle";
 import { useAppearance } from "../../context/AppearanceContext";
 import { radii, spacing } from "../../theme/tokens";
 
@@ -51,16 +52,11 @@ export function SettingItem({
         ) : null}
       </View>
       {rightElement ?? (
-        <View
-          style={[
-            styles.togglePill,
-            { backgroundColor: active ? palette.primary : palette.border },
-          ]}
-        >
-          <View
-            style={[styles.toggleKnob, active && styles.toggleKnobActive]}
-          />
-        </View>
+        <Toggle
+          checked={Boolean(active)}
+          onChange={onPress}
+          testID={testID ? `${testID}-toggle` : undefined}
+        />
       )}
     </Pressable>
   );

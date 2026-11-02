@@ -488,7 +488,7 @@ export async function loadTechnicianWorkspaceProfile(userId?: string | null): Pr
           .maybeSingle(),
         supabase
           .from('profiles')
-          .select('display_name, avatar_path')
+          .select('*')
           .eq('id', userId)
           .maybeSingle(),
       ]);
@@ -503,7 +503,11 @@ export async function loadTechnicianWorkspaceProfile(userId?: string | null): Pr
           businessName: techData?.business_name || undefined,
           headline: techData?.headline || undefined,
           bio: techData?.bio || undefined,
-          avatarUri: profileData?.avatar_path || undefined,
+          avatarUri:
+            profileData?.avatar_path ||
+            profileData?.avatar_url ||
+            profileData?.avatar ||
+            undefined,
           yearsExperience: techData?.years_experience ?? 0,
           verified: Boolean(techData?.is_verified),
           available: techData?.is_available ?? true,
@@ -830,14 +834,31 @@ export async function createBookingRequest(input: CreateBookingInput): Promise<B
       throw new Error('booking_technician_profile_missing');
     }
 
+    const UUID_REGEX =
+      /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    let serviceUuid: string | null = null;
+    if (input.service?.id && UUID_REGEX.test(input.service.id)) {
+      try {
+        const { data: svc } = await supabase
+          .from('technician_services')
+          .select('id')
+          .eq('id', input.service.id)
+          .eq('technician_user_id', input.technician.id)
+          .maybeSingle();
+        if (svc?.id) {
+          serviceUuid = svc.id;
+        }
+      } catch {
+        serviceUuid = null;
+      }
+    }
+
     const { data, error } = await supabase
       .from('bookings')
       .insert({
         customer_user_id: sessionUserId,
         technician_user_id: input.technician.id,
-        technician_service_id: input.service.id.startsWith('post-')
-          ? null
-          : input.service.id,
+        technician_service_id: serviceUuid,
         service_name_snapshot: newBooking.serviceNameSnapshot,
         service_description: newBooking.serviceDescription ?? null,
         customer_address: newBooking.customerAddress,

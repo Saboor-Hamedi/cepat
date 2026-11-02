@@ -1,6 +1,7 @@
 import { router } from "expo-router";
 import { useEffect, useState } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
+import { User } from "lucide-react-native";
 
 import { useAuth } from "../auth/AuthProvider";
 import { useAppearance } from "../context/AppearanceContext";
@@ -10,6 +11,7 @@ import {
   subscribeToNotifications,
 } from "../data/notifications";
 import { useLanguage } from "../i18n/locale";
+import { useUserAvatar } from "../hooks/useUserAvatar";
 import { colors, radii, spacing } from "../theme/tokens";
 import { Avatar } from "./Avatar";
 import { Sidebar } from "./Sidebar";
@@ -161,10 +163,15 @@ export function Header({ activeTab }: { activeTab: NavigationTabKey }) {
       user.user_metadata.display_name.trim()) ||
     user?.email?.split("@")[0] ||
     "Guest";
-  const avatarUri =
-    typeof user?.user_metadata?.avatar_url === "string"
-      ? user.user_metadata.avatar_url
-      : undefined;
+
+  const userMetadataAvatar =
+    (typeof user?.user_metadata?.avatar_url === "string" && user.user_metadata.avatar_url) ||
+    (typeof user?.user_metadata?.avatar_path === "string" && user.user_metadata.avatar_path) ||
+    (typeof user?.user_metadata?.avatar === "string" && user.user_metadata.avatar) ||
+    undefined;
+
+  const hookAvatar = useUserAvatar(user?.id, displayName, userMetadataAvatar);
+  const avatarUri = hookAvatar || userMetadataAvatar || undefined;
 
   useEffect(() => {
     if (!user?.id) return;
@@ -247,7 +254,7 @@ export function Header({ activeTab }: { activeTab: NavigationTabKey }) {
       <Text style={styles.srOnly}>cepat</Text>
 
       <View style={styles.singleBar}>
-        {/* Profile Avatar on the left: Opens Sidebar */}
+        {/* Profile icon on the left: Opens Sidebar */}
         <Pressable
           accessibilityRole="button"
           accessibilityLabel="Open profile sidebar"
@@ -256,11 +263,7 @@ export function Header({ activeTab }: { activeTab: NavigationTabKey }) {
           testID="account-entry"
         >
           <View style={styles.avatarIconWrap}>
-            <Avatar
-              uri={isAuthenticated ? avatarUri : undefined}
-              name={displayName}
-              size={24}
-            />
+            <User size={22} color={palette.textMuted} strokeWidth={2} />
           </View>
           <Text
             numberOfLines={1}
@@ -373,13 +376,13 @@ const styles = StyleSheet.create({
     alignItems: "center",
     alignSelf: "center",
     flexDirection: "row",
-    height: 56,
+    height: 60,
     maxWidth: 820,
     width: "100%",
   },
   avatarEntryBtn: {
     alignItems: "center",
-    height: 56,
+    height: 60,
     justifyContent: "center",
     marginRight: spacing.xs,
     minWidth: 44,
@@ -397,13 +400,13 @@ const styles = StyleSheet.create({
     alignItems: "center",
     flex: 1,
     flexDirection: "row",
-    height: 56,
+    height: 60,
     justifyContent: "space-around",
   },
   navTab: {
     alignItems: "center",
     flex: 1,
-    height: 56,
+    height: 60,
     justifyContent: "center",
     paddingBottom: 4,
     paddingTop: 4,

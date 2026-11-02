@@ -90,7 +90,7 @@ export function useInfiniteList<T>({
           setNextCursor(cached.nextCursor);
           setHasMore(cached.hasMore);
         } else {
-          setItems([]);
+          // Keep current items visible while new feed loads, rather than flashing blank screen
           setNextCursor(null);
           setHasMore(false);
         }

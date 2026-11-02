@@ -9,15 +9,17 @@ export function SectionHeader({
   eyebrow,
   title,
   trailing,
+  compact = false,
 }: {
   eyebrow: string;
   title: string;
   trailing?: string;
+  compact?: boolean;
 }) {
   const { palette } = useAppearance();
 
   return (
-    <View style={styles.sectionHeading}>
+    <View style={[styles.sectionHeading, compact && styles.sectionHeadingCompact]}>
       <View>
         <Text style={[styles.sectionEyebrow, { color: palette.primary }]}>
           {eyebrow}
@@ -76,6 +78,7 @@ export function PortfolioPhoto({
 
 const styles = StyleSheet.create({
   sectionHeading: { alignItems: 'flex-end', flexDirection: 'row', justifyContent: 'space-between', marginBottom: spacing.md, marginTop: spacing.xxl },
+  sectionHeadingCompact: { marginTop: 6, marginBottom: 8 },
   sectionEyebrow: { color: colors.green, fontSize: 9, fontWeight: '800', letterSpacing: 1.2, marginBottom: 4 },
   sectionTitle: { color: colors.ink, fontSize: 20, fontWeight: '800', letterSpacing: -0.4 },
   sectionTrailing: { color: colors.muted, fontSize: 12, paddingBottom: 2 },

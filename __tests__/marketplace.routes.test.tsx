@@ -324,8 +324,7 @@ describe("marketplace, auth-gated booking, social technician profile, and sideba
     expect(screen.queryByTestId("private-email-input")).toBeNull();
     expect(screen.queryByTestId("private-phone-input")).toBeNull();
 
-    await fireEvent.press(screen.getByTestId("setting-tab-language"));
-    expect(await screen.findByTestId("setting-section-language")).toBeTruthy();
+    expect(await screen.findByTestId("account-language-section")).toBeTruthy();
     expect(screen.getByTestId("language-id")).toBeTruthy();
     expect(screen.getByTestId("language-en")).toBeTruthy();
 

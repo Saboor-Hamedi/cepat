@@ -1,6 +1,5 @@
 import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 
-import { Avatar } from "../../components/marketplace-ui";
 import { useAppearance } from "../../context/AppearanceContext";
 import { useLanguage } from "../../i18n/locale";
 import { radii, spacing } from "../../theme/tokens";
@@ -39,7 +38,6 @@ export function SettingHeader({
     authOnly?: boolean;
   }[] = [
     { key: "account", label: language === "en" ? "Account" : "Akun" },
-    { key: "language", label: language === "en" ? "Language" : "Bahasa" },
     { key: "appearance", label: language === "en" ? "Appearance" : "Tampilan" },
     {
       key: "security",
@@ -49,11 +47,6 @@ export function SettingHeader({
     {
       key: "password",
       label: language === "en" ? "Password" : "Kata Sandi",
-      authOnly: true,
-    },
-    {
-      key: "notifications",
-      label: language === "en" ? "Notifications" : "Notifikasi",
       authOnly: true,
     },
   ];
@@ -99,27 +92,6 @@ export function SettingHeader({
           );
         })}
       </ScrollView>
-
-      {/* Account Profile Banner below categories inside the Account tab */}
-      {activeSection === "account" && isAuthenticated && userName ? (
-        <View
-          style={[
-            styles.identityCard,
-            { backgroundColor: palette.surface, borderColor: palette.border, marginTop: spacing.md },
-          ]}
-          testID="settings-user-identity"
-        >
-          <Avatar uri={avatarUri} name={userName} size={44} />
-          <View style={styles.identityCopy}>
-            <Text style={[styles.identityName, { color: palette.text, fontSize: scaleFont(15) }]} numberOfLines={1}>
-              {userName}
-            </Text>
-            <Text style={[styles.identityRole, { color: palette.textMuted, fontSize: scaleFont(12) }]} numberOfLines={1}>
-              {userRole || (language === "en" ? "Cepat account" : "Akun Cepat")}
-            </Text>
-          </View>
-        </View>
-      ) : null}
     </View>
   );
 }
@@ -128,25 +100,6 @@ const styles = StyleSheet.create({
   headerContainer: {
     marginBottom: spacing.md,
     marginTop: spacing.xs,
-  },
-  identityCard: {
-    alignItems: "center",
-    borderRadius: radii.md,
-    borderWidth: 1,
-    flexDirection: "row",
-    gap: spacing.md,
-    padding: spacing.md,
-  },
-  identityCopy: {
-    flex: 1,
-    minWidth: 0,
-  },
-  identityName: {
-    fontWeight: "800",
-  },
-  identityRole: {
-    marginTop: 3,
-    textTransform: "capitalize",
   },
   srOnly: {
     height: 0,
