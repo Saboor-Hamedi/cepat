@@ -104,13 +104,13 @@ export function createChatHeaderStyles(palette: {
     },
     pinnedCard: {
       alignItems: 'center',
-      borderRadius: 12,
+      borderRadius: 5,
       borderWidth: 1,
       borderLeftWidth: 3,
       flexDirection: 'row',
       gap: 10,
       marginBottom: 6,
-      marginHorizontal: 12,
+      marginHorizontal: 5,
       marginTop: 8,
       paddingHorizontal: 10,
       paddingVertical: 8,
@@ -143,7 +143,7 @@ export function createChatHeaderStyles(palette: {
       letterSpacing: -0.2,
     },
     pinnedThumb: {
-      borderRadius: 8,
+      borderRadius: 5,
       height: 44,
       width: 44,
     },
@@ -194,7 +194,7 @@ export function createChatContentStyles(palette: {
       width: 30,
     },
     bubble: {
-      borderRadius: 16,
+      borderRadius: 5,
       maxWidth: 540,
       minWidth: 70,
       paddingHorizontal: 14,
@@ -217,7 +217,7 @@ export function createChatContentStyles(palette: {
     },
     clearedBox: {
       alignItems: 'center',
-      borderRadius: 14,
+      borderRadius: 5,
       borderWidth: 1,
       marginTop: 12,
       paddingHorizontal: 20,
@@ -311,13 +311,13 @@ export function createChatContentStyles(palette: {
     },
     securityBanner: {
       alignItems: 'center',
-      borderRadius: 8,
+      borderRadius: 5,
       borderStyle: 'dashed',
       borderWidth: 1,
       flexDirection: 'row',
       gap: 6,
       justifyContent: 'center',
-      marginHorizontal: 16,
+      marginHorizontal: 5,
       marginTop: 6,
       marginBottom: 2,
       paddingHorizontal: 12,
@@ -368,11 +368,11 @@ export function createChatComposerStyles(palette: {
   return StyleSheet.create({
     bookAgainBtn: {
       alignItems: 'center',
-      borderRadius: 14,
+      borderRadius: 5,
       flexDirection: 'row',
       gap: 8,
       justifyContent: 'center',
-      marginHorizontal: 20,
+      marginHorizontal: 5,
       paddingHorizontal: 20,
       paddingVertical: 14,
     },
@@ -437,7 +437,7 @@ export function createChatComposerStyles(palette: {
     },
     inputPill: {
       alignItems: 'center',
-      borderRadius: 24,
+      borderRadius: 5,
       borderWidth: 1,
       flex: 1,
       flexDirection: 'row',
@@ -447,7 +447,7 @@ export function createChatComposerStyles(palette: {
     },
     sendBtn: {
       alignItems: 'center',
-      borderRadius: 19,
+      borderRadius: 5,
       height: 38,
       justifyContent: 'center',
       width: 38,
@@ -486,7 +486,7 @@ export function createChatDropdownStyles(palette: {
       opacity: 0.8,
     },
     dropdownMenu: {
-      borderRadius: 16,
+      borderRadius: 5,
       borderWidth: 1,
       elevation: 25,
       minWidth: 214,
@@ -512,7 +512,7 @@ export function createChatDropdownStyles(palette: {
       zIndex: 10000,
     },
     dropdownInner: {
-      borderRadius: 15,
+      borderRadius: 5,
       overflow: 'hidden',
       paddingVertical: 6,
     },

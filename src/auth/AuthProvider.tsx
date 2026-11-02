@@ -135,7 +135,7 @@ type AuthContextValue = {
   signOut: () => Promise<void>;
   refreshAccount: () => Promise<void>;
   finishRecovery: () => void;
-  updateUserProfile: (details: { displayName?: string; avatarUrl?: string }) => Promise<void>;
+  updateUserProfile: (details: { displayName?: string; username?: string; avatarUrl?: string }) => Promise<void>;
 };
 
 const AuthContext = createContext<AuthContextValue | null>(null);
@@ -345,13 +345,16 @@ export function AuthProvider({ children }: PropsWithChildren) {
   );
 
   const updateUserProfile = useCallback(
-    async (details: { displayName?: string; avatarUrl?: string }) => {
+    async (details: { displayName?: string; username?: string; avatarUrl?: string }) => {
       if (user) {
         const nextUser = {
           ...user,
           user_metadata: {
             ...user.user_metadata,
-            ...(details.displayName !== undefined ? { display_name: details.displayName } : {}),
+            ...(details.displayName !== undefined
+              ? { display_name: details.displayName, full_name: details.displayName }
+              : {}),
+            ...(details.username !== undefined ? { username: details.username } : {}),
             ...(details.avatarUrl !== undefined ? { avatar_url: details.avatarUrl } : {}),
           },
         };
@@ -365,8 +368,9 @@ export function AuthProvider({ children }: PropsWithChildren) {
             user_metadata: {
               ...previewAuthState.user.user_metadata,
               ...(details.displayName !== undefined
-                ? { display_name: details.displayName }
+                ? { display_name: details.displayName, full_name: details.displayName }
                 : {}),
+              ...(details.username !== undefined ? { username: details.username } : {}),
               ...(details.avatarUrl !== undefined
                 ? { avatar_url: details.avatarUrl }
                 : {}),
@@ -384,7 +388,10 @@ export function AuthProvider({ children }: PropsWithChildren) {
         try {
           await supabase.auth.updateUser({
             data: {
-              ...(details.displayName !== undefined ? { display_name: details.displayName } : {}),
+              ...(details.displayName !== undefined
+                ? { display_name: details.displayName, full_name: details.displayName }
+                : {}),
+              ...(details.username !== undefined ? { username: details.username } : {}),
               ...(details.avatarUrl !== undefined ? { avatar_url: details.avatarUrl } : {}),
             },
           });
@@ -480,7 +487,7 @@ export function useAuth(): AuthContextValue {
       previewAuthState = { ...previewAuthState, recoveryMode: false };
       emitPreviewAuthChange();
     },
-    updateUserProfile: async (details: { displayName?: string; avatarUrl?: string }) => {
+    updateUserProfile: async (details: { displayName?: string; username?: string; avatarUrl?: string }) => {
       if (previewAuthState.user) {
         previewAuthState = {
           ...previewAuthState,
@@ -489,8 +496,9 @@ export function useAuth(): AuthContextValue {
             user_metadata: {
               ...previewAuthState.user.user_metadata,
               ...(details.displayName !== undefined
-                ? { display_name: details.displayName }
+                ? { display_name: details.displayName, full_name: details.displayName }
                 : {}),
+              ...(details.username !== undefined ? { username: details.username } : {}),
               ...(details.avatarUrl !== undefined
                 ? { avatar_url: details.avatarUrl }
                 : {}),

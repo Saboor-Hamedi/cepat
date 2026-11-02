@@ -304,7 +304,17 @@ export function BookingLifecyclePanel({
     }
   };
 
+  const isTechnicianUser =
+    effectiveRole === "technician" ||
+    (Boolean(user) && (user?.id === activeBooking.technicianUserId || (user?.id === "demo-rizky" && activeBooking.technicianUserId === "demo-rizky")));
+  const isCustomerUser =
+    !isTechnicianUser &&
+    Boolean(user) &&
+    user?.id !== activeBooking.technicianUserId;
+  const hasAlreadyReviewed = reviewSubmitted || Boolean(activeBooking.reviewRating);
+
   const handleSubmitReview = async () => {
+    if (!reviewRating || !isCustomerUser || hasAlreadyReviewed) return;
     try {
       await submitBookingReview({
         bookingId: activeBooking.id,
@@ -314,6 +324,11 @@ export function BookingLifecyclePanel({
         comment: reviewComment,
       });
       setReviewSubmitted(true);
+      onBookingChange({
+        ...activeBooking,
+        reviewRating,
+        reviewComment,
+      });
     } catch {
       // Ignore duplicate or invalid review error
     }
@@ -839,7 +854,7 @@ export function BookingLifecyclePanel({
                   : "Ulasan dan rating dari pelanggan untuk layanan yang selesai"}
             </Text>
           </View>
-          {reviewSubmitted || (Boolean(activeBooking.reviewRating) && !isCustomer) ? (
+          {hasAlreadyReviewed ? (
             <View style={styles.reviewSubmittedBox}>
               <View style={styles.starsRow}>
                 {[1, 2, 3, 4, 5].map((star) => (
@@ -857,9 +872,9 @@ export function BookingLifecyclePanel({
                   </Text>
                 ))}
               </View>
-              {activeBooking.reviewComment ? (
+              {(activeBooking.reviewComment || reviewComment) ? (
                 <Text style={{ color: palette.text, fontSize: 13, marginTop: 4 }}>
-                  &quot;{activeBooking.reviewComment}&quot;
+                  &quot;{activeBooking.reviewComment || reviewComment}&quot;
                 </Text>
               ) : null}
               <Text
@@ -869,7 +884,7 @@ export function BookingLifecyclePanel({
                 {t("booking.reviewSubmitted")}
               </Text>
             </View>
-          ) : isCustomer ? (
+          ) : isCustomerUser ? (
             <>
               <View style={styles.starsRow}>
                 {[1, 2, 3, 4, 5].map((star) => (
@@ -1562,7 +1577,7 @@ function createStyles(palette: ThemePalette) {
     padding: spacing.sm,
   },
   messengerInputField: {
-    borderRadius: 22,
+    borderRadius: 5,
     flex: 1,
     marginBottom: 0,
     minHeight: 40,
@@ -1571,7 +1586,7 @@ function createStyles(palette: ThemePalette) {
   },
   messengerSendBtn: {
     alignItems: 'center',
-    borderRadius: radii.pill,
+    borderRadius: 5,
     height: 40,
     justifyContent: 'center',
     width: 40,

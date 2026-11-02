@@ -66,14 +66,15 @@ export function ProfileAvatar({
             style={[
               styles.cameraBadge,
               {
-                width: Math.max(22, Math.round(size * 0.3)),
-                height: Math.max(22, Math.round(size * 0.3)),
-                borderRadius: Math.max(11, Math.round(size * 0.15)),
+                width: size === 80 ? 28 : Math.max(22, Math.round(size * 0.3)),
+                height: size === 80 ? 28 : Math.max(22, Math.round(size * 0.3)),
+                borderRadius: size === 80 ? 14 : Math.max(11, Math.round(size * 0.15)),
+                backgroundColor: '#10B981',
               },
             ]}
             testID={`${testID}-camera-badge`}
           >
-            <Camera color="#FFFFFF" size={Math.max(12, Math.round(size * 0.16))} />
+            <Camera color="#FFFFFF" size={size === 80 ? 14 : Math.max(12, Math.round(size * 0.16))} />
           </View>
         )}
       </Pressable>

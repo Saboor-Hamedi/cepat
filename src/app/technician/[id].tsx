@@ -1,11 +1,12 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { ArrowLeft, Camera, CheckCircle, FileText, MapPin, Pencil, PlusSquare, Star, X } from "lucide-react-native";
+import { ArrowLeft, Camera, CheckCircle, FileText, MapPin, Pencil, PlusSquare, ShieldCheck, Star, X } from "lucide-react-native";
 import { router, useLocalSearchParams } from "expo-router";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   Image,
   Modal,
   Pressable,
+  ScrollView,
   StyleSheet,
   Text,
   TextInput,
@@ -92,6 +93,13 @@ const WEEKDAY_NAMES_EN = [
   "Saturday",
 ];
 
+function cleanTechnicianTypo(text?: string | null): string {
+  if (!text) return "";
+  return text
+    .replace(/Techinician/g, "Technician")
+    .replace(/techinician/g, "technician");
+}
+
 export default function TechnicianProfileScreen() {
   const { language, t } = useLanguage();
   const { user, roles, effectiveRole, updateUserProfile } = useAuth();
@@ -125,18 +133,20 @@ export default function TechnicianProfileScreen() {
   const [draftBio, setDraftBio] = useState('');
   const [savingAbout, setSavingAbout] = useState(false);
 
-  // Portfolio Creation State
+  // Portfolio Creation & Editing State
   const [isAddingPortfolio, setIsAddingPortfolio] = useState(false);
+  const [editingPortfolioItem, setEditingPortfolioItem] = useState<PortfolioItem | null>(null);
   const [draftPortfolioTitle, setDraftPortfolioTitle] = useState('');
   const [draftPortfolioDesc, setDraftPortfolioDesc] = useState('');
   const [draftPortfolioImage, setDraftPortfolioImage] = useState<string | undefined>(undefined);
   const [savingPortfolio, setSavingPortfolio] = useState(false);
 
-  // Direct Review Creation State
+  // Review State & Permissions
   const [isAddingReview, setIsAddingReview] = useState(false);
   const [draftReviewRating, setDraftReviewRating] = useState(5);
   const [draftReviewComment, setDraftReviewComment] = useState('');
   const [savingReview, setSavingReview] = useState(false);
+  const [hasCompletedTaskWithTech, setHasCompletedTaskWithTech] = useState(false);
   const feedIsTechnician = roles.includes("technician") || effectiveRole === "technician";
   const feedIsOwner = Boolean(
     user &&
@@ -208,12 +218,28 @@ export default function TechnicianProfileScreen() {
         if (!active) return;
         const completed = allBookings.filter(
           (b) =>
+            b.status === "completed" &&
             (b.technicianUserId === targetId ||
-              (user && b.technicianUserId === user.id) ||
-              (loadedTechnician && b.technicianUserId === loadedTechnician.id)) &&
-            b.status === "completed",
+              b.customerUserId === targetId ||
+              (user &&
+                (b.technicianUserId === user.id ||
+                  b.customerUserId === user.id)) ||
+              (loadedTechnician && b.technicianUserId === loadedTechnician.id)),
         ).length;
         setDynamicCompletedJobs(completed);
+
+        const userHasCompletedTask = Boolean(
+          user &&
+            allBookings.some(
+              (b) =>
+                b.status === "completed" &&
+                b.customerUserId === user.id &&
+                (b.technicianUserId === targetId ||
+                  (loadedTechnician && b.technicianUserId === loadedTechnician.id) ||
+                  (targetId === "demo-rizky" && b.technicianUserId === "demo-rizky")),
+            ),
+        );
+        setHasCompletedTaskWithTech(userHasCompletedTask);
       })
       .catch(() => {});
 
@@ -322,7 +348,7 @@ export default function TechnicianProfileScreen() {
           reviews: [],
           averageRating: 0,
           reviewCount: 0,
-          completedJobsCount: 0,
+          completedJobsCount: dynamicCompletedJobs,
           serviceAreas: ["Jakarta Selatan"],
           availabilitySchedule: [],
           headline: isAdminUser
@@ -441,6 +467,12 @@ export default function TechnicianProfileScreen() {
   const availabilitySchedule = technician.availabilitySchedule ?? [];
   const canPost = isProfileOwner && (isTechnicianUser || isAdminUser);
   const canDeletePost = isProfileOwner || isAdminUser;
+  const canAddReview = Boolean(
+    user &&
+      !isProfileOwner &&
+      user.id !== technician.id &&
+      (isAdminUser || hasCompletedTaskWithTech),
+  );
 
   const handleCreatePost = async (input: {
     caption: string;
@@ -524,17 +556,10 @@ export default function TechnicianProfileScreen() {
       style={[styles.safeArea, { backgroundColor: palette.background }]}
       edges={["top", "bottom"]}
     >
-      <InfiniteFlatList
+      <ScrollView
         contentContainerStyle={styles.scrollContent}
-        data={activeProfileTab === "posts" ? posts : []}
-        hasMore={activeProfileTab === "posts" && postFeed.hasMore}
-        loadingMore={activeProfileTab === "posts" && postFeed.loadingMore}
-        onLoadMore={() => {
-          void postFeed.loadMore();
-        }}
-        keyExtractor={(post) => post.id}
-        ListHeaderComponent={
-          <>
+        showsVerticalScrollIndicator={false}
+      >
         <View
           style={[styles.profileHero, { backgroundColor: palette.background }]}
           testID="technician-social-profile-card"
@@ -561,7 +586,7 @@ export default function TechnicianProfileScreen() {
                 onPress={handleChangeCover}
                 style={[
                   styles.changeCoverBtn,
-                  { backgroundColor: "rgba(0, 0, 0, 0.55)", borderColor: palette.primary },
+                  { backgroundColor: "rgba(0, 0, 0, 0.55)", borderColor: palette.primary, borderRadius: 5, padding: 8 },
                 ]}
                 testID="change-cover-btn"
               >
@@ -587,13 +612,13 @@ export default function TechnicianProfileScreen() {
               <View
                 style={[
                   styles.avatarWrapper,
-                  { borderColor: palette.surface },
+                  { borderColor: "#FFFFFF" },
                 ]}
               >
                 <ProfileAvatar
                   uri={technician.avatarUri}
-                  name={technician.displayName}
-                  size={88}
+                  name={cleanTechnicianTypo(technician.displayName)}
+                  size={80}
                   editable={isProfileOwner}
                   onImageSelected={handleAvatarSelected}
                   testID="technician-profile-avatar"
@@ -602,7 +627,7 @@ export default function TechnicianProfileScreen() {
               <View style={styles.profileIdentity}>
                 <View style={styles.nameLine}>
                   <Text style={[styles.profileName, { color: palette.text }]}>
-                    {technician.displayName}
+                    {cleanTechnicianTypo(technician.displayName)}
                   </Text>
                   {technician.verified ? (
                     <View
@@ -623,18 +648,18 @@ export default function TechnicianProfileScreen() {
                   ) : null}
                 </View>
                 {technician.businessName &&
-                  technician.businessName !== technician.displayName && (
+                  cleanTechnicianTypo(technician.businessName) !== cleanTechnicianTypo(technician.displayName) && (
                     <Text
                       style={[
                         styles.businessName,
                         { color: palette.textMuted },
                       ]}
                     >
-                      {technician.businessName}
+                      {cleanTechnicianTypo(technician.businessName)}
                     </Text>
                   )}
-                <Text style={[styles.profileHeadline, { color: theme.accent }]}>
-                  {headline || t("technician.serviceFallback")}
+                <Text style={[styles.profileHeadline, { color: palette.primary }]}>
+                  {cleanTechnicianTypo(headline || t("technician.serviceFallback"))}
                 </Text>
               </View>
             </View>
@@ -796,7 +821,9 @@ export default function TechnicianProfileScreen() {
                 accessibilityRole="button"
                 onPress={() => {
                   setActiveProfileTab("reviews");
-                  setIsAddingReview(true);
+                  if (canAddReview) {
+                    setIsAddingReview(true);
+                  }
                 }}
                 style={[
                   styles.singleActionBadge,
@@ -918,8 +945,43 @@ export default function TechnicianProfileScreen() {
                 </View>
               )}
 
-              {posts.length > 0 && (
+              {posts.length > 0 ? (
                 <>
+                  {posts.map((item) => (
+                    <View key={item.id} style={styles.postCardWrap}>
+                      <TechnicianPostCard
+                        post={item}
+                        isOwner={isProfileOwner}
+                        isAdmin={isAdminUser}
+                        authorName={technician.displayName}
+                        authorAvatarUri={technician.avatarUri}
+                        onEdit={handleEditPost}
+                        onDelete={handleDeletePost}
+                        onSuspend={handleSuspendPost}
+                      />
+                    </View>
+                  ))}
+                  {postFeed.hasMore && (
+                    <Pressable
+                      accessibilityRole="button"
+                      onPress={() => {
+                        void postFeed.loadMore();
+                      }}
+                      style={[
+                        styles.loadMorePostsBtn,
+                        { backgroundColor: palette.surface, borderColor: palette.border },
+                      ]}
+                      testID="profile-post-feed-load-more"
+                    >
+                      <Text style={[styles.loadMorePostsText, { color: palette.primary }]}>
+                        {postFeed.loadingMore
+                          ? "..."
+                          : language === "en"
+                            ? "Load more posts"
+                            : "Muat lebih banyak"}
+                      </Text>
+                    </Pressable>
+                  )}
                   {postFeed.error ? (
                     <View style={styles.feedErrorWrap}>
                       <Text style={styles.feedErrorText}>{postFeed.error}</Text>
@@ -937,6 +999,37 @@ export default function TechnicianProfileScreen() {
                     </View>
                   ) : null}
                 </>
+              ) : postFeed.loading ? (
+                <LoadingState label={t("profile.loading")} />
+              ) : postFeed.error ? (
+                <EmptyState
+                  title={
+                    language === "en"
+                      ? "Posts could not be loaded"
+                      : "Postingan tidak dapat dimuat"
+                  }
+                  description={
+                    postFeed.error.includes("technician_posts") ||
+                    postFeed.error.includes("PGRST205")
+                      ? language === "en"
+                        ? "Supabase cannot find technician_posts in its API schema. Apply the technician posts migration and refresh the API schema cache."
+                        : "Supabase belum menemukan technician_posts di skema API. Terapkan migrasi postingan teknisi lalu segarkan cache skema API."
+                      : postFeed.error
+                  }
+                  actionLabel={language === "en" ? "Retry" : "Coba lagi"}
+                  onAction={() => {
+                    void postFeed.refresh();
+                  }}
+                />
+              ) : (
+                <EmptyState
+                  title={language === "en" ? "No posts yet" : "Belum ada postingan"}
+                  description={
+                    language === "en"
+                      ? "Work updates and useful tips will appear here."
+                      : "Pembaruan pekerjaan dan tips akan tampil di sini."
+                  }
+                />
               )}
             </View>
           )}
@@ -1635,7 +1728,7 @@ export default function TechnicianProfileScreen() {
                       : undefined
                   }
                 />
-                {!isAddingReview && (
+                {!isAddingReview && canAddReview && (
                   <Pressable
                     accessibilityRole="button"
                     onPress={() => {
@@ -1652,6 +1745,30 @@ export default function TechnicianProfileScreen() {
                   </Pressable>
                 )}
               </View>
+
+              {!canAddReview && !isProfileOwner && (
+                <View
+                  style={[
+                    styles.modernCard,
+                    {
+                      backgroundColor: palette.surface,
+                      borderColor: palette.border,
+                      flexDirection: "row",
+                      alignItems: "center",
+                      gap: 8,
+                      marginBottom: 10,
+                    },
+                  ]}
+                  testID="verified-review-only-notice"
+                >
+                  <ShieldCheck size={16} color={palette.primary} strokeWidth={2.2} />
+                  <Text style={{ color: palette.textMuted, fontSize: 12, flex: 1 }}>
+                    {language === "en"
+                      ? "Feedback is allowed only after a customer completes a task with this technician."
+                      : "Ulasan hanya dapat diberikan setelah pelanggan menyelesaikan tugas dengan teknisi ini."}
+                  </Text>
+                </View>
+              )}
 
               {/* Performance Stars Breakdown: Shows who gave 5 stars, 4 stars, etc. */}
               <View
@@ -1772,6 +1889,7 @@ export default function TechnicianProfileScreen() {
                           setDynamicReviews((prev) => [newRev, ...prev]);
                           setIsAddingReview(false);
                           setDraftReviewComment('');
+                          setHasCompletedTaskWithTech(false);
                         } finally {
                           setSavingReview(false);
                         }
@@ -1890,62 +2008,8 @@ export default function TechnicianProfileScreen() {
             </View>
           )}
         </View>
-          </>
-        }
-        ListEmptyComponent={
-          activeProfileTab !== "posts"
-            ? undefined
-            : postFeed.loading
-              ? <LoadingState label={t("profile.loading")} />
-              : postFeed.error
-                ? (
-                  <EmptyState
-                    title={
-                      language === "en"
-                        ? "Posts could not be loaded"
-                        : "Postingan tidak dapat dimuat"
-                    }
-                    description={
-                      postFeed.error.includes("technician_posts") ||
-                      postFeed.error.includes("PGRST205")
-                        ? language === "en"
-                          ? "Supabase cannot find technician_posts in its API schema. Apply the technician posts migration and refresh the API schema cache."
-                          : "Supabase belum menemukan technician_posts di skema API. Terapkan migrasi postingan teknisi lalu segarkan cache skema API."
-                        : postFeed.error
-                    }
-                    actionLabel={language === "en" ? "Retry" : "Coba lagi"}
-                    onAction={() => {
-                      void postFeed.refresh();
-                    }}
-                  />
-                )
-              : (
-                <EmptyState
-                  title={language === "en" ? "No posts yet" : "Belum ada postingan"}
-                  description={
-                    language === "en"
-                      ? "Work updates and useful tips will appear here."
-                      : "Pembaruan pekerjaan dan tips akan tampil di sini."
-                  }
-                />
-              )
-        }
-        renderItem={({ item }) => (
-          <View style={styles.postCardWrap}>
-            <TechnicianPostCard
-              post={item}
-              isOwner={isProfileOwner}
-              isAdmin={isAdminUser}
-              authorName={technician.displayName}
-              authorAvatarUri={technician.avatarUri}
-              onEdit={handleEditPost}
-              onDelete={handleDeletePost}
-              onSuspend={handleSuspendPost}
-            />
-          </View>
-        )}
-        listFooter={<View style={styles.profileFooterSpace} />}
-      />
+        <View style={styles.profileFooterSpace} />
+      </ScrollView>
 
       {!isProfileOwner && technician.services.length > 0 && (
         <View
@@ -2326,17 +2390,18 @@ const styles = StyleSheet.create({
   },
   changeCoverText: { color: "#fff", fontSize: 11, fontWeight: "700" },
   avatarWrapper: {
-    marginTop: -32,
+    marginTop: -40,
+    marginLeft: 16,
     borderWidth: 3,
-    borderColor: "#fff",
-    borderRadius: 48,
+    borderColor: "#FFFFFF",
+    borderRadius: 40,
   },
   profileHeroInner: {
     alignSelf: "center",
     maxWidth: 820,
-    paddingHorizontal: spacing.xl,
-    paddingBottom: spacing.xl,
-    paddingTop: spacing.sm,
+    paddingHorizontal: 5,
+    paddingBottom: spacing.md,
+    paddingTop: 0,
     width: "100%",
   },
   profileTopRow: {
@@ -2387,7 +2452,7 @@ const styles = StyleSheet.create({
   profileName: {
     color: colors.ink,
     fontSize: 22,
-    fontWeight: "800",
+    fontWeight: "700",
     letterSpacing: -0.4,
   },
   verifiedTag: {
@@ -2405,15 +2470,15 @@ const styles = StyleSheet.create({
   },
   businessName: {
     color: colors.muted,
-    fontSize: 12,
-    fontWeight: "600",
-    marginTop: 3,
+    fontSize: 14,
+    fontWeight: "500",
+    marginTop: 2,
   },
   profileHeadline: {
-    fontSize: 13,
-    fontWeight: "700",
+    fontSize: 14,
+    fontWeight: "600",
     lineHeight: 18,
-    marginTop: 5,
+    marginTop: 2,
   },
   statsBar: {
     alignItems: "center",
@@ -2595,7 +2660,7 @@ const styles = StyleSheet.create({
   postCardWrap: {
     alignSelf: "center",
     maxWidth: 820,
-    paddingHorizontal: 5,
+    paddingHorizontal: 0,
     width: "100%",
   },
   feedErrorText: {
@@ -2758,7 +2823,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    gap: 6,
+    gap: 8,
     marginTop: spacing.md,
     width: '100%',
   },
@@ -2767,7 +2832,7 @@ const styles = StyleSheet.create({
     minWidth: 0,
     borderRadius: 5,
     borderWidth: 1,
-    paddingVertical: 8,
+    paddingVertical: 10,
     paddingHorizontal: 4,
     alignItems: 'center',
     justifyContent: 'center',
@@ -2858,9 +2923,9 @@ const styles = StyleSheet.create({
   singleLineActionsRow: {
     alignItems: 'center',
     flexDirection: 'row',
-    gap: 6,
+    gap: 8,
     justifyContent: 'space-between',
-    marginTop: 8,
+    marginVertical: 12,
     width: '100%',
   },
   singleActionBadge: {
@@ -2873,10 +2938,10 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     minWidth: 0,
     paddingHorizontal: 4,
-    paddingVertical: 7,
+    paddingVertical: 8,
   },
   actionBadgeText: {
-    fontSize: 11,
+    fontSize: 12,
     fontWeight: '600',
   },
   quickActionsRow: {
@@ -2904,7 +2969,7 @@ const styles = StyleSheet.create({
   },
   badgePill: {
     alignItems: 'center',
-    borderRadius: 20,
+    borderRadius: 5,
     borderWidth: 1,
     flexDirection: 'row',
     gap: 5,
@@ -2939,7 +3004,7 @@ const styles = StyleSheet.create({
     marginBottom: spacing.xs,
   },
   smallActionBtn: {
-    borderRadius: 16,
+    borderRadius: 5,
     paddingHorizontal: 12,
     paddingVertical: 6,
   },
@@ -2948,7 +3013,7 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
   formCard: {
-    borderRadius: 14,
+    borderRadius: 5,
     borderWidth: 1,
     marginBottom: spacing.md,
     padding: spacing.md,
@@ -2960,7 +3025,7 @@ const styles = StyleSheet.create({
     marginTop: spacing.xs,
   },
   formInput: {
-    borderRadius: 8,
+    borderRadius: 5,
     borderWidth: 1,
     fontSize: 14,
     marginBottom: spacing.xs,
@@ -2968,7 +3033,7 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
   },
   formTextarea: {
-    borderRadius: 8,
+    borderRadius: 5,
     borderWidth: 1,
     fontSize: 14,
     marginBottom: spacing.sm,
@@ -2984,14 +3049,14 @@ const styles = StyleSheet.create({
     marginTop: spacing.sm,
   },
   formCancelBtn: {
-    borderRadius: 8,
+    borderRadius: 5,
     borderWidth: 1,
     justifyContent: 'center',
     paddingHorizontal: 14,
     paddingVertical: 8,
   },
   formSaveBtn: {
-    borderRadius: 8,
+    borderRadius: 5,
     justifyContent: 'center',
     paddingHorizontal: 18,
     paddingVertical: 8,
@@ -3012,12 +3077,12 @@ const styles = StyleSheet.create({
     marginTop: 6,
   },
   portfolioPreviewThumb: {
-    borderRadius: 6,
+    borderRadius: 5,
     height: 48,
     width: 48,
   },
   performanceCard: {
-    borderRadius: 14,
+    borderRadius: 5,
     borderWidth: 1,
     flexDirection: 'row',
     gap: spacing.md,
@@ -3247,5 +3312,17 @@ const styles = StyleSheet.create({
     fontSize: 13,
     lineHeight: 18,
     marginTop: 4,
+  },
+  loadMorePostsBtn: {
+    paddingVertical: 12,
+    alignItems: "center",
+    justifyContent: "center",
+    borderRadius: 5,
+    borderWidth: 1,
+    marginVertical: 12,
+  },
+  loadMorePostsText: {
+    fontSize: 13,
+    fontWeight: "700",
   },
 });

@@ -150,10 +150,10 @@ export async function fetchTechnicianPosts(
           caption: String(row.content || row.caption || ''),
           content: String(row.content || row.caption || ''),
           imageUri: row.image_uri ? String(row.image_uri) : undefined,
-          mediaUrls: Array.isArray(row.media_urls)
-            ? row.media_urls.map(String)
-            : row.image_uri
-              ? [String(row.image_uri)]
+          mediaUrls: row.image_uri
+            ? [String(row.image_uri)]
+            : Array.isArray(row.media_urls)
+              ? row.media_urls.map(String)
               : [],
           isServicePost: Boolean(row.is_service_post),
           published: Boolean(row.published),

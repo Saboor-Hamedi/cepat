@@ -10,7 +10,8 @@ export type SettingSectionKey =
   | "notifications"
   | "language"
   | "appearance"
-  | "security";
+  | "security"
+  | "policy";
 
 export interface SettingHeaderProps {
   activeSection: SettingSectionKey;
@@ -49,14 +50,16 @@ export function SettingHeader({
       label: language === "en" ? "Password" : "Kata Sandi",
       authOnly: true,
     },
+    {
+      key: "policy",
+      label: language === "en" ? "Policy" : "Kebijakan",
+    },
   ];
 
   const visibleTabs = allTabs.filter((tab) => !tab.authOnly || isAuthenticated);
 
   return (
     <View style={styles.headerContainer}>
-      <Text style={styles.srOnly}>{language === "en" ? "Settings" : "Pengaturan"}</Text>
-
       {/* Categories like Account, Language, etc. are on the VERY TOP */}
       <ScrollView
         horizontal

@@ -161,7 +161,7 @@ const styles = StyleSheet.create({
     marginTop: -4,
   },
   menu: {
-    borderRadius: 12,
+    borderRadius: 5,
     borderWidth: 1,
     elevation: 20,
     minWidth: 170,
@@ -187,7 +187,7 @@ const styles = StyleSheet.create({
     zIndex: 1001,
   },
   menuInner: {
-    borderRadius: 11,
+    borderRadius: 5,
     overflow: 'hidden',
   },
   menuItem: {

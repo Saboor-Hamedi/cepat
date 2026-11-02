@@ -250,7 +250,7 @@ export const JobRequestCard = TaskRequestCard;
 
 const styles = StyleSheet.create({
   card: {
-    borderRadius: radii.md,
+    borderRadius: 5,
     borderWidth: 1,
     marginBottom: spacing.md,
     padding: spacing.lg,
@@ -270,7 +270,7 @@ const styles = StyleSheet.create({
     marginTop: 2,
   },
   customerProfileBtn: {
-    borderRadius: radii.sm,
+    borderRadius: 5,
     borderWidth: 1,
     paddingHorizontal: spacing.sm,
     paddingVertical: 5,
@@ -295,7 +295,7 @@ const styles = StyleSheet.create({
     fontWeight: '800',
   },
   addressBox: {
-    borderRadius: radii.sm,
+    borderRadius: 5,
     borderWidth: 1,
     marginBottom: spacing.sm,
     paddingHorizontal: spacing.md,
@@ -329,7 +329,7 @@ const styles = StyleSheet.create({
   },
   acceptBtn: {
     alignItems: 'center',
-    borderRadius: radii.sm,
+    borderRadius: 5,
     flex: 1,
     justifyContent: 'center',
     minHeight: 40,
@@ -342,7 +342,7 @@ const styles = StyleSheet.create({
   },
   declineBtn: {
     alignItems: 'center',
-    borderRadius: radii.sm,
+    borderRadius: 5,
     borderWidth: 1,
     flex: 1,
     justifyContent: 'center',
@@ -354,7 +354,7 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
   schedulePanel: {
-    borderRadius: radii.sm,
+    borderRadius: 5,
     borderWidth: 1,
     marginTop: spacing.sm,
     padding: spacing.sm,
@@ -372,7 +372,7 @@ const styles = StyleSheet.create({
     marginBottom: spacing.xs,
   },
   scheduleChip: {
-    borderRadius: radii.pill,
+    borderRadius: 5,
     borderWidth: 1,
     minHeight: 34,
     justifyContent: 'center',
@@ -385,7 +385,7 @@ const styles = StyleSheet.create({
   },
   proposeBtn: {
     alignItems: 'center',
-    borderRadius: radii.sm,
+    borderRadius: 5,
     justifyContent: 'center',
     paddingHorizontal: spacing.md,
   },

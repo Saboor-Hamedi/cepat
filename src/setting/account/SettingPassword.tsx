@@ -1,3 +1,4 @@
+import { Eye, EyeOff } from "lucide-react-native";
 import { useState } from "react";
 import { Pressable, StyleSheet, Text, TextInput, View } from "react-native";
 
@@ -16,9 +17,12 @@ export function SettingPassword() {
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
-  const [showPassword, setShowPassword] = useState(false);
+  const [showCurrent, setShowCurrent] = useState(false);
+  const [showNew, setShowNew] = useState(false);
+  const [showConfirm, setShowConfirm] = useState(false);
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [savedNotice, setSavedNotice] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
   const handleUpdatePassword = async () => {
@@ -62,11 +66,10 @@ export function SettingPassword() {
       setCurrentPassword("");
       setNewPassword("");
       setConfirmPassword("");
-      setStatusMessage(
-        language === "en"
-          ? "Password updated successfully."
-          : "Kata sandi berhasil diperbarui.",
-      );
+      setSavedNotice(language === "en" ? "Updated" : "Diperbarui");
+      setTimeout(() => {
+        setSavedNotice(null);
+      }, 3000);
     } catch {
       setErrorMessage(t("auth.serviceUnavailable"));
     } finally {
@@ -99,96 +102,120 @@ export function SettingPassword() {
         <Text style={[styles.fieldLabel, { color: palette.text }]}>
           {language === "en" ? "Current Password" : "Kata Sandi Saat Ini"}
         </Text>
-        <TextInput
-          onChangeText={setCurrentPassword}
-          placeholder={
-            language === "en"
-              ? "Enter current password"
-              : "Masukkan kata sandi saat ini"
-          }
-          secureTextEntry={!showPassword}
-          placeholderTextColor={palette.textMuted}
+        <View
           style={[
-            styles.input,
+            styles.inputRow,
             {
               backgroundColor: palette.surface,
               borderColor: palette.border,
-              color: palette.text,
             },
           ]}
-          testID="settings-current-password"
-          value={currentPassword}
-        />
+        >
+          <TextInput
+            onChangeText={setCurrentPassword}
+            placeholder={
+              language === "en"
+                ? "Enter current password"
+                : "Masukkan kata sandi saat ini"
+            }
+            secureTextEntry={!showCurrent}
+            placeholderTextColor={palette.textMuted}
+            style={[styles.inputInner, { color: palette.text }]}
+            testID="settings-current-password"
+            value={currentPassword}
+          />
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={showCurrent ? "Hide password" : "Show password"}
+            onPress={() => setShowCurrent((prev) => !prev)}
+            style={styles.eyeBtn}
+            testID="toggle-show-current-password"
+          >
+            {showCurrent ? (
+              <EyeOff size={18} color={palette.textMuted} />
+            ) : (
+              <Eye size={18} color={palette.textMuted} />
+            )}
+          </Pressable>
+        </View>
 
         {/* 2. New Password */}
         <Text style={[styles.fieldLabel, { color: palette.text }]}>
           {t("auth.newPassword")}
         </Text>
-        <TextInput
-          onChangeText={setNewPassword}
-          placeholder={
-            language === "en"
-              ? "Enter new password"
-              : "Masukkan kata sandi baru"
-          }
-          secureTextEntry={!showPassword}
-          placeholderTextColor={palette.textMuted}
+        <View
           style={[
-            styles.input,
+            styles.inputRow,
             {
               backgroundColor: palette.surface,
               borderColor: palette.border,
-              color: palette.text,
             },
           ]}
-          testID="settings-new-password"
-          value={newPassword}
-        />
+        >
+          <TextInput
+            onChangeText={setNewPassword}
+            placeholder={
+              language === "en"
+                ? "Enter new password"
+                : "Masukkan kata sandi baru"
+            }
+            secureTextEntry={!showNew}
+            placeholderTextColor={palette.textMuted}
+            style={[styles.inputInner, { color: palette.text }]}
+            testID="settings-new-password"
+            value={newPassword}
+          />
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={showNew ? "Hide password" : "Show password"}
+            onPress={() => setShowNew((prev) => !prev)}
+            style={styles.eyeBtn}
+            testID="toggle-show-new-password"
+          >
+            {showNew ? (
+              <EyeOff size={18} color={palette.textMuted} />
+            ) : (
+              <Eye size={18} color={palette.textMuted} />
+            )}
+          </Pressable>
+        </View>
 
         {/* 3. Confirm Password */}
         <Text style={[styles.fieldLabel, { color: palette.text }]}>
           {t("auth.confirmPassword")}
         </Text>
-        <TextInput
-          onChangeText={setConfirmPassword}
-          placeholder={t("auth.confirmPassword")}
-          secureTextEntry={!showPassword}
-          placeholderTextColor={palette.textMuted}
+        <View
           style={[
-            styles.input,
+            styles.inputRow,
             {
               backgroundColor: palette.surface,
               borderColor: palette.border,
-              color: palette.text,
             },
           ]}
-          testID="settings-confirm-password"
-          value={confirmPassword}
-        />
-
-        {/* Toggle Show/Hide Password */}
-        <Pressable
-          accessibilityRole="checkbox"
-          accessibilityState={{ checked: showPassword }}
-          onPress={() => setShowPassword((prev) => !prev)}
-          style={styles.toggleRow}
-          testID="toggle-show-password"
         >
-          <View
-            style={[styles.checkbox, showPassword && styles.checkboxActive]}
+          <TextInput
+            onChangeText={setConfirmPassword}
+            placeholder={t("auth.confirmPassword")}
+            secureTextEntry={!showConfirm}
+            placeholderTextColor={palette.textMuted}
+            style={[styles.inputInner, { color: palette.text }]}
+            testID="settings-confirm-password"
+            value={confirmPassword}
+          />
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={showConfirm ? "Hide password" : "Show password"}
+            onPress={() => setShowConfirm((prev) => !prev)}
+            style={styles.eyeBtn}
+            testID="toggle-show-confirm-password"
           >
-            {showPassword && <Text style={styles.checkboxCheck}>✓</Text>}
-          </View>
-          <Text style={[styles.toggleText, { color: palette.text }]}>
-            {showPassword
-              ? language === "en"
-                ? "Hide Passwords"
-                : "Sembunyikan Kata Sandi"
-              : language === "en"
-                ? "Show Passwords"
-                : "Tampilkan Kata Sandi"}
-          </Text>
-        </Pressable>
+            {showConfirm ? (
+              <EyeOff size={18} color={palette.textMuted} />
+            ) : (
+              <Eye size={18} color={palette.textMuted} />
+            )}
+          </Pressable>
+        </View>
 
         {errorMessage ? (
           <Text style={styles.errorText} testID="password-error-message">
@@ -202,38 +229,46 @@ export function SettingPassword() {
           </Text>
         ) : null}
 
-        {/* Update Password Action Button */}
-        <Pressable
-          accessibilityRole="button"
-          disabled={
-            busy ||
-            !currentPassword.trim() ||
-            !newPassword.trim() ||
-            !confirmPassword.trim()
-          }
-          onPress={() => {
-            void handleUpdatePassword();
-          }}
-          style={[
-            styles.primaryBtn,
-            (busy ||
+        {/* Small "Save" Action Button Aligned on the LEFT + Inline notice without bg/border */}
+        <View style={styles.actionRowWithNotice}>
+          <Pressable
+            accessibilityRole="button"
+            disabled={
+              busy ||
               !currentPassword.trim() ||
               !newPassword.trim() ||
-              !confirmPassword.trim()) &&
-              styles.btnDisabled,
-          ]}
-          testID="save-password-button"
-        >
-          <Text style={styles.primaryBtnText}>
-            {busy
-              ? language === "en"
-                ? "Updating Password..."
-                : "Memperbarui Kata Sandi..."
-              : language === "en"
-                ? "Save Password"
-                : "Simpan Kata Sandi"}
-          </Text>
-        </Pressable>
+              !confirmPassword.trim()
+            }
+            onPress={() => {
+              void handleUpdatePassword();
+            }}
+            style={[
+              styles.smallSaveBtn,
+              (busy ||
+                !currentPassword.trim() ||
+                !newPassword.trim() ||
+                !confirmPassword.trim()) &&
+                styles.btnDisabled,
+            ]}
+            testID="save-password-button"
+          >
+            <Text style={styles.smallSaveBtnText}>
+              {busy
+                ? language === "en"
+                  ? "Saving..."
+                  : "Menyimpan..."
+                : language === "en"
+                  ? "Save"
+                  : "Simpan"}
+            </Text>
+          </Pressable>
+
+          {savedNotice ? (
+            <Text style={[styles.inlineSavedNotice, { color: palette.primary }]}>
+              {savedNotice}
+            </Text>
+          ) : null}
+        </View>
       </View>
     </SettingSection>
   );
@@ -243,9 +278,9 @@ const styles = StyleSheet.create({
   card: {
     backgroundColor: colors.surface,
     borderColor: colors.line,
-    borderRadius: radii.md,
+    borderRadius: 5,
     borderWidth: 1,
-    padding: spacing.lg,
+    padding: spacing.md,
   },
   fieldLabel: {
     color: colors.ink,
@@ -254,45 +289,47 @@ const styles = StyleSheet.create({
     marginBottom: 4,
     marginTop: spacing.xs,
   },
-  input: {
-    backgroundColor: colors.paper,
-    borderColor: colors.line,
-    borderRadius: radii.sm,
+  inputRow: {
+    alignItems: "center",
+    borderRadius: 5,
     borderWidth: 1,
-    color: colors.ink,
-    fontSize: 13,
+    flexDirection: "row",
     marginBottom: spacing.xs,
-    minHeight: 44,
-    paddingHorizontal: spacing.md,
+    minHeight: 42,
+    paddingHorizontal: spacing.sm,
   },
-  toggleRow: {
+  inputInner: {
+    flex: 1,
+    fontSize: 13,
+    paddingVertical: 8,
+  },
+  eyeBtn: {
+    alignItems: "center",
+    justifyContent: "center",
+    padding: 6,
+  },
+  actionRowWithNotice: {
     alignItems: "center",
     flexDirection: "row",
-    gap: spacing.xs,
-    marginVertical: spacing.sm,
+    gap: 12,
+    marginTop: spacing.md,
   },
-  checkbox: {
+  inlineSavedNotice: {
+    fontSize: 13,
+    fontWeight: "700",
+  },
+  smallSaveBtn: {
     alignItems: "center",
-    borderColor: colors.line,
-    borderRadius: 4,
-    borderWidth: 1.5,
-    height: 18,
-    justifyContent: "center",
-    width: 18,
-  },
-  checkboxActive: {
     backgroundColor: colors.greenDark,
-    borderColor: colors.greenDark,
+    borderRadius: 5,
+    justifyContent: "center",
+    minHeight: 36,
+    paddingHorizontal: spacing.lg,
   },
-  checkboxCheck: {
+  smallSaveBtnText: {
     color: "#FFFFFF",
-    fontSize: 11,
-    fontWeight: "800",
-  },
-  toggleText: {
-    color: colors.ink,
     fontSize: 12,
-    fontWeight: "600",
+    fontWeight: "800",
   },
   errorText: {
     color: colors.danger,
@@ -305,20 +342,6 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: "700",
     marginTop: spacing.xs,
-  },
-  primaryBtn: {
-    alignItems: "center",
-    backgroundColor: colors.greenDark,
-    borderRadius: radii.sm,
-    justifyContent: "center",
-    marginTop: spacing.md,
-    minHeight: 44,
-    paddingHorizontal: spacing.lg,
-  },
-  primaryBtnText: {
-    color: "#FFFFFF",
-    fontSize: 13,
-    fontWeight: "800",
   },
   btnDisabled: {
     opacity: 0.5,

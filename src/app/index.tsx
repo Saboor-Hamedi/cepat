@@ -1079,7 +1079,7 @@ const styles = StyleSheet.create({
   feedSectionTitle: {
     alignSelf: 'center',
     maxWidth: 820,
-    paddingHorizontal: spacing.md,
+    paddingHorizontal: 5,
     width: '100%',
   },
   postCardWrap: {

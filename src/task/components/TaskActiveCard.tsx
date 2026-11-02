@@ -155,7 +155,7 @@ export const JobActiveCard = TaskActiveCard;
 
 const styles = StyleSheet.create({
   card: {
-    borderRadius: 16,
+    borderRadius: 5,
     borderWidth: 1,
     marginBottom: spacing.md,
     padding: spacing.lg,
@@ -176,7 +176,7 @@ const styles = StyleSheet.create({
     marginTop: 2,
   },
   customerProfileBtn: {
-    borderRadius: radii.pill,
+    borderRadius: 5,
     borderWidth: 1,
     paddingHorizontal: 12,
     paddingVertical: 6,
@@ -213,7 +213,7 @@ const styles = StyleSheet.create({
   },
   chatActionBtn: {
     alignItems: 'center',
-    borderRadius: 10,
+    borderRadius: 5,
     flexDirection: 'row',
     gap: 6,
     justifyContent: 'center',
@@ -227,7 +227,7 @@ const styles = StyleSheet.create({
   secondaryBtn: {
     alignItems: 'center',
     backgroundColor: '#F59E0B',
-    borderRadius: 10,
+    borderRadius: 5,
     flexDirection: 'row',
     gap: 6,
     justifyContent: 'center',
@@ -241,7 +241,7 @@ const styles = StyleSheet.create({
   },
   acceptBtn: {
     alignItems: 'center',
-    borderRadius: 10,
+    borderRadius: 5,
     flex: 1,
     flexDirection: 'row',
     gap: 6,

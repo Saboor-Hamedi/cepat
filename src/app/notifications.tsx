@@ -33,6 +33,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import {
+  ArrowLeft,
   Bell,
   Calendar,
   CheckCircle2,
@@ -262,14 +263,38 @@ export default function NotificationsScreen() {
           />
         }
       >
+        {/* Sleek Header Bar matching Booking and Task */}
+        <View style={styles.headerBar} testID="notifications-screen-header">
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={language === "en" ? "Back" : "Kembali"}
+            onPress={() => {
+              if (router.canGoBack()) {
+                router.back();
+              } else {
+                router.replace("/");
+              }
+            }}
+            style={[
+              styles.headerBackBtn,
+              { backgroundColor: palette.surface, borderColor: palette.border },
+            ]}
+            testID="notifications-header-back-btn"
+          >
+            <ArrowLeft size={18} color={palette.text} strokeWidth={2.2} />
+          </Pressable>
+
+          <View style={styles.headerTitleWrap}>
+            <Text style={[styles.headerTitle, { color: palette.text }]}>
+              {language === "en" ? "Notifications" : "Notifikasi"}
+            </Text>
+          </View>
+
+          <View style={{ width: 36 }} />
+        </View>
+
         <View style={styles.headingRow}>
           <View style={styles.headingCopy}>
-            <Text style={styles.eyebrow}>
-              {language === 'en' ? 'YOUR ACTIVITY' : 'AKTIVITAS ANDA'}
-            </Text>
-            <Text style={styles.heading}>
-              {language === 'en' ? 'Notifications' : 'Notifikasi'}
-            </Text>
             <Text style={styles.subheading}>
               {language === 'en'
                 ? `${unreadCount} unread`
@@ -640,15 +665,42 @@ function createStyles(palette: ThemePalette) {
       alignSelf: 'center',
       gap: spacing.md,
       maxWidth: 820,
-      padding: spacing.md,
+      paddingHorizontal: 5,
+      paddingTop: spacing.sm,
       paddingBottom: spacing.xl,
       width: '100%',
+    },
+    headerBar: {
+      alignItems: 'center',
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      marginBottom: spacing.xs,
+      paddingHorizontal: 4,
+      width: '100%',
+    },
+    headerBackBtn: {
+      alignItems: 'center',
+      borderRadius: 18,
+      borderWidth: 1,
+      height: 36,
+      justifyContent: 'center',
+      width: 36,
+    },
+    headerTitleWrap: {
+      alignItems: 'center',
+      flex: 1,
+      justifyContent: 'center',
+    },
+    headerTitle: {
+      fontSize: 16,
+      fontWeight: '700',
     },
     headingRow: {
       alignItems: 'center',
       flexDirection: 'row',
       justifyContent: 'space-between',
-      minHeight: 76,
+      minHeight: 44,
+      marginBottom: spacing.xs,
     },
     headingCopy: { flex: 1 },
     eyebrow: {
@@ -670,7 +722,7 @@ function createStyles(palette: ThemePalette) {
     },
     markAllButton: {
       backgroundColor: palette.primarySoft,
-      borderRadius: radii.pill,
+      borderRadius: 5,
       paddingHorizontal: spacing.md,
       paddingVertical: spacing.sm,
     },
@@ -681,7 +733,7 @@ function createStyles(palette: ThemePalette) {
     errorCard: {
       backgroundColor: palette.surface,
       borderColor: palette.danger,
-      borderRadius: radii.md,
+      borderRadius: 5,
       borderWidth: 1,
       gap: spacing.xs,
       padding: spacing.md,
@@ -699,7 +751,7 @@ function createStyles(palette: ThemePalette) {
       alignItems: 'center',
       backgroundColor: palette.surface,
       borderColor: palette.border,
-      borderRadius: radii.lg,
+      borderRadius: 5,
       borderWidth: 1,
       flexDirection: 'row',
       gap: spacing.md,

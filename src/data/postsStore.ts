@@ -55,11 +55,15 @@ async function loadAllStoredPosts(): Promise<TechnicianPost[]> {
 }
 
 function mapSupabasePost(row: Record<string, unknown>): TechnicianPost {
-  const mediaUrls = Array.isArray(row.media_urls)
+  const rawImage = row.image_uri ? String(row.image_uri) : undefined;
+  const rawMedia = Array.isArray(row.media_urls) && row.media_urls.length > 0
     ? row.media_urls.map(String)
-    : row.image_uri
-      ? [String(row.image_uri)]
+    : rawImage
+      ? [rawImage]
       : [];
+  const mediaUrls = rawImage && (!rawMedia.length || rawMedia[0] !== rawImage)
+    ? [rawImage]
+    : rawMedia;
   return {
     id: String(row.id),
     technicianId: String(row.technician_id),
@@ -506,13 +510,23 @@ export async function updateTechnicianPost(input: {
     throw new Error('unauthorized_post_owner');
   }
 
+  const hasExplicitImageChange = input.imageUri !== undefined || input.mediaUrls !== undefined;
+  const finalImage = hasExplicitImageChange
+    ? (input.imageUri ? input.imageUri : (input.mediaUrls && input.mediaUrls[0]) ? input.mediaUrls[0] : undefined)
+    : existing.imageUri;
+  const finalMedia = hasExplicitImageChange
+    ? (input.mediaUrls !== undefined
+        ? input.mediaUrls
+        : finalImage ? [finalImage] : [])
+    : (existing.mediaUrls ?? (existing.imageUri ? [existing.imageUri] : []));
+
   const updatedPost: TechnicianPost = {
     ...existing,
     caption: input.caption !== undefined ? input.caption.trim().slice(0, 1200) : existing.caption,
     content: input.caption !== undefined ? input.caption.trim().slice(0, 1200) : existing.caption,
     published: input.published !== undefined ? input.published : existing.published,
-    imageUri: input.imageUri !== undefined ? input.imageUri : existing.imageUri,
-    mediaUrls: input.mediaUrls ?? (input.imageUri ? [input.imageUri] : existing.mediaUrls),
+    imageUri: finalImage,
+    mediaUrls: finalMedia,
     isServicePost: input.isServicePost ?? existing.isServicePost ?? false,
     updatedAt: new Date().toISOString(),
   };
@@ -528,7 +542,8 @@ export async function updateTechnicianPost(input: {
           caption: updatedPost.caption,
           content: updatedPost.caption,
           published: updatedPost.published,
-          image_uri: updatedPost.imageUri,
+          image_uri: finalImage ?? null,
+          media_urls: finalMedia,
           is_service_post: updatedPost.isServicePost,
         })
         .eq('id', input.postId);

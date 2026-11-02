@@ -85,6 +85,18 @@ export function TaskContainer({
     [bookings],
   );
 
+  const customerCompletedCount = useMemo(() => {
+    if (!selectedCustomerBooking) return 0;
+    const cid = selectedCustomerBooking.customerUserId;
+    const cname = selectedCustomerBooking.customerName;
+    return bookings.filter(
+      (b) =>
+        b.status === "completed" &&
+        ((cid && b.customerUserId === cid) ||
+          (cname && b.customerName === cname)),
+    ).length;
+  }, [selectedCustomerBooking, bookings]);
+
   const handleAccept = (bookingId: string) => {
     void runBookingAction(bookingId, "confirmed");
   };
@@ -142,29 +154,7 @@ export function TaskContainer({
           </Text>
         </View>
 
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel={
-            language === "en" ? "Booking notifications" : "Notifikasi pesanan"
-          }
-          onPress={() => setTab("requests")}
-          style={[
-            styles.headerNotifBtn,
-            { backgroundColor: palette.surface, borderColor: palette.border },
-          ]}
-          testID="tasks-header-notif-btn"
-        >
-          <Bell size={18} color={palette.text} strokeWidth={2.2} />
-          {incomingRequests.length > 0 && (
-            <View
-              style={[styles.notifBadge, { backgroundColor: palette.primary }]}
-            >
-              <Text style={styles.notifBadgeText}>
-                {incomingRequests.length > 9 ? "9+" : incomingRequests.length}
-              </Text>
-            </View>
-          )}
-        </Pressable>
+        <View style={{ width: 36 }} />
       </View>
 
       <TaskTabBar
@@ -347,8 +337,8 @@ export function TaskContainer({
                       ]}
                     >
                       {language === "en"
-                        ? "Customer on Cepat"
-                        : "Pelanggan Terverifikasi"}
+                        ? `Customer • ${customerCompletedCount} orders completed`
+                        : `Pelanggan • ${customerCompletedCount} pesanan selesai`}
                     </Text>
                   </View>
                 </View>
@@ -362,6 +352,23 @@ export function TaskContainer({
                     },
                   ]}
                 >
+                  <Text
+                    style={[
+                      styles.customerDetailLabel,
+                      { color: palette.textMuted },
+                    ]}
+                  >
+                    {language === "en" ? "Work Completed" : "Pekerjaan Selesai"}
+                  </Text>
+                  <Text
+                    style={[
+                      styles.customerDetailValue,
+                      { color: palette.primary, fontWeight: "700" },
+                    ]}
+                  >
+                    ✓ {customerCompletedCount} {language === "en" ? "tasks completed" : "tugas selesai"}
+                  </Text>
+
                   <Text
                     style={[
                       styles.customerDetailLabel,
@@ -512,7 +519,7 @@ const styles = StyleSheet.create({
     padding: spacing.lg,
   },
   customerModalCard: {
-    borderRadius: radii.md,
+    borderRadius: 5,
     borderWidth: 1,
     maxWidth: 440,
     padding: spacing.xl,
@@ -533,7 +540,7 @@ const styles = StyleSheet.create({
     marginTop: 2,
   },
   customerDetailSection: {
-    borderRadius: radii.sm,
+    borderRadius: 5,
     borderWidth: 1,
     marginBottom: spacing.lg,
     padding: spacing.md,
@@ -551,7 +558,7 @@ const styles = StyleSheet.create({
   },
   closeModalBtn: {
     alignItems: "center",
-    borderRadius: radii.pill,
+    borderRadius: 5,
     borderWidth: 1,
     justifyContent: "center",
     minHeight: 44,

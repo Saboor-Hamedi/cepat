@@ -197,32 +197,7 @@ export default function CustomerBookingsScreen() {
               </Text>
             </View>
 
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel={
-                language === "en" ? "Notifications" : "Notifikasi"
-              }
-              onPress={() => setTab("current")}
-              style={[
-                styles.headerNotifBtn,
-                { backgroundColor: palette.surface, borderColor: palette.border },
-              ]}
-              testID="customer-bookings-notif-btn"
-            >
-              <Bell size={18} color={palette.text} strokeWidth={2.2} />
-              {currentBookings.length > 0 && (
-                <View
-                  style={[
-                    styles.notifBadge,
-                    { backgroundColor: palette.primary },
-                  ]}
-                >
-                  <Text style={styles.notifBadgeText}>
-                    {currentBookings.length > 9 ? "9+" : currentBookings.length}
-                  </Text>
-                </View>
-              )}
-            </Pressable>
+            <View style={{ width: 36 }} />
           </View>
 
           {/* Hidden semantic tag to preserve test compatibility */}
@@ -512,13 +487,14 @@ function BookingListItem({
   t: (key: string) => string;
 }) {
   const isCompleted = booking.status === "completed";
+  const isWorkCompleted = isCompleted || Boolean(booking.workCompletedAt);
   const { palette } = useAppearance();
 
   return (
     <Pressable
       accessibilityRole="button"
       onPress={() =>
-        router.push({ pathname: "/booking/[id]", params: { id: booking.id } })
+        router.push({ pathname: "/booking/[id]" as any, params: { id: booking.id } })
       }
       style={[
         styles.card,
@@ -531,16 +507,20 @@ function BookingListItem({
           {booking.serviceNameSnapshot}
         </Text>
         <View
-          style={[styles.statusChip, isCompleted && styles.statusChipCompleted]}
+          style={[styles.statusChip, isWorkCompleted && styles.statusChipCompleted]}
         >
           <Text
             style={[
               styles.statusChipText,
-              isCompleted && styles.statusChipCompletedText,
+              isWorkCompleted && styles.statusChipCompletedText,
             ]}
           >
-            {isCompleted ? "✓ " : ""}
-            {t(`booking.status.${booking.status}`)}
+            {isWorkCompleted ? "✓ " : ""}
+            {isCompleted
+              ? (language === "en" ? "Work Completed" : "Pekerjaan Selesai")
+              : booking.workCompletedAt
+                ? (language === "en" ? "Work Completed" : "Pekerjaan Selesai")
+                : t(`booking.status.${booking.status}`)}
           </Text>
         </View>
       </View>
@@ -573,7 +553,7 @@ const styles = StyleSheet.create({
   container: {
     alignSelf: "center",
     maxWidth: 820,
-    paddingHorizontal: spacing.md,
+    paddingHorizontal: 5,
     paddingTop: spacing.sm,
     width: "100%",
   },
@@ -606,7 +586,7 @@ const styles = StyleSheet.create({
   card: {
     backgroundColor: colors.surface,
     borderColor: colors.line,
-    borderRadius: radii.md,
+    borderRadius: 5,
     borderWidth: 1,
     marginBottom: spacing.md,
     padding: spacing.lg,
@@ -620,7 +600,7 @@ const styles = StyleSheet.create({
   cardTitle: { color: colors.ink, flex: 1, fontSize: 16, fontWeight: "800" },
   statusChip: {
     backgroundColor: colors.greenSoft,
-    borderRadius: radii.pill,
+    borderRadius: 5,
     paddingHorizontal: 10,
     paddingVertical: 4,
   },
@@ -654,7 +634,7 @@ const styles = StyleSheet.create({
   cardPrice: { color: colors.greenDark, fontSize: 13, fontWeight: "800" },
   chatOpenBadge: {
     backgroundColor: colors.greenDark,
-    borderRadius: radii.pill,
+    borderRadius: 5,
     color: "#FFFFFF",
     fontSize: 11,
     fontWeight: "800",

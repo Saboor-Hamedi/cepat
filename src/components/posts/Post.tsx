@@ -1,4 +1,5 @@
 import { router } from "expo-router";
+import { Camera, X } from "lucide-react-native";
 import { useState } from "react";
 import {
   Image,
@@ -13,6 +14,7 @@ import {
 import { useAuth } from "../../auth/AuthProvider";
 import { useAppearance } from "../../context/AppearanceContext";
 import { localizeArea, useLanguage } from "../../i18n/locale";
+import { pickImageSafely } from "../../profile";
 import { colors, radii, spacing } from "../../theme/tokens";
 import type { TechnicianPost } from "../../types/post";
 import { Avatar } from "../marketplace-ui";
@@ -90,8 +92,10 @@ export function Post({
   const [draftCaption, setDraftCaption] = useState(
     post.content || post.caption || "",
   );
+  const initialPostImage =
+    post.imageUri || (post.mediaUrls && post.mediaUrls[0]) || undefined;
   const [draftImageUri, setDraftImageUri] = useState<string | undefined>(
-    post.imageUri,
+    initialPostImage,
   );
   const [busy, setBusy] = useState(false);
   const [imageError, setImageError] = useState(false);
@@ -126,7 +130,7 @@ export function Post({
     if (!onEdit || !draftCaption.trim()) return;
     setBusy(true);
     try {
-      await onEdit(post, draftCaption.trim(), draftImageUri);
+      await onEdit(post, draftCaption.trim(), draftImageUri ?? "");
       setIsEditing(false);
     } finally {
       setBusy(false);
@@ -218,7 +222,7 @@ export function Post({
                           testID: `edit-post-btn-${post.id}`,
                           onPress: () => {
                             setDraftCaption(post.content || post.caption || "");
-                            setDraftImageUri(post.imageUri);
+                            setDraftImageUri(post.imageUri || (post.mediaUrls && post.mediaUrls[0]));
                             setIsEditing(true);
                           },
                         },
@@ -322,6 +326,67 @@ export function Post({
             testID={`edit-post-caption-input-${post.id}`}
             value={draftCaption}
           />
+
+          {/* Edit Photo Preview & Controls */}
+          {draftImageUri ? (
+            <View style={styles.editImageContainer}>
+              <Image
+                source={{ uri: draftImageUri }}
+                style={styles.editImagePreview}
+                resizeMode="cover"
+              />
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel={language === "en" ? "Remove photo" : "Hapus foto"}
+                onPress={() => setDraftImageUri(undefined)}
+                style={styles.editImageRemoveBtn}
+                testID={`remove-edit-image-btn-${post.id}`}
+              >
+                <X size={14} color="#FFFFFF" strokeWidth={2.5} />
+              </Pressable>
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel={language === "en" ? "Change photo" : "Ganti foto"}
+                onPress={async () => {
+                  const picked = await pickImageSafely("gallery");
+                  if (picked?.uri) {
+                    setDraftImageUri(picked.uri);
+                  }
+                }}
+                style={[
+                  styles.editImageChangeBtn,
+                  { backgroundColor: palette.surface, borderColor: palette.border },
+                ]}
+                testID={`change-edit-image-btn-${post.id}`}
+              >
+                <Camera size={13} color={palette.primary} strokeWidth={2.2} />
+                <Text style={[styles.editImageChangeText, { color: palette.primary }]}>
+                  {language === "en" ? "Change Photo" : "Ganti Foto"}
+                </Text>
+              </Pressable>
+            </View>
+          ) : (
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel={language === "en" ? "Add photo" : "Tambah foto"}
+              onPress={async () => {
+                const picked = await pickImageSafely("gallery");
+                if (picked?.uri) {
+                  setDraftImageUri(picked.uri);
+                }
+              }}
+              style={[
+                styles.editAddPhotoBtn,
+                { backgroundColor: palette.surface, borderColor: palette.border },
+              ]}
+              testID={`add-edit-image-btn-${post.id}`}
+            >
+              <Camera size={14} color={palette.primary} strokeWidth={2.2} />
+              <Text style={[styles.editImageChangeText, { color: palette.primary }]}>
+                {language === "en" ? "+ Add Photo" : "+ Tambah Foto"}
+              </Text>
+            </Pressable>
+          )}
           <View style={styles.editActions}>
             <Pressable
               accessibilityRole="button"
@@ -539,7 +604,7 @@ export function Post({
 const styles = StyleSheet.create({
   card: {
     borderColor: "#E2E8F0",
-    borderRadius: 16,
+    borderRadius: 5,
     borderWidth: 1,
     marginBottom: 12,
     padding: 16,
@@ -591,7 +656,7 @@ const styles = StyleSheet.create({
     letterSpacing: 1,
   },
   postMenu: {
-    borderRadius: radii.md,
+    borderRadius: 5,
     borderWidth: 1,
     elevation: 8,
     minWidth: 150,
@@ -670,7 +735,7 @@ const styles = StyleSheet.create({
   },
   servicePostBadge: {
     alignSelf: "flex-start",
-    borderRadius: 12,
+    borderRadius: 5,
     marginBottom: spacing.xs,
     paddingHorizontal: 8,
     paddingVertical: 3,
@@ -694,7 +759,7 @@ const styles = StyleSheet.create({
   singleImageFrame: {
     aspectRatio: 16 / 9,
     backgroundColor: colors.paper,
-    borderRadius: 12,
+    borderRadius: 5,
     overflow: "hidden",
     width: "100%",
   },
@@ -706,7 +771,7 @@ const styles = StyleSheet.create({
   gridImageFrame: {
     aspectRatio: 16 / 9,
     backgroundColor: colors.paper,
-    borderRadius: 12,
+    borderRadius: 5,
     overflow: "hidden",
     width: "48%",
   },
@@ -788,6 +853,56 @@ const styles = StyleSheet.create({
   editForm: {
     marginTop: spacing.xs,
   },
+  editImageContainer: {
+    borderRadius: 5,
+    marginTop: spacing.sm,
+    overflow: "hidden",
+    position: "relative",
+    width: "100%",
+  },
+  editImagePreview: {
+    aspectRatio: 16 / 9,
+    borderRadius: 5,
+    width: "100%",
+  },
+  editImageRemoveBtn: {
+    alignItems: "center",
+    backgroundColor: "rgba(0,0,0,0.65)",
+    borderRadius: 14,
+    height: 28,
+    justifyContent: "center",
+    position: "absolute",
+    right: 8,
+    top: 8,
+    width: 28,
+  },
+  editImageChangeBtn: {
+    alignItems: "center",
+    borderRadius: 5,
+    borderWidth: 1,
+    bottom: 8,
+    flexDirection: "row",
+    gap: 5,
+    left: 8,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    position: "absolute",
+  },
+  editImageChangeText: {
+    fontSize: 12,
+    fontWeight: "700",
+  },
+  editAddPhotoBtn: {
+    alignItems: "center",
+    borderRadius: 5,
+    borderWidth: 1,
+    flexDirection: "row",
+    gap: 6,
+    justifyContent: "center",
+    marginTop: spacing.sm,
+    paddingVertical: 9,
+    width: "100%",
+  },
   captionInput: {
     backgroundColor: colors.paper,
     borderColor: colors.line,
@@ -838,7 +953,7 @@ const styles = StyleSheet.create({
   },
   confirmDialog: {
     backgroundColor: "#FFFFFF",
-    borderRadius: 16,
+    borderRadius: 5,
     maxWidth: 380,
     padding: spacing.lg,
     width: "100%",

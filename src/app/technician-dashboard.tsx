@@ -232,14 +232,14 @@ const styles = StyleSheet.create({
   container: {
     alignSelf: 'center',
     maxWidth: 820,
-    paddingHorizontal: spacing.md,
+    paddingHorizontal: 5,
     paddingTop: spacing.sm,
     width: '100%',
   },
   pendingBanner: {
     backgroundColor: colors.orangeSoft,
     borderColor: colors.orange,
-    borderRadius: radii.md,
+    borderRadius: 5,
     borderWidth: 1,
     padding: spacing.xl,
   },
@@ -267,7 +267,7 @@ const styles = StyleSheet.create({
   },
   retryBtn: {
     backgroundColor: colors.greenDark,
-    borderRadius: radii.sm,
+    borderRadius: 5,
     paddingHorizontal: spacing.md,
     paddingVertical: 6,
   },

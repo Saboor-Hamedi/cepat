@@ -1,6 +1,7 @@
-import { useLocalSearchParams } from "expo-router";
+import { router, useLocalSearchParams } from "expo-router";
+import { ArrowLeft } from "lucide-react-native";
 import { useEffect, useState } from "react";
-import { ScrollView, StyleSheet, View } from "react-native";
+import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { useAuth } from "../auth/AuthProvider";
@@ -38,20 +39,22 @@ import {
 } from "./components/SettingHeader";
 import { SettingLanguage } from "./language/SettingLanguage";
 import { SettingNotifications } from "./notifications/SettingNotifications";
+import { SettingPolicy } from "./policy/SettingPolicy";
 import { SettingSecurity } from "./security/SettingSecurity";
 
 export function SettingContainer() {
   const { language } = useLanguage();
   const { palette, setThemeMode, setLargeText, setReduceMotion } =
     useAppearance();
-  const { user, effectiveRole } = useAuth();
+  const { user, effectiveRole, updateUserProfile } = useAuth();
   const params = useLocalSearchParams<{ tab?: string }>();
   const initialTab: SettingSectionKey =
     params.tab === "password" ||
     params.tab === "notifications" ||
     params.tab === "language" ||
     params.tab === "appearance" ||
-    params.tab === "security"
+    params.tab === "security" ||
+    params.tab === "policy"
       ? params.tab
       : "account";
   const [selectedSection, setSelectedSection] =
@@ -61,6 +64,7 @@ export function SettingContainer() {
   const isAuthenticated = Boolean(user);
   const isCustomerRole = effectiveRole === "customer";
   const [displayName, setDisplayName] = useState("");
+  const [username, setUsername] = useState("");
   const [email, setEmail] = useState("");
   const [phoneNumber, setPhoneNumber] = useState("");
   const [avatarUri, setAvatarUri] = useState("");
@@ -81,7 +85,8 @@ export function SettingContainer() {
     !isAuthenticated &&
     activeSection !== "account" &&
     activeSection !== "language" &&
-    activeSection !== "appearance"
+    activeSection !== "appearance" &&
+    activeSection !== "policy"
       ? "account"
       : activeSection;
 
@@ -89,11 +94,20 @@ export function SettingContainer() {
     if (!user) return;
 
     let active = true;
+    const fallbackName =
+      (typeof user.user_metadata?.display_name === "string" && user.user_metadata.display_name.trim()) ||
+      (typeof user.user_metadata?.full_name === "string" && user.user_metadata.full_name.trim()) ||
+      (user.email ? user.email.split("@")[0] : "");
+    const fallbackUsername =
+      (typeof user.user_metadata?.username === "string" && user.user_metadata.username.trim()) ||
+      (user.email ? user.email.split("@")[0] : "");
+
     void Promise.all([
       loadAccountProfileDetails(
         user.id,
         user.email ?? "",
-        user.user_metadata?.display_name,
+        fallbackName,
+        fallbackUsername,
       ),
       loadUserPreferences(user.id),
       loadSavedAddresses(user.id),
@@ -102,7 +116,8 @@ export function SettingContainer() {
     ])
       .then(([acct, prefs, addresses, tech, delReq]) => {
         if (!active) return;
-        setDisplayName(acct.displayName);
+        setDisplayName(acct.displayName || fallbackName);
+        setUsername(acct.username || fallbackUsername);
         setEmail(user.email ?? acct.email);
         setPhoneNumber(acct.phoneNumber);
         setAvatarUri(
@@ -133,15 +148,40 @@ export function SettingContainer() {
   }, [setLargeText, setReduceMotion, setThemeMode, user]);
 
   const handleSavePrivateContact = async () => {
-    if (!user) return;
-    const updated = await saveAccountProfileDetails(user.id, {
+    const targetUserId = user?.id || (isAuthenticated ? "demo-customer" : undefined);
+    if (!targetUserId) return;
+    const updated = await saveAccountProfileDetails(targetUserId, {
       displayName,
+      username,
       email,
       phoneNumber,
       avatarUri,
       addressNotes,
     });
     setPhoneNumber(updated.phoneNumber);
+  };
+
+  const handleSaveProfileIdentity = async (newName: string, newUsername?: string) => {
+    const targetUserId = user?.id || (isAuthenticated ? "demo-customer" : undefined);
+    if (!targetUserId) return;
+    const updated = await saveAccountProfileDetails(targetUserId, {
+      displayName: newName,
+      username: newUsername !== undefined ? newUsername : username,
+      email,
+      phoneNumber,
+      avatarUri,
+      addressNotes,
+    });
+    setDisplayName(updated.displayName);
+    if (updated.username) setUsername(updated.username);
+    await updateUserProfile({
+      displayName: updated.displayName,
+      username: updated.username,
+    });
+  };
+
+  const handleSaveDisplayName = async (newName: string) => {
+    await handleSaveProfileIdentity(newName, username);
   };
 
   const handleUpdatePrefs = async (next: UserPreferences) => {
@@ -222,6 +262,36 @@ export function SettingContainer() {
     >
       <ScrollView style={styles.screenContent} contentContainerStyle={styles.scrollContent}>
         <View style={styles.content}>
+          {/* Header with Back button, Title, and balance spacer matching Booking and Task */}
+          <View style={styles.headerBar} testID="settings-screen-header">
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel={language === "en" ? "Back" : "Kembali"}
+              onPress={() => {
+                if (router.canGoBack()) {
+                  router.back();
+                } else {
+                  router.replace("/");
+                }
+              }}
+              style={[
+                styles.headerBackBtn,
+                { backgroundColor: palette.surface, borderColor: palette.border },
+              ]}
+              testID="settings-back-btn"
+            >
+              <ArrowLeft size={18} color={palette.text} strokeWidth={2.2} />
+            </Pressable>
+
+            <View style={styles.headerTitleWrap}>
+              <Text style={[styles.headerTitle, { color: palette.text }]}>
+                {language === "en" ? "Settings" : "Pengaturan"}
+              </Text>
+            </View>
+
+            <View style={{ width: 36 }} />
+          </View>
+
           <SettingHeader
             activeSection={visibleSection}
             onSelectSection={setSelectedSection}
@@ -314,8 +384,14 @@ export function SettingContainer() {
               phoneNumber={phoneNumber}
               onChangePhoneNumber={setPhoneNumber}
               onSavePrivateContact={handleSavePrivateContact}
+              displayName={displayName}
+              username={username}
+              onSaveDisplayName={handleSaveDisplayName}
+              onSaveProfileIdentity={handleSaveProfileIdentity}
             />
           )}
+
+          {visibleSection === "policy" && <SettingPolicy />}
         </View>
       </ScrollView>
       <AppNavigationBar activeTab="settings" />
@@ -337,8 +413,33 @@ const styles = StyleSheet.create({
   content: {
     alignSelf: "center",
     maxWidth: 820,
-    paddingHorizontal: spacing.md,
+    paddingHorizontal: 5,
     paddingTop: spacing.sm,
     width: "100%",
+  },
+  headerBar: {
+    alignItems: "center",
+    flexDirection: "row",
+    justifyContent: "space-between",
+    marginBottom: 8,
+    marginTop: 4,
+    width: "100%",
+  },
+  headerBackBtn: {
+    alignItems: "center",
+    borderRadius: 5,
+    borderWidth: 1,
+    height: 36,
+    justifyContent: "center",
+    width: 36,
+  },
+  headerTitleWrap: {
+    alignItems: "center",
+    flex: 1,
+    justifyContent: "center",
+  },
+  headerTitle: {
+    fontSize: 16,
+    fontWeight: "700",
   },
 });

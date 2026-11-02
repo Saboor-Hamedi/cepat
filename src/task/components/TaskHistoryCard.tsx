@@ -43,7 +43,7 @@ export const JobHistoryCard = TaskHistoryCard;
 
 const styles = StyleSheet.create({
   card: {
-    borderRadius: radii.md,
+    borderRadius: 5,
     borderWidth: 1,
     marginBottom: spacing.md,
     padding: spacing.lg,

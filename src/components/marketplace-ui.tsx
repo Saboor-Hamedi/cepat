@@ -766,7 +766,7 @@ const styles = StyleSheet.create({
   verified: {
     alignItems: 'center',
     backgroundColor: colors.green,
-    borderRadius: 8,
+    borderRadius: 5,
     color: '#fff',
     fontSize: 10,
     fontWeight: '900',
@@ -781,7 +781,7 @@ const styles = StyleSheet.create({
   serviceMiniTag: {
     backgroundColor: colors.paper,
     borderColor: colors.line,
-    borderRadius: 8,
+    borderRadius: 5,
     borderWidth: 1,
     paddingHorizontal: 8,
     paddingVertical: 3,

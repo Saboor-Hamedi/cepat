@@ -113,7 +113,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     backgroundColor: colors.surface,
     borderColor: colors.line,
-    borderRadius: 12,
+    borderRadius: 5,
     borderWidth: 1,
     marginVertical: spacing.md,
     padding: spacing.xl,

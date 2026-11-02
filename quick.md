@@ -1,123 +1,84 @@
-# Honest Review of Your Marketplace Screen
+Redesign the Technician Profile screen to look modern and professional. UI ONLY — no logic changes.
 
-It's **functional and has a clear structure**, which is good — but there are several issues holding it back from looking professional. Here's my breakdown:
+🚨 CRITICAL FIX:
 
----
-
-## 🔴 Critical Issues (Must Fix)
-
-### 1. **"Techinician" is misspelled** — appears 3 times
-
-It should be **"Technician"**. This is a trust-killer for users. A marketplace with typos in the main heading feels unprofessional.
-
-### 2. **"BOOKABLE SERVICE" badge is cut off** on the 3rd card
-
-The text is clipping at the bottom. This is a layout bug — the card needs more bottom padding or the badge needs proper spacing.
-
-### 3. **Random gear/settings icon on the image**
-
-The second post has a ⚙️ icon floating over the image. This looks like a debug artifact or misplaced button. It confuses users.
-
----
-
-## 🟡 Design Issues (Should Fix)
-
-### 4. **Category chips feel basic**
-
-- The "All" chip is just a flat green rectangle — no border radius, no polish
-- Inactive chips have no visual feedback state
-- They look like buttons from 2015
-
-### 5. **Search bar location indicator is clunky**
-
-The green dot + "East Jakarta" feels shoved in. It should either be a separate location button or integrated more elegantly.
-
-### 6. **Cards lack visual hierarchy**
-
-- The avatar, name, subtitle, badge, and text all compete for attention
-- No clear separation between sections inside the card
-- The three-dots menu is too subtle (gray on dark = hard to tap)
-
-### 7. **Bottom nav "Profile" shows a real avatar**
-
-This is unusual. Most apps show a person icon. If you want the avatar, make it smaller and cleaner. Also, the active state (green house icon) is good, but the inactive icons are too thin/light.
-
-### 8. **Section header is too loud**
-
-"TECHNICIAN WORK FEED" in all-caps green + "Recent Work Posts from Technicians" in large white = redundant. Pick one.
-
----
-
-## 🟢 What's Working Well
-
-- ✅ Dark theme is consistent
-- ✅ Green accent color is used purposefully
-- ✅ Card-based layout is the right approach
-- ✅ Bottom nav has 5 clear sections
-- ✅ Location awareness in search bar
-
----
-
-## 🎯 Recommended Prompt for Your Agent
-
-Here's a prompt to fix all of this:
-
-```text
-You are an expert React Native UI developer. Redesign the Marketplace screen to look modern and professional. UI ONLY — do not change any logic, data flow, or navigation.
-
-🚨 FIX THESE BUGS FIRST:
-1. Fix the typo "Techinician" → "Technician" everywhere (appears 3 times in post cards)
-2. Fix the "BOOKABLE SERVICE" badge being cut off — add proper bottom padding to cards
-3. Remove the random gear/settings icon overlaid on post images
+- Fix typo "Techinician" → "Technician" everywhere (profile name, post cards, composer placeholder text)
 
 🎨 DESIGN IMPROVEMENTS:
 
-1. Search Bar:
-- Split into two parts: search input (flex: 1) with magnifying glass icon, and a separate location button on the right
-- Location button: small pin icon + "East Jakarta" text, subtle background, rounded
-- Overall search bar: borderRadius 12, subtle border
+1. Cover Photo Area:
 
-2. Category Chips:
-- "All" active chip: green background, white text, borderRadius 20, padding 10px horizontal
-- Inactive chips: transparent background with subtle border (1px, muted color), borderRadius 20
-- Horizontal ScrollView with gap 8px between chips
-- Add slight scale animation on press
+- Cover image: height 140px, full width
+- "Edit Cover" button: top-right, small camera icon + text, semi-transparent dark background, borderRadius 8, padding 8
+- Profile avatar: 80x80, borderRadius 40, white border 3px, positioned overlapping cover bottom (marginTop: -40, marginLeft: 16)
+- Camera icon on avatar: small circular button (28x28), green background, white camera icon, positioned bottom-right of avatar
 
-3. Section Header:
-- Remove the redundant "TECHNICIAN WORK FEED" label
-- Keep only "Recent Work Posts" as the title (bold, large)
-- Add a "View all →" link on the right in green
+2. Profile Info Section:
 
-4. Post Cards:
-- Increase card borderRadius to 16px
-- Add subtle border (1px, muted color) to separate cards from background
-- Inside card layout:
-  - Top row: Avatar (40px) + Name (bold) + Time ago (muted, right-aligned) + three-dots menu (make it more visible)
-  - Second row: Location + service type (muted, small)
-  - Third row: "Bookable Service" badge — small pill, green background with low opacity, green text, borderRadius 12, padding 6px horizontal
-  - Fourth row: Post text (regular weight, good line height)
-  - Fifth row (if image exists): Image with borderRadius 12, aspect ratio 16:9, NO overlay icons
-- Add proper padding: 16px inside card, 12px gap between cards
+- Name: "Technician" - fontSize 22, fontWeight 700, color: theme.textPrimary
+- Business name: "Rizky Plumbing" - fontSize 14, color: theme.textSecondary, marginTop 2
+- Specialty: "Specialist on AC" - fontSize 14, fontWeight 600, color: theme.primary (green), marginTop 2
 
-5. Bottom Navigation:
-- Remove the avatar from Profile tab — use a person icon instead
-- Active tab: green icon + green label, bold
-- Inactive tabs: muted gray icon + muted gray label
-- Icons should be slightly thicker/more visible
-- Height: 60px + safe area bottom padding
+3. Stats Row:
 
-6. Theme Support:
-- Ensure all colors use your existing theme system (light/dark/system)
-- The current dark colors look good — keep the same palette but apply it consistently
+- 4 stat cards in a row, equal width
+- Each card: backgroundColor: theme.surface, borderRadius 12, padding 12, borderWidth 1, borderColor: theme.border
+- Icon on top (colored), number below (bold, large), label below (small, muted)
+- Gap between cards: 8px
+- Horizontal margin: 16px
 
-📝 EXECUTION:
-1. Read existing Marketplace screen code
-2. Fix the 3 bugs listed above
-3. Update JSX structure and StyleSheet
-4. Do NOT change any business logic, API calls, or navigation
-5. Ensure it works on both iOS and Android
-```
+4. Action Buttons Row:
+
+- 4 buttons: "New Post", "Add Work", "Edit About", "Review"
+- Each button: flex 1, borderRadius 10, padding 10
+- First 3 buttons: backgroundColor: theme.surface, borderWidth 1, borderColor: theme.border, icon + text
+- "Review" button: backgroundColor: rgba(16, 185, 129, 0.1), borderColor: theme.primary, text color: theme.primary
+- Icon size: 16, text fontSize: 12, fontWeight 600
+- Gap: 8px, margin horizontal: 16px, margin vertical: 12
+
+5. Tab Bar:
+
+- Horizontal row of tabs: Posts, Services, Portfolio, Reviews, About
+- Active tab: text color theme.primary, fontWeight 700, bottom border 2px solid theme.primary
+- Inactive tabs: text color theme.textSecondary, fontWeight 500
+- Tab padding: 16 horizontal, 12 vertical
+- Tab bar backgroundColor: theme.background, borderBottomWidth 1, borderBottomColor: theme.border
+
+6. Create Post Composer:
+
+- Card style: backgroundColor: theme.surface, borderRadius 16, padding 16, margin 16, borderWidth 1, borderColor: theme.border
+- Top row: small avatar (32x32) + placeholder text "What's on your mind?" (muted, fontSize 14)
+- Divider line: 1px, theme.border, margin vertical 12
+- Bottom row: 3 buttons - "Photo" (icon + text), "Offer Service" (icon + text + toggle switch), "Post" button (solid green, white text, borderRadius 8, padding 10 horizontal)
+- "Post" button aligned to right
+
+7. Post Cards:
+
+- Same style as marketplace cards
+- backgroundColor: theme.surface, borderRadius 16, padding 16, margin horizontal 16, margin bottom 12, borderWidth 1, borderColor: theme.border
+- Avatar 40x40, name bold, time muted right-aligned
+- "Bookable Service" badge: backgroundColor rgba(16, 185, 129, 0.15), text color theme.primary, fontSize 11, fontWeight 600, padding 6 vertical 10 horizontal, borderRadius 12, marginTop 8
+- Post text: fontSize 14, lineHeight 20, color theme.textPrimary, marginTop 8
+
+8. Theme Support:
+
+- All colors must use theme variables (light/dark/system)
+- For light theme: surface #F5F7F5, background #FFFFFF, border #E5E7EB, textPrimary #111827, textSecondary #6B7280, primary #10B981
+- For dark theme: surface #1A1A2E, background #0F0F1A, border #2A2A3E, textPrimary #F9FAFB, textSecondary #9CA3AF, primary #10B981
+
+Do NOT change any business logic, data flow, or navigation. Only update JSX structure and StyleSheet.
 
 ---
 
-**Bottom line:** Your app has good bones — the structure is right, the dark theme works, and the green accent is consistent. But the typos, layout bugs, and basic styling are making it look amateur. Fix those and it'll look 10x better. Want me to refine the prompt further?
+Also: Here is the big one:
+
+- there is not place to allow users to change their name
+- setting -> security -> we have a loot of text we dont need them.
+- remove 'strict separation of public and private data remove this fully.
+  change this button 'Save contact Details' -> save keep the button small on the left right.
+- remove the Term of service & privacy policy summary, make a tab called policy there explain all these things
+- on the security, create another panel for changing the username the name which appears on the profile
+- we have 2 names there the public name which appears on the top and another name under that, i dont get that name what is that
+- they should be robust dry on the same folder separate components just call them on the security...
+- the post on the profile has more than 5px radius make 5px the same for the form on the profile...
+  the gaps must be 5px over all the app.

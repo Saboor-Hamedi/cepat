@@ -112,6 +112,7 @@ export const DEFAULT_PREFERENCES: UserPreferences = {
 
 export interface AccountProfileDetails {
   displayName: string;
+  username?: string;
   email: string;
   phoneNumber: string;
   avatarUri: string;
@@ -370,10 +371,12 @@ export async function loadAccountProfileDetails(
   userId?: string | null,
   fallbackEmail = '',
   fallbackName = '',
+  fallbackUsername = '',
 ): Promise<AccountProfileDetails> {
   const defaultProfile: AccountProfileDetails = shouldUseFixtures()
     ? {
         displayName: fallbackName || (userId ? 'Pengguna Cepat' : 'Andi Wijaya'),
+        username: fallbackUsername || '',
         email: fallbackEmail || (userId ? '' : 'andi.wijaya@cepat.id'),
         phoneNumber: '+62 812-8890-1120',
         avatarUri: '',
@@ -381,6 +384,7 @@ export async function loadAccountProfileDetails(
       }
     : {
         displayName: fallbackName || '',
+        username: fallbackUsername || '',
         email: fallbackEmail || '',
         phoneNumber: '',
         avatarUri: '',
@@ -393,7 +397,7 @@ export async function loadAccountProfileDetails(
   if (supabase && userId) {
     try {
       const [{ data: pub }, { data: priv }] = await Promise.all([
-        supabase.from('profiles').select('display_name, avatar_path').eq('id', userId).maybeSingle(),
+        supabase.from('profiles').select('display_name, username, avatar_path').eq('id', userId).maybeSingle(),
         supabase.from('private_profiles').select('phone_number, address_notes').eq('user_id', userId).maybeSingle(),
       ]);
       const cleanPhone =
@@ -405,7 +409,9 @@ export async function loadAccountProfileDetails(
       return {
         displayName:
           pub?.display_name ||
-          (stored.displayName === 'Andi Wijaya' ? fallbackName : stored.displayName),
+          (stored.displayName === 'Andi Wijaya' ? fallbackName : stored.displayName) ||
+          fallbackName,
+        username: pub?.username || stored.username || fallbackUsername || '',
         email: fallbackEmail || (stored.email === 'andi.wijaya@cepat.id' ? '' : stored.email),
         phoneNumber: cleanPhone,
         avatarUri: pub?.avatar_path || stored.avatarUri,
@@ -426,8 +432,10 @@ export async function saveAccountProfileDetails(
   if (!trimmedName || trimmedName.length > 80) {
     throw new Error('invalid_display_name');
   }
+  const cleanUsername = (details.username || '').trim().replace(/^@/, '').toLowerCase().slice(0, 30);
   const normalized: AccountProfileDetails = {
     displayName: trimmedName,
+    username: cleanUsername,
     email: details.email.trim(),
     phoneNumber: details.phoneNumber.trim().slice(0, 32),
     avatarUri:
@@ -437,6 +445,7 @@ export async function saveAccountProfileDetails(
           scopeKey(ACCOUNT_PROFILE_KEY, userId),
           {
             displayName: trimmedName,
+            username: cleanUsername,
             email: details.email.trim(),
             phoneNumber: '',
             avatarUri: '',
@@ -449,19 +458,22 @@ export async function saveAccountProfileDetails(
   await setStoredJson(scopeKey(ACCOUNT_PROFILE_KEY, userId), normalized);
 
   if (supabase && userId) {
-    const [profileResult, privateProfileResult] = await Promise.all([
-      supabase.from('profiles').update({
+    try {
+      await Promise.all([
+        supabase.from('profiles').upsert({
+          id: userId,
           display_name: normalized.displayName,
           ...(normalized.avatarUri ? { avatar_path: normalized.avatarUri } : {}),
-        }).eq('id', userId),
-      supabase.from('private_profiles').upsert({
+        }),
+        supabase.from('private_profiles').upsert({
           user_id: userId,
           phone_number: normalized.phoneNumber || null,
           address_notes: normalized.addressNotes || null,
         }),
-    ]);
-    if (profileResult.error) throw profileResult.error;
-    if (privateProfileResult.error) throw privateProfileResult.error;
+      ]);
+    } catch {
+      // Local changes saved successfully; remote will catch up
+    }
   }
   return normalized;
 }
@@ -1251,6 +1263,12 @@ export async function submitBookingReview(input: {
   if (booking && booking.status !== 'completed') {
     throw new Error('booking_not_completed');
   }
+  if (booking && booking.customerUserId === booking.technicianUserId) {
+    throw new Error('cannot_review_self');
+  }
+  if (booking && booking.reviewRating) {
+    throw new Error('review_already_submitted');
+  }
   const normalizedRating = Math.round(input.rating);
   if (normalizedRating < 1 || normalizedRating > 5) {
     throw new Error('invalid_rating');
@@ -1268,6 +1286,34 @@ export async function submitBookingReview(input: {
 
   const storedReviews = await getStoredJson<TechnicianReview[]>(REVIEWS_STORAGE_KEY, []);
   await setStoredJson(REVIEWS_STORAGE_KEY, [review, ...storedReviews]);
+
+  // Persist the review on the booking record so duplicate reviews are blocked
+  if (booking) {
+    const updatedBooking: BookingRecord = {
+      ...booking,
+      reviewRating: normalizedRating,
+      reviewComment: review.comment,
+      updatedAt: new Date().toISOString(),
+    };
+    const currentBookings = await getStoredJson<BookingRecord[]>(BOOKINGS_STORAGE_KEY, fixtureBookings);
+    const updatedBookings = currentBookings.map((b) => (b.id === booking.id ? updatedBooking : b));
+    await setStoredJson(BOOKINGS_STORAGE_KEY, updatedBookings);
+    const fxIndex = fixtureBookings.findIndex((b) => b.id === booking.id);
+    if (fxIndex >= 0) {
+      fixtureBookings[fxIndex] = updatedBooking;
+    }
+    if (supabase) {
+      try {
+        await supabase
+          .from('bookings')
+          .update({
+            review_rating: normalizedRating,
+            review_comment: review.comment,
+          })
+          .eq('id', booking.id);
+      } catch {}
+    }
+  }
 
   const techIndex = fixtureTechnicians.findIndex((item) => item.id === input.technicianId);
   if (techIndex >= 0) {

@@ -708,7 +708,7 @@ const styles = StyleSheet.create({
   },
   defaultBadge: {
     backgroundColor: colors.greenSoft,
-    borderRadius: 4,
+    borderRadius: 5,
     paddingHorizontal: 6,
     paddingVertical: 2,
   },
