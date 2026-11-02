@@ -283,6 +283,13 @@ export function TechnicianPostComposer({
                   ]}
                 >
                   <ImageIcon size={15} color={palette.primary} />
+                  {images.length > 0 && (
+                    <View style={[styles.mediaCountBadge, { backgroundColor: palette.primary }]}>
+                      <Text style={styles.mediaCountBadgeText}>
+                        {images.length}
+                      </Text>
+                    </View>
+                  )}
                 </View>
                 <Text
                   style={[
@@ -292,13 +299,6 @@ export function TechnicianPostComposer({
                 >
                   {language === 'en' ? 'Photo' : 'Foto'}
                 </Text>
-                {images.length > 0 && (
-                  <View style={[styles.mediaCountBadge, { backgroundColor: palette.primary }]}>
-                    <Text style={styles.mediaCountBadgeText}>
-                      {images.length}
-                    </Text>
-                  </View>
-                )}
               </View>
             </Pressable>
 
@@ -502,6 +502,7 @@ const styles = StyleSheet.create({
     borderRadius: 5,
     borderWidth: 1,
     overflow: 'hidden',
+    width: '100%',
   },
   textInput: {
     fontSize: 15,
@@ -523,24 +524,30 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingHorizontal: spacing.sm,
     paddingVertical: spacing.sm,
+    flexWrap: 'wrap',
+    rowGap: 8,
+    width: '100%',
   },
   footerLeftActions: {
     alignItems: 'center',
     flexDirection: 'row',
-    gap: 8,
+    gap: 6,
     flexWrap: 'wrap',
+    flexShrink: 1,
   },
   footerRightActions: {
     alignItems: 'center',
     flexDirection: 'row',
-    gap: 10,
+    gap: 8,
+    flexShrink: 0,
+    marginLeft: 'auto',
   },
   mediaBtn: {
     alignItems: 'center',
     borderRadius: 5,
     borderWidth: 1,
     justifyContent: 'center',
-    paddingHorizontal: 10,
+    paddingHorizontal: 8,
     paddingVertical: 5,
   },
   mediaActionContent: {
@@ -560,19 +567,23 @@ const styles = StyleSheet.create({
     borderRadius: 4,
     height: 22,
     justifyContent: 'center',
+    position: 'relative',
     width: 22,
   },
   mediaCountBadge: {
     borderRadius: 8,
-    height: 16,
+    height: 14,
     justifyContent: 'center',
     alignItems: 'center',
-    minWidth: 16,
-    paddingHorizontal: 4,
+    minWidth: 14,
+    paddingHorizontal: 2,
+    position: 'absolute',
+    right: -4,
+    top: -4,
   },
   mediaCountBadgeText: {
     color: '#FFFFFF',
-    fontSize: 10,
+    fontSize: 9,
     fontWeight: '700',
   },
   servicePillToggle: {
@@ -580,8 +591,8 @@ const styles = StyleSheet.create({
     borderRadius: 5,
     borderWidth: 1,
     flexDirection: 'row',
-    gap: 6,
-    paddingHorizontal: 10,
+    gap: 5,
+    paddingHorizontal: 8,
     paddingVertical: 5,
   },
   servicePillText: {
@@ -601,6 +612,7 @@ const styles = StyleSheet.create({
     minWidth: 70,
     paddingHorizontal: 16,
     paddingVertical: 6,
+    flexShrink: 0,
   },
   postBtnDisabled: {
     opacity: 0.45,

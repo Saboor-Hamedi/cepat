@@ -491,13 +491,29 @@ export async function loadTechnician(id: string): Promise<{ item: Technician | n
   }
 
   let profileRecord: Record<string, unknown> | null = null;
+  let isTargetAdmin = false;
+  let isTargetVerified = false;
   try {
-    const profileResult = await supabase
-      .from('profiles')
-      .select('*')
-      .eq('id', id)
-      .maybeSingle();
+    const [profileResult, rolesResult, postsResult] = await Promise.all([
+      supabase.from('profiles').select('*').eq('id', id).maybeSingle(),
+      supabase.from('user_roles').select('role').eq('user_id', id),
+      supabase
+        .from('technician_posts')
+        .select('id, technician_verified')
+        .eq('technician_id', id)
+        .limit(5),
+    ]);
     profileRecord = record(profileResult.data);
+    const roles = (rolesResult.data ?? []).map((r: { role?: unknown }) => String(r.role));
+    const postsList = (postsResult.data ?? []) as { id: string; technician_verified?: boolean }[];
+    const hasVerifiedPost = postsList.some((p) => p.technician_verified !== false);
+    isTargetAdmin = roles.includes('admin') || profileRecord?.role === 'admin';
+    isTargetVerified =
+      isTargetAdmin ||
+      roles.includes('technician') ||
+      hasVerifiedPost ||
+      postsList.length > 0 ||
+      Boolean(profileRecord?.is_verified);
   } catch {
     profileRecord = null;
   }
@@ -516,9 +532,9 @@ export async function loadTechnician(id: string): Promise<{ item: Technician | n
     return {
       item: {
         id,
-        displayName: stringValue(profileRecord?.display_name) ?? 'Pengguna Cepat',
+        displayName: stringValue(profileRecord?.display_name) ?? (isTargetAdmin ? 'Administrator Cepat' : 'Pengguna Cepat'),
         avatarUri: resolveImageUrl(avatarPath),
-        verified: false,
+        verified: isTargetVerified,
         available: false,
         averageRating: 0,
         reviewCount: 0,
@@ -616,14 +632,19 @@ export async function loadTechnician(id: string): Promise<{ item: Technician | n
     }];
   });
 
+  const mapped = mapTechnician(
+    row,
+    profileRecord ?? undefined,
+    portfolio,
+    reviews,
+    availabilitySchedule.length ? availabilitySchedule : undefined,
+  );
+
   return {
-    item: mapTechnician(
-      row,
-      profileRecord ?? undefined,
-      portfolio,
-      reviews,
-      availabilitySchedule.length ? availabilitySchedule : undefined,
-    ),
+    item: {
+      ...mapped,
+      verified: isTargetVerified || mapped.verified,
+    },
     source: SUPABASE_SOURCE,
   };
 }

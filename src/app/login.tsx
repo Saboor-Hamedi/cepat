@@ -1,10 +1,12 @@
 import { router, useLocalSearchParams } from 'expo-router';
+import { Lock, Mail } from 'lucide-react-native';
 import { useEffect, useRef, useState } from 'react';
 import { View } from 'react-native';
 
 import { signInPreviewAccount, useAuth } from '../auth/AuthProvider';
 import { isAuthServiceUnavailable } from '../auth/errors';
 import { AuthField, AuthLink, AuthNotice, AuthShell, AuthSubmit } from '../components/auth-ui';
+import { useAppearance } from '../context/AppearanceContext';
 import { supabase } from '../data/marketplaceRepository';
 import { useLanguage } from '../i18n/locale';
 
@@ -20,6 +22,7 @@ function resolveSafeRedirect(redirectParam?: string, technicianIdParam?: string)
 
 export default function LoginScreen() {
   const { language, t } = useLanguage();
+  const { palette } = useAppearance();
   const params = useLocalSearchParams<{
     email?: string;
     registered?: string;
@@ -61,6 +64,7 @@ export default function LoginScreen() {
     if (submitting.current) return;
     submitting.current = true;
     setBusy(true);
+
     try {
       const cleanEmail = email.trim().toLowerCase();
       if (!supabase) {
@@ -78,12 +82,14 @@ export default function LoginScreen() {
         email: cleanEmail,
         password,
       });
+
       if (authError) {
         setError(
           t(isAuthServiceUnavailable(authError) ? 'auth.serviceUnavailable' : 'auth.loginFailed'),
         );
         return;
       }
+
       if (safeRedirect) {
         router.replace(safeRedirect as never);
         return;
@@ -100,6 +106,7 @@ export default function LoginScreen() {
   return (
     <AuthShell title={t('auth.loginTitle')} subtitle={t('auth.loginSubtitle')}>
       {!configurationReady && <AuthNotice tone="error">{t('auth.configuration')}</AuthNotice>}
+
       {safeRedirect ? (
         <View testID="login-booking-redirect-notice">
           <AuthNotice tone="success">
@@ -109,6 +116,7 @@ export default function LoginScreen() {
           </AuthNotice>
         </View>
       ) : null}
+
       {params.registered === '1' && (
         <AuthNotice tone="success">
           {language === 'en'
@@ -116,7 +124,10 @@ export default function LoginScreen() {
             : `Akun berhasil didaftarkan untuk ${email || 'email Anda'}. Silakan masuk di bawah ini (periksa kotak masuk email jika konfirmasi diaktifkan).`}
         </AuthNotice>
       )}
+
       {error ? <AuthNotice tone="error">{error}</AuthNotice> : null}
+
+      {/* Input Fields */}
       <AuthField
         label={t('auth.email')}
         value={email}
@@ -124,7 +135,10 @@ export default function LoginScreen() {
         testID="login-email"
         email
         autoComplete="email"
+        placeholder={language === 'en' ? 'name@example.com' : 'nama@contoh.com'}
+        icon={<Mail size={20} color={palette.textSecondary} />}
       />
+
       <AuthField
         label={t('auth.password')}
         value={password}
@@ -132,35 +146,40 @@ export default function LoginScreen() {
         testID="login-password"
         password
         autoComplete="password"
+        placeholder={language === 'en' ? 'Enter your password' : 'Masukkan kata sandi'}
+        icon={<Lock size={20} color={palette.textSecondary} />}
       />
-      <View>
-        <AuthLink
-          label={t('auth.forgot')}
-          onPress={() => router.push('/forgot-password')}
-          testID="forgot-password-link"
-        />
-        <AuthSubmit
-          label={t('auth.submitLogin')}
-          loading={busy}
-          onPress={() => {
-            void submit();
-          }}
-          testID="login-submit"
-        />
-        <AuthLink
-          label={t('auth.noAccount')}
-          onPress={() =>
-            router.push({
-              pathname: '/register',
-              params: {
-                ...(params.redirect ? { redirect: params.redirect } : {}),
-                ...(params.technicianId ? { technicianId: params.technicianId } : {}),
-              },
-            })
-          }
-          testID="register-link"
-        />
-      </View>
+
+      <AuthLink
+        label={t('auth.forgot')}
+        onPress={() => router.push('/forgot-password')}
+        testID="forgot-password-link"
+        variant="forgot"
+      />
+
+      <AuthSubmit
+        label={t('auth.submitLogin')}
+        loading={busy}
+        onPress={() => {
+          void submit();
+        }}
+        testID="login-submit"
+      />
+
+      <AuthLink
+        label={t('auth.noAccount')}
+        onPress={() =>
+          router.push({
+            pathname: '/register',
+            params: {
+              ...(params.redirect ? { redirect: params.redirect } : {}),
+              ...(params.technicianId ? { technicianId: params.technicianId } : {}),
+            },
+          })
+        }
+        testID="register-link"
+        variant="center"
+      />
     </AuthShell>
   );
 }

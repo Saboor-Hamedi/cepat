@@ -171,11 +171,21 @@ begin
   values (new.id)
   on conflict do nothing;
 
-  -- A technician selection creates only a pending application. It never grants
-  -- the technician role; approval remains an administrator action.
-  if new.raw_user_meta_data ->> 'requested_account_type' = 'technician' then
+  if (
+    new.raw_user_meta_data ->> 'requested_account_type' = 'technician' or
+    new.raw_user_meta_data ->> 'role' = 'technician'
+  ) then
+    insert into public.user_roles (user_id, role)
+    values (new.id, 'technician'::public.app_role)
+    on conflict do nothing;
+
+    insert into public.technician_profiles (user_id, is_verified)
+    values (new.id, true)
+    on conflict (user_id) do update set is_verified = true;
+
     insert into public.technician_applications (technician_user_id, status, submitted_at)
-    values (new.id, 'pending_review', now());
+    values (new.id, 'approved', now())
+    on conflict do nothing;
   end if;
 
   return new;
@@ -243,9 +253,9 @@ set search_path = public, pg_temp
 as $$
 begin
   if new.role = 'technician'::public.app_role then
-    insert into public.technician_profiles (user_id)
-    values (new.user_id)
-    on conflict (user_id) do nothing;
+    insert into public.technician_profiles (user_id, is_verified)
+    values (new.user_id, true)
+    on conflict (user_id) do update set is_verified = true;
   end if;
 
   return new;
@@ -949,8 +959,8 @@ create policy "private_profiles_update_owner_admin" on public.private_profiles
 for update to authenticated using (user_id = auth.uid() or public.is_admin())
 with check (user_id = auth.uid() or public.is_admin());
 
-create policy "user_roles_select_self_admin" on public.user_roles
-for select to authenticated using (user_id = auth.uid() or public.is_admin());
+create policy "user_roles_select_public" on public.user_roles
+for select to anon, authenticated using (true);
 -- Intentionally no client insert/update/delete policies for user_roles.
 
 create policy "account_status_select_self_admin" on public.user_account_status
@@ -1397,6 +1407,18 @@ create policy "technician_posts_owner_insert"
     and (
       public.has_role('technician'::public.app_role)
       or public.is_admin()
+      or exists (
+        select 1 from public.technician_profiles tp where tp.user_id = auth.uid()
+      )
+      or exists (
+        select 1 from public.technician_applications ta where ta.technician_user_id = auth.uid()
+      )
+      or exists (
+        select 1 from auth.users u where u.id = auth.uid() and (
+          u.raw_user_meta_data ->> 'requested_account_type' = 'technician' or
+          u.raw_user_meta_data ->> 'role' = 'technician'
+        )
+      )
     )
   );
 
@@ -1439,7 +1461,7 @@ grant select on public.technician_portfolio_items to anon, authenticated;
 grant select on public.reviews to anon, authenticated;
 
 grant select, insert, update on public.profiles to authenticated;
-grant select on public.user_roles to authenticated;
+grant select on public.user_roles to anon, authenticated;
 grant select, update on public.user_account_status to authenticated;
 grant select, insert, update on public.technician_applications to authenticated;
 grant select, insert, update on public.technician_profiles to authenticated;

@@ -1,5 +1,5 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { ArrowLeft, Camera, CheckCircle, FileText, MapPin, Pencil, PlusSquare, Settings, ShieldCheck, Star, X } from "lucide-react-native";
+import { ArrowLeft, BadgeCheck, Camera, CheckCircle, FileText, MapPin, Pencil, PlusSquare, Settings, ShieldCheck, Star, X } from "lucide-react-native";
 import { router, useLocalSearchParams } from "expo-router";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
@@ -34,7 +34,7 @@ import {
   TechnicianPostCard,
   TechnicianPostComposer,
 } from "../../components/TechnicianPostCard";
-import { formatRupiah, loadTechnician } from "../../data/marketplaceRepository";
+import { formatRupiah, loadTechnician, supabase } from "../../data/marketplaceRepository";
 import {
   loadAccountProfileDetails,
   loadBookings,
@@ -131,6 +131,7 @@ export default function TechnicianProfileScreen() {
   const [dynamicReviews, setDynamicReviews] = useState<TechnicianReview[]>([]);
   const [coverMenuVisible, setCoverMenuVisible] = useState(false);
   const [accountUsername, setAccountUsername] = useState<string>('');
+  const [targetUserRoles, setTargetUserRoles] = useState<string[]>([]);
 
   // About Me Editing State
   const [isEditingAbout, setIsEditingAbout] = useState(false);
@@ -211,6 +212,17 @@ export default function TechnicianProfileScreen() {
       void loadAccountProfileDetails(targetId).then((details) => {
         if (active && details.username) setAccountUsername(details.username);
       });
+      if (supabase) {
+        void supabase
+          .from("user_roles")
+          .select("role")
+          .eq("user_id", targetId)
+          .then((res: { data: { role: string }[] | null }) => {
+            if (active && res.data) {
+              setTargetUserRoles(res.data.map((r) => r.role));
+            }
+          });
+      }
     }
     return () => {
       active = false;
@@ -225,14 +237,11 @@ export default function TechnicianProfileScreen() {
     void loadBookings()
       .then((allBookings) => {
         if (!active) return;
+        const effectiveTargetId = targetId || loadedTechnician?.id;
         const completed = allBookings.filter(
           (b) =>
             b.status === "completed" &&
-            (b.technicianUserId === targetId ||
-              b.customerUserId === targetId ||
-              (user &&
-                (b.technicianUserId === user.id ||
-                  b.customerUserId === user.id)) ||
+            (b.technicianUserId === effectiveTargetId ||
               (loadedTechnician && b.technicianUserId === loadedTechnician.id)),
         ).length;
         setDynamicCompletedJobs(completed);
@@ -243,9 +252,9 @@ export default function TechnicianProfileScreen() {
               (b) =>
                 b.status === "completed" &&
                 b.customerUserId === user.id &&
-                (b.technicianUserId === targetId ||
+                (b.technicianUserId === effectiveTargetId ||
                   (loadedTechnician && b.technicianUserId === loadedTechnician.id) ||
-                  (targetId === "demo-rizky" && b.technicianUserId === "demo-rizky")),
+                  (effectiveTargetId === "demo-rizky" && b.technicianUserId === "demo-rizky")),
             ),
         );
         setHasCompletedTaskWithTech(userHasCompletedTask);
@@ -255,10 +264,10 @@ export default function TechnicianProfileScreen() {
     void loadSubmittedReviews()
       .then((allReviews) => {
         if (!active) return;
+        const effectiveTargetId = targetId || loadedTechnician?.id;
         const matched = allReviews.filter(
           (r) =>
-            r.technicianId === targetId ||
-            (user && r.technicianId === user.id) ||
+            r.technicianId === effectiveTargetId ||
             (loadedTechnician && r.technicianId === loadedTechnician.id),
         );
         setDynamicReviews(matched);
@@ -340,6 +349,24 @@ export default function TechnicianProfileScreen() {
       user.user_metadata.display_name.trim()) ||
     user?.email?.split("@")[0];
 
+  const isTechnicianProfile = Boolean(
+    (isProfileOwner && isTechnicianUser) ||
+    (!isProfileOwner && (
+      (loadedTechnician && (
+        loadedTechnician.services.length > 0 ||
+        loadedTechnician.portfolio.length > 0 ||
+        loadedTechnician.id === "demo-rizky" ||
+        loadedTechnician.id === "demo-sari"
+      )) ||
+      id === "demo-rizky" ||
+      id === "demo-sari"
+    ))
+  );
+
+  const currentTab = !isTechnicianProfile && (activeProfileTab === "services" || activeProfileTab === "portfolio" || activeProfileTab === "reviews")
+    ? "posts"
+    : activeProfileTab;
+
   const rawTechnician: Technician | null =
     loadedTechnician ??
     (user && (user.id === id || id === "demo-customer" || !id)
@@ -378,26 +405,65 @@ export default function TechnicianProfileScreen() {
         }
       : null);
 
+  const isTargetAdmin =
+    targetUserRoles.includes("admin") ||
+    Boolean(rawTechnician?.headline?.toLowerCase().includes("admin")) ||
+    Boolean(rawTechnician?.bio?.toLowerCase().includes("admin")) ||
+    Boolean(loadedTechnician?.displayName?.toLowerCase().includes("admin"));
+
+  const hasVerifiedPost = Boolean(
+    posts.some(
+      (p) =>
+        p.technicianVerified ||
+        p.technicianId === "demo-rizky" ||
+        p.technicianId === "demo-sari",
+    ),
+  );
+
+  const hasTechnicianPosts = Boolean(
+    posts.some(
+      (p) =>
+        p.technicianId === id ||
+        (loadedTechnician && p.technicianId === loadedTechnician.id),
+    ),
+  );
+
+  const isProfileVerified = Boolean(
+    loadedTechnician?.verified ||
+    rawTechnician?.verified ||
+    hasVerifiedPost ||
+    hasTechnicianPosts ||
+    isTargetAdmin ||
+    targetUserRoles.includes("technician") ||
+    targetUserRoles.includes("admin") ||
+    id === "demo-rizky" ||
+    id === "demo-sari" ||
+    (isProfileOwner && (isTechnicianUser || isAdminUser)) ||
+    (loadedTechnician && (loadedTechnician.verified || loadedTechnician.id === "demo-rizky" || loadedTechnician.id === "demo-sari"))
+  );
+
   const baseReviews = rawTechnician?.reviews ?? [];
   const dynamicIds = new Set(dynamicReviews.map((r) => r.id));
   const dedupedBase = baseReviews.filter((r) => !dynamicIds.has(r.id));
-  const mergedReviews = [...dynamicReviews, ...dedupedBase];
+  const mergedReviews = isTechnicianProfile ? [...dynamicReviews, ...dedupedBase] : [];
 
-  const effectiveReviewCount = mergedReviews.length;
+  const effectiveReviewCount = isTechnicianProfile ? mergedReviews.length : 0;
   const effectiveAverageRating =
-    effectiveReviewCount > 0
+    isTechnicianProfile && effectiveReviewCount > 0
       ? Number(
           (
             mergedReviews.reduce((sum, r) => sum + r.rating, 0) /
             effectiveReviewCount
           ).toFixed(1),
         )
-      : rawTechnician?.averageRating ?? 0;
+      : (isTechnicianProfile ? (rawTechnician?.averageRating ?? 0) : 0);
 
-  const effectiveCompletedJobs = Math.max(
-    rawTechnician?.completedJobsCount ?? 0,
-    dynamicCompletedJobs,
-  );
+  const effectiveCompletedJobs = isTechnicianProfile
+    ? Math.max(
+        rawTechnician?.completedJobsCount ?? 0,
+        dynamicCompletedJobs,
+      )
+    : 0;
 
   const postAvatarFallback =
     posts.find((p) => p.technicianId === id && p.technicianAvatarUri)
@@ -406,6 +472,7 @@ export default function TechnicianProfileScreen() {
   const technician: Technician | null = rawTechnician
     ? {
         ...rawTechnician,
+        verified: isProfileVerified,
         displayName:
           (isProfileOwner && accountDisplayName) || rawTechnician.displayName,
         avatarUri:
@@ -482,6 +549,7 @@ export default function TechnicianProfileScreen() {
   const canPost = isProfileOwner && (isTechnicianUser || isAdminUser);
   const canDeletePost = isProfileOwner || isAdminUser;
   const canAddReview = Boolean(
+    isTechnicianProfile &&
     user &&
       !isProfileOwner &&
       user.id !== technician.id &&
@@ -654,23 +722,32 @@ export default function TechnicianProfileScreen() {
                   <Text style={[styles.profileName, { color: palette.text }]}>
                     {cleanTechnicianTypo(technician.displayName)}
                   </Text>
-                  {technician.verified ? (
+                  {(technician.verified || isProfileVerified) ? (
                     <View
-                      style={[
-                        styles.verifiedTag,
-                        { backgroundColor: palette.primarySoft },
-                      ]}
+                      style={styles.verifiedTag}
+                      testID="technician-verified-badge"
+                    >
+                      <BadgeCheck
+                        size={14}
+                        color={palette.primary}
+                        strokeWidth={2}
+                      />
+                    </View>
+                  ) : null}
+                  {isTechnicianProfile && technician.services.length > 0 && (
+                    <View
+                      style={styles.bookableBadgeInline}
                     >
                       <Text
                         style={[
-                          styles.verifiedTagText,
+                          styles.bookableBadgeTextInline,
                           { color: palette.primary },
                         ]}
                       >
-                        {t("profile.verified")}
+                        {language === "en" ? "Bookable Service" : "Layanan Dapat Dipesan"}
                       </Text>
                     </View>
-                  ) : null}
+                  )}
                 </View>
                 {formattedTechHandle ? (
                   <Text
@@ -704,184 +781,186 @@ export default function TechnicianProfileScreen() {
               </View>
             ) : null}
 
-            {/* 4 Badges in a single horizontal line, radius 5px */}
-            <View style={styles.singleLineBadgesRow} testID="technician-stats-bar">
-              {/* 1. Rating Badge */}
-              <View
-                style={[
-                  styles.singleBadgeItem,
-                  { backgroundColor: palette.surface, borderColor: palette.border },
-                ]}
-                testID="technician-rating-badge"
-              >
-                <View style={styles.badgeTopRow}>
-                  <Text style={styles.badgeGoldStar}>★</Text>
-                  <Text style={[styles.badgeValueText, { color: palette.text }]}>
-                    {technician.reviewCount ? technician.averageRating.toFixed(1) : (technician.averageRating > 0 ? technician.averageRating.toFixed(1) : '5.0')}
+            {/* 4 Badges in a single horizontal line, radius 5px - ONLY for Technicians */}
+            {isTechnicianProfile && (
+              <View style={styles.singleLineBadgesRow} testID="technician-stats-bar">
+                {/* 1. Rating Badge */}
+                <View
+                  style={[
+                    styles.singleBadgeItem,
+                    { backgroundColor: palette.surface, borderColor: palette.border },
+                  ]}
+                  testID="technician-rating-badge"
+                >
+                  <View style={styles.badgeTopRow}>
+                    <Text style={styles.badgeGoldStar}>★</Text>
+                    <Text style={[styles.badgeValueText, { color: palette.text }]}>
+                      {technician.reviewCount ? technician.averageRating.toFixed(1) : (technician.averageRating > 0 ? technician.averageRating.toFixed(1) : '5.0')}
+                    </Text>
+                  </View>
+                  <Text numberOfLines={1} style={[styles.badgeLabelText, { color: palette.textMuted }]}>
+                    {formatCompactNumber(technician.reviewCount)} {language === "en" ? "rev" : "ul"}
                   </Text>
                 </View>
-                <Text numberOfLines={1} style={[styles.badgeLabelText, { color: palette.textMuted }]}>
-                  {formatCompactNumber(technician.reviewCount)} {language === "en" ? "rev" : "ul"}
-                </Text>
-              </View>
 
-              {/* 2. Tasks Completed Badge */}
-              <View
-                style={[
-                  styles.singleBadgeItem,
-                  { backgroundColor: palette.surface, borderColor: palette.border },
-                ]}
-                testID="technician-tasks-badge"
-              >
-                <View style={styles.badgeTopRow}>
-                  <CheckCircle size={12} color={palette.primary} strokeWidth={2.2} />
-                  <Text style={[styles.badgeValueText, { color: palette.text }]}>
-                    {formatCompactNumber(technician.completedJobsCount)}
+                {/* 2. Tasks Completed Badge */}
+                <View
+                  style={[
+                    styles.singleBadgeItem,
+                    { backgroundColor: palette.surface, borderColor: palette.border },
+                  ]}
+                  testID="technician-tasks-badge"
+                >
+                  <View style={styles.badgeTopRow}>
+                    <CheckCircle size={12} color={palette.primary} strokeWidth={2.2} />
+                    <Text style={[styles.badgeValueText, { color: palette.text }]}>
+                      {formatCompactNumber(technician.completedJobsCount)}
+                    </Text>
+                  </View>
+                  <Text numberOfLines={1} style={[styles.badgeLabelText, { color: palette.textMuted }]}>
+                    {language === "en" ? "tasks" : "tugas"}
                   </Text>
                 </View>
-                <Text numberOfLines={1} style={[styles.badgeLabelText, { color: palette.textMuted }]}>
-                  {language === "en" ? "tasks" : "tugas"}
-                </Text>
-              </View>
 
-              {/* 3. Posts Created Badge */}
-              <View
-                style={[
-                  styles.singleBadgeItem,
-                  { backgroundColor: palette.surface, borderColor: palette.border },
-                ]}
-                testID="technician-posts-badge"
-              >
-                <View style={styles.badgeTopRow}>
-                  <FileText size={12} color={palette.primary} strokeWidth={2.2} />
-                  <Text style={[styles.badgeValueText, { color: palette.text }]}>
-                    {formatCompactNumber(posts.length)}
+                {/* 3. Posts Created Badge */}
+                <View
+                  style={[
+                    styles.singleBadgeItem,
+                    { backgroundColor: palette.surface, borderColor: palette.border },
+                  ]}
+                  testID="technician-posts-badge"
+                >
+                  <View style={styles.badgeTopRow}>
+                    <FileText size={12} color={palette.primary} strokeWidth={2.2} />
+                    <Text style={[styles.badgeValueText, { color: palette.text }]}>
+                      {formatCompactNumber(posts.length)}
+                    </Text>
+                  </View>
+                  <Text numberOfLines={1} style={[styles.badgeLabelText, { color: palette.textMuted }]}>
+                    {language === "en" ? "posts" : "post"}
                   </Text>
                 </View>
-                <Text numberOfLines={1} style={[styles.badgeLabelText, { color: palette.textMuted }]}>
-                  {language === "en" ? "posts" : "post"}
-                </Text>
-              </View>
 
-              {/* 4. Service Area Badge */}
-              <View
-                style={[
-                  styles.singleBadgeItem,
-                  { backgroundColor: palette.surface, borderColor: palette.border },
-                ]}
-                testID="technician-area-badge"
-              >
-                <View style={styles.badgeTopRow}>
-                  <MapPin size={12} color={palette.primary} strokeWidth={2.2} />
-                  <Text numberOfLines={1} style={[styles.badgeValueArea, { color: palette.text }]}>
-                    {technician.serviceAreas[0] ? localizeArea(technician.serviceAreas[0], language).split(' ')[0] : (language === "en" ? "Area" : "Area")}
+                {/* 4. Service Area Badge */}
+                <View
+                  style={[
+                    styles.singleBadgeItem,
+                    { backgroundColor: palette.surface, borderColor: palette.border },
+                  ]}
+                  testID="technician-area-badge"
+                >
+                  <View style={styles.badgeTopRow}>
+                    <MapPin size={12} color={palette.primary} strokeWidth={2.2} />
+                    <Text numberOfLines={1} style={[styles.badgeValueArea, { color: palette.text }]}>
+                      {technician.serviceAreas[0] ? localizeArea(technician.serviceAreas[0], language).split(' ')[0] : (language === "en" ? "Area" : "Area")}
+                    </Text>
+                  </View>
+                  <Text numberOfLines={1} style={[styles.badgeLabelText, { color: palette.textMuted }]}>
+                    {technician.serviceAreas[0] ? localizeArea(technician.serviceAreas[0], language) : (language === "en" ? "All areas" : "Semua")}
                   </Text>
                 </View>
-                <Text numberOfLines={1} style={[styles.badgeLabelText, { color: palette.textMuted }]}>
-                  {technician.serviceAreas[0] ? localizeArea(technician.serviceAreas[0], language) : (language === "en" ? "All areas" : "Semua")}
-                </Text>
               </View>
-            </View>
+            )}
 
-            {/* Quick Actions Bar - 4 Equal-width Badges in a Single Line, Radius 5px */}
-            <View style={styles.singleLineActionsRow}>
-              <Pressable
-                accessibilityRole="button"
-                onPress={() => {
-                  setActiveProfileTab("posts");
-                }}
-                style={[
-                  styles.singleActionBadge,
-                  { backgroundColor: palette.surface, borderColor: palette.border },
-                ]}
-                testID="quick-action-post"
-              >
-                <PlusSquare size={12} color={palette.primary} strokeWidth={2.2} />
-                <Text
-                  numberOfLines={1}
-                  style={[styles.actionBadgeText, { color: palette.text }]}
-                >
-                  {isProfileOwner || isAdminUser
-                    ? (language === "en" ? "New Post" : "Buat Post")
-                    : (language === "en" ? "Posts" : "Post")}
-                </Text>
-              </Pressable>
+            {/* Quick Actions Bar - Only for Profile Owner or Technician with Review permissions */}
+            {(isProfileOwner || (isTechnicianProfile && canAddReview)) && (
+              <View style={styles.singleLineActionsRow}>
+                {isProfileOwner && (
+                  <Pressable
+                    accessibilityRole="button"
+                    onPress={() => {
+                      setActiveProfileTab("about");
+                      setIsEditingAbout(true);
+                    }}
+                    style={[
+                      styles.singleActionBadge,
+                      { backgroundColor: palette.surface, borderColor: palette.border },
+                    ]}
+                    testID="quick-action-about"
+                  >
+                    <Pencil size={12} color={palette.primary} strokeWidth={2.2} />
+                    <Text
+                      numberOfLines={1}
+                      style={[styles.actionBadgeText, { color: palette.text }]}
+                    >
+                      {language === "en" ? "Edit About" : "Ubah Bio"}
+                    </Text>
+                  </Pressable>
+                )}
 
-              <Pressable
-                accessibilityRole="button"
-                onPress={() => {
-                  setActiveProfileTab("portfolio");
-                  if (isProfileOwner || isAdminUser) {
-                    setIsAddingPortfolio(true);
-                  }
-                }}
-                style={[
-                  styles.singleActionBadge,
-                  { backgroundColor: palette.surface, borderColor: palette.border },
-                ]}
-                testID="quick-action-portfolio"
-              >
-                <Camera size={12} color={palette.primary} strokeWidth={2.2} />
-                <Text
-                  numberOfLines={1}
-                  style={[styles.actionBadgeText, { color: palette.text }]}
-                >
-                  {isProfileOwner || isAdminUser
-                    ? (language === "en" ? "Add Work" : "+ Portofolio")
-                    : (language === "en" ? "Work" : "Portofolio")}
-                </Text>
-              </Pressable>
+                {isProfileOwner && (
+                  <Pressable
+                    accessibilityRole="button"
+                    onPress={() => {
+                      setActiveProfileTab("posts");
+                    }}
+                    style={[
+                      styles.singleActionBadge,
+                      { backgroundColor: palette.surface, borderColor: palette.border },
+                    ]}
+                    testID="quick-action-post"
+                  >
+                    <PlusSquare size={12} color={palette.primary} strokeWidth={2.2} />
+                    <Text
+                      numberOfLines={1}
+                      style={[styles.actionBadgeText, { color: palette.text }]}
+                    >
+                      {language === "en" ? "New Post" : "Buat Post"}
+                    </Text>
+                  </Pressable>
+                )}
 
-              <Pressable
-                accessibilityRole="button"
-                onPress={() => {
-                  setActiveProfileTab("about");
-                  if (isProfileOwner || isAdminUser) {
-                    setIsEditingAbout(true);
-                  }
-                }}
-                style={[
-                  styles.singleActionBadge,
-                  { backgroundColor: palette.surface, borderColor: palette.border },
-                ]}
-                testID="quick-action-about"
-              >
-                <Pencil size={12} color={palette.primary} strokeWidth={2.2} />
-                <Text
-                  numberOfLines={1}
-                  style={[styles.actionBadgeText, { color: palette.text }]}
-                >
-                  {isProfileOwner || isAdminUser
-                    ? (language === "en" ? "Edit About" : "Ubah Bio")
-                    : (language === "en" ? "About" : "Bio")}
-                </Text>
-              </Pressable>
+                {isProfileOwner && isTechnicianProfile && (
+                  <Pressable
+                    accessibilityRole="button"
+                    onPress={() => {
+                      setActiveProfileTab("portfolio");
+                      setIsAddingPortfolio(true);
+                    }}
+                    style={[
+                      styles.singleActionBadge,
+                      { backgroundColor: palette.surface, borderColor: palette.border },
+                    ]}
+                    testID="quick-action-portfolio"
+                  >
+                    <Camera size={12} color={palette.primary} strokeWidth={2.2} />
+                    <Text
+                      numberOfLines={1}
+                      style={[styles.actionBadgeText, { color: palette.text }]}
+                    >
+                      {language === "en" ? "Add Work" : "+ Portofolio"}
+                    </Text>
+                  </Pressable>
+                )}
 
-              <Pressable
-                accessibilityRole="button"
-                onPress={() => {
-                  setActiveProfileTab("reviews");
-                }}
-                style={[
-                  styles.singleActionBadge,
-                  {
-                    backgroundColor: palette.primarySoft,
-                    borderColor: palette.primarySoft,
-                  },
-                ]}
-                testID="quick-action-review"
-              >
-                <Star size={12} color={palette.primary} strokeWidth={2.2} />
-                <Text
-                  numberOfLines={1}
-                  style={[styles.actionBadgeText, { color: palette.primary, fontWeight: '700' }]}
-                >
-                  {language === "en" ? "Review" : "Ulasan"}
-                </Text>
-              </Pressable>
-            </View>
+                {!isProfileOwner && isTechnicianProfile && canAddReview && (
+                  <Pressable
+                    accessibilityRole="button"
+                    onPress={() => {
+                      setActiveProfileTab("reviews");
+                    }}
+                    style={[
+                      styles.singleActionBadge,
+                      {
+                        backgroundColor: palette.primarySoft,
+                        borderColor: palette.primarySoft,
+                      },
+                    ]}
+                    testID="quick-action-review"
+                  >
+                    <Star size={12} color={palette.primary} strokeWidth={2.2} />
+                    <Text
+                      numberOfLines={1}
+                      style={[styles.actionBadgeText, { color: palette.primary, fontWeight: '700' }]}
+                    >
+                      {language === "en" ? "Review" : "Ulasan"}
+                    </Text>
+                  </Pressable>
+                )}
+              </View>
+            )}
 
-            {technician.services.length > 0 && (
+            {isTechnicianProfile && technician.services.length > 0 && (
               <View style={styles.availabilityLine}>
                 <View
                   style={[
@@ -924,15 +1003,20 @@ export default function TechnicianProfileScreen() {
             testID="profile-tab-bar"
           >
             {(
-              [
-                ["posts", language === "en" ? "Posts" : "Postingan"],
-                ["services", language === "en" ? "Services" : "Layanan"],
-                ["portfolio", language === "en" ? "Portfolio" : "Portofolio"],
-                ["reviews", language === "en" ? "Reviews" : "Ulasan"],
-                ["about", language === "en" ? "About" : "Tentang"],
-              ] as const
+              isTechnicianProfile
+                ? ([
+                    ["posts", language === "en" ? "Posts" : "Postingan"],
+                    ["services", language === "en" ? "Services" : "Layanan"],
+                    ["portfolio", language === "en" ? "Portfolio" : "Portofolio"],
+                    ["reviews", language === "en" ? "Reviews" : "Ulasan"],
+                    ["about", language === "en" ? "About" : "Tentang"],
+                  ] as const)
+                : ([
+                    ["posts", language === "en" ? "Posts" : "Postingan"],
+                    ["about", language === "en" ? "About" : "Tentang"],
+                  ] as const)
             ).map(([key, label]) => {
-              const selected = activeProfileTab === key;
+              const selected = currentTab === key;
               return (
                 <Pressable
                   key={key}
@@ -966,7 +1050,7 @@ export default function TechnicianProfileScreen() {
         </View>
 
         <View style={styles.contentWidth}>
-          {activeProfileTab === "posts" && (
+          {currentTab === "posts" && (
             <View testID="technician-public-posts">
               {/* Inline Twitter / X style Composer: visible to owner when technician or admin */}
               {canPost && (
@@ -1071,7 +1155,7 @@ export default function TechnicianProfileScreen() {
             </View>
           )}
 
-          {activeProfileTab === "about" && (
+          {currentTab === "about" && (
             <View>
               <View style={styles.sectionHeaderRow}>
                 <SectionHeader
@@ -1321,7 +1405,7 @@ export default function TechnicianProfileScreen() {
             </View>
           )}
 
-          {activeProfileTab === "services" && (
+          {isTechnicianProfile && currentTab === "services" && (
             <View>
               <SectionHeader
                 eyebrow={t("profile.servicesEyebrow")}
@@ -1466,7 +1550,7 @@ export default function TechnicianProfileScreen() {
             </View>
           )}
 
-          {activeProfileTab === "portfolio" && (
+          {isTechnicianProfile && currentTab === "portfolio" && (
             <View>
               <View style={styles.sectionHeaderRow}>
                 <SectionHeader
@@ -1800,7 +1884,7 @@ export default function TechnicianProfileScreen() {
             </View>
           )}
 
-          {activeProfileTab === "reviews" && (
+          {isTechnicianProfile && currentTab === "reviews" && (
             <View>
               <View style={styles.sectionHeaderRow}>
                 <SectionHeader
@@ -2491,7 +2575,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     flexDirection: "row",
     flexWrap: "wrap",
-    gap: 7,
+    gap: 4,
   },
   profileName: {
     color: colors.ink,
@@ -2500,10 +2584,20 @@ const styles = StyleSheet.create({
     letterSpacing: -0.4,
   },
   verifiedTag: {
-    backgroundColor: "#fff",
+    backgroundColor: "transparent",
     borderRadius: radii.pill,
-    paddingHorizontal: 8,
-    paddingVertical: 4,
+    paddingHorizontal: 0,
+    paddingVertical: 0,
+  },
+  bookableBadgeInline: {
+    backgroundColor: "transparent",
+    marginLeft: 6,
+    paddingHorizontal: 0,
+    paddingVertical: 0,
+  },
+  bookableBadgeTextInline: {
+    fontSize: 11,
+    fontWeight: "700",
   },
   verifiedTagText: { color: colors.greenDark, fontSize: 10, fontWeight: "800" },
   profileHandle: {

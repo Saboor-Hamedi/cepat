@@ -9,16 +9,8 @@ interface KeyValueBackend {
 }
 
 function getSqliteKvStore(): KeyValueBackend | null {
-  try {
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
-    const sqliteKv = require('expo-sqlite/kv-store');
-    const store = sqliteKv?.default ?? sqliteKv?.AsyncStorage ?? sqliteKv;
-    if (store && typeof store.getItem === 'function' && typeof store.setItem === 'function') {
-      return store as KeyValueBackend;
-    }
-  } catch {
-    // expo-sqlite/kv-store is optional when running in environments without native SQLite.
-  }
+  // ExpoSQLite native module is optional and not present in all runtimes.
+  // We rely on AsyncStorage as the primary cross-platform persistent storage.
   return null;
 }
 

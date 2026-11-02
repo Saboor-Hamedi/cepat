@@ -1,5 +1,5 @@
 import { router } from "expo-router";
-import { Camera, X } from "lucide-react-native";
+import { BadgeCheck, Camera, X } from "lucide-react-native";
 import { useState } from "react";
 import {
   Image,
@@ -113,6 +113,12 @@ export function Post({
   );
   const isActualOwner = Boolean(isOwner || isSelfPost);
   const canBook = Boolean(post.isServicePost) && !isSelfPost && !isOwner;
+  const isVerified = Boolean(
+    post.technicianVerified ||
+    post.technicianId === "demo-rizky" ||
+    post.technicianId === "demo-sari" ||
+    (isActualOwner && (roles.includes("technician") || roles.includes("admin"))),
+  );
 
   const images =
     post.mediaUrls && post.mediaUrls.length > 0
@@ -128,7 +134,6 @@ export function Post({
     "technician";
   const authorHandle = `@${rawAuthorHandle.replace(/^@/, "")}`;
   const displayAvatar = authorAvatarUri || post.technicianAvatarUri;
-  const displayBusinessName = cleanTechnicianTypo(post.technicianBusinessName);
   const displayContent = cleanTechnicianTypo(
     post.content || post.caption || "",
   );
@@ -182,30 +187,38 @@ export function Post({
                 >
                   {displayName}
                 </Text>
-                {post.technicianVerified && (
+                {isVerified && (
                   <View
-                    style={[
-                      styles.verifiedBadge,
-                      { backgroundColor: palette.primarySoft },
-                    ]}
+                    style={styles.verifiedBadgeTransparent}
+                    testID={`post-verified-badge-${post.id}`}
                   >
+                    <BadgeCheck
+                      size={13}
+                      color={palette.primary}
+                      strokeWidth={2}
+                    />
+                  </View>
+                )}
+                {post.isServicePost ? (
+                  <View style={styles.servicePostBadgeInline}>
                     <Text
                       style={[
-                        styles.verifiedBadgeText,
+                        styles.servicePostBadgeTextInline,
                         { color: palette.primary },
                       ]}
                     >
-                      ✓
+                      {language === "en"
+                        ? "Bookable Service"
+                        : "Layanan Dapat Dipesan"}
                     </Text>
                   </View>
-                )}
+                ) : null}
               </View>
               <Text
                 numberOfLines={1}
                 style={[styles.authorSub, { color: palette.textMuted }]}
               >
                 {authorHandle}
-                {displayBusinessName ? ` · ${displayBusinessName}` : ""}
                 {post.serviceArea
                   ? ` · ${localizeArea(post.serviceArea, language)}`
                   : ""}
@@ -460,25 +473,6 @@ export function Post({
         </View>
       ) : (
         <View style={styles.bodyContent}>
-          {post.isServicePost ? (
-            <View
-              style={[
-                styles.servicePostBadge,
-                { backgroundColor: palette.primarySoft },
-              ]}
-            >
-              <Text
-                style={[
-                  styles.servicePostBadgeText,
-                  { color: palette.primary },
-                ]}
-              >
-                {language === "en"
-                  ? "Bookable Service"
-                  : "Layanan Dapat Dipesan"}
-              </Text>
-            </View>
-          ) : null}
           {Boolean(displayContent) && (
             <Text style={[styles.caption, { color: palette.text }]}>
               {displayContent}
@@ -701,11 +695,23 @@ const styles = StyleSheet.create({
   },
   verifiedBadge: {
     alignItems: "center",
-    backgroundColor: colors.greenSoft,
-    borderRadius: 5,
-    height: 18,
+    backgroundColor: "transparent",
     justifyContent: "center",
-    width: 18,
+  },
+  verifiedBadgeTransparent: {
+    alignItems: "center",
+    backgroundColor: "transparent",
+    justifyContent: "center",
+  },
+  servicePostBadgeInline: {
+    backgroundColor: "transparent",
+    marginLeft: 6,
+    paddingHorizontal: 0,
+    paddingVertical: 0,
+  },
+  servicePostBadgeTextInline: {
+    fontSize: 10,
+    fontWeight: "700",
   },
   verifiedBadgeText: {
     color: colors.greenDark,

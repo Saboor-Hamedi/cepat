@@ -5,7 +5,7 @@ import {
   Text,
   View,
 } from 'react-native';
-import { CheckCircle, MapPin } from 'lucide-react-native';
+import { BadgeCheck, CheckCircle, MapPin } from 'lucide-react-native';
 
 import { useAppearance } from '../context/AppearanceContext';
 import { colors, radii, spacing } from '../theme/tokens';
@@ -228,25 +228,26 @@ export function TechnicianCard({
             numberOfLines={1}
             style={[styles.technicianName, { color: palette.text }]}
           >
-            {name}
+            {technician.displayName}
           </Text>
           {technician.verified && (
-            <View style={[styles.verifiedBadge, { backgroundColor: palette.primarySoft }]}>
-              <Text style={[styles.verifiedBadgeText, { color: palette.primary }]}>
-                ✓
+            <View style={[styles.verifiedBadge, { backgroundColor: 'transparent' }]}>
+              <BadgeCheck size={13} color={palette.primary} strokeWidth={2} />
+            </View>
+          )}
+          {technician.services.length > 0 && (
+            <View style={styles.bookableBadgeInline}>
+              <Text
+                style={[
+                  styles.bookableBadgeTextInline,
+                  { color: palette.primary },
+                ]}
+              >
+                {language === "en" ? "Bookable Service" : "Layanan Dapat Dipesan"}
               </Text>
             </View>
           )}
         </View>
-        {technician.businessName && technician.businessName !== technician.displayName && (
-          <Text
-            numberOfLines={1}
-            style={[styles.personSubname, { color: palette.textMuted }]}
-          >
-            {technician.displayName}
-            {technician.yearsExperience ? ` · ${technician.yearsExperience} thn` : ''}
-          </Text>
-        )}
         <Text
           numberOfLines={1}
           style={[styles.cardHeadline, { color: palette.textMuted }]}
@@ -712,14 +713,18 @@ const styles = StyleSheet.create({
   personSubname: { color: colors.muted, fontSize: 11, fontWeight: '600', marginTop: 1 },
   verifiedBadge: {
     alignItems: 'center',
-    borderRadius: 4,
-    height: 16,
+    backgroundColor: 'transparent',
     justifyContent: 'center',
-    width: 16,
   },
-  verifiedBadgeText: {
+  bookableBadgeInline: {
+    backgroundColor: 'transparent',
+    marginLeft: 4,
+    paddingHorizontal: 0,
+    paddingVertical: 0,
+  },
+  bookableBadgeTextInline: {
     fontSize: 10,
-    fontWeight: '900',
+    fontWeight: '700',
   },
   compactRatingBadge: {
     alignItems: 'center',
