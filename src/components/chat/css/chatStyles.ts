@@ -1,4 +1,5 @@
 import { Platform, StyleSheet } from 'react-native';
+import { font } from '../../../theme/typography';
 
 const SUCCESS = '#22C55E';
 
@@ -39,7 +40,7 @@ export function createChatHeaderStyles(palette: {
       position: 'relative',
     },
     backBtnText: {
-      fontSize: 22,
+      fontSize: font.section,
       fontWeight: '600',
       lineHeight: 26,
     },
@@ -78,13 +79,13 @@ export function createChatHeaderStyles(palette: {
     },
     partnerName: {
       flexShrink: 1,
-      fontSize: 16,
+      fontSize: font.heading,
       fontWeight: '700',
       letterSpacing: -0.2,
     },
     partnerStatus: {
       flexShrink: 1,
-      fontSize: 11,
+      fontSize: font.caption,
       fontWeight: '500',
     },
     partnerTextGroup: {
@@ -93,7 +94,7 @@ export function createChatHeaderStyles(palette: {
     },
     pinnedAddress: {
       flex: 1,
-      fontSize: 11,
+      fontSize: font.caption,
       fontWeight: '500',
     },
     pinnedAddressRow: {
@@ -133,12 +134,12 @@ export function createChatHeaderStyles(palette: {
       gap: 8,
     },
     pinnedPrice: {
-      fontSize: 12,
+      fontSize: font.body,
       fontWeight: '700',
       letterSpacing: -0.2,
     },
     pinnedServiceTitle: {
-      fontSize: 13,
+      fontSize: font.label,
       fontWeight: '700',
       letterSpacing: -0.2,
     },
@@ -161,11 +162,12 @@ export function createChatHeaderStyles(palette: {
       alignItems: 'center',
       borderRadius: 999,
       flexDirection: 'row',
+      gap: 3,
       paddingHorizontal: 8,
       paddingVertical: 2,
     },
     verifiedPillText: {
-      fontSize: 9,
+      fontSize: font.caption,
       fontWeight: '700',
       letterSpacing: 0.2,
     },
@@ -201,16 +203,16 @@ export function createChatContentStyles(palette: {
       paddingVertical: 10,
     },
     bubbleBody: {
-      fontSize: 15,
+      fontSize: font.title,
       lineHeight: 21,
     },
     bubbleSender: {
-      fontSize: 11,
+      fontSize: font.caption,
       fontWeight: '700',
       marginBottom: 2,
     },
     bubbleTimeUnder: {
-      fontSize: 10,
+      fontSize: font.caption,
       fontWeight: '500',
       marginTop: 3,
       paddingHorizontal: 2,
@@ -224,7 +226,7 @@ export function createChatContentStyles(palette: {
       paddingVertical: 18,
     },
     clearedText: {
-      fontSize: 12,
+      fontSize: font.body,
       textAlign: 'center',
     },
     closedBanner: {
@@ -242,7 +244,7 @@ export function createChatContentStyles(palette: {
     },
     closedBannerText: {
       flexShrink: 1,
-      fontSize: 11,
+      fontSize: font.caption,
       fontWeight: '600',
       textAlign: 'center',
     },
@@ -264,19 +266,19 @@ export function createChatContentStyles(palette: {
       width: 64,
     },
     emptySubtitle: {
-      fontSize: 13,
+      fontSize: font.label,
       lineHeight: 18,
       marginTop: 5,
       maxWidth: 280,
       textAlign: 'center',
     },
     emptyTitle: {
-      fontSize: 16,
+      fontSize: font.heading,
       fontWeight: '700',
       letterSpacing: -0.2,
     },
     errorText: {
-      fontSize: 12,
+      fontSize: font.body,
       fontWeight: '600',
       marginHorizontal: 20,
       marginTop: 8,
@@ -324,7 +326,7 @@ export function createChatContentStyles(palette: {
       paddingVertical: 6,
     },
     securityText: {
-      fontSize: 11,
+      fontSize: font.caption,
       fontWeight: '500',
       textAlign: 'center',
     },
@@ -350,7 +352,7 @@ export function createChatContentStyles(palette: {
       paddingVertical: 6,
     },
     undoText: {
-      fontSize: 13,
+      fontSize: font.label,
       fontWeight: '700',
     },
   });
@@ -378,12 +380,12 @@ export function createChatComposerStyles(palette: {
     },
     bookAgainBtnText: {
       color: '#FFFFFF',
-      fontSize: 14,
+      fontSize: font.subtitle,
       fontWeight: '700',
       letterSpacing: 0.1,
     },
     completedBadgeText: {
-      fontSize: 13,
+      fontSize: font.label,
       fontWeight: '600',
       letterSpacing: 0.1,
     },
@@ -419,7 +421,7 @@ export function createChatComposerStyles(palette: {
     inputField: {
       backgroundColor: 'transparent',
       flex: 1,
-      fontSize: 15,
+      fontSize: font.title,
       maxHeight: 120,
       minHeight: 38,
       paddingHorizontal: 10,
@@ -524,11 +526,11 @@ export function createChatDropdownStyles(palette: {
       paddingVertical: 10,
     },
     dropdownMenuText: {
-      fontSize: 13,
+      fontSize: font.label,
       fontWeight: '600',
     },
     itemIcon: {
-      fontSize: 13,
+      fontSize: font.label,
     },
     itemIconWrap: {
       alignItems: 'center',
@@ -545,7 +547,7 @@ export function createChatDropdownStyles(palette: {
       width: 38,
     },
     menuDotsText: {
-      fontSize: 13,
+      fontSize: font.label,
       fontWeight: '700',
       letterSpacing: 1.2,
       marginTop: -3,

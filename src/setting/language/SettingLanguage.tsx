@@ -1,3 +1,4 @@
+import { font } from '../../theme/typography';
 import { Pressable, StyleSheet, Text, View } from "react-native";
 
 import { useAppearance } from "../../context/AppearanceContext";
@@ -127,14 +128,14 @@ const styles = StyleSheet.create({
     borderWidth: 1.5,
   },
   flagIcon: {
-    fontSize: 24,
+    fontSize: font.section,
   },
   textWrap: {
     flex: 1,
   },
   languageName: {
     color: colors.ink,
-    fontSize: 14,
+    fontSize: font.subtitle,
     fontWeight: "700",
   },
   languageNameSelected: {
@@ -143,7 +144,7 @@ const styles = StyleSheet.create({
   },
   languageSub: {
     color: colors.muted,
-    fontSize: 12,
+    fontSize: font.body,
     marginTop: 2,
   },
   radio: {
@@ -166,13 +167,13 @@ const styles = StyleSheet.create({
   },
   saveNote: {
     color: colors.greenDark,
-    fontSize: 12,
+    fontSize: font.body,
     fontWeight: "700",
     marginTop: spacing.sm,
   },
   deviceNote: {
     color: colors.muted,
-    fontSize: 11,
+    fontSize: font.caption,
     marginTop: spacing.xs,
   },
 });

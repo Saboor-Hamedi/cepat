@@ -1,3 +1,4 @@
+import { font } from '../../../theme/typography';
 import { useEffect, useRef, useState } from "react";
 import { Pressable, StyleSheet, Text, TextInput, View } from "react-native";
 
@@ -168,17 +169,17 @@ const styles = StyleSheet.create({
     padding: spacing.md,
   },
   cardTitle: {
-    fontSize: 14,
+    fontSize: font.subtitle,
     fontWeight: "800",
   },
   cardSub: {
-    fontSize: 12,
+    fontSize: font.body,
     lineHeight: 17,
     marginBottom: spacing.sm,
     marginTop: 2,
   },
   fieldLabel: {
-    fontSize: 12,
+    fontSize: font.body,
     fontWeight: "700",
     marginBottom: spacing.xs,
     marginTop: spacing.xs,
@@ -186,7 +187,7 @@ const styles = StyleSheet.create({
   input: {
     borderRadius: 5,
     borderWidth: 1,
-    fontSize: 13,
+    fontSize: font.label,
     marginBottom: spacing.sm,
     minHeight: 42,
     paddingHorizontal: spacing.md,
@@ -211,11 +212,11 @@ const styles = StyleSheet.create({
   },
   smallSaveBtnText: {
     color: "#FFFFFF",
-    fontSize: 12,
+    fontSize: font.body,
     fontWeight: "800",
   },
   inlineSavedNotice: {
-    fontSize: 13,
+    fontSize: font.label,
     fontWeight: "700",
   },
   btnDisabled: {
@@ -223,7 +224,7 @@ const styles = StyleSheet.create({
   },
   errorText: {
     color: colors.danger,
-    fontSize: 12,
+    fontSize: font.body,
     fontWeight: "600",
     marginTop: spacing.xs,
   },

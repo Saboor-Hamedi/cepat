@@ -6,6 +6,7 @@ import { useAppearance } from '../context/AppearanceContext';
 import { localizeArea, useLanguage } from '../i18n/locale';
 import { colors, radii, spacing } from '../theme/tokens';
 import type { IndonesianRegion, Technician } from '../types/marketplace';
+import { font } from '../theme/typography';
 
 export function InlineMarketplaceMapCard({
   selectedArea,
@@ -218,7 +219,7 @@ const styles = StyleSheet.create({
   },
   activeAreaText: {
     color: colors.ink,
-    fontSize: 13,
+    fontSize: font.label,
     fontWeight: '700',
   },
   actionsRight: {
@@ -234,7 +235,7 @@ const styles = StyleSheet.create({
   },
   resetChipText: {
     color: colors.muted,
-    fontSize: 11,
+    fontSize: font.caption,
     fontWeight: '700',
   },
   changeAreaBtn: {
@@ -245,7 +246,7 @@ const styles = StyleSheet.create({
   },
   changeAreaBtnText: {
     color: colors.greenDark,
-    fontSize: 12,
+    fontSize: font.body,
     fontWeight: '700',
   },
   chipsScroll: {
@@ -270,7 +271,7 @@ const styles = StyleSheet.create({
   },
   areaChipLabel: {
     color: colors.ink,
-    fontSize: 12,
+    fontSize: font.body,
     fontWeight: '600',
   },
   areaChipLabelSelected: {
@@ -288,7 +289,7 @@ const styles = StyleSheet.create({
   },
   countText: {
     color: colors.ink,
-    fontSize: 10,
+    fontSize: font.caption,
     fontWeight: '700',
   },
   countTextSelected: {

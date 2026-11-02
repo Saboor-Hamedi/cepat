@@ -4,7 +4,9 @@ import {
   Star,
   UserX,
 } from 'lucide-react-native';
+import { ICON_SIZE, ICON_STROKE } from '../../theme/icons';
 import React from 'react';
+import { font } from '../../theme/typography';
 import {
   Pressable,
   StyleSheet,
@@ -79,7 +81,7 @@ export function DashboardPerformance({
             {language === 'en' ? 'Customer Satisfaction' : 'Kepuasan Pelanggan'}
           </Text>
           <View style={styles.ratingValRow}>
-            <Star size={22} color="#F59E0B" fill="#F59E0B" />
+            <Star size={ICON_SIZE} strokeWidth={ICON_STROKE} color="#F59E0B" fill="#F59E0B" />
             <Text style={[styles.perfMetricValue, { color: '#F59E0B' }]}>
               {metrics.averageRating}
             </Text>
@@ -101,7 +103,7 @@ export function DashboardPerformance({
       >
         <View style={styles.cardHeaderRow}>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-            <Award size={18} color={palette.primary} />
+            <Award size={ICON_SIZE} strokeWidth={ICON_STROKE} color={palette.primary} />
             <Text style={[styles.cardTitle, { color: palette.text }]}>
               {language === 'en'
                 ? 'Top Performing Technicians'
@@ -149,7 +151,7 @@ export function DashboardPerformance({
                 </Text>
               </View>
               <View style={styles.leaderboardRating}>
-                <Star size={14} color="#F59E0B" fill="#F59E0B" />
+                <Star size={ICON_SIZE} strokeWidth={ICON_STROKE} color="#F59E0B" fill="#F59E0B" />
                 <Text style={[styles.ratingText, { color: palette.text }]}>
                   {tech.rating}
                 </Text>
@@ -173,14 +175,14 @@ export function DashboardPerformance({
       >
         <View style={styles.cardHeaderRow}>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-            <UserX size={18} color={palette.danger} />
+            <UserX size={ICON_SIZE} strokeWidth={ICON_STROKE} color={palette.danger} />
             <Text style={[styles.cardTitle, { color: palette.danger }]}>
               {language === 'en'
                 ? 'User Departure & Churn Feedback'
                 : 'Masukan Pengunduran Diri Pengguna'}
             </Text>
           </View>
-          <ChevronRight size={18} color={palette.danger} />
+          <ChevronRight size={ICON_SIZE} strokeWidth={ICON_STROKE} color={palette.danger} />
         </View>
         <Text style={[styles.cardMeta, { color: palette.textMuted }]}>
           {language === 'en'
@@ -209,16 +211,16 @@ const styles = StyleSheet.create({
     padding: spacing.md,
   },
   perfMetricLabel: {
-    fontSize: 11,
+    fontSize: font.caption,
     fontWeight: '700',
   },
   perfMetricValue: {
-    fontSize: 24,
+    fontSize: font.section,
     fontWeight: '800',
     marginTop: 4,
   },
   perfMetricSub: {
-    fontSize: 11,
+    fontSize: font.caption,
     marginTop: 6,
   },
   progressBarBg: {
@@ -248,15 +250,15 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
   },
   cardTitle: {
-    fontSize: 15,
+    fontSize: font.title,
     fontWeight: '800',
   },
   cardHeaderBadge: {
-    fontSize: 11,
+    fontSize: font.caption,
     fontWeight: '600',
   },
   cardMeta: {
-    fontSize: 12,
+    fontSize: font.body,
     marginTop: 4,
   },
   leaderboardRow: {
@@ -275,15 +277,15 @@ const styles = StyleSheet.create({
     width: 28,
   },
   rankText: {
-    fontSize: 11,
+    fontSize: font.caption,
     fontWeight: '800',
   },
   leaderboardName: {
-    fontSize: 13,
+    fontSize: font.label,
     fontWeight: '700',
   },
   leaderboardMeta: {
-    fontSize: 11,
+    fontSize: font.caption,
     marginTop: 2,
   },
   leaderboardRating: {
@@ -292,7 +294,7 @@ const styles = StyleSheet.create({
     gap: 4,
   },
   ratingText: {
-    fontSize: 12,
+    fontSize: font.body,
     fontWeight: '800',
   },
 });

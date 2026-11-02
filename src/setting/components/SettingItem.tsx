@@ -3,7 +3,8 @@ import { Pressable, StyleSheet, Text, View } from "react-native";
 
 import { Toggle } from "../../components/toggle";
 import { useAppearance } from "../../context/AppearanceContext";
-import { radii, spacing } from "../../theme/tokens";
+import { spacing } from "../../theme/tokens";
+import { font } from "../../theme/typography";
 
 export interface SettingItemProps {
   label: string;
@@ -26,78 +27,85 @@ export function SettingItem({
 }: SettingItemProps) {
   const { palette, scaleFont } = useAppearance();
   return (
-    <Pressable
-      accessibilityRole={accessibilityRole}
-      accessibilityState={
-        accessibilityRole === "switch"
-          ? { checked: Boolean(active) }
-          : accessibilityRole === "radio"
-            ? { selected: Boolean(active) }
-            : undefined
-      }
-      disabled={!onPress}
-      onPress={onPress}
-      style={[
-        styles.row,
-        { backgroundColor: palette.surface, borderColor: palette.border },
-      ]}
-      testID={testID}
-    >
-      <View style={styles.copy}>
-        <Text style={[styles.label, { color: palette.text, fontSize: scaleFont(13) }]}>{label}</Text>
-        {description ? (
-          <Text style={[styles.description, { color: palette.textMuted, fontSize: scaleFont(11), lineHeight: scaleFont(16) }]}>
-            {description}
+    <View style={styles.wrapper}>
+      <Pressable
+        accessibilityRole={accessibilityRole}
+        accessibilityState={
+          accessibilityRole === "switch"
+            ? { checked: Boolean(active) }
+            : accessibilityRole === "radio"
+              ? { selected: Boolean(active) }
+              : undefined
+        }
+        disabled={!onPress}
+        onPress={onPress}
+        style={({ pressed }) => [
+          styles.row,
+          { opacity: pressed ? 0.75 : 1 },
+        ]}
+        testID={testID}
+      >
+        <View style={styles.copy}>
+          <Text
+            style={[
+              styles.label,
+              { color: palette.text, fontSize: scaleFont(font.label) },
+            ]}
+          >
+            {label}
           </Text>
-        ) : null}
-      </View>
-      {rightElement ?? (
-        <Toggle
-          checked={Boolean(active)}
-          onChange={onPress}
-          testID={testID ? `${testID}-toggle` : undefined}
-        />
-      )}
-    </Pressable>
+          {description ? (
+            <Text
+              style={[
+                styles.description,
+                {
+                  color: palette.textMuted,
+                  fontSize: scaleFont(font.caption),
+                  lineHeight: scaleFont(16),
+                },
+              ]}
+            >
+              {description}
+            </Text>
+          ) : null}
+        </View>
+        {rightElement ?? (
+          <Toggle
+            checked={Boolean(active)}
+            onChange={onPress}
+            testID={testID ? `${testID}-toggle` : undefined}
+          />
+        )}
+      </Pressable>
+      <View style={[styles.hairline, { backgroundColor: palette.border }]} />
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
+  wrapper: {
+    width: "100%",
+  },
   row: {
     alignItems: "center",
-    borderRadius: radii.md,
-    borderWidth: 1,
+    backgroundColor: "transparent",
     flexDirection: "row",
     justifyContent: "space-between",
-    marginBottom: spacing.sm,
-    minHeight: 54,
-    paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.md,
+    minHeight: 52,
+    paddingVertical: 12,
   },
   copy: {
     flex: 1,
     marginRight: spacing.md,
   },
   label: {
-    fontWeight: "700",
+    fontWeight: "600",
   },
   description: {
-    marginTop: 2,
+    marginTop: 3,
   },
-  togglePill: {
-    borderRadius: radii.pill,
-    height: 24,
-    justifyContent: "center",
-    paddingHorizontal: 3,
-    width: 44,
-  },
-  toggleKnob: {
-    backgroundColor: "#FFFFFF",
-    borderRadius: 9,
-    height: 18,
-    width: 18,
-  },
-  toggleKnobActive: {
-    alignSelf: "flex-end",
+  hairline: {
+    height: 1,
+    width: "100%",
   },
 });

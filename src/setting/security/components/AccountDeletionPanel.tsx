@@ -1,9 +1,10 @@
+import { font } from '../../../theme/typography';
 import { useState } from "react";
 import { Pressable, StyleSheet, Text, TextInput, View } from "react-native";
 
 import { useAppearance } from "../../../context/AppearanceContext";
 import { useLanguage } from "../../../i18n/locale";
-import { colors, radii, spacing } from "../../../theme/tokens";
+import { colors, spacing } from "../../../theme/tokens";
 
 export interface AccountDeletionPanelProps {
   deletionRequest: { requestedAt: string; reason: string } | null;
@@ -147,11 +148,11 @@ const styles = StyleSheet.create({
     padding: spacing.md,
   },
   cardTitle: {
-    fontSize: 14,
+    fontSize: font.subtitle,
     fontWeight: "800",
   },
   cardSub: {
-    fontSize: 12,
+    fontSize: font.body,
     lineHeight: 17,
     marginBottom: spacing.sm,
     marginTop: 2,
@@ -162,7 +163,7 @@ const styles = StyleSheet.create({
   textarea: {
     borderRadius: 5,
     borderWidth: 1,
-    fontSize: 13,
+    fontSize: font.label,
     marginBottom: spacing.sm,
     minHeight: 70,
     padding: spacing.md,
@@ -178,7 +179,7 @@ const styles = StyleSheet.create({
   },
   deleteBtnText: {
     color: "#FFFFFF",
-    fontSize: 12,
+    fontSize: font.body,
     fontWeight: "800",
   },
   btnDisabled: {
@@ -186,7 +187,7 @@ const styles = StyleSheet.create({
   },
   errorText: {
     color: colors.danger,
-    fontSize: 12,
+    fontSize: font.body,
     marginBottom: spacing.xs,
   },
   statusCard: {
@@ -195,15 +196,15 @@ const styles = StyleSheet.create({
     padding: spacing.md,
   },
   statusTitle: {
-    fontSize: 13,
+    fontSize: font.label,
     fontWeight: "700",
   },
   statusDate: {
-    fontSize: 11,
+    fontSize: font.caption,
     marginTop: 2,
   },
   statusReason: {
-    fontSize: 12,
+    fontSize: font.body,
     fontStyle: "italic",
     marginTop: 6,
   },

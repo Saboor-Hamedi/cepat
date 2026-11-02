@@ -1,7 +1,20 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { ArrowLeft, BadgeCheck, Camera, CheckCircle, FileText, MapPin, Pencil, PlusSquare, Settings, ShieldCheck, Star, X } from "lucide-react-native";
 import { router, useLocalSearchParams } from "expo-router";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import {
+  ArrowLeft,
+  BadgeCheck,
+  Camera,
+  CheckCircle,
+  FileText,
+  MapPin,
+  Pencil,
+  PlusSquare,
+  Settings,
+  ShieldCheck,
+  Star,
+  X,
+} from "lucide-react-native";
+import { useCallback, useEffect, useState } from "react";
 import {
   Image,
   Modal,
@@ -19,13 +32,11 @@ import {
   EmptyState,
   LoadingState,
   PrimaryButton,
-  Rating,
   ServiceCategoryGlyph,
 } from "../../components/marketplace-ui";
 import { ImageSourceSheet } from "../../components/ImageSourceSheet";
-import { InfiniteFlatList } from "../../components/InfiniteFlatList";
+import { MediaPickerButton } from "../../components/MediaPickerButton";
 import {
-  pickImageSafely,
   PortfolioPhoto,
   ProfileAvatar,
   SectionHeader,
@@ -40,11 +51,9 @@ import {
   loadBookings,
   loadSubmittedReviews,
   saveTechnicianWorkspaceProfile,
-  submitDirectTechnicianReview,
   submitTechnicianReport,
   updateTechnicianPortfolio,
 } from "../../data/marketplaceStore";
-import { StrictImagePicker } from "../../components/StrictImagePicker";
 import {
   createTechnicianPost,
   deleteTechnicianPost,
@@ -65,6 +74,8 @@ import type {
   TechnicianReview,
 } from "../../types/marketplace";
 import { colors, getProfileTheme, radii, spacing } from "../../theme/tokens";
+import { ICON_SIZE, ICON_STROKE } from "../../theme/icons";
+import { font } from "../../theme/typography";
 
 function formatCompactNumber(num: number): string {
   if (!num || Number.isNaN(num)) return "0";
@@ -666,20 +677,18 @@ export default function TechnicianProfileScreen() {
             <Header onBack={goBack} overlay />
             {isProfileOwner && (
               <View style={styles.coverTopRightRow}>
-                <Pressable
-                  accessibilityRole="button"
+                <MediaPickerButton
                   accessibilityLabel={
                     language === "en" ? "Change cover photo" : "Ubah foto sampul"
                   }
+                  icon="plus"
+                  label={language === "en" ? "Cover" : "Sampul"}
                   onPress={() => setCoverMenuVisible(true)}
-                  style={[
-                    styles.coverIconBtn,
-                    { backgroundColor: palette.primary, borderColor: "#FFFFFF" },
-                  ]}
+                  showLabel
+                  style={styles.coverPillBtn}
                   testID="change-cover-btn"
-                >
-                  <Camera color="#FFFFFF" size={16} strokeWidth={2.2} />
-                </Pressable>
+                  variant="overlay"
+                />
 
                 <Pressable
                   accessibilityRole="button"
@@ -693,7 +702,7 @@ export default function TechnicianProfileScreen() {
                   ]}
                   testID="profile-settings-btn"
                 >
-                  <Settings color="#FFFFFF" size={16} strokeWidth={2.2} />
+                  <Settings color="#FFFFFF" size={ICON_SIZE} strokeWidth={ICON_STROKE} />
                 </Pressable>
               </View>
             )}
@@ -732,9 +741,9 @@ export default function TechnicianProfileScreen() {
                       testID="technician-verified-badge"
                     >
                       <BadgeCheck
-                        size={14}
+                        size={ICON_SIZE}
                         color={palette.primary}
-                        strokeWidth={2}
+                        strokeWidth={ICON_STROKE}
                       />
                     </View>
                   ) : null}
@@ -816,7 +825,7 @@ export default function TechnicianProfileScreen() {
                   testID="technician-tasks-badge"
                 >
                   <View style={styles.badgeTopRow}>
-                    <CheckCircle size={12} color={palette.primary} strokeWidth={2.2} />
+                    <CheckCircle size={ICON_SIZE} color={palette.primary} strokeWidth={ICON_STROKE} />
                     <Text style={[styles.badgeValueText, { color: palette.text }]}>
                       {formatCompactNumber(technician.completedJobsCount)}
                     </Text>
@@ -835,7 +844,7 @@ export default function TechnicianProfileScreen() {
                   testID="technician-posts-badge"
                 >
                   <View style={styles.badgeTopRow}>
-                    <FileText size={12} color={palette.primary} strokeWidth={2.2} />
+                    <FileText size={ICON_SIZE} color={palette.primary} strokeWidth={ICON_STROKE} />
                     <Text style={[styles.badgeValueText, { color: palette.text }]}>
                       {formatCompactNumber(posts.length)}
                     </Text>
@@ -854,7 +863,7 @@ export default function TechnicianProfileScreen() {
                   testID="technician-area-badge"
                 >
                   <View style={styles.badgeTopRow}>
-                    <MapPin size={12} color={palette.primary} strokeWidth={2.2} />
+                    <MapPin size={ICON_SIZE} color={palette.primary} strokeWidth={ICON_STROKE} />
                     <Text numberOfLines={1} style={[styles.badgeValueArea, { color: palette.text }]}>
                       {technician.serviceAreas[0] ? localizeArea(technician.serviceAreas[0], language).split(' ')[0] : (language === "en" ? "Area" : "Area")}
                     </Text>
@@ -882,7 +891,7 @@ export default function TechnicianProfileScreen() {
                     ]}
                     testID="quick-action-about"
                   >
-                    <Pencil size={12} color={palette.primary} strokeWidth={2.2} />
+                    <Pencil size={ICON_SIZE} color={palette.primary} strokeWidth={ICON_STROKE} />
                     <Text
                       numberOfLines={1}
                       style={[styles.actionBadgeText, { color: palette.text }]}
@@ -904,7 +913,7 @@ export default function TechnicianProfileScreen() {
                     ]}
                     testID="quick-action-post"
                   >
-                    <PlusSquare size={12} color={palette.primary} strokeWidth={2.2} />
+                    <PlusSquare size={ICON_SIZE} color={palette.primary} strokeWidth={ICON_STROKE} />
                     <Text
                       numberOfLines={1}
                       style={[styles.actionBadgeText, { color: palette.text }]}
@@ -927,7 +936,7 @@ export default function TechnicianProfileScreen() {
                     ]}
                     testID="quick-action-portfolio"
                   >
-                    <Camera size={12} color={palette.primary} strokeWidth={2.2} />
+                    <Camera size={ICON_SIZE} color={palette.primary} strokeWidth={ICON_STROKE} />
                     <Text
                       numberOfLines={1}
                       style={[styles.actionBadgeText, { color: palette.text }]}
@@ -952,7 +961,7 @@ export default function TechnicianProfileScreen() {
                     ]}
                     testID="quick-action-review"
                   >
-                    <Star size={12} color={palette.primary} strokeWidth={2.2} />
+                    <Star size={ICON_SIZE} color={palette.primary} strokeWidth={ICON_STROKE} />
                     <Text
                       numberOfLines={1}
                       style={[styles.actionBadgeText, { color: palette.primary, fontWeight: '700' }]}
@@ -1657,7 +1666,7 @@ export default function TechnicianProfileScreen() {
                           onPress={() => setDraftPortfolioImage(undefined)}
                           style={styles.removeImageBadge}
                         >
-                          <X size={12} color="#FFFFFF" strokeWidth={2.5} />
+                          <X size={ICON_SIZE} color="#FFFFFF" strokeWidth={ICON_STROKE} />
                         </Pressable>
                       </View>
                     )}
@@ -1682,7 +1691,7 @@ export default function TechnicianProfileScreen() {
                         ]}
                         testID="portfolio-image-picker"
                       >
-                        <Camera size={14} color={palette.primary} strokeWidth={2.2} />
+                        <Camera size={ICON_SIZE} color={palette.primary} strokeWidth={ICON_STROKE} />
                         <Text style={[styles.attachPhotoText, { color: palette.primary }]}>
                           {draftPortfolioImage
                             ? (language === "en" ? "Change Photo" : "Ganti Foto")
@@ -1832,7 +1841,7 @@ export default function TechnicianProfileScreen() {
                               style={[styles.smallEditPortfolioBtn, { backgroundColor: palette.primarySoft }]}
                               testID={`edit-portfolio-btn-${item.id}`}
                             >
-                              <Pencil size={12} color={palette.primary} strokeWidth={2.2} />
+                              <Pencil size={ICON_SIZE} color={palette.primary} strokeWidth={ICON_STROKE} />
                               <Text style={[styles.smallEditPortfolioText, { color: palette.primary }]}>
                                 {language === "en" ? "Edit" : "Ubah"}
                               </Text>
@@ -1919,8 +1928,8 @@ export default function TechnicianProfileScreen() {
                   ]}
                   testID="verified-review-only-notice"
                 >
-                  <ShieldCheck size={16} color={palette.primary} strokeWidth={2.2} />
-                  <Text style={{ color: palette.textMuted, fontSize: 12, flex: 1 }}>
+                  <ShieldCheck size={ICON_SIZE} color={palette.primary} strokeWidth={ICON_STROKE} />
+                  <Text style={{ color: palette.textMuted, fontSize: font.body, flex: 1 }}>
                     {language === "en"
                       ? "Feedback is allowed only upon task completion by the customer."
                       : "Ulasan hanya dapat diberikan oleh pelanggan saat menyelesaikan tugas."}
@@ -2399,9 +2408,9 @@ function Header({
         ]}
       >
         <ArrowLeft
-          size={18}
+          size={ICON_SIZE}
           color={overlay ? "#FFFFFF" : palette.text}
-          strokeWidth={2.2}
+          strokeWidth={ICON_STROKE}
         />
       </Pressable>
       {!overlay && <View style={styles.navBalance} />}
@@ -2461,7 +2470,7 @@ const styles = StyleSheet.create({
     backgroundColor: "rgba(255,255,255,0.22)",
     borderRadius: radii.pill,
   },
-  navBackGlyph: { color: colors.ink, fontSize: 34, lineHeight: 38 },
+  navBackGlyph: { color: colors.ink, fontSize: font.display, lineHeight: 38 },
   navBackGlyphOverlay: { color: "#FFFFFF" },
   navBalance: { width: 42 },
   scrollContent: { paddingBottom: 120 },
@@ -2511,16 +2520,10 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     width: 36,
   },
-  changeCoverBtn: {
-    backgroundColor: "rgba(0,0,0,0.6)",
-    borderRadius: 5,
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    position: "absolute",
-    right: 16,
-    top: 16,
+  coverPillBtn: {
+    borderRadius: 18,
+    minHeight: 36,
   },
-  changeCoverText: { color: "#fff", fontSize: 11, fontWeight: "700" },
   avatarWrapper: {
     marginTop: -40,
     marginLeft: 16,
@@ -2563,7 +2566,7 @@ const styles = StyleSheet.create({
     minHeight: 48,
     position: "relative",
   },
-  profileTabText: { fontSize: 12, fontWeight: "600" },
+  profileTabText: { fontSize: font.body, fontWeight: "600" },
   profileTabTextSelected: { fontWeight: "800" },
   profileTabIndicator: {
     borderTopLeftRadius: 3,
@@ -2583,7 +2586,7 @@ const styles = StyleSheet.create({
   },
   profileName: {
     color: colors.ink,
-    fontSize: 22,
+    fontSize: font.section,
     fontWeight: "700",
     letterSpacing: -0.4,
   },
@@ -2600,24 +2603,24 @@ const styles = StyleSheet.create({
     paddingVertical: 0,
   },
   bookableBadgeTextInline: {
-    fontSize: 11,
+    fontSize: font.caption,
     fontWeight: "700",
   },
-  verifiedTagText: { color: colors.greenDark, fontSize: 10, fontWeight: "800" },
+  verifiedTagText: { color: colors.greenDark, fontSize: font.caption, fontWeight: "800" },
   profileHandle: {
     color: colors.muted,
-    fontSize: 13,
+    fontSize: font.label,
     fontWeight: "600",
     marginTop: 1,
   },
   businessName: {
     color: colors.muted,
-    fontSize: 14,
+    fontSize: font.subtitle,
     fontWeight: "500",
     marginTop: 2,
   },
   profileHeadline: {
-    fontSize: 14,
+    fontSize: font.subtitle,
     fontWeight: "600",
     lineHeight: 18,
     marginTop: 2,
@@ -2634,7 +2637,7 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.sm,
   },
   statCell: { flexDirection: "row", alignItems: "center" },
-  statValue: { color: colors.ink, fontSize: 12, fontWeight: "700" },
+  statValue: { color: colors.ink, fontSize: font.body, fontWeight: "700" },
   availabilityLine: {
     alignItems: "center",
     flexDirection: "row",
@@ -2642,7 +2645,7 @@ const styles = StyleSheet.create({
     marginTop: spacing.md,
   },
   availabilityDot: { borderRadius: 4, height: 8, width: 8 },
-  availabilityText: { color: colors.ink, fontSize: 12, fontWeight: "600" },
+  availabilityText: { color: colors.ink, fontSize: font.body, fontWeight: "600" },
   ownerEditBtn: {
     alignItems: "center",
     backgroundColor: colors.greenDark,
@@ -2650,8 +2653,8 @@ const styles = StyleSheet.create({
     marginTop: spacing.md,
     paddingVertical: 10,
   },
-  ownerEditBtnText: { color: "#FFFFFF", fontSize: 12, fontWeight: "800" },
-  bio: { color: "#4B5B55", fontSize: 14, lineHeight: 22 },
+  ownerEditBtnText: { color: "#FFFFFF", fontSize: font.body, fontWeight: "800" },
+  bio: { color: "#4B5B55", fontSize: font.subtitle, lineHeight: 22 },
   serviceCard: {
     borderColor: colors.line,
     borderRadius: radii.md,
@@ -2665,24 +2668,24 @@ const styles = StyleSheet.create({
     gap: spacing.md,
   },
   serviceCopy: { flex: 1, minWidth: 0 },
-  serviceName: { color: colors.ink, fontSize: 14, fontWeight: "800" },
+  serviceName: { color: colors.ink, fontSize: font.subtitle, fontWeight: "800" },
   serviceCategory: {
     color: colors.greenDark,
-    fontSize: 11,
+    fontSize: font.caption,
     fontWeight: "600",
     marginTop: 2,
   },
   serviceDescription: {
     color: colors.muted,
-    fontSize: 12,
+    fontSize: font.body,
     lineHeight: 17,
     marginTop: 4,
   },
-  serviceDuration: { color: colors.muted, fontSize: 11, marginTop: 4 },
+  serviceDuration: { color: colors.muted, fontSize: font.caption, marginTop: 4 },
   serviceRight: { alignItems: "flex-end", gap: 6 },
   servicePrice: {
     color: colors.greenDark,
-    fontSize: 12,
+    fontSize: font.body,
     fontWeight: "800",
     textAlign: "right",
   },
@@ -2694,7 +2697,7 @@ const styles = StyleSheet.create({
   },
   serviceSelectBtnText: {
     color: colors.greenDark,
-    fontSize: 11,
+    fontSize: font.caption,
     fontWeight: "800",
   },
   serviceOwnerTag: {
@@ -2705,8 +2708,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10,
     paddingVertical: 4,
   },
-  serviceOwnerTagText: { color: colors.muted, fontSize: 11, fontWeight: "700" },
-  sectionEmpty: { color: colors.muted, fontSize: 13, lineHeight: 20 },
+  serviceOwnerTagText: { color: colors.muted, fontSize: font.caption, fontWeight: "700" },
+  sectionEmpty: { color: colors.muted, fontSize: font.label, lineHeight: 20 },
   areaList: { flexDirection: "row", flexWrap: "wrap", gap: spacing.sm },
   areaChip: {
     alignItems: "center",
@@ -2723,7 +2726,7 @@ const styles = StyleSheet.create({
     height: 7,
     width: 7,
   },
-  areaText: { color: colors.greenDark, fontSize: 12, fontWeight: "700" },
+  areaText: { color: colors.greenDark, fontSize: font.body, fontWeight: "700" },
   scheduleCard: {
     backgroundColor: "#FFFFFF",
     borderColor: colors.line,
@@ -2740,8 +2743,8 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     paddingVertical: 9,
   },
-  scheduleDay: { color: colors.ink, fontSize: 13, fontWeight: "600" },
-  scheduleHours: { color: colors.greenDark, fontSize: 12, fontWeight: "700" },
+  scheduleDay: { color: colors.ink, fontSize: font.label, fontWeight: "600" },
+  scheduleHours: { color: colors.greenDark, fontSize: font.body, fontWeight: "700" },
   scheduleHoursClosed: { color: colors.muted, fontWeight: "500" },
   portfolioGrid: {
     flexDirection: "row",
@@ -2755,13 +2758,13 @@ const styles = StyleSheet.create({
   },
   portfolioTitle: {
     color: colors.ink,
-    fontSize: 13,
+    fontSize: font.label,
     fontWeight: "700",
     marginTop: 8,
   },
   portfolioDescription: {
     color: colors.muted,
-    fontSize: 11,
+    fontSize: font.caption,
     lineHeight: 16,
     marginTop: 3,
   },
@@ -2778,17 +2781,17 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "space-between",
   },
-  reviewerName: { color: colors.ink, fontSize: 13, fontWeight: "700" },
+  reviewerName: { color: colors.ink, fontSize: font.label, fontWeight: "700" },
   reviewRating: { alignItems: "center", flexDirection: "row", gap: 4 },
-  star: { color: "#DCA63C", fontSize: 14 },
-  reviewRatingText: { color: colors.ink, fontSize: 12, fontWeight: "700" },
+  star: { color: "#DCA63C", fontSize: font.subtitle},
+  reviewRatingText: { color: colors.ink, fontSize: font.body, fontWeight: "700" },
   reviewComment: {
     color: "#53615C",
-    fontSize: 12,
+    fontSize: font.body,
     lineHeight: 19,
     marginTop: spacing.md,
   },
-  reviewDate: { color: colors.muted, fontSize: 10, marginTop: spacing.sm },
+  reviewDate: { color: colors.muted, fontSize: font.caption, marginTop: spacing.sm },
   reportBar: { alignItems: "flex-start", marginTop: spacing.xl },
   reportButton: {
     borderColor: colors.line,
@@ -2797,7 +2800,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.md,
     paddingVertical: 8,
   },
-  reportButtonText: { color: colors.muted, fontSize: 12, fontWeight: "600" },
+  reportButtonText: { color: colors.muted, fontSize: font.body, fontWeight: "600" },
   profileFooterSpace: { height: 16 },
   postCardWrap: {
     alignSelf: "center",
@@ -2807,7 +2810,7 @@ const styles = StyleSheet.create({
   },
   feedErrorText: {
     color: colors.danger,
-    fontSize: 12,
+    fontSize: font.body,
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.sm,
   },
@@ -2816,7 +2819,7 @@ const styles = StyleSheet.create({
   },
   feedRetryText: {
     color: colors.greenDark,
-    fontSize: 12,
+    fontSize: font.body,
     fontWeight: "700",
     padding: spacing.sm,
   },
@@ -2833,13 +2836,13 @@ const styles = StyleSheet.create({
   footerPrice: { flex: 1, minWidth: 0 },
   footerPriceLabel: {
     color: colors.muted,
-    fontSize: 9,
+    fontSize: font.caption,
     fontWeight: "800",
     letterSpacing: 0.7,
   },
   footerPriceValue: {
     color: colors.ink,
-    fontSize: 13,
+    fontSize: font.label,
     fontWeight: "800",
     marginTop: 3,
   },
@@ -2860,13 +2863,13 @@ const styles = StyleSheet.create({
   },
   portfolioModalTitle: {
     color: colors.ink,
-    fontSize: 17,
+    fontSize: font.heading,
     fontWeight: "800",
     marginTop: spacing.md,
   },
   portfolioModalDesc: {
     color: colors.muted,
-    fontSize: 13,
+    fontSize: font.label,
     lineHeight: 19,
     marginTop: spacing.xs,
   },
@@ -2879,7 +2882,7 @@ const styles = StyleSheet.create({
   },
   modalCloseBtnText: {
     color: colors.greenDark,
-    fontSize: 13,
+    fontSize: font.label,
     fontWeight: "800",
   },
   reportModalCard: {
@@ -2889,10 +2892,10 @@ const styles = StyleSheet.create({
     padding: spacing.xl,
     width: "100%",
   },
-  reportModalTitle: { color: colors.ink, fontSize: 19, fontWeight: "800" },
+  reportModalTitle: { color: colors.ink, fontSize: font.heading, fontWeight: "800" },
   reportModalSubtitle: {
     color: colors.muted,
-    fontSize: 12,
+    fontSize: font.body,
     lineHeight: 18,
     marginTop: 4,
   },
@@ -2914,7 +2917,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.orangeSoft,
     borderColor: colors.orange,
   },
-  reportCatChipText: { color: colors.muted, fontSize: 11, fontWeight: "600" },
+  reportCatChipText: { color: colors.muted, fontSize: font.caption, fontWeight: "600" },
   reportCatChipTextSelected: { color: colors.orange, fontWeight: "800" },
   reportInput: {
     backgroundColor: colors.paper,
@@ -2922,19 +2925,19 @@ const styles = StyleSheet.create({
     borderRadius: radii.sm,
     borderWidth: 1,
     color: colors.ink,
-    fontSize: 13,
+    fontSize: font.label,
     minHeight: 88,
     padding: spacing.md,
     textAlignVertical: "top",
   },
   reportErrorText: {
     color: colors.danger,
-    fontSize: 12,
+    fontSize: font.body,
     marginTop: spacing.sm,
   },
   reportSuccessText: {
     color: colors.greenDark,
-    fontSize: 12,
+    fontSize: font.body,
     fontWeight: "700",
     marginTop: spacing.sm,
   },
@@ -2951,14 +2954,14 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.lg,
     paddingVertical: 10,
   },
-  modalCancelBtnText: { color: colors.muted, fontSize: 13, fontWeight: "700" },
+  modalCancelBtnText: { color: colors.muted, fontSize: font.label, fontWeight: "700" },
   reportSubmitBtn: {
     backgroundColor: colors.danger,
     borderRadius: radii.sm,
     paddingHorizontal: spacing.lg,
     paddingVertical: 10,
   },
-  reportSubmitBtnText: { color: "#FFFFFF", fontSize: 13, fontWeight: "800" },
+  reportSubmitBtnText: { color: "#FFFFFF", fontSize: font.label, fontWeight: "800" },
 
 
   singleLineBadgesRow: {
@@ -2987,19 +2990,19 @@ const styles = StyleSheet.create({
   },
   badgeGoldStar: {
     color: '#F59E0B',
-    fontSize: 13,
+    fontSize: font.label,
     fontWeight: '800',
   },
   badgeValueText: {
-    fontSize: 13,
+    fontSize: font.label,
     fontWeight: '700',
   },
   badgeValueArea: {
-    fontSize: 11,
+    fontSize: font.caption,
     fontWeight: '700',
   },
   badgeLabelText: {
-    fontSize: 10,
+    fontSize: font.caption,
     fontWeight: '500',
     marginTop: 2,
     textTransform: 'lowercase',
@@ -3040,15 +3043,15 @@ const styles = StyleSheet.create({
     gap: 3,
   },
   statsBarValue: {
-    fontSize: 15,
+    fontSize: font.title,
     fontWeight: '700',
   },
   statsBarValueSmall: {
-    fontSize: 12,
+    fontSize: font.body,
     fontWeight: '700',
   },
   statsBarLabel: {
-    fontSize: 10,
+    fontSize: font.caption,
     fontWeight: '500',
     marginTop: 2,
     textTransform: 'lowercase',
@@ -3060,7 +3063,7 @@ const styles = StyleSheet.create({
   },
   goldStarSmall: {
     color: '#F59E0B',
-    fontSize: 13,
+    fontSize: font.label,
     fontWeight: '800',
   },
   singleLineActionsRow: {
@@ -3078,15 +3081,15 @@ const styles = StyleSheet.create({
     width: "100%",
   },
   heroBioText: {
-    fontSize: 13,
+    fontSize: font.label,
     lineHeight: 18,
   },
   heroHeadlineText: {
-    fontSize: 13,
+    fontSize: font.label,
     fontWeight: "700",
   },
   heroBioInlineText: {
-    fontSize: 13,
+    fontSize: font.label,
     fontWeight: "400",
   },
   portfolioFeedWrap: {
@@ -3114,11 +3117,11 @@ const styles = StyleSheet.create({
     flexDirection: "row",
   },
   portfolioAuthorName: {
-    fontSize: 14,
+    fontSize: font.subtitle,
     fontWeight: "700",
   },
   portfolioAuthorSub: {
-    fontSize: 11,
+    fontSize: font.caption,
     fontWeight: "500",
     marginTop: 1,
   },
@@ -3131,19 +3134,19 @@ const styles = StyleSheet.create({
     paddingVertical: 4,
   },
   smallEditPortfolioText: {
-    fontSize: 11,
+    fontSize: font.caption,
     fontWeight: "700",
   },
   portfolioTextBody: {
     marginBottom: 8,
   },
   portfolioTitleText: {
-    fontSize: 15,
+    fontSize: font.title,
     fontWeight: "700",
     marginBottom: 3,
   },
   portfolioDescText: {
-    fontSize: 13,
+    fontSize: font.label,
     lineHeight: 19,
   },
   portfolioPhotoWrap: {
@@ -3171,7 +3174,7 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
   },
   actionBadgeText: {
-    fontSize: 12,
+    fontSize: font.body,
     fontWeight: '600',
   },
   quickActionsRow: {
@@ -3188,7 +3191,7 @@ const styles = StyleSheet.create({
     paddingVertical: 7,
   },
   quickActionBtnText: {
-    fontSize: 12,
+    fontSize: font.body,
     fontWeight: '600',
   },
   badgesWrap: {
@@ -3208,23 +3211,23 @@ const styles = StyleSheet.create({
   },
   goldStar: {
     color: '#F59E0B',
-    fontSize: 14,
+    fontSize: font.subtitle,
     fontWeight: '800',
   },
   goldStarBig: {
     color: '#F59E0B',
-    fontSize: 20,
+    fontSize: font.section,
   },
   badgeIcon: {
-    fontSize: 12,
+    fontSize: font.body,
     fontWeight: '700',
   },
   badgeTextBold: {
-    fontSize: 12,
+    fontSize: font.body,
     fontWeight: '700',
   },
   badgeTextMuted: {
-    fontSize: 11,
+    fontSize: font.caption,
     fontWeight: '500',
   },
   sectionHeaderRow: {
@@ -3239,7 +3242,7 @@ const styles = StyleSheet.create({
     paddingVertical: 6,
   },
   smallActionBtnText: {
-    fontSize: 12,
+    fontSize: font.body,
     fontWeight: '700',
   },
   formCard: {
@@ -3249,7 +3252,7 @@ const styles = StyleSheet.create({
     padding: spacing.md,
   },
   formLabel: {
-    fontSize: 12,
+    fontSize: font.body,
     fontWeight: '700',
     marginBottom: 4,
     marginTop: spacing.xs,
@@ -3257,7 +3260,7 @@ const styles = StyleSheet.create({
   formInput: {
     borderRadius: 5,
     borderWidth: 1,
-    fontSize: 14,
+    fontSize: font.subtitle,
     marginBottom: spacing.xs,
     paddingHorizontal: spacing.sm,
     paddingVertical: 8,
@@ -3265,7 +3268,7 @@ const styles = StyleSheet.create({
   formTextarea: {
     borderRadius: 5,
     borderWidth: 1,
-    fontSize: 14,
+    fontSize: font.subtitle,
     marginBottom: spacing.sm,
     minHeight: 80,
     paddingHorizontal: spacing.sm,
@@ -3292,12 +3295,12 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
   },
   formBtnText: {
-    fontSize: 13,
+    fontSize: font.label,
     fontWeight: '600',
   },
   formSaveBtnText: {
     color: '#FFFFFF',
-    fontSize: 13,
+    fontSize: font.label,
     fontWeight: '700',
   },
   portfolioPreviewRow: {
@@ -3328,7 +3331,7 @@ const styles = StyleSheet.create({
     minWidth: 110,
   },
   performanceBigScore: {
-    fontSize: 32,
+    fontSize: font.display,
     fontWeight: '800',
     lineHeight: 36,
   },
@@ -3338,11 +3341,11 @@ const styles = StyleSheet.create({
     marginVertical: 4,
   },
   performanceSubtext: {
-    fontSize: 10,
+    fontSize: font.caption,
     fontWeight: '500',
   },
   performanceBadgeText: {
-    fontSize: 11,
+    fontSize: font.caption,
     fontWeight: '700',
     marginTop: 4,
   },
@@ -3357,7 +3360,7 @@ const styles = StyleSheet.create({
     gap: 6,
   },
   distributionStarLabel: {
-    fontSize: 11,
+    fontSize: font.caption,
     fontWeight: '600',
     width: 24,
   },
@@ -3372,7 +3375,7 @@ const styles = StyleSheet.create({
     height: '100%',
   },
   distributionCount: {
-    fontSize: 11,
+    fontSize: font.caption,
     fontWeight: '500',
     textAlign: 'right',
     width: 16,
@@ -3388,14 +3391,14 @@ const styles = StyleSheet.create({
   },
   interactiveGoldStar: {
     color: '#F59E0B',
-    fontSize: 26,
+    fontSize: font.display,
   },
   interactiveMutedStar: {
     color: '#D1D5DB',
-    fontSize: 26,
+    fontSize: font.display,
   },
   selectedRatingText: {
-    fontSize: 13,
+    fontSize: font.label,
     fontWeight: '700',
     marginLeft: 8,
   },
@@ -3411,13 +3414,13 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   formTitleModern: {
-    fontSize: 14,
+    fontSize: font.subtitle,
     fontWeight: "700",
   },
   formInputModern: {
     borderRadius: 5,
     borderWidth: 1,
-    fontSize: 13,
+    fontSize: font.label,
     minHeight: 42,
     paddingHorizontal: 12,
     paddingVertical: 8,
@@ -3431,7 +3434,7 @@ const styles = StyleSheet.create({
     width: "100%",
   },
   composerTextInput: {
-    fontSize: 13,
+    fontSize: font.label,
     lineHeight: 18,
     minHeight: 68,
     textAlignVertical: "top",
@@ -3478,11 +3481,11 @@ const styles = StyleSheet.create({
     paddingVertical: 5,
   },
   attachPhotoText: {
-    fontSize: 11,
+    fontSize: font.caption,
     fontWeight: "600",
   },
   charCounterText: {
-    fontSize: 11,
+    fontSize: font.caption,
     fontWeight: "700",
   },
   charCounterWarning: {
@@ -3504,12 +3507,12 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
   },
   formBtnTextModern: {
-    fontSize: 12,
+    fontSize: font.body,
     fontWeight: "700",
   },
   formSaveBtnTextModern: {
     color: "#FFFFFF",
-    fontSize: 12,
+    fontSize: font.body,
     fontWeight: "800",
   },
   modernCard: {
@@ -3535,11 +3538,11 @@ const styles = StyleSheet.create({
     padding: 12,
   },
   portfolioTitleModern: {
-    fontSize: 15,
+    fontSize: font.title,
     fontWeight: "700",
   },
   portfolioDescModern: {
-    fontSize: 13,
+    fontSize: font.label,
     lineHeight: 18,
     marginTop: 4,
   },
@@ -3552,7 +3555,7 @@ const styles = StyleSheet.create({
     marginVertical: 12,
   },
   loadMorePostsText: {
-    fontSize: 13,
+    fontSize: font.label,
     fontWeight: "700",
   },
 });

@@ -4,6 +4,7 @@ import { useAppearance } from '../../context/AppearanceContext';
 import { localizeArea, useLanguage } from '../../i18n/locale';
 import { colors, radii, spacing } from '../../theme/tokens';
 import type { BookingRecord } from '../../types/marketplace';
+import { font } from '../../theme/typography';
 
 export interface TaskHistoryCardProps {
   task?: BookingRecord;
@@ -56,16 +57,16 @@ const styles = StyleSheet.create({
   },
   cardTitle: {
     flex: 1,
-    fontSize: 16,
+    fontSize: font.heading,
     fontWeight: '800',
   },
   statusTag: {
     color: colors.muted,
-    fontSize: 12,
+    fontSize: font.body,
     fontWeight: '700',
   },
   cardMeta: {
-    fontSize: 12,
+    fontSize: font.body,
     marginTop: 2,
   },
 });

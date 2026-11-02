@@ -15,6 +15,8 @@ import { useAppearance } from '../context/AppearanceContext';
 import { useLanguage } from '../i18n/locale';
 import { radii, spacing } from '../theme/tokens';
 import { Avatar, Rating } from './marketplace-ui';
+import { ICON_SIZE, ICON_STROKE } from '../theme/icons';
+import { font } from '../theme/typography';
 
 export interface BookingParticipantsHeaderProps {
   technicianId?: string;
@@ -97,7 +99,7 @@ export function BookingParticipantsHeader({
         <View style={styles.connectionCenter}>
           <View style={[styles.connectLine, { backgroundColor: palette.border }]} />
           <View style={[styles.connectIconWrap, { backgroundColor: palette.surfaceElevated, borderColor: palette.border }]}>
-            <Zap color={palette.primary} size={14} />
+            <Zap color={palette.primary} size={ICON_SIZE} strokeWidth={ICON_STROKE} />
           </View>
           <View style={[styles.connectLine, { backgroundColor: palette.border }]} />
         </View>
@@ -191,13 +193,13 @@ function createStyles(palette: {
       gap: 3,
     },
     participantName: {
-      fontSize: 13,
+      fontSize: font.label,
       fontWeight: '800',
       marginTop: 2,
       textAlign: 'center',
     },
     participantSub: {
-      fontSize: 11,
+      fontSize: font.caption,
       fontWeight: '500',
       textAlign: 'center',
       marginTop: -1,
@@ -217,12 +219,12 @@ function createStyles(palette: {
       paddingVertical: 2,
     },
     roleText: {
-      fontSize: 10,
+      fontSize: font.caption,
       fontWeight: '700',
     },
     serviceTitle: {
       flex: 1,
-      fontSize: 13,
+      fontSize: font.label,
       fontWeight: '800',
     },
     statusBadge: {
@@ -231,7 +233,7 @@ function createStyles(palette: {
       paddingVertical: 3,
     },
     statusBadgeText: {
-      fontSize: 11,
+      fontSize: font.caption,
       fontWeight: '800',
     },
     topBar: {

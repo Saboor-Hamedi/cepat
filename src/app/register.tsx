@@ -11,6 +11,8 @@ import { AuthField, AuthLink, AuthNotice, AuthShell, AuthSubmit } from '../compo
 import { useAppearance } from '../context/AppearanceContext';
 import { supabase } from '../data/marketplaceRepository';
 import { useLanguage } from '../i18n/locale';
+import { ICON_SIZE, ICON_STROKE } from '../theme/icons';
+import { font } from '../theme/typography';
 
 type AccountType = 'customer' | 'technician';
 
@@ -192,9 +194,9 @@ export default function RegisterScreen() {
                 testID={`role-${role}`}
               >
                 {isCust ? (
-                  <User size={24} color={selected ? palette.primary : palette.textSecondary} />
+                  <User size={ICON_SIZE} strokeWidth={ICON_STROKE} color={selected ? palette.primary : palette.textSecondary} />
                 ) : (
-                  <Wrench size={24} color={selected ? palette.primary : palette.textSecondary} />
+                  <Wrench size={ICON_SIZE} strokeWidth={ICON_STROKE} color={selected ? palette.primary : palette.textSecondary} />
                 )}
                 <Text style={[styles.roleCardTitle, { color: palette.text }]}>
                   {roleLabels[role]}
@@ -223,7 +225,7 @@ export default function RegisterScreen() {
         testID="register-name"
         autoComplete="name"
         placeholder={language === 'en' ? 'e.g. Budi Santoso' : 'cth. Budi Santoso'}
-        icon={<User size={20} color={palette.textSecondary} />}
+        icon={<User size={ICON_SIZE} strokeWidth={ICON_STROKE} color={palette.textSecondary} />}
       />
 
       <AuthField
@@ -235,7 +237,7 @@ export default function RegisterScreen() {
         email
         autoComplete="email"
         placeholder={language === 'en' ? 'name@example.com' : 'nama@contoh.com'}
-        icon={<Mail size={20} color={palette.textSecondary} />}
+        icon={<Mail size={ICON_SIZE} strokeWidth={ICON_STROKE} color={palette.textSecondary} />}
       />
 
       <AuthField
@@ -247,7 +249,7 @@ export default function RegisterScreen() {
         password
         autoComplete="new-password"
         placeholder={language === 'en' ? 'Minimum 8 characters' : 'Minimal 8 karakter'}
-        icon={<Lock size={20} color={palette.textSecondary} />}
+        icon={<Lock size={ICON_SIZE} strokeWidth={ICON_STROKE} color={palette.textSecondary} />}
       />
 
       <AuthField
@@ -259,7 +261,7 @@ export default function RegisterScreen() {
         password
         autoComplete="new-password"
         placeholder={language === 'en' ? 'Re-enter your password' : 'Ketik ulang kata sandi'}
-        icon={<Lock size={20} color={palette.textSecondary} />}
+        icon={<Lock size={ICON_SIZE} strokeWidth={ICON_STROKE} color={palette.textSecondary} />}
       />
 
       {/* Password requirements text */}
@@ -284,7 +286,7 @@ export default function RegisterScreen() {
             },
           ]}
         >
-          {accepted ? <Check size={16} color="#FFFFFF" strokeWidth={3} /> : null}
+          {accepted ? <Check size={ICON_SIZE} color="#FFFFFF" strokeWidth={ICON_STROKE} /> : null}
         </View>
         <Text style={[styles.termsLabel, { color: palette.text }]}>
           {language === 'en' ? (
@@ -347,7 +349,7 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
   roleSectionLabel: {
-    fontSize: 12,
+    fontSize: font.body,
     fontWeight: '700',
     letterSpacing: 0.5,
     marginBottom: 12,
@@ -364,23 +366,23 @@ const styles = StyleSheet.create({
     padding: 16,
   },
   roleCardTitle: {
-    fontSize: 15,
+    fontSize: font.title,
     fontWeight: '700',
     marginTop: 8,
   },
   roleCardSubtitle: {
-    fontSize: 12,
+    fontSize: font.body,
     marginTop: 4,
     textAlign: 'center',
     lineHeight: 16,
   },
   roleHintText: {
-    fontSize: 12,
+    fontSize: font.body,
     lineHeight: 16,
     marginTop: 10,
   },
   passwordRequirementsText: {
-    fontSize: 12,
+    fontSize: font.body,
     lineHeight: 16,
     marginTop: 8,
     marginBottom: 16,
@@ -401,12 +403,12 @@ const styles = StyleSheet.create({
   },
   termsLabel: {
     flex: 1,
-    fontSize: 13,
+    fontSize: font.label,
     lineHeight: 20,
     marginLeft: 12,
   },
   termsError: {
-    fontSize: 12,
+    fontSize: font.body,
     lineHeight: 16,
     marginTop: -16,
     marginBottom: 16,

@@ -17,6 +17,7 @@ import {
   type ImageCandidateInput,
 } from '../utils/imageValidator';
 import { Avatar } from './marketplace-ui';
+import { font } from '../theme/typography';
 
 interface NativeImagePickerAsset {
   uri: string;
@@ -307,7 +308,7 @@ export function StrictImagePicker({
 
   return (
     <View style={styles.container} testID={`${testIDPrefix}-picker`}>
-      {label ? <Text style={[styles.label, { color: palette.text, fontSize: scaleFont(13) }]}>{label}</Text> : null}
+      {label ? <Text style={[styles.label, { color: palette.text, fontSize: scaleFont(font.label) }]}>{label}</Text> : null}
 
       <View style={displayMode === 'actions' ? styles.actionGroup : styles.row}>
         {displayMode === 'inline' ? (
@@ -331,7 +332,7 @@ export function StrictImagePicker({
             {busyMode === 'gallery' ? (
               <ActivityIndicator size="small" color={palette.primary} />
             ) : (
-              <Text style={[styles.galleryBtnText, { color: palette.text, fontSize: scaleFont(13) }]}>
+              <Text style={[styles.galleryBtnText, { color: palette.text, fontSize: scaleFont(font.label) }]}>
                 {language === 'en' ? 'Choose from Gallery' : 'Pilih dari Galeri'}
               </Text>
             )}
@@ -352,7 +353,7 @@ export function StrictImagePicker({
             {busyMode === 'camera' ? (
               <ActivityIndicator size="small" color="#FFFFFF" />
             ) : (
-              <Text style={[styles.cameraBtnText, { fontSize: scaleFont(13) }]}>
+              <Text style={[styles.cameraBtnText, { fontSize: scaleFont(font.label) }]}>
                 {language === 'en' ? 'Take Photo' : 'Ambil Foto'}
               </Text>
             )}
@@ -362,7 +363,7 @@ export function StrictImagePicker({
 
       {validationError ? (
         <View style={[styles.errorBanner, { backgroundColor: `${palette.danger}18`, borderColor: palette.danger }]} testID={`${testIDPrefix}-error`}>
-          <Text style={[styles.errorBannerText, { color: palette.danger, fontSize: scaleFont(12) }]}>{validationError}</Text>
+          <Text style={[styles.errorBannerText, { color: palette.danger, fontSize: scaleFont(font.body) }]}>{validationError}</Text>
         </View>
       ) : null}
 

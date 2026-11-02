@@ -1,4 +1,5 @@
 import { StyleSheet, Text } from 'react-native';
+import { font } from '../../theme/typography';
 
 import { useLanguage } from '../../i18n/locale';
 import { colors, spacing } from '../../theme/tokens';
@@ -85,7 +86,7 @@ export function SettingNotifications({
 const styles = StyleSheet.create({
   feedback: {
     color: colors.greenDark,
-    fontSize: 12,
+    fontSize: font.body,
     fontWeight: '700',
     marginTop: spacing.xs,
   },

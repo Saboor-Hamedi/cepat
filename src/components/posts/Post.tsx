@@ -1,5 +1,5 @@
 import { router } from "expo-router";
-import { BadgeCheck, Camera, X } from "lucide-react-native";
+import { ArrowRight, BadgeCheck, Camera, X } from "lucide-react-native";
 import { useState } from "react";
 import {
   Image,
@@ -14,9 +14,11 @@ import {
 import { useAuth } from "../../auth/AuthProvider";
 import { useAppearance } from "../../context/AppearanceContext";
 import { localizeArea, useLanguage } from "../../i18n/locale";
-import { ImageSourceSheet } from "../ImageSourceSheet";
+import { ICON_SIZE, ICON_STROKE } from "../../theme/icons";
 import { colors, radii, spacing } from "../../theme/tokens";
+import { font } from "../../theme/typography";
 import type { TechnicianPost } from "../../types/post";
+import { ImageSourceSheet } from "../ImageSourceSheet";
 import { Avatar } from "../marketplace-ui";
 import { PostDropdown } from "./PostDropdown";
 
@@ -197,9 +199,9 @@ export function Post({
                     testID={`post-verified-badge-${post.id}`}
                   >
                     <BadgeCheck
-                      size={13}
+                      size={ICON_SIZE}
                       color={palette.primary}
-                      strokeWidth={2}
+                      strokeWidth={ICON_STROKE}
                     />
                   </View>
                 )}
@@ -371,7 +373,7 @@ export function Post({
                 style={styles.editImageRemoveBtn}
                 testID={`remove-edit-image-btn-${post.id}`}
               >
-                <X size={14} color="#FFFFFF" strokeWidth={2.5} />
+                <X size={ICON_SIZE} color="#FFFFFF" strokeWidth={ICON_STROKE} />
               </Pressable>
               <Pressable
                 accessibilityRole="button"
@@ -383,7 +385,7 @@ export function Post({
                 ]}
                 testID={`change-edit-image-btn-${post.id}`}
               >
-                <Camera size={13} color={palette.primary} strokeWidth={2.2} />
+                <Camera size={ICON_SIZE} color={palette.primary} strokeWidth={ICON_STROKE} />
                 <Text style={[styles.editImageChangeText, { color: palette.primary }]}>
                   {language === "en" ? "Change Photo" : "Ganti Foto"}
                 </Text>
@@ -400,7 +402,7 @@ export function Post({
               ]}
               testID={`add-edit-image-btn-${post.id}`}
             >
-              <Camera size={14} color={palette.primary} strokeWidth={2.2} />
+              <Camera size={ICON_SIZE} color={palette.primary} strokeWidth={ICON_STROKE} />
               <Text style={[styles.editImageChangeText, { color: palette.primary }]}>
                 {language === "en" ? "+ Add Photo" : "+ Tambah Foto"}
               </Text>
@@ -555,8 +557,13 @@ export function Post({
             testID={`post-book-btn-${post.id}`}
           >
             <Text style={[styles.postBookBtnText, { color: palette.primary }]}>
-              {language === "en" ? "Book Service" : "Pesan Layanan"} →
+              {language === "en" ? "Book Service" : "Pesan Layanan"}
             </Text>
+            <ArrowRight
+              color={palette.primary}
+              size={ICON_SIZE}
+              strokeWidth={ICON_STROKE}
+            />
           </Pressable>
         </View>
       )}
@@ -652,7 +659,7 @@ const styles = StyleSheet.create({
   },
   authorName: {
     color: colors.ink,
-    fontSize: 14,
+    fontSize: font.subtitle,
     fontWeight: "800",
   },
   menuAnchor: {
@@ -669,7 +676,7 @@ const styles = StyleSheet.create({
     width: 40,
   },
   menuTriggerText: {
-    fontSize: 20,
+    fontSize: font.section,
     fontWeight: "800",
     letterSpacing: 1,
   },
@@ -694,7 +701,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.md,
   },
   postMenuText: {
-    fontSize: 13,
+    fontSize: font.label,
     fontWeight: "700",
   },
   verifiedBadge: {
@@ -714,17 +721,17 @@ const styles = StyleSheet.create({
     paddingVertical: 0,
   },
   servicePostBadgeTextInline: {
-    fontSize: 10,
+    fontSize: font.caption,
     fontWeight: "700",
   },
   verifiedBadgeText: {
     color: colors.greenDark,
-    fontSize: 10,
+    fontSize: font.caption,
     fontWeight: "900",
   },
   authorSub: {
     color: colors.muted,
-    fontSize: 11,
+    fontSize: font.caption,
     marginTop: 2,
   },
   statusPill: {
@@ -739,7 +746,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.paper,
   },
   statusPillText: {
-    fontSize: 10,
+    fontSize: font.caption,
     fontWeight: "800",
   },
   statusPillTextPublished: {
@@ -754,7 +761,7 @@ const styles = StyleSheet.create({
     gap: spacing.xs,
   },
   timeAgoText: {
-    fontSize: 11,
+    fontSize: font.caption,
     fontWeight: "500",
   },
   bodyContent: {
@@ -771,14 +778,14 @@ const styles = StyleSheet.create({
     paddingVertical: 3,
   },
   servicePostBadgeText: {
-    fontSize: 11,
+    fontSize: font.caption,
     fontWeight: "800",
     letterSpacing: 0.3,
     lineHeight: 15,
   },
   caption: {
     color: colors.ink,
-    fontSize: 14,
+    fontSize: font.subtitle,
     fontWeight: "400",
     lineHeight: 21,
   },
@@ -828,7 +835,7 @@ const styles = StyleSheet.create({
   },
   ownerActionBtnText: {
     color: colors.ink,
-    fontSize: 12,
+    fontSize: font.body,
     fontWeight: "700",
   },
   postBookingRow: {
@@ -845,12 +852,14 @@ const styles = StyleSheet.create({
     borderColor: colors.green,
     borderRadius: radii.pill,
     borderWidth: 1,
+    flexDirection: "row",
+    gap: 4,
     paddingHorizontal: 14,
     paddingVertical: 6,
   },
   postBookBtnText: {
     color: colors.greenDark,
-    fontSize: 12,
+    fontSize: font.body,
     fontWeight: "800",
   },
   ownerDeleteBtn: {
@@ -859,7 +868,7 @@ const styles = StyleSheet.create({
   },
   ownerDeleteBtnText: {
     color: colors.danger,
-    fontSize: 12,
+    fontSize: font.body,
     fontWeight: "800",
   },
   adminSuspendBtn: {
@@ -868,7 +877,7 @@ const styles = StyleSheet.create({
   },
   adminSuspendBtnText: {
     color: "#B45309",
-    fontSize: 12,
+    fontSize: font.body,
     fontWeight: "800",
   },
   adminUnsuspendBtn: {
@@ -877,7 +886,7 @@ const styles = StyleSheet.create({
   },
   adminUnsuspendBtnText: {
     color: "#03543F",
-    fontSize: 12,
+    fontSize: font.body,
     fontWeight: "800",
   },
   editForm: {
@@ -920,7 +929,7 @@ const styles = StyleSheet.create({
     position: "absolute",
   },
   editImageChangeText: {
-    fontSize: 12,
+    fontSize: font.body,
     fontWeight: "700",
   },
   editAddPhotoBtn: {
@@ -940,7 +949,7 @@ const styles = StyleSheet.create({
     borderRadius: radii.sm,
     borderWidth: 1,
     color: colors.ink,
-    fontSize: 13,
+    fontSize: font.label,
     minHeight: 78,
     padding: spacing.md,
     textAlignVertical: "top",
@@ -963,7 +972,7 @@ const styles = StyleSheet.create({
   },
   actionBtnText: {
     color: colors.ink,
-    fontSize: 12,
+    fontSize: font.body,
     fontWeight: "700",
   },
   actionPrimaryBtn: {
@@ -972,7 +981,7 @@ const styles = StyleSheet.create({
   },
   actionPrimaryBtnText: {
     color: "#FFFFFF",
-    fontSize: 12,
+    fontSize: font.body,
     fontWeight: "800",
   },
   modalOverlay: {
@@ -991,12 +1000,12 @@ const styles = StyleSheet.create({
   },
   confirmDialogTitle: {
     color: colors.ink,
-    fontSize: 16,
+    fontSize: font.heading,
     fontWeight: "800",
   },
   confirmDialogMessage: {
     color: colors.muted,
-    fontSize: 13,
+    fontSize: font.label,
     lineHeight: 18,
     marginTop: spacing.xs,
   },
@@ -1013,7 +1022,7 @@ const styles = StyleSheet.create({
   },
   confirmDialogCancelText: {
     color: colors.ink,
-    fontSize: 13,
+    fontSize: font.label,
     fontWeight: "600",
   },
   confirmDialogDeleteBtn: {
@@ -1024,7 +1033,7 @@ const styles = StyleSheet.create({
   },
   confirmDialogDeleteText: {
     color: "#FFFFFF",
-    fontSize: 13,
+    fontSize: font.label,
     fontWeight: "800",
   },
 });

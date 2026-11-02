@@ -1,4 +1,6 @@
 import { CheckCircle2 } from 'lucide-react-native';
+import { font } from '../../theme/typography';
+import { ICON_SIZE, ICON_STROKE } from '../../theme/icons';
 import React from 'react';
 import {
   Pressable,
@@ -33,7 +35,7 @@ export function DashboardApprovals({
             { backgroundColor: palette.surface, borderColor: palette.border },
           ]}
         >
-          <CheckCircle2 size={36} color="#16A34A" />
+          <CheckCircle2 size={ICON_SIZE} strokeWidth={ICON_STROKE} color="#16A34A" />
           <Text style={[styles.emptyTitle, { color: palette.text }]}>
             {language === 'en'
               ? 'No Pending Applications'
@@ -161,11 +163,11 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
   },
   cardTitle: {
-    fontSize: 15,
+    fontSize: font.title,
     fontWeight: '800',
   },
   cardMeta: {
-    fontSize: 12,
+    fontSize: font.body,
     marginTop: 4,
   },
   statusBadge: {
@@ -174,12 +176,12 @@ const styles = StyleSheet.create({
     paddingVertical: 4,
   },
   statusBadgeText: {
-    fontSize: 10,
+    fontSize: font.caption,
     fontWeight: '800',
   },
   adminNoteBox: {
     borderRadius: radii.sm,
-    fontSize: 12,
+    fontSize: font.body,
     fontWeight: '600',
     marginTop: spacing.xs,
     padding: spacing.sm,
@@ -200,7 +202,7 @@ const styles = StyleSheet.create({
   },
   primaryBtnText: {
     color: '#FFFFFF',
-    fontSize: 11,
+    fontSize: font.caption,
     fontWeight: '800',
   },
   dangerBtn: {
@@ -213,7 +215,7 @@ const styles = StyleSheet.create({
     paddingVertical: 6,
   },
   dangerBtnText: {
-    fontSize: 11,
+    fontSize: font.caption,
     fontWeight: '800',
   },
   emptyCard: {
@@ -224,12 +226,12 @@ const styles = StyleSheet.create({
     padding: spacing.xxl,
   },
   emptyTitle: {
-    fontSize: 16,
+    fontSize: font.heading,
     fontWeight: '800',
     marginTop: spacing.sm,
   },
   emptySubtitle: {
-    fontSize: 12,
+    fontSize: font.body,
     marginTop: 4,
     textAlign: 'center',
   },

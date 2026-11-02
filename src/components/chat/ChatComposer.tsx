@@ -1,4 +1,5 @@
 import { ArrowUp, Check, RotateCcw } from 'lucide-react-native';
+import { ICON_SIZE, ICON_STROKE } from '../../theme/icons';
 import { useMemo } from 'react';
 import { Platform, Pressable, Text, TextInput, View } from 'react-native';
 
@@ -50,7 +51,7 @@ export function ChatComposer({
       >
         <View style={styles.completedInfoRow}>
           <View style={styles.completedCheckCircle}>
-            <Check color="#FFFFFF" size={12} strokeWidth={3.2} />
+            <Check color="#FFFFFF" size={ICON_SIZE} strokeWidth={ICON_STROKE} />
           </View>
           <Text style={[styles.completedBadgeText, { color: SUCCESS }]}>
             {language === 'en' ? 'Task has completed' : 'Tugas telah selesai'}
@@ -68,7 +69,7 @@ export function ChatComposer({
             ]}
             testID="chat-book-again-btn"
           >
-            <RotateCcw color="#FFFFFF" size={17} strokeWidth={2.4} />
+            <RotateCcw color="#FFFFFF" size={ICON_SIZE} strokeWidth={ICON_STROKE} />
             <Text style={styles.bookAgainBtnText}>
               {language === 'en' ? 'Book Again' : 'Pesan Lagi'}
             </Text>
@@ -83,79 +84,81 @@ export function ChatComposer({
   }
 
   return (
-    <>
+    <View
+      style={[
+        styles.inputBar,
+        { backgroundColor: palette.surface, borderTopColor: palette.border },
+      ]}
+    >
       <View
         style={[
-          styles.inputBar,
-          { backgroundColor: palette.surface, borderTopColor: palette.border },
+          styles.inputPill,
+          {
+            backgroundColor: palette.surfaceElevated,
+            borderColor: palette.border,
+          },
         ]}
       >
-        <View
-          style={[
-            styles.inputPill,
-            {
-              backgroundColor: palette.surfaceElevated,
-              borderColor: palette.border,
-            },
-          ]}
-        >
-          <MediaPickerButton
-            accessibilityLabel="Attach photo"
-            disabled={sendingChat}
-            icon="plus"
-            onImageSelected={() => onAttachPhoto()}
-            sheetTestIDPrefix="chat-photo"
-            testID="booking-chat-attach"
-          />
+        <MediaPickerButton
+          accessibilityLabel="Attach photo"
+          disabled={sendingChat}
+          icon="plus"
+          onImageSelected={() => onAttachPhoto()}
+          sheetTestIDPrefix="chat-photo"
+          testID="booking-chat-attach"
+        />
 
-          <TextInput
-            editable={!sendingChat}
-            multiline
-            onChangeText={onChangeChatInput}
-            onKeyPress={(e) => {
-              if (Platform.OS === 'web' && 'key' in e.nativeEvent) {
-                const webEvent = e.nativeEvent as unknown as {
-                  key: string;
-                  shiftKey: boolean;
-                  preventDefault?: () => void;
-                };
-                if (webEvent.key === 'Enter' && !webEvent.shiftKey) {
-                  if (typeof webEvent.preventDefault === 'function') {
-                    webEvent.preventDefault();
-                  }
-                  if (!sendingChat && chatInput.trim()) {
-                    onSend();
-                  }
+        <TextInput
+          editable={!sendingChat}
+          multiline
+          onChangeText={onChangeChatInput}
+          onKeyPress={(e) => {
+            if (Platform.OS === 'web' && 'key' in e.nativeEvent) {
+              const webEvent = e.nativeEvent as unknown as {
+                key: string;
+                shiftKey: boolean;
+                preventDefault?: () => void;
+              };
+              if (webEvent.key === 'Enter' && !webEvent.shiftKey) {
+                if (typeof webEvent.preventDefault === 'function') {
+                  webEvent.preventDefault();
+                }
+                if (!sendingChat && chatInput.trim()) {
+                  onSend();
                 }
               }
-            }}
-            placeholder={
-              language === 'en'
-                ? `Message ${partnerName}…`
-                : `Kirim pesan ke ${partnerName}…`
             }
-            placeholderTextColor={palette.textMuted}
-            style={[styles.inputField, { color: palette.text }]}
-            testID="booking-chat-input"
-            value={chatInput}
-          />
+          }}
+          placeholder={
+            language === 'en'
+              ? `Message ${partnerName}…`
+              : `Kirim pesan ke ${partnerName}…`
+          }
+          placeholderTextColor={palette.textMuted}
+          style={[styles.inputField, { color: palette.text }]}
+          testID="booking-chat-input"
+          value={chatInput}
+        />
 
-          <Pressable
-            accessibilityRole="button"
-            disabled={sendingChat || !chatInput.trim()}
-            hitSlop={4}
-            onPress={onSend}
-            style={[
-              styles.sendBtn,
-              { backgroundColor: palette.primary },
-              (sendingChat || !chatInput.trim()) && { opacity: 0.4 },
-            ]}
-            testID="booking-chat-send"
-          >
-            <ArrowUp color="#FFFFFF" size={19} strokeWidth={2.8} />
-          </Pressable>
-        </View>
+        <Pressable
+          accessibilityRole="button"
+          disabled={sendingChat || !chatInput.trim()}
+          hitSlop={4}
+          onPress={onSend}
+          style={[
+            styles.sendBtn,
+            { backgroundColor: palette.primary },
+            (sendingChat || !chatInput.trim()) && { opacity: 0.4 },
+          ]}
+          testID="booking-chat-send"
+        >
+          <ArrowUp
+            color="#FFFFFF"
+            size={ICON_SIZE}
+            strokeWidth={ICON_STROKE}
+          />
+        </Pressable>
       </View>
-    </>
+    </View>
   );
 }

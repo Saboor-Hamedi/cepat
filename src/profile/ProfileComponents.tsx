@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Image, StyleSheet, Text, View } from 'react-native';
+import { font } from '../theme/typography';
 
 import { ServiceCategoryGlyph } from '../components/marketplace-ui';
 import { useAppearance } from '../context/AppearanceContext';
@@ -79,11 +80,11 @@ export function PortfolioPhoto({
 const styles = StyleSheet.create({
   sectionHeading: { alignItems: 'flex-end', flexDirection: 'row', justifyContent: 'space-between', marginBottom: spacing.md, marginTop: spacing.xxl },
   sectionHeadingCompact: { marginTop: 6, marginBottom: 8 },
-  sectionEyebrow: { color: colors.green, fontSize: 9, fontWeight: '800', letterSpacing: 1.2, marginBottom: 4 },
-  sectionTitle: { color: colors.ink, fontSize: 20, fontWeight: '800', letterSpacing: -0.4 },
-  sectionTrailing: { color: colors.muted, fontSize: 12, paddingBottom: 2 },
+  sectionEyebrow: { color: colors.green, fontSize: font.caption, fontWeight: '800', letterSpacing: 1.2, marginBottom: 4 },
+  sectionTitle: { color: colors.ink, fontSize: font.section, fontWeight: '800', letterSpacing: -0.4 },
+  sectionTrailing: { color: colors.muted, fontSize: font.body, paddingBottom: 2 },
   portfolioImage: { borderRadius: radii.md, height: 148, overflow: 'hidden', width: '100%' },
   portfolioImageLarge: { height: 240 },
   portfolioFallback: { alignItems: 'center', flex: 1, justifyContent: 'center' },
-  portfolioFallbackLabel: { color: colors.muted, fontSize: 10, marginTop: 4 },
+  portfolioFallbackLabel: { color: colors.muted, fontSize: font.caption, marginTop: 4 },
 });

@@ -7,6 +7,8 @@ import { useUserAvatar } from '../../hooks/useUserAvatar';
 import { localizeArea, useLanguage } from '../../i18n/locale';
 import { radii, spacing } from '../../theme/tokens';
 import type { BookingRecord } from '../../types/marketplace';
+import { ICON_SIZE, ICON_STROKE } from '../../theme/icons';
+import { font } from '../../theme/typography';
 
 export interface TaskActiveCardProps {
   task?: BookingRecord;
@@ -102,7 +104,7 @@ export function TaskActiveCard({
           style={[styles.chatActionBtn, { backgroundColor: palette.primarySoft }]}
           testID={`dashboard-open-chat-${item.id}`}
         >
-          <MessageSquare color={palette.primary} size={15} strokeWidth={2.4} />
+          <MessageSquare color={palette.primary} size={ICON_SIZE} strokeWidth={ICON_STROKE} />
           <Text style={[styles.chatActionBtnText, { color: palette.primary }]}>
             {t('booking.chatTitle')}
           </Text>
@@ -114,7 +116,7 @@ export function TaskActiveCard({
             style={styles.secondaryBtn}
             testID={`dashboard-start-${item.id}`}
           >
-            <Play color="#FFFFFF" size={13} fill="#FFFFFF" strokeWidth={2.2} />
+            <Play color="#FFFFFF" size={ICON_SIZE} fill="#FFFFFF" strokeWidth={ICON_STROKE} />
             <Text style={styles.secondaryBtnText}>
               {language === 'en' ? 'Start Task' : 'Mulai Tugas'}
             </Text>
@@ -143,7 +145,7 @@ export function TaskActiveCard({
           ]}
           testID={`dashboard-complete-${item.id}`}
         >
-          <CheckCircle2 color="#FFFFFF" size={15} strokeWidth={2.2} />
+          <CheckCircle2 color="#FFFFFF" size={ICON_SIZE} strokeWidth={ICON_STROKE} />
           <Text style={styles.acceptBtnText}>{t('booking.completeJob')}</Text>
         </Pressable>
       </View>
@@ -167,12 +169,12 @@ const styles = StyleSheet.create({
     marginBottom: spacing.md,
   },
   cardCustomer: {
-    fontSize: 15,
+    fontSize: font.title,
     fontWeight: '800',
     letterSpacing: -0.2,
   },
   cardMeta: {
-    fontSize: 12,
+    fontSize: font.body,
     marginTop: 2,
   },
   customerProfileBtn: {
@@ -182,7 +184,7 @@ const styles = StyleSheet.create({
     paddingVertical: 6,
   },
   customerProfileBtnText: {
-    fontSize: 11,
+    fontSize: font.caption,
     fontWeight: '700',
   },
   cardTop: {
@@ -193,16 +195,16 @@ const styles = StyleSheet.create({
   },
   cardTitle: {
     flex: 1,
-    fontSize: 15,
+    fontSize: font.title,
     fontWeight: '800',
     letterSpacing: -0.2,
   },
   statusTag: {
-    fontSize: 12,
+    fontSize: font.body,
     fontWeight: '700',
   },
   unlockedAddressText: {
-    fontSize: 12,
+    fontSize: font.body,
     fontWeight: '500',
     marginBottom: spacing.md,
   },
@@ -221,7 +223,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
   },
   chatActionBtnText: {
-    fontSize: 13,
+    fontSize: font.label,
     fontWeight: '800',
   },
   secondaryBtn: {
@@ -236,7 +238,7 @@ const styles = StyleSheet.create({
   },
   secondaryBtnText: {
     color: '#FFFFFF',
-    fontSize: 13,
+    fontSize: font.label,
     fontWeight: '800',
   },
   acceptBtn: {
@@ -251,7 +253,7 @@ const styles = StyleSheet.create({
   },
   acceptBtnText: {
     color: '#FFFFFF',
-    fontSize: 13,
+    fontSize: font.label,
     fontWeight: '800',
   },
 });

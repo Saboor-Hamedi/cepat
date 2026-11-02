@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { font } from '../../theme/typography';
 import {
   Pressable,
   StyleSheet,
@@ -129,17 +130,17 @@ const styles = StyleSheet.create({
     padding: spacing.md,
   },
   cardTitle: {
-    fontSize: 15,
+    fontSize: font.title,
     fontWeight: '800',
   },
   cardMeta: {
-    fontSize: 12,
+    fontSize: font.body,
     marginTop: 4,
   },
   input: {
     borderRadius: radii.sm,
     borderWidth: 1,
-    fontSize: 12,
+    fontSize: font.body,
     marginTop: spacing.xs,
     minHeight: 38,
     paddingHorizontal: spacing.md,
@@ -154,7 +155,7 @@ const styles = StyleSheet.create({
   },
   primaryBtnText: {
     color: '#FFFFFF',
-    fontSize: 11,
+    fontSize: font.caption,
     fontWeight: '800',
   },
 });

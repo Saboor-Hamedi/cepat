@@ -13,6 +13,8 @@ import { localizeArea, useLanguage } from '../i18n/locale';
 import type { DataSource, Technician } from '../types/marketplace';
 import { Avatar } from './Avatar';
 import { AppNavigationBar, Header } from './Header';
+import { ICON_SIZE, ICON_STROKE } from '../theme/icons';
+import { font } from '../theme/typography';
 
 export { Avatar, AppNavigationBar, Header };
 export { Toggle } from './toggle';
@@ -232,7 +234,7 @@ export function TechnicianCard({
           </Text>
           {technician.verified && (
             <View style={[styles.verifiedBadge, { backgroundColor: 'transparent' }]}>
-              <BadgeCheck size={13} color={palette.primary} strokeWidth={2} />
+              <BadgeCheck size={ICON_SIZE} color={palette.primary} strokeWidth={ICON_STROKE} />
             </View>
           )}
           {technician.services.length > 0 && (
@@ -282,7 +284,7 @@ export function TechnicianCard({
                 { backgroundColor: palette.surfaceElevated, borderColor: palette.border },
               ]}
             >
-              <CheckCircle size={11} color={palette.primary} strokeWidth={2.4} />
+              <CheckCircle size={ICON_SIZE} color={palette.primary} strokeWidth={ICON_STROKE} />
               <Text style={[styles.tasksBadgeText, { color: palette.text }]}>
                 {technician.completedJobsCount} {language === 'en' ? 'tasks' : 'tugas'}
               </Text>
@@ -313,7 +315,7 @@ export function TechnicianCard({
 
         <View style={[styles.cardFooter, { borderTopColor: palette.border }]}>
           <View style={styles.cardAreaRow}>
-            <MapPin size={12} color={palette.textMuted} strokeWidth={2} />
+            <MapPin size={ICON_SIZE} color={palette.textMuted} strokeWidth={ICON_STROKE} />
             <Text
               numberOfLines={1}
               style={[styles.cardArea, { color: palette.textMuted }]}
@@ -589,7 +591,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.md,
     paddingVertical: 6,
   },
-  sampleBadgeText: { color: '#785824', fontSize: 10, fontWeight: '800', letterSpacing: 0.8 },
+  sampleBadgeText: { color: '#785824', fontSize: font.caption, fontWeight: '800', letterSpacing: 0.8 },
   glyphContainer: {
     alignItems: 'center',
     borderWidth: 1,
@@ -665,9 +667,9 @@ const styles = StyleSheet.create({
   },
   avatarInitials: { color: colors.greenDark, fontWeight: '800' },
   inline: { alignItems: 'center', flexDirection: 'row', gap: 5 },
-  star: { color: '#DCA63C', fontSize: 15 },
-  ratingText: { color: colors.ink, fontSize: 13, fontWeight: '700' },
-  mutedText: { color: colors.muted, fontSize: 12 },
+  star: { color: '#DCA63C', fontSize: font.title},
+  ratingText: { color: colors.ink, fontSize: font.label, fontWeight: '700' },
+  mutedText: { color: colors.muted, fontSize: font.body},
   technicianCard: {
     alignItems: 'flex-start',
     backgroundColor: colors.surface,
@@ -705,12 +707,12 @@ const styles = StyleSheet.create({
   statusPillOpen: { backgroundColor: colors.greenSoft },
   statusPillBusy: { backgroundColor: '#F1EFE9' },
   statusDot: { borderRadius: 3, height: 6, width: 6 },
-  statusPillText: { color: colors.ink, fontSize: 10, fontWeight: '700' },
+  statusPillText: { color: colors.ink, fontSize: font.caption, fontWeight: '700' },
   pressed: { opacity: 0.85 },
   cardCopy: { flex: 1, minWidth: 0 },
   nameRow: { alignItems: 'center', flexDirection: 'row', gap: 6 },
-  technicianName: { color: colors.ink, flexShrink: 1, fontSize: 17, fontWeight: '800', letterSpacing: -0.3 },
-  personSubname: { color: colors.muted, fontSize: 11, fontWeight: '600', marginTop: 1 },
+  technicianName: { color: colors.ink, flexShrink: 1, fontSize: font.heading, fontWeight: '800', letterSpacing: -0.3 },
+  personSubname: { color: colors.muted, fontSize: font.caption, fontWeight: '600', marginTop: 1 },
   verifiedBadge: {
     alignItems: 'center',
     backgroundColor: 'transparent',
@@ -723,7 +725,7 @@ const styles = StyleSheet.create({
     paddingVertical: 0,
   },
   bookableBadgeTextInline: {
-    fontSize: 10,
+    fontSize: font.caption,
     fontWeight: '700',
   },
   compactRatingBadge: {
@@ -737,15 +739,15 @@ const styles = StyleSheet.create({
   },
   goldStarSmall: {
     color: '#F59E0B',
-    fontSize: 11,
+    fontSize: font.caption,
     fontWeight: '800',
   },
   ratingValueText: {
-    fontSize: 11,
+    fontSize: font.caption,
     fontWeight: '700',
   },
   ratingCountText: {
-    fontSize: 10,
+    fontSize: font.caption,
     fontWeight: '500',
   },
   compactTasksBadge: {
@@ -758,7 +760,7 @@ const styles = StyleSheet.create({
     paddingVertical: 3,
   },
   tasksBadgeText: {
-    fontSize: 11,
+    fontSize: font.caption,
     fontWeight: '600',
   },
   cardAreaRow: {
@@ -773,15 +775,15 @@ const styles = StyleSheet.create({
     backgroundColor: colors.green,
     borderRadius: 5,
     color: '#fff',
-    fontSize: 10,
+    fontSize: font.caption,
     fontWeight: '900',
     overflow: 'hidden',
     paddingHorizontal: 5,
     paddingVertical: 2,
   },
-  cardHeadline: { color: '#4B5B55', fontSize: 13, fontWeight: '500', marginBottom: 6, marginTop: 3 },
+  cardHeadline: { color: '#4B5B55', fontSize: font.label, fontWeight: '500', marginBottom: 6, marginTop: 3 },
   metricsRow: { alignItems: 'center', flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
-  jobsCountBadge: { color: colors.muted, fontSize: 11, fontWeight: '600' },
+  jobsCountBadge: { color: colors.muted, fontSize: font.caption, fontWeight: '600' },
   serviceTagsRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 8 },
   serviceMiniTag: {
     backgroundColor: colors.paper,
@@ -791,7 +793,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 8,
     paddingVertical: 3,
   },
-  serviceMiniTagText: { color: colors.ink, fontSize: 11, fontWeight: '600' },
+  serviceMiniTagText: { color: colors.ink, fontSize: font.caption, fontWeight: '600' },
   cardFooter: {
     alignItems: 'center',
     borderTopColor: '#F0F1EB',
@@ -801,15 +803,15 @@ const styles = StyleSheet.create({
     marginTop: 10,
     paddingTop: 9,
   },
-  cardArea: { color: colors.muted, flex: 1, fontSize: 11, fontWeight: '600', marginRight: 8 },
+  cardArea: { color: colors.muted, flex: 1, fontSize: font.caption, fontWeight: '600', marginRight: 8 },
   priceBadge: {
     backgroundColor: colors.greenSoft,
     borderRadius: 8,
     paddingHorizontal: 8,
     paddingVertical: 4,
   },
-  cardPrice: { color: colors.greenDark, fontSize: 11, fontWeight: '800' },
-  sampleAvailability: { color: '#896D38', fontSize: 10, marginTop: 6 },
+  cardPrice: { color: colors.greenDark, fontSize: font.caption, fontWeight: '800' },
+  sampleAvailability: { color: '#896D38', fontSize: font.caption, marginTop: 6 },
   featuredCard: {
     backgroundColor: colors.surface,
     borderColor: colors.line,
@@ -821,15 +823,15 @@ const styles = StyleSheet.create({
   },
   featuredTop: { alignItems: 'center', flexDirection: 'row', gap: spacing.md },
   featuredIdentity: { flex: 1, minWidth: 0 },
-  featuredName: { color: colors.ink, fontSize: 15, fontWeight: '800' },
-  featuredHeadline: { color: colors.greenDark, fontSize: 12, fontWeight: '600', marginTop: 2 },
+  featuredName: { color: colors.ink, fontSize: font.title, fontWeight: '800' },
+  featuredHeadline: { color: colors.greenDark, fontSize: font.body, fontWeight: '600', marginTop: 2 },
   featuredStats: {
     alignItems: 'center',
     flexDirection: 'row',
     justifyContent: 'space-between',
     marginTop: spacing.md,
   },
-  featuredExp: { color: colors.muted, fontSize: 11, fontWeight: '600' },
+  featuredExp: { color: colors.muted, fontSize: font.caption, fontWeight: '600' },
   featuredBottom: {
     alignItems: 'center',
     borderTopColor: colors.line,
@@ -839,8 +841,8 @@ const styles = StyleSheet.create({
     marginTop: spacing.sm,
     paddingTop: spacing.sm,
   },
-  featuredArea: { color: colors.muted, flex: 1, fontSize: 11, marginRight: 6 },
-  featuredPrice: { color: colors.greenDark, fontSize: 12, fontWeight: '800' },
+  featuredArea: { color: colors.muted, flex: 1, fontSize: font.caption, marginRight: 6 },
+  featuredPrice: { color: colors.greenDark, fontSize: font.body, fontWeight: '800' },
   categoryPill: {
     alignItems: 'center',
     backgroundColor: colors.surface,
@@ -855,10 +857,10 @@ const styles = StyleSheet.create({
     width: 108,
   },
   categoryPillSelected: { backgroundColor: colors.greenSoft, borderColor: colors.green },
-  categoryName: { color: colors.ink, fontSize: 11, fontWeight: '700', textAlign: 'center' },
+  categoryName: { color: colors.ink, fontSize: font.caption, fontWeight: '700', textAlign: 'center' },
   categoryNameSelected: { color: colors.greenDark },
   stateBox: { alignItems: 'center', gap: spacing.md, padding: spacing.xxxl },
-  stateText: { color: colors.muted, fontSize: 14 },
+  stateText: { color: colors.muted, fontSize: font.subtitle},
   emptyState: { alignItems: 'center', paddingHorizontal: spacing.xl, paddingVertical: spacing.xxxl },
   emptyIcon: {
     alignItems: 'center',
@@ -885,16 +887,16 @@ const styles = StyleSheet.create({
     transform: [{ rotate: '-45deg' }],
     width: 3,
   },
-  emptyTitle: { color: colors.ink, fontSize: 17, fontWeight: '700', marginBottom: 6, textAlign: 'center' },
+  emptyTitle: { color: colors.ink, fontSize: font.heading, fontWeight: '700', marginBottom: 6, textAlign: 'center' },
   emptyDescription: {
     color: colors.muted,
-    fontSize: 13,
+    fontSize: font.label,
     lineHeight: 20,
     maxWidth: 310,
     textAlign: 'center',
   },
   textAction: { padding: spacing.lg },
-  textActionLabel: { color: colors.greenDark, fontSize: 14, fontWeight: '700' },
+  textActionLabel: { color: colors.greenDark, fontSize: font.subtitle, fontWeight: '700' },
   sectionTitle: {
     alignItems: 'flex-end',
     flexDirection: 'row',
@@ -905,15 +907,15 @@ const styles = StyleSheet.create({
   sectionTitleCopy: { flex: 1, marginRight: spacing.sm },
   eyebrow: {
     color: colors.green,
-    fontSize: 10,
+    fontSize: font.caption,
     fontWeight: '800',
     letterSpacing: 1.1,
     marginBottom: 4,
     textTransform: 'uppercase',
   },
-  sectionHeading: { color: colors.ink, fontSize: 20, fontWeight: '800', letterSpacing: -0.4 },
-  sectionTrailing: { color: colors.muted, fontSize: 12, fontWeight: '600', paddingBottom: 2 },
-  sectionTrailingAction: { color: colors.greenDark, fontSize: 12, fontWeight: '800', paddingBottom: 2 },
+  sectionHeading: { color: colors.ink, fontSize: font.section, fontWeight: '800', letterSpacing: -0.4 },
+  sectionTrailing: { color: colors.muted, fontSize: font.body, fontWeight: '600', paddingBottom: 2 },
+  sectionTrailingAction: { color: colors.greenDark, fontSize: font.body, fontWeight: '800', paddingBottom: 2 },
   primaryButton: {
     alignItems: 'center',
     backgroundColor: colors.greenDark,
@@ -924,5 +926,5 @@ const styles = StyleSheet.create({
   },
   primaryButtonPressed: { backgroundColor: colors.green },
   primaryButtonDisabled: { opacity: 0.55 },
-  primaryButtonText: { color: '#fff', fontSize: 15, fontWeight: '700' },
+  primaryButtonText: { color: '#fff', fontSize: font.title, fontWeight: '700' },
 });

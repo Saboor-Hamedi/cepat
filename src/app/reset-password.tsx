@@ -15,6 +15,7 @@ import {
 import { supabase } from '../data/marketplaceRepository';
 import { useLanguage } from '../i18n/locale';
 import { colors, radii, spacing } from '../theme/tokens';
+import { font } from '../theme/typography';
 
 export default function ResetPasswordScreen() {
   const { language, t } = useLanguage();
@@ -261,7 +262,7 @@ const styles = StyleSheet.create({
   },
   countdownText: {
     color: colors.orange,
-    fontSize: 13,
+    fontSize: font.label,
     fontWeight: '800',
     marginBottom: spacing.xs,
   },
@@ -277,7 +278,7 @@ const styles = StyleSheet.create({
   },
   otpActionBtnText: {
     color: colors.greenDark,
-    fontSize: 12,
+    fontSize: font.body,
     fontWeight: '800',
   },
 });

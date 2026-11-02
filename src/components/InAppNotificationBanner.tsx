@@ -40,6 +40,8 @@ import {
 } from '../data/notifications';
 import { useLanguage } from '../i18n/locale';
 import { radii, spacing } from '../theme/tokens';
+import { ICON_SIZE, ICON_STROKE } from '../theme/icons';
+import { font } from '../theme/typography';
 
 export function InAppNotificationBanner() {
   const { user } = useAuth();
@@ -154,11 +156,11 @@ export function InAppNotificationBanner() {
       >
         <View style={styles.iconContainer}>
           {activeNotification.type === 'message' ? (
-            <MessageSquare color={palette.primary} size={20} />
+            <MessageSquare color={palette.primary} size={ICON_SIZE} strokeWidth={ICON_STROKE} />
           ) : activeNotification.type === 'booking' ? (
-            <ClipboardList color={palette.primary} size={20} />
+            <ClipboardList color={palette.primary} size={ICON_SIZE} strokeWidth={ICON_STROKE} />
           ) : (
-            <Bell color={palette.primary} size={20} />
+            <Bell color={palette.primary} size={ICON_SIZE} strokeWidth={ICON_STROKE} />
           )}
         </View>
 
@@ -178,7 +180,7 @@ export function InAppNotificationBanner() {
           onPress={dismissBanner}
           style={styles.closeBtn}
         >
-          <X color={palette.textMuted} size={14} />
+          <X color={palette.textMuted} size={ICON_SIZE} strokeWidth={ICON_STROKE} />
         </Pressable>
       </Pressable>
     </Animated.View>
@@ -209,7 +211,7 @@ const styles = StyleSheet.create({
     zIndex: 9999,
   },
   bodyText: {
-    fontSize: 12,
+    fontSize: font.body,
     lineHeight: 16,
     marginTop: 2,
   },
@@ -219,7 +221,7 @@ const styles = StyleSheet.create({
     padding: spacing.xs,
   },
   closeBtnText: {
-    fontSize: 14,
+    fontSize: font.subtitle,
     fontWeight: '700',
   },
   contentWrap: {
@@ -231,10 +233,10 @@ const styles = StyleSheet.create({
     width: 32,
   },
   iconText: {
-    fontSize: 22,
+    fontSize: font.section,
   },
   titleText: {
-    fontSize: 14,
+    fontSize: font.subtitle,
     fontWeight: '800',
   },
 });

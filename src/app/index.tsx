@@ -60,6 +60,7 @@ import type {
   Technician,
   TechnicianPost,
 } from '../types/marketplace';
+import { font } from '../theme/typography';
 
 interface PopularTaskItem {
   id: string;
@@ -890,11 +891,11 @@ const styles = StyleSheet.create({
   },
   searchLocationValue: {
     flexShrink: 1,
-    fontSize: 12,
+    fontSize: font.body,
     fontWeight: '700',
   },
   locationChevron: {
-    fontSize: 13,
+    fontSize: font.label,
     fontWeight: '800',
   },
   searchBox: {
@@ -935,7 +936,7 @@ const styles = StyleSheet.create({
   searchInput: {
     color: colors.ink,
     flex: 1,
-    fontSize: 15,
+    fontSize: font.title,
     height: '100%',
   },
   clearSearch: {
@@ -948,12 +949,12 @@ const styles = StyleSheet.create({
   },
   clearSearchText: {
     color: colors.muted,
-    fontSize: 16,
+    fontSize: font.heading,
     lineHeight: 18,
   },
   pinNoticeText: {
     color: colors.greenDark,
-    fontSize: 11,
+    fontSize: font.caption,
     fontWeight: '600',
     marginTop: spacing.xs,
   },
@@ -967,13 +968,13 @@ const styles = StyleSheet.create({
   },
   fixtureNote: {
     color: '#80683F',
-    fontSize: 11,
+    fontSize: font.caption,
     lineHeight: 16,
     marginTop: 6,
   },
   searchScopeNote: {
     color: colors.muted,
-    fontSize: 11,
+    fontSize: font.caption,
     lineHeight: 16,
     marginTop: spacing.sm,
   },
@@ -993,7 +994,7 @@ const styles = StyleSheet.create({
     paddingVertical: 7,
   },
   categoryFilterText: {
-    fontSize: 13,
+    fontSize: font.label,
   },
   popularGrid: {
     flexDirection: 'row',
@@ -1025,17 +1026,17 @@ const styles = StyleSheet.create({
   },
   popularTaskPrice: {
     color: colors.greenDark,
-    fontSize: 12,
+    fontSize: font.body,
     fontWeight: '800',
   },
   popularTaskTitle: {
     color: colors.ink,
-    fontSize: 13,
+    fontSize: font.label,
     fontWeight: '700',
   },
   popularTaskProvider: {
     color: colors.muted,
-    fontSize: 11,
+    fontSize: font.caption,
     marginTop: 2,
   },
   savedHighlightBar: {
@@ -1054,13 +1055,13 @@ const styles = StyleSheet.create({
   },
   savedEyebrow: {
     color: colors.green,
-    fontSize: 9,
+    fontSize: font.caption,
     fontWeight: '800',
     letterSpacing: 1,
   },
   savedTitle: {
     color: colors.ink,
-    fontSize: 14,
+    fontSize: font.subtitle,
     fontWeight: '700',
     marginTop: 2,
   },
@@ -1072,7 +1073,7 @@ const styles = StyleSheet.create({
   },
   savedActionText: {
     color: colors.greenDark,
-    fontSize: 12,
+    fontSize: font.body,
     fontWeight: '700',
   },
   cardWrap: {
@@ -1095,7 +1096,7 @@ const styles = StyleSheet.create({
   },
   feedErrorText: {
     color: colors.danger,
-    fontSize: 12,
+    fontSize: font.body,
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.sm,
   },
@@ -1104,7 +1105,7 @@ const styles = StyleSheet.create({
   },
   feedRetryText: {
     color: colors.greenDark,
-    fontSize: 12,
+    fontSize: font.body,
     fontWeight: '700',
     padding: spacing.sm,
   },

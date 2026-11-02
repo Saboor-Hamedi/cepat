@@ -1,6 +1,6 @@
 import { Camera } from 'lucide-react-native';
 import { useState } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, View } from 'react-native';
 
 import {
   ImageSourceSheet,
@@ -8,6 +8,7 @@ import {
 } from '../components/ImageSourceSheet';
 import { Avatar } from '../components/marketplace-ui';
 import { useLanguage } from '../i18n/locale';
+import { ICON_SIZE, ICON_STROKE } from '../theme/icons';
 import { colors } from '../theme/tokens';
 import type { ImageCandidateInput } from '../utils/imageValidator';
 
@@ -74,7 +75,7 @@ export function ProfileAvatar({
             ]}
             testID={`${testID}-camera-badge`}
           >
-            <Camera color="#FFFFFF" size={size === 80 ? 14 : Math.max(12, Math.round(size * 0.16))} />
+            <Camera color="#FFFFFF" size={ICON_SIZE} strokeWidth={ICON_STROKE} />
           </View>
         )}
       </Pressable>
@@ -120,9 +121,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     position: 'absolute',
     right: 0,
-  },
-  cameraBadgeIcon: {
-    fontSize: 11,
   },
   container: {
     alignItems: 'center',

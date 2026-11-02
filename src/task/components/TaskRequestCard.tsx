@@ -11,6 +11,7 @@ import {
 } from '../schedule';
 import { radii, spacing } from '../../theme/tokens';
 import type { BookingRecord } from '../../types/marketplace';
+import { font } from '../../theme/typography';
 
 export interface TaskRequestCardProps {
   request: BookingRecord;
@@ -262,11 +263,11 @@ const styles = StyleSheet.create({
     marginBottom: spacing.md,
   },
   cardCustomer: {
-    fontSize: 14,
+    fontSize: font.subtitle,
     fontWeight: '800',
   },
   cardMeta: {
-    fontSize: 12,
+    fontSize: font.body,
     marginTop: 2,
   },
   customerProfileBtn: {
@@ -276,7 +277,7 @@ const styles = StyleSheet.create({
     paddingVertical: 5,
   },
   customerProfileBtnText: {
-    fontSize: 11,
+    fontSize: font.caption,
     fontWeight: '700',
   },
   cardTop: {
@@ -287,11 +288,11 @@ const styles = StyleSheet.create({
   },
   cardTitle: {
     flex: 1,
-    fontSize: 16,
+    fontSize: font.heading,
     fontWeight: '800',
   },
   priceBadge: {
-    fontSize: 14,
+    fontSize: font.subtitle,
     fontWeight: '800',
   },
   addressBox: {
@@ -302,24 +303,24 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.sm,
   },
   addressLabel: {
-    fontSize: 10,
+    fontSize: font.caption,
     fontWeight: '800',
     letterSpacing: 0.6,
   },
   addressText: {
-    fontSize: 13,
+    fontSize: font.label,
     fontWeight: '700',
     lineHeight: 19,
     marginTop: 4,
   },
   addressNotes: {
-    fontSize: 12,
+    fontSize: font.body,
     lineHeight: 17,
     marginTop: 4,
   },
   cardNotes: {
     fontStyle: 'italic',
-    fontSize: 12,
+    fontSize: font.body,
     marginBottom: spacing.sm,
   },
   actionRow: {
@@ -337,7 +338,7 @@ const styles = StyleSheet.create({
   },
   acceptBtnText: {
     color: '#FFFFFF',
-    fontSize: 12,
+    fontSize: font.body,
     fontWeight: '800',
   },
   declineBtn: {
@@ -350,7 +351,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.sm,
   },
   declineBtnText: {
-    fontSize: 12,
+    fontSize: font.body,
     fontWeight: '700',
   },
   schedulePanel: {
@@ -360,7 +361,7 @@ const styles = StyleSheet.create({
     padding: spacing.sm,
   },
   scheduleLabel: {
-    fontSize: 10,
+    fontSize: font.caption,
     fontWeight: '800',
     letterSpacing: 0.6,
     marginBottom: spacing.xs,
@@ -380,7 +381,7 @@ const styles = StyleSheet.create({
     paddingVertical: 6,
   },
   scheduleChipText: {
-    fontSize: 11,
+    fontSize: font.caption,
     fontWeight: '700',
   },
   proposeBtn: {
@@ -390,11 +391,11 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.md,
   },
   proposeBtnText: {
-    fontSize: 12,
+    fontSize: font.body,
     fontWeight: '800',
   },
   proposedBadge: {
-    fontSize: 12,
+    fontSize: font.body,
     fontWeight: '700',
     marginTop: spacing.xs,
   },

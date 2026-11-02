@@ -1,3 +1,4 @@
+import { font } from '../../theme/typography';
 import { Pressable, StyleSheet, Text, View } from "react-native";
 
 import { useAppearance } from "../../context/AppearanceContext";
@@ -61,7 +62,7 @@ export function SettingAppearance({
       }
       testID="setting-section-appearance"
     >
-      <Text style={[styles.subLabel, { color: palette.text, fontSize: scaleFont(12) }]}>
+      <Text style={[styles.subLabel, { color: palette.text, fontSize: scaleFont(font.body) }]}>
         {language === "en" ? "Color theme" : "Tema warna aplikasi"}
       </Text>
       <View style={styles.chipRow}>
@@ -98,7 +99,7 @@ export function SettingAppearance({
               <Text
                 style={[
                   styles.chipText,
-                  { color: palette.text, fontSize: scaleFont(12) },
+                  { color: palette.text, fontSize: scaleFont(font.body) },
                   selected && styles.chipTextSelected,
                 ]}
               >
@@ -167,7 +168,7 @@ export function SettingAppearance({
 const styles = StyleSheet.create({
   subLabel: {
     color: colors.ink,
-    fontSize: 12,
+    fontSize: font.body,
     fontWeight: "700",
     marginBottom: spacing.sm,
   },
@@ -198,7 +199,7 @@ const styles = StyleSheet.create({
   },
   feedbackText: {
     color: colors.greenDark,
-    fontSize: 12,
+    fontSize: font.body,
     fontWeight: "700",
     marginTop: spacing.sm,
   },

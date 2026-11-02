@@ -16,6 +16,7 @@ import { useLanguage } from "../i18n/locale";
 import { colors, radii, spacing } from "../theme/tokens";
 import { Avatar } from "./Avatar";
 import { useUserAvatar } from "../hooks/useUserAvatar";
+import { font } from '../theme/typography';
 
 export interface SidebarProps {
   visible: boolean;
@@ -468,17 +469,17 @@ const styles = StyleSheet.create({
     width: 32,
   },
   closeBtnText: {
-    fontSize: 20,
+    fontSize: font.section,
     fontWeight: "600",
     lineHeight: 22,
   },
   displayName: {
-    fontSize: 18,
+    fontSize: font.heading,
     fontWeight: "800",
     letterSpacing: -0.3,
   },
   handleText: {
-    fontSize: 14,
+    fontSize: font.subtitle,
     marginTop: 2,
   },
   roleBadge: {
@@ -489,7 +490,7 @@ const styles = StyleSheet.create({
     paddingVertical: 3,
   },
   roleBadgeText: {
-    fontSize: 11,
+    fontSize: font.caption,
     fontWeight: "800",
   },
   divider: {
@@ -508,7 +509,7 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
   },
   menuItemText: {
-    fontSize: 17,
+    fontSize: font.heading,
     fontWeight: "700",
   },
   itemIconCanvas: {
@@ -606,7 +607,7 @@ const styles = StyleSheet.create({
   },
   logoutBtnText: {
     color: colors.danger,
-    fontSize: 16,
+    fontSize: font.heading,
     fontWeight: "800",
   },
   lucideLogoutCanvas: {
@@ -649,7 +650,7 @@ const styles = StyleSheet.create({
   },
   loginBtnText: {
     color: "#FFFFFF",
-    fontSize: 14,
+    fontSize: font.subtitle,
     fontWeight: "800",
   },
   registerBtn: {
@@ -660,7 +661,7 @@ const styles = StyleSheet.create({
     minHeight: 42,
   },
   registerBtnText: {
-    fontSize: 14,
+    fontSize: font.subtitle,
     fontWeight: "800",
   },
 });

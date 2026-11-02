@@ -18,6 +18,8 @@ import { TaskActiveCard } from "./components/TaskActiveCard";
 import { TaskHistoryCard } from "./components/TaskHistoryCard";
 import { TaskRequestCard } from "./components/TaskRequestCard";
 import { TaskTabBar, type TaskTabKey } from "./components/TaskTabBar";
+import { ICON_SIZE, ICON_STROKE } from '../theme/icons';
+import { font } from '../theme/typography';
 
 export interface TaskContainerProps {
   bookings: BookingRecord[];
@@ -145,7 +147,7 @@ export function TaskContainer({
           ]}
           testID="tasks-header-back-btn"
         >
-          <ArrowLeft size={18} color={palette.text} strokeWidth={2.2} />
+          <ArrowLeft size={ICON_SIZE} color={palette.text} strokeWidth={ICON_STROKE} />
         </Pressable>
 
         <View style={styles.headerTitleWrap}>
@@ -483,7 +485,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   headerTitle: {
-    fontSize: 16,
+    fontSize: font.heading,
     fontWeight: "700",
   },
   headerNotifBtn: {
@@ -508,7 +510,7 @@ const styles = StyleSheet.create({
   },
   notifBadgeText: {
     color: "#FFFFFF",
-    fontSize: 9,
+    fontSize: font.caption,
     fontWeight: "800",
   },
   modalOverlay: {
@@ -532,11 +534,11 @@ const styles = StyleSheet.create({
     marginBottom: spacing.lg,
   },
   customerModalName: {
-    fontSize: 18,
+    fontSize: font.heading,
     fontWeight: "800",
   },
   customerModalBadge: {
-    fontSize: 12,
+    fontSize: font.body,
     marginTop: 2,
   },
   customerDetailSection: {
@@ -546,12 +548,12 @@ const styles = StyleSheet.create({
     padding: spacing.md,
   },
   customerDetailLabel: {
-    fontSize: 11,
+    fontSize: font.caption,
     fontWeight: "700",
     marginTop: spacing.xs,
   },
   customerDetailValue: {
-    fontSize: 13,
+    fontSize: font.label,
     fontWeight: "600",
     marginBottom: spacing.xs,
     marginTop: 2,
@@ -564,7 +566,7 @@ const styles = StyleSheet.create({
     minHeight: 44,
   },
   closeModalBtnText: {
-    fontSize: 13,
+    fontSize: font.label,
     fontWeight: "800",
   },
 });

@@ -15,6 +15,8 @@ import { useUserAvatar } from "../hooks/useUserAvatar";
 import { colors, radii, spacing } from "../theme/tokens";
 import { Avatar } from "./Avatar";
 import { Sidebar } from "./Sidebar";
+import { ICON_SIZE, ICON_STROKE } from '../theme/icons';
+import { font } from '../theme/typography';
 
 export type NavigationTabKey =
   | "marketplace"
@@ -263,7 +265,7 @@ export function Header({ activeTab }: { activeTab: NavigationTabKey }) {
           testID="account-entry"
         >
           <View style={styles.avatarIconWrap}>
-            <User size={22} color={palette.textMuted} strokeWidth={2} />
+            <User size={ICON_SIZE} color={palette.textMuted} strokeWidth={ICON_STROKE} />
           </View>
           <Text
             numberOfLines={1}
@@ -434,12 +436,12 @@ const styles = StyleSheet.create({
   },
   badgeText: {
     color: "#FFFFFF",
-    fontSize: 9,
+    fontSize: font.caption,
     fontWeight: "800",
     textAlign: "center",
   },
   tabLabel: {
-    fontSize: 10,
+    fontSize: font.caption,
     fontWeight: "600",
     marginTop: 2,
     textAlign: "center",

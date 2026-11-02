@@ -14,6 +14,7 @@ import {
 import { supabase } from '../data/marketplaceRepository';
 import { useLanguage } from '../i18n/locale';
 import { colors, radii, spacing } from '../theme/tokens';
+import { font } from '../theme/typography';
 
 const OTP_WINDOW_SECONDS = 60; // 1 minute strict window
 
@@ -349,13 +350,13 @@ const styles = StyleSheet.create({
   },
   timerLabel: {
     color: colors.ink,
-    fontSize: 11,
+    fontSize: font.caption,
     fontWeight: '800',
     letterSpacing: 0.8,
   },
   timerValue: {
     color: colors.greenDark,
-    fontSize: 18,
+    fontSize: font.heading,
     fontWeight: '800',
   },
   expiredBox: {
@@ -368,7 +369,7 @@ const styles = StyleSheet.create({
   },
   expiredText: {
     color: colors.danger,
-    fontSize: 13,
+    fontSize: font.label,
     fontWeight: '600',
     lineHeight: 19,
     marginBottom: spacing.sm,
@@ -383,7 +384,7 @@ const styles = StyleSheet.create({
   },
   resendBtnText: {
     color: '#FFFFFF',
-    fontSize: 13,
+    fontSize: font.label,
     fontWeight: '800',
   },
   resendLink: {
@@ -393,7 +394,7 @@ const styles = StyleSheet.create({
   },
   resendLinkText: {
     color: colors.greenDark,
-    fontSize: 12,
+    fontSize: font.body,
     fontWeight: '700',
   },
 });

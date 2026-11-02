@@ -1,4 +1,5 @@
 import { Eye, EyeOff } from "lucide-react-native";
+import { font } from "../../theme/typography";
 import { useState } from "react";
 import { Pressable, StyleSheet, Text, TextInput, View } from "react-native";
 
@@ -8,6 +9,7 @@ import { supabase } from "../../data/marketplaceRepository";
 import { useLanguage } from "../../i18n/locale";
 import { colors, radii, spacing } from "../../theme/tokens";
 import { SettingSection } from "../components/SettingSection";
+import { ICON_SIZE, ICON_STROKE } from "../../theme/icons";
 
 export function SettingPassword() {
   const { language, t } = useLanguage();
@@ -89,13 +91,7 @@ export function SettingPassword() {
       testID="setting-section-password"
     >
       <View
-        style={[
-          styles.card,
-          {
-            backgroundColor: palette.surfaceElevated,
-            borderColor: palette.border,
-          },
-        ]}
+        style={styles.card}
         testID="password-update-form"
       >
         {/* 1. Current Password */}
@@ -132,9 +128,9 @@ export function SettingPassword() {
             testID="toggle-show-current-password"
           >
             {showCurrent ? (
-              <EyeOff size={18} color={palette.textMuted} />
+              <EyeOff size={ICON_SIZE} strokeWidth={ICON_STROKE} color={palette.textMuted} />
             ) : (
-              <Eye size={18} color={palette.textMuted} />
+              <Eye size={ICON_SIZE} strokeWidth={ICON_STROKE} color={palette.textMuted} />
             )}
           </Pressable>
         </View>
@@ -173,9 +169,9 @@ export function SettingPassword() {
             testID="toggle-show-new-password"
           >
             {showNew ? (
-              <EyeOff size={18} color={palette.textMuted} />
+              <EyeOff size={ICON_SIZE} strokeWidth={ICON_STROKE} color={palette.textMuted} />
             ) : (
-              <Eye size={18} color={palette.textMuted} />
+              <Eye size={ICON_SIZE} strokeWidth={ICON_STROKE} color={palette.textMuted} />
             )}
           </Pressable>
         </View>
@@ -210,9 +206,9 @@ export function SettingPassword() {
             testID="toggle-show-confirm-password"
           >
             {showConfirm ? (
-              <EyeOff size={18} color={palette.textMuted} />
+              <EyeOff size={ICON_SIZE} strokeWidth={ICON_STROKE} color={palette.textMuted} />
             ) : (
-              <Eye size={18} color={palette.textMuted} />
+              <Eye size={ICON_SIZE} strokeWidth={ICON_STROKE} color={palette.textMuted} />
             )}
           </Pressable>
         </View>
@@ -229,7 +225,7 @@ export function SettingPassword() {
           </Text>
         ) : null}
 
-        {/* Small "Save" Action Button Aligned on the LEFT + Inline notice without bg/border */}
+        {/* Small "Save" Action Button Aligned on the LEFT */}
         <View style={styles.actionRowWithNotice}>
           <Pressable
             accessibilityRole="button"
@@ -276,31 +272,27 @@ export function SettingPassword() {
 
 const styles = StyleSheet.create({
   card: {
-    backgroundColor: colors.surface,
-    borderColor: colors.line,
-    borderRadius: 5,
-    borderWidth: 1,
-    padding: spacing.md,
+    backgroundColor: "transparent",
+    paddingVertical: spacing.xs,
   },
   fieldLabel: {
-    color: colors.ink,
-    fontSize: 12,
+    fontSize: font.body,
     fontWeight: "700",
     marginBottom: 4,
     marginTop: spacing.xs,
   },
   inputRow: {
     alignItems: "center",
-    borderRadius: 5,
+    borderRadius: radii.sm,
     borderWidth: 1,
     flexDirection: "row",
     marginBottom: spacing.xs,
-    minHeight: 42,
+    minHeight: 44,
     paddingHorizontal: spacing.sm,
   },
   inputInner: {
     flex: 1,
-    fontSize: 13,
+    fontSize: font.label,
     paddingVertical: 8,
   },
   eyeBtn: {
@@ -315,31 +307,31 @@ const styles = StyleSheet.create({
     marginTop: spacing.md,
   },
   inlineSavedNotice: {
-    fontSize: 13,
+    fontSize: font.label,
     fontWeight: "700",
   },
   smallSaveBtn: {
     alignItems: "center",
     backgroundColor: colors.greenDark,
-    borderRadius: 5,
+    borderRadius: radii.sm,
     justifyContent: "center",
-    minHeight: 36,
+    minHeight: 38,
     paddingHorizontal: spacing.lg,
   },
   smallSaveBtnText: {
     color: "#FFFFFF",
-    fontSize: 12,
+    fontSize: font.body,
     fontWeight: "800",
   },
   errorText: {
     color: colors.danger,
-    fontSize: 12,
+    fontSize: font.body,
     fontWeight: "600",
     marginTop: spacing.xs,
   },
   successText: {
     color: colors.greenDark,
-    fontSize: 12,
+    fontSize: font.body,
     fontWeight: "700",
     marginTop: spacing.xs,
   },

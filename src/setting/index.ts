@@ -1,7 +1,9 @@
 export { SettingContainer } from './SettingContainer';
 export { SettingHeader, type SettingSectionKey } from './components/SettingHeader';
+export { SettingTabs, buildSettingTabs } from './components/SettingTabs';
 export { SettingSection } from './components/SettingSection';
 export { SettingItem } from './components/SettingItem';
+export { SettingNavLink } from './components/SettingNavLink';
 export { SettingAccount } from './account/SettingAccount';
 export { SettingPassword } from './account/SettingPassword';
 export { SettingLanguage } from './language/SettingLanguage';
@@ -10,3 +12,4 @@ export { SettingAppearance } from './appearance/SettingAppearance';
 export { SettingSecurity } from './security/SettingSecurity';
 export { SettingAddress } from './address/SettingAddress';
 export { SettingDeleteAccount } from './delete-account/SettingDeleteAccount';
+export { SettingVersion, getAppVersion, APP_VERSION } from './version';

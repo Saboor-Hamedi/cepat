@@ -1,3 +1,4 @@
+import { font } from '../../theme/typography';
 import type { PropsWithChildren, ReactNode } from "react";
 import { StyleSheet, Text, View } from "react-native";
 
@@ -30,9 +31,9 @@ export function SettingSection({
     >
       <View style={styles.headerRow}>
         <View style={styles.headerCopy}>
-          <Text style={[styles.title, { color: palette.text, fontSize: scaleFont(17) }]}>{title}</Text>
+          <Text style={[styles.title, { color: palette.text, fontSize: scaleFont(font.heading) }]}>{title}</Text>
           {description ? (
-            <Text style={[styles.description, { color: palette.textMuted, fontSize: scaleFont(12), lineHeight: scaleFont(18) }]}>
+            <Text style={[styles.description, { color: palette.textMuted, fontSize: scaleFont(font.body), lineHeight: scaleFont(18) }]}>
               {description}
             </Text>
           ) : null}

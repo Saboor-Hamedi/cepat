@@ -17,6 +17,8 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { useAppearance } from '../context/AppearanceContext';
 import { useLanguage } from '../i18n/locale';
+import { ICON_SIZE, ICON_STROKE } from '../theme/icons';
+import { font } from '../theme/typography';
 
 export function AuthShell({
   title,
@@ -39,7 +41,7 @@ export function AuthShell({
           style={[styles.backBtn, { backgroundColor: palette.surface }]}
           testID="auth-back-button"
         >
-          <ArrowLeft size={20} color={palette.text} />
+          <ArrowLeft size={ICON_SIZE} strokeWidth={ICON_STROKE} color={palette.text} />
         </Pressable>
 
         <View style={styles.centerLogo}>
@@ -144,9 +146,9 @@ export function AuthField({
             hitSlop={8}
           >
             {visible ? (
-              <EyeOff size={20} color={palette.textSecondary} />
+              <EyeOff size={ICON_SIZE} strokeWidth={ICON_STROKE} color={palette.textSecondary} />
             ) : (
-              <Eye size={20} color={palette.textSecondary} />
+              <Eye size={ICON_SIZE} strokeWidth={ICON_STROKE} color={palette.textSecondary} />
             )}
           </Pressable>
         )}
@@ -280,11 +282,11 @@ const styles = StyleSheet.create({
   },
   logoIconText: {
     color: '#FFFFFF',
-    fontSize: 18,
+    fontSize: font.heading,
     fontWeight: '800',
   },
   logoText: {
-    fontSize: 18,
+    fontSize: font.heading,
     fontWeight: '700',
     letterSpacing: -0.5,
   },
@@ -305,13 +307,13 @@ const styles = StyleSheet.create({
     width: '100%',
   },
   title: {
-    fontSize: 28,
+    fontSize: font.display,
     fontWeight: '700',
     marginBottom: 8,
     marginTop: 24,
   },
   subtitle: {
-    fontSize: 14,
+    fontSize: font.subtitle,
     lineHeight: 20,
     marginBottom: 24,
   },
@@ -322,7 +324,7 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   label: {
-    fontSize: 14,
+    fontSize: font.subtitle,
     fontWeight: '600',
     marginBottom: 8,
   },
@@ -342,7 +344,7 @@ const styles = StyleSheet.create({
   textInput: {
     backgroundColor: 'transparent',
     flex: 1,
-    fontSize: 15,
+    fontSize: font.title,
     minHeight: 46,
     paddingVertical: 10,
   },
@@ -350,7 +352,7 @@ const styles = StyleSheet.create({
     padding: 8,
   },
   error: {
-    fontSize: 12,
+    fontSize: font.body,
     lineHeight: 16,
     marginTop: 6,
   },
@@ -366,7 +368,7 @@ const styles = StyleSheet.create({
   },
   submitBtnText: {
     color: '#FFFFFF',
-    fontSize: 16,
+    fontSize: font.heading,
     fontWeight: '700',
   },
   forgotLinkPressable: {
@@ -386,7 +388,7 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   linkText: {
-    fontSize: 14,
+    fontSize: font.subtitle,
     fontWeight: '600',
   },
   notice: {
@@ -396,7 +398,7 @@ const styles = StyleSheet.create({
     padding: 12,
   },
   noticeText: {
-    fontSize: 13,
+    fontSize: font.label,
     lineHeight: 18,
   },
 });

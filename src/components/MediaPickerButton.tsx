@@ -11,6 +11,7 @@ import {
 import { useAppearance } from '../context/AppearanceContext';
 import { useLanguage } from '../i18n/locale';
 import { ICON_SIZE, ICON_STROKE } from '../theme/icons';
+import { font } from '../theme/typography';
 import type { ImageCandidateInput } from '../utils/imageValidator';
 import { ImageSourceSheet } from './ImageSourceSheet';
 
@@ -18,7 +19,7 @@ export type MediaGlyphName = 'camera' | 'plus';
 
 export function MediaGlyph({
   name = 'plus',
-  size = 20,
+  size = ICON_SIZE,
   color,
 }: {
   name?: MediaGlyphName;
@@ -26,7 +27,7 @@ export function MediaGlyph({
   color?: string;
 }) {
   const Icon = name === 'camera' ? Camera : Plus;
-  return <Icon color={color} size={size} strokeWidth={2.4} />;
+  return <Icon color={color} size={size} strokeWidth={ICON_STROKE} />;
 }
 
 export interface MediaPickerButtonProps {
@@ -98,7 +99,7 @@ export function MediaPickerButton({
         ]}
         testID={testID}
       >
-        <MediaGlyph name={icon} size={showLabel ? 16 : 20} color={tint} />
+        <MediaGlyph name={icon} size={ICON_SIZE} color={tint} />
         {showLabel && label ? (
           <Text style={[styles.label, { color: tint }]}>{label}</Text>
         ) : null}
@@ -146,7 +147,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 0,
   },
   label: {
-    fontSize: 12,
+    fontSize: font.body,
     fontWeight: '700',
     letterSpacing: 0.1,
   },

@@ -1,3 +1,4 @@
+import { font } from '../../theme/typography';
 import {
   ActivityIndicator,
   FlatList,
@@ -120,13 +121,13 @@ const styles = StyleSheet.create({
   },
   emptyTitle: {
     color: colors.ink,
-    fontSize: 15,
+    fontSize: font.title,
     fontWeight: '700',
     textAlign: 'center',
   },
   emptyDescription: {
     color: colors.muted,
-    fontSize: 13,
+    fontSize: font.label,
     lineHeight: 18,
     marginTop: spacing.xs,
     textAlign: 'center',

@@ -9,6 +9,7 @@ import { AuthField, AuthLink, AuthNotice, AuthShell, AuthSubmit } from '../compo
 import { useAppearance } from '../context/AppearanceContext';
 import { supabase } from '../data/marketplaceRepository';
 import { useLanguage } from '../i18n/locale';
+import { ICON_SIZE, ICON_STROKE } from '../theme/icons';
 
 function resolveSafeRedirect(redirectParam?: string, technicianIdParam?: string): string | null {
   if (typeof redirectParam === 'string' && redirectParam.startsWith('/') && !redirectParam.startsWith('//')) {
@@ -136,7 +137,7 @@ export default function LoginScreen() {
         email
         autoComplete="email"
         placeholder={language === 'en' ? 'name@example.com' : 'nama@contoh.com'}
-        icon={<Mail size={20} color={palette.textSecondary} />}
+        icon={<Mail size={ICON_SIZE} strokeWidth={ICON_STROKE} color={palette.textSecondary} />}
       />
 
       <AuthField
@@ -147,7 +148,7 @@ export default function LoginScreen() {
         password
         autoComplete="password"
         placeholder={language === 'en' ? 'Enter your password' : 'Masukkan kata sandi'}
-        icon={<Lock size={20} color={palette.textSecondary} />}
+        icon={<Lock size={ICON_SIZE} strokeWidth={ICON_STROKE} color={palette.textSecondary} />}
       />
 
       <AuthLink

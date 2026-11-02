@@ -48,6 +48,8 @@ import {
 } from "../task/schedule";
 import { radii, spacing } from "../theme/tokens";
 import type { BookingMessage, BookingRecord } from "../types/marketplace";
+import { ICON_SIZE, ICON_STROKE } from '../theme/icons';
+import { font } from '../theme/typography';
 
 function formatMessageTime(createdAt: string): string {
   if (!createdAt) return "";
@@ -390,7 +392,7 @@ export function BookingLifecyclePanel({
             style={styles.cardChatBtn}
             testID="open-booking-chat-btn"
           >
-            <MessageSquare color="#FFFFFF" size={13} style={{ marginRight: 4 }} />
+            <MessageSquare color="#FFFFFF" size={ICON_SIZE} strokeWidth={ICON_STROKE} style={{ marginRight: 4 }} />
             <Text style={styles.cardChatBtnText}>Chat</Text>
             {messages.length > 0 && (
               <View style={styles.cardChatBadge}>
@@ -467,7 +469,7 @@ export function BookingLifecyclePanel({
 
                   <View style={styles.schedulePanel}>
                     <View style={styles.scheduleHeaderRow}>
-                      <Clock size={13} color={palette.primary} />
+                      <Clock size={ICON_SIZE} strokeWidth={ICON_STROKE} color={palette.primary} />
                       <Text style={styles.scheduleLabel}>
                         {language === "en"
                           ? "Choose an alternative date and time"
@@ -721,7 +723,7 @@ export function BookingLifecyclePanel({
                   testID="customer-pending-view"
                 >
                   <View style={{ flexDirection: "row", alignItems: "center", gap: 6, marginBottom: 4 }}>
-                    <Clock color={palette.text} size={16} />
+                    <Clock color={palette.text} size={ICON_SIZE} strokeWidth={ICON_STROKE} />
                     <Text style={styles.customerNoticeTitle}>
                       {language === "en"
                         ? "Waiting for Technician Confirmation"
@@ -861,7 +863,7 @@ export function BookingLifecyclePanel({
                   <Text
                     key={star}
                     style={{
-                      fontSize: 22,
+                      fontSize: font.section,
                       color:
                         (activeBooking.reviewRating ?? reviewRating) >= star
                           ? "#F59E0B"
@@ -873,7 +875,7 @@ export function BookingLifecyclePanel({
                 ))}
               </View>
               {(activeBooking.reviewComment || reviewComment) ? (
-                <Text style={{ color: palette.text, fontSize: 13, marginTop: 4 }}>
+                <Text style={{ color: palette.text, fontSize: font.label, marginTop: 4 }}>
                   &quot;{activeBooking.reviewComment || reviewComment}&quot;
                 </Text>
               ) : null}
@@ -940,7 +942,7 @@ export function BookingLifecyclePanel({
               </Pressable>
             </>
           ) : (
-            <Text style={{ color: palette.textMuted, fontSize: 13 }}>
+            <Text style={{ color: palette.textMuted, fontSize: font.label}}>
               {language === "en"
                 ? "Waiting for customer to submit feedback."
                 : "Menunggu pelanggan memberikan ulasan."}
@@ -981,7 +983,7 @@ function createStyles(palette: ThemePalette) {
   },
   cardChatBtnText: {
     color: "#FFFFFF",
-    fontSize: 12,
+    fontSize: font.body,
     fontWeight: "800",
   },
   cardChatBadge: {
@@ -993,18 +995,18 @@ function createStyles(palette: ThemePalette) {
   },
   cardChatBadgeText: {
     color: palette.primary,
-    fontSize: 10,
+    fontSize: font.caption,
     fontWeight: "900",
   },
   statusEyebrow: {
     color: palette.primary,
-    fontSize: 10,
+    fontSize: font.caption,
     fontWeight: "800",
     letterSpacing: 1,
   },
   statusHeadline: {
     color: palette.text,
-    fontSize: 18,
+    fontSize: font.heading,
     fontWeight: "800",
     marginTop: 2,
   },
@@ -1014,11 +1016,11 @@ function createStyles(palette: ThemePalette) {
     marginTop: spacing.sm,
     padding: spacing.md,
   },
-  bookingMetaLine: { color: palette.text, fontSize: 13, fontWeight: "700" },
-  bookingMetaSub: { color: palette.textMuted, fontSize: 12, marginTop: 3 },
+  bookingMetaLine: { color: palette.text, fontSize: font.label, fontWeight: "700" },
+  bookingMetaSub: { color: palette.textMuted, fontSize: font.body, marginTop: 3 },
   proposedScheduleNote: {
     color: palette.primary,
-    fontSize: 12,
+    fontSize: font.body,
     fontWeight: "700",
     marginTop: 6,
   },
@@ -1040,7 +1042,7 @@ function createStyles(palette: ThemePalette) {
   },
   smallAcceptBtnText: {
     color: "#FFFFFF",
-    fontSize: 12,
+    fontSize: font.body,
     fontWeight: "800",
   },
   smallDeclineBtn: {
@@ -1056,12 +1058,12 @@ function createStyles(palette: ThemePalette) {
   },
   smallDeclineBtnText: {
     color: palette.danger,
-    fontSize: 12,
+    fontSize: font.body,
     fontWeight: "800",
   },
   stepTitle: {
     color: palette.text,
-    fontSize: 15,
+    fontSize: font.title,
     fontWeight: "800",
     marginBottom: spacing.sm,
     marginTop: spacing.md,
@@ -1078,7 +1080,7 @@ function createStyles(palette: ThemePalette) {
     backgroundColor: palette.primarySoft,
     borderColor: palette.primary,
   },
-  chipText: { color: palette.textMuted, fontSize: 11, fontWeight: "700" },
+  chipText: { color: palette.textMuted, fontSize: font.caption, fontWeight: "700" },
   chipTextSelected: { color: palette.primary, fontWeight: "800" },
   input: {
     backgroundColor: palette.inputBg,
@@ -1086,7 +1088,7 @@ function createStyles(palette: ThemePalette) {
     borderRadius: 5,
     borderWidth: 1,
     color: palette.text,
-    fontSize: 13,
+    fontSize: font.label,
     marginBottom: spacing.sm,
     minHeight: 44,
     paddingHorizontal: spacing.md,
@@ -1095,7 +1097,7 @@ function createStyles(palette: ThemePalette) {
   notesArea: { minHeight: 74, textAlignVertical: "top" },
   errorText: {
     color: palette.danger,
-    fontSize: 12,
+    fontSize: font.body,
     fontWeight: "600",
     marginVertical: spacing.xs,
   },
@@ -1107,7 +1109,7 @@ function createStyles(palette: ThemePalette) {
   },
   actionGroupTitle: {
     color: palette.textMuted,
-    fontSize: 11,
+    fontSize: font.caption,
     fontWeight: "800",
     letterSpacing: 0.7,
     marginBottom: spacing.xs,
@@ -1123,7 +1125,7 @@ function createStyles(palette: ThemePalette) {
     paddingHorizontal: spacing.lg,
     paddingVertical: 8,
   },
-  acceptBtnText: { color: "#FFFFFF", fontSize: 13, fontWeight: "800" },
+  acceptBtnText: { color: "#FFFFFF", fontSize: font.label, fontWeight: "800" },
   declineBtn: {
     alignItems: "center",
     backgroundColor: palette.surfaceElevated,
@@ -1135,7 +1137,7 @@ function createStyles(palette: ThemePalette) {
     paddingHorizontal: spacing.lg,
     paddingVertical: 8,
   },
-  declineBtnText: { color: palette.danger, fontSize: 13, fontWeight: "800" },
+  declineBtnText: { color: palette.danger, fontSize: font.label, fontWeight: "800" },
   proposeBtn: {
     alignItems: "center",
     backgroundColor: palette.primarySoft,
@@ -1146,7 +1148,7 @@ function createStyles(palette: ThemePalette) {
     minHeight: 38,
     paddingHorizontal: spacing.md,
   },
-  proposeBtnText: { color: palette.primary, fontSize: 12, fontWeight: "800" },
+  proposeBtnText: { color: palette.primary, fontSize: font.body, fontWeight: "800" },
   schedulePanel: {
     backgroundColor: palette.surfaceElevated,
     borderColor: palette.border,
@@ -1164,12 +1166,12 @@ function createStyles(palette: ThemePalette) {
   },
   scheduleLabel: {
     color: palette.text,
-    fontSize: 12,
+    fontSize: font.body,
     fontWeight: "800",
   },
   scheduleSubSectionLabel: {
     color: palette.textMuted,
-    fontSize: 10,
+    fontSize: font.caption,
     fontWeight: "800",
     letterSpacing: 0.8,
     marginTop: 6,
@@ -1201,7 +1203,7 @@ function createStyles(palette: ThemePalette) {
   },
   scheduleChipText: {
     color: palette.text,
-    fontSize: 11,
+    fontSize: font.caption,
     fontWeight: "700",
   },
   scheduleChipTextSelected: {
@@ -1225,7 +1227,7 @@ function createStyles(palette: ThemePalette) {
   },
   smallProposeBtnText: {
     color: palette.primary,
-    fontSize: 12,
+    fontSize: font.body,
     fontWeight: "800",
   },
   customerNoticeCard: {
@@ -1259,7 +1261,7 @@ function createStyles(palette: ThemePalette) {
     borderWidth: 1,
   },
   historyControlText: {
-    fontSize: 11,
+    fontSize: font.caption,
     fontWeight: '700',
   },
   pinnedBookingCard: {
@@ -1275,7 +1277,7 @@ function createStyles(palette: ThemePalette) {
     marginBottom: 4,
   },
   pinnedTitle: {
-    fontSize: 14,
+    fontSize: font.subtitle,
     fontWeight: '800',
     flex: 1,
     marginRight: spacing.xs,
@@ -1286,7 +1288,7 @@ function createStyles(palette: ThemePalette) {
     borderRadius: radii.pill,
   },
   pinnedBadgeText: {
-    fontSize: 11,
+    fontSize: font.caption,
     fontWeight: '700',
   },
   pinnedMetaRow: {
@@ -1295,11 +1297,11 @@ function createStyles(palette: ThemePalette) {
     gap: 6,
   },
   pinnedPrice: {
-    fontSize: 13,
+    fontSize: font.label,
     fontWeight: '800',
   },
   pinnedMetaText: {
-    fontSize: 12,
+    fontSize: font.body,
   },
   chatClosedBanner: {
     borderRadius: radii.sm,
@@ -1308,7 +1310,7 @@ function createStyles(palette: ThemePalette) {
     marginBottom: spacing.md,
   },
   chatClosedText: {
-    fontSize: 12,
+    fontSize: font.body,
     fontWeight: '600',
     lineHeight: 17,
   },
@@ -1320,7 +1322,7 @@ function createStyles(palette: ThemePalette) {
     marginBottom: spacing.sm,
   },
   historyClearedText: {
-    fontSize: 12,
+    fontSize: font.body,
     fontStyle: 'italic',
   },
   undoClearBtn: {
@@ -1328,7 +1330,7 @@ function createStyles(palette: ThemePalette) {
     paddingVertical: 4,
   },
   undoClearText: {
-    fontSize: 12,
+    fontSize: font.body,
     fontWeight: '700',
   },
   messageRow: {
@@ -1361,7 +1363,7 @@ function createStyles(palette: ThemePalette) {
     paddingVertical: spacing.sm,
   },
   messageTime: {
-    fontSize: 10,
+    fontSize: font.caption,
     marginTop: 4,
     textAlign: 'right',
   },
@@ -1389,11 +1391,11 @@ function createStyles(palette: ThemePalette) {
     flex: 1,
   },
   chatTriggerPartnerName: {
-    fontSize: 16,
+    fontSize: font.heading,
     fontWeight: '800',
   },
   chatTriggerSubtitle: {
-    fontSize: 12,
+    fontSize: font.body,
     marginTop: 2,
   },
   chatTriggerBtn: {
@@ -1406,11 +1408,11 @@ function createStyles(palette: ThemePalette) {
     gap: spacing.sm,
   },
   chatTriggerBtnIcon: {
-    fontSize: 18,
+    fontSize: font.heading,
   },
   chatTriggerBtnText: {
     color: '#FFFFFF',
-    fontSize: 14,
+    fontSize: font.subtitle,
     fontWeight: '800',
   },
   chatTriggerBadge: {
@@ -1421,7 +1423,7 @@ function createStyles(palette: ThemePalette) {
   },
   chatTriggerBadgeText: {
     color: '#FFFFFF',
-    fontSize: 11,
+    fontSize: font.caption,
     fontWeight: '800',
   },
   reviewHeaderRow: {
@@ -1429,11 +1431,11 @@ function createStyles(palette: ThemePalette) {
     marginBottom: spacing.xs,
   },
   reviewHeaderTitle: {
-    fontSize: 17,
+    fontSize: font.heading,
     fontWeight: '800',
   },
   reviewHeaderSubtitle: {
-    fontSize: 12,
+    fontSize: font.body,
     lineHeight: 17,
   },
   reviewSubmittedBox: {
@@ -1451,11 +1453,11 @@ function createStyles(palette: ThemePalette) {
     gap: 4,
   },
   chatEntryTitle: {
-    fontSize: 16,
+    fontSize: font.heading,
     fontWeight: '800',
   },
   chatEntrySubtitle: {
-    fontSize: 12,
+    fontSize: font.body,
     lineHeight: 17,
   },
   openChatMainBtn: {
@@ -1505,11 +1507,11 @@ function createStyles(palette: ThemePalette) {
     flex: 1,
   },
   messengerPartnerName: {
-    fontSize: 15,
+    fontSize: font.title,
     fontWeight: '800',
   },
   messengerPartnerStatus: {
-    fontSize: 11,
+    fontSize: font.caption,
     fontWeight: '600',
     marginTop: 1,
   },
@@ -1526,7 +1528,7 @@ function createStyles(palette: ThemePalette) {
     width: 36,
   },
   menuDotsText: {
-    fontSize: 16,
+    fontSize: font.heading,
     fontWeight: '900',
     letterSpacing: -1,
   },
@@ -1554,7 +1556,7 @@ function createStyles(palette: ThemePalette) {
     paddingVertical: spacing.sm,
   },
   dropdownMenuText: {
-    fontSize: 13,
+    fontSize: font.label,
     fontWeight: '700',
   },
   messengerScrollView: {
@@ -1593,16 +1595,16 @@ function createStyles(palette: ThemePalette) {
   },
   messengerSendBtnIcon: {
     color: '#FFFFFF',
-    fontSize: 16,
+    fontSize: font.heading,
     fontWeight: '800',
     marginLeft: 2,
   },
   openChatMainBtnIcon: {
-    fontSize: 18,
+    fontSize: font.heading,
   },
   openChatMainBtnText: {
     color: '#FFFFFF',
-    fontSize: 14,
+    fontSize: font.subtitle,
     fontWeight: '800',
   },
   chatCountPill: {
@@ -1613,7 +1615,7 @@ function createStyles(palette: ThemePalette) {
   },
   chatCountPillText: {
     color: '#FFFFFF',
-    fontSize: 11,
+    fontSize: font.caption,
     fontWeight: '800',
   },
   chatModalSafeArea: {
@@ -1633,11 +1635,11 @@ function createStyles(palette: ThemePalette) {
     gap: spacing.md,
   },
   chatModalPartnerName: {
-    fontSize: 15,
+    fontSize: font.title,
     fontWeight: '800',
   },
   chatModalPartnerRole: {
-    fontSize: 11,
+    fontSize: font.caption,
     fontWeight: '700',
     marginTop: 1,
   },
@@ -1650,7 +1652,7 @@ function createStyles(palette: ThemePalette) {
     width: 36,
   },
   closeChatModalText: {
-    fontSize: 16,
+    fontSize: font.heading,
     fontWeight: '700',
   },
   modalPinnedCard: {
@@ -1669,7 +1671,7 @@ function createStyles(palette: ThemePalette) {
     paddingVertical: 6,
   },
   modalSecurityText: {
-    fontSize: 11,
+    fontSize: font.caption,
     fontWeight: '600',
     lineHeight: 15,
   },
@@ -1690,11 +1692,11 @@ function createStyles(palette: ThemePalette) {
     paddingVertical: spacing.xxxl,
   },
   emptyMessagesTitle: {
-    fontSize: 16,
+    fontSize: font.heading,
     fontWeight: '800',
   },
   emptyMessagesSubtitle: {
-    fontSize: 12,
+    fontSize: font.body,
     marginTop: 4,
     textAlign: 'center',
   },
@@ -1703,7 +1705,7 @@ function createStyles(palette: ThemePalette) {
     borderWidth: 1,
     padding: spacing.xl,
   },
-  chatLockedNote: { color: palette.textMuted, fontSize: 13, lineHeight: 19 },
+  chatLockedNote: { color: palette.textMuted, fontSize: font.label, lineHeight: 19 },
   senderSwitchRow: {
     flexDirection: "row",
     gap: spacing.xs,
@@ -1717,10 +1719,10 @@ function createStyles(palette: ThemePalette) {
   },
   messageBubbleCustomer: { backgroundColor: palette.primarySoft },
   messageBubbleTechnician: { backgroundColor: palette.surfaceElevated },
-  messageSender: { color: palette.primary, fontSize: 11, fontWeight: "800" },
+  messageSender: { color: palette.primary, fontSize: font.caption, fontWeight: "800" },
   messageBody: {
     color: palette.text,
-    fontSize: 13,
+    fontSize: font.label,
     lineHeight: 19,
     marginTop: 2,
   },
@@ -1734,7 +1736,7 @@ function createStyles(palette: ThemePalette) {
     minHeight: 44,
     paddingHorizontal: spacing.lg,
   },
-  chatSendBtnText: { color: "#FFFFFF", fontSize: 13, fontWeight: "800" },
+  chatSendBtnText: { color: "#FFFFFF", fontSize: font.label, fontWeight: "800" },
   reviewFormCard: {
     backgroundColor: palette.surface,
     borderColor: palette.border,
@@ -1759,28 +1761,28 @@ function createStyles(palette: ThemePalette) {
   },
   starBtnText: {
     color: palette.textMuted,
-    fontSize: 22,
+    fontSize: font.section,
     fontWeight: "800",
   },
   starBtnTextActive: {
     color: "#F59E0B",
   },
-  reviewDoneText: { color: palette.primary, fontSize: 13, fontWeight: "700" },
-  customerNoticeTitle: { color: palette.text, fontSize: 14, fontWeight: "800" },
+  reviewDoneText: { color: palette.primary, fontSize: font.label, fontWeight: "700" },
+  customerNoticeTitle: { color: palette.text, fontSize: font.subtitle, fontWeight: "800" },
   customerNoticeBody: {
     color: palette.textMuted,
-    fontSize: 12,
+    fontSize: font.body,
     lineHeight: 18,
     marginTop: 4,
   },
   customerConfirmedTitle: {
     color: palette.primary,
-    fontSize: 14,
+    fontSize: font.subtitle,
     fontWeight: "800",
   },
   customerConfirmedBody: {
     color: palette.text,
-    fontSize: 12,
+    fontSize: font.body,
     lineHeight: 18,
     marginTop: 4,
   },
@@ -1794,7 +1796,7 @@ function createStyles(palette: ThemePalette) {
     minHeight: 38,
     paddingHorizontal: spacing.md,
   },
-  cancelBtnText: { color: palette.textMuted, fontSize: 12, fontWeight: "700" },
+  cancelBtnText: { color: palette.textMuted, fontSize: font.body, fontWeight: "700" },
   chatSecurityBanner: {
     backgroundColor: palette.surfaceElevated,
     borderColor: palette.border,
@@ -1806,7 +1808,7 @@ function createStyles(palette: ThemePalette) {
   },
   chatSecurityText: {
     color: palette.textMuted,
-    fontSize: 11,
+    fontSize: font.caption,
     lineHeight: 16,
     fontWeight: "600",
   },
@@ -1820,7 +1822,7 @@ function createStyles(palette: ThemePalette) {
   },
   awaitingNoticeText: {
     color: palette.textMuted,
-    fontSize: 12,
+    fontSize: font.body,
     lineHeight: 18,
     fontWeight: "600",
   },
@@ -1834,7 +1836,7 @@ function createStyles(palette: ThemePalette) {
   },
   approvedNoticeText: {
     color: palette.primary,
-    fontSize: 12,
+    fontSize: font.body,
     lineHeight: 18,
     fontWeight: "700",
   },

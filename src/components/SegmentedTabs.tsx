@@ -2,6 +2,7 @@ import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { useAppearance } from '../context/AppearanceContext';
 import { radii, spacing } from '../theme/tokens';
+import { font } from '../theme/typography';
 
 export interface SegmentedTab<T extends string> {
   key: T;
@@ -88,7 +89,7 @@ const styles = StyleSheet.create({
     paddingVertical: 9,
   },
   tabText: {
-    fontSize: 13,
+    fontSize: font.label,
     fontWeight: '700',
   },
 });

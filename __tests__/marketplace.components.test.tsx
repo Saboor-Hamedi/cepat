@@ -115,6 +115,7 @@ describe("marketplace reusable components, unified header, sidebar, and modular 
 
   it("lets any role choose English in the dedicated Language tab and updates the modular settings interface", async () => {
     await render(<AccountEntryScreen />, { wrapper: LanguageWrapper });
+    await fireEvent.press(screen.getByTestId("setting-tab-language"));
     await fireEvent.press(screen.getByTestId("language-en"));
     expect(screen.queryByTestId("nav-settings")).toBeNull();
     expect(screen.getByText("App language")).toBeTruthy();

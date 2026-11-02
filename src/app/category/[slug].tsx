@@ -23,6 +23,7 @@ import type {
   Technician,
 } from "../../types/marketplace";
 import { colors, spacing } from "../../theme/tokens";
+import { font } from '../../theme/typography';
 
 export default function CategoryScreen() {
   const { t } = useLanguage();
@@ -210,28 +211,28 @@ const styles = StyleSheet.create({
   },
   backGlyph: {
     color: colors.greenDark,
-    fontSize: 31,
+    fontSize: font.display,
     lineHeight: 34,
     marginRight: 5,
   },
-  backLabel: { color: colors.greenDark, fontSize: 13, fontWeight: "700" },
+  backLabel: { color: colors.greenDark, fontSize: font.label, fontWeight: "700" },
   glyphWrap: { marginBottom: spacing.sm },
   eyebrow: {
     color: colors.orange,
-    fontSize: 10,
+    fontSize: font.caption,
     fontWeight: "800",
     letterSpacing: 1.2,
   },
   title: {
     color: colors.ink,
-    fontSize: 31,
+    fontSize: font.display,
     fontWeight: "800",
     letterSpacing: -1,
     marginTop: 5,
   },
   description: {
     color: colors.muted,
-    fontSize: 14,
+    fontSize: font.subtitle,
     lineHeight: 21,
     marginTop: 7,
     maxWidth: 560,
@@ -246,7 +247,7 @@ const styles = StyleSheet.create({
     marginTop: spacing.xxl,
     paddingBottom: spacing.md,
   },
-  resultsLabel: { color: colors.ink, fontSize: 15, fontWeight: "700" },
-  resultsCount: { color: colors.muted, fontSize: 12 },
+  resultsLabel: { color: colors.ink, fontSize: font.title, fontWeight: "700" },
+  resultsCount: { color: colors.muted, fontSize: font.body},
   footer: { height: spacing.xl },
 });

@@ -1,4 +1,5 @@
 import { ArrowRight, Trash2 } from "lucide-react-native";
+import { font } from '../../theme/typography';
 import { Pressable, StyleSheet, Text, View } from "react-native";
 
 import { useAppearance } from "../../context/AppearanceContext";
@@ -7,6 +8,7 @@ import { radii, spacing } from "../../theme/tokens";
 import { SettingSection } from "../components/SettingSection";
 import { PrivateContactEditor } from "./components/PrivateContactEditor";
 import { ProfileNameEditor } from "./components/ProfileNameEditor";
+import { ICON_SIZE, ICON_STROKE } from '../../theme/icons';
 
 export interface SettingSecurityProps {
   email?: string;
@@ -77,19 +79,19 @@ export function SettingSecurity({
             testID="security-to-delete-account-btn"
           >
             <View style={styles.shortcutLeft}>
-              <Trash2 size={18} color={palette.danger} />
+              <Trash2 size={ICON_SIZE} strokeWidth={ICON_STROKE} color={palette.danger} />
               <View>
-                <Text style={[styles.shortcutTitle, { color: palette.danger, fontSize: scaleFont(13) }]}>
+                <Text style={[styles.shortcutTitle, { color: palette.danger, fontSize: scaleFont(font.label) }]}>
                   {language === "en" ? "Delete Account" : "Hapus Akun"}
                 </Text>
-                <Text style={[styles.shortcutSub, { color: palette.textSecondary, fontSize: scaleFont(11) }]}>
+                <Text style={[styles.shortcutSub, { color: palette.textSecondary, fontSize: scaleFont(font.caption) }]}>
                   {language === "en"
                     ? "Permanently erase account, posts, photos & data"
                     : "Hapus permanen akun, postingan, foto & data Anda"}
                 </Text>
               </View>
             </View>
-            <ArrowRight size={16} color={palette.danger} />
+            <ArrowRight size={ICON_SIZE} strokeWidth={ICON_STROKE} color={palette.danger} />
           </Pressable>
         )}
       </View>

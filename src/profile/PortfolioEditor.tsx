@@ -1,4 +1,4 @@
-import { Camera } from 'lucide-react-native';
+import { Camera, Plus, X } from 'lucide-react-native';
 import { useState } from 'react';
 import {
   Image,
@@ -11,7 +11,9 @@ import {
 
 import { StrictImagePicker } from '../components/StrictImagePicker';
 import { useLanguage } from '../i18n/locale';
+import { ICON_SIZE, ICON_STROKE } from '../theme/icons';
 import { colors, radii, spacing } from '../theme/tokens';
+import { font } from '../theme/typography';
 import type { PortfolioItem } from '../types/marketplace';
 
 export interface PortfolioEditorProps {
@@ -57,7 +59,7 @@ export function PortfolioEditor({
             <Image source={{ uri: item.imageUri }} style={styles.thumbnail} />
           ) : (
             <View style={[styles.thumbnail, styles.thumbnailPlaceholder]}>
-              <Camera color={colors.muted} size={20} />
+              <Camera color={colors.muted} size={ICON_SIZE} strokeWidth={ICON_STROKE} />
             </View>
           )}
           <View style={styles.info}>
@@ -72,7 +74,7 @@ export function PortfolioEditor({
               style={styles.deleteBtn}
               testID={`delete-portfolio-${item.id}`}
             >
-              <Text style={styles.deleteBtnText}>×</Text>
+              <X color={colors.danger} size={ICON_SIZE} strokeWidth={ICON_STROKE} />
             </Pressable>
           )}
         </View>
@@ -102,7 +104,7 @@ export function PortfolioEditor({
             style={[styles.addBtn, (!newTitle.trim() || isSubmitting) && styles.disabledBtn]}
             testID="workspace-add-portfolio-btn"
           >
-            <Text style={styles.addBtnText}>+</Text>
+            <Plus color="#FFFFFF" size={ICON_SIZE} strokeWidth={ICON_STROKE} />
           </Pressable>
         </View>
       </View>
@@ -118,7 +120,7 @@ const styles = StyleSheet.create({
   },
   heading: {
     color: colors.ink,
-    fontSize: 16,
+    fontSize: font.heading,
     fontWeight: '800',
     marginBottom: spacing.xs,
   },
@@ -143,15 +145,12 @@ const styles = StyleSheet.create({
     backgroundColor: colors.paper,
     justifyContent: 'center',
   },
-  thumbnailText: {
-    fontSize: 16,
-  },
   info: {
     flex: 1,
   },
   itemTitle: {
     color: colors.ink,
-    fontSize: 13,
+    fontSize: font.label,
     fontWeight: '700',
   },
   deleteBtn: {
@@ -159,11 +158,6 @@ const styles = StyleSheet.create({
     height: 32,
     justifyContent: 'center',
     width: 32,
-  },
-  deleteBtnText: {
-    color: colors.danger,
-    fontSize: 18,
-    fontWeight: '800',
   },
   addCard: {
     backgroundColor: colors.paper,
@@ -185,7 +179,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     color: colors.ink,
     flex: 1,
-    fontSize: 13,
+    fontSize: font.label,
     minHeight: 40,
     paddingHorizontal: spacing.md,
   },
@@ -196,11 +190,6 @@ const styles = StyleSheet.create({
     height: 40,
     justifyContent: 'center',
     width: 44,
-  },
-  addBtnText: {
-    color: '#FFFFFF',
-    fontSize: 18,
-    fontWeight: '800',
   },
   disabledBtn: {
     opacity: 0.5,

@@ -1,4 +1,6 @@
 import { CheckCircle2 } from 'lucide-react-native';
+import { font } from '../../theme/typography';
+import { ICON_SIZE, ICON_STROKE } from '../../theme/icons';
 import React, { useMemo, useState } from 'react';
 import {
   Pressable,
@@ -97,7 +99,7 @@ export function DashboardReports({
             <Text
               style={[
                 styles.cardTitle,
-                { color: palette.text, fontSize: scaleFont(15) },
+                { color: palette.text, fontSize: scaleFont(font.title) },
               ]}
             >
               {rep.technicianName}
@@ -105,7 +107,7 @@ export function DashboardReports({
             <Text
               style={[
                 styles.cardCategory,
-                { color: palette.textMuted, fontSize: scaleFont(12) },
+                { color: palette.textMuted, fontSize: scaleFont(font.body) },
               ]}
             >
               {rep.category.replace(/_/g, ' ')} · {rep.severity}
@@ -117,7 +119,7 @@ export function DashboardReports({
             <Text
               style={[
                 styles.statusHighlightText,
-                { color: statusColor, fontSize: scaleFont(12) },
+                { color: statusColor, fontSize: scaleFont(font.body) },
               ]}
             >
               {getStatusLabel(rep.status)}
@@ -129,7 +131,7 @@ export function DashboardReports({
         <Text
           style={[
             styles.cardDescription,
-            { color: palette.text, fontSize: scaleFont(13) },
+            { color: palette.text, fontSize: scaleFont(font.label) },
           ]}
         >
           {rep.description}
@@ -146,7 +148,7 @@ export function DashboardReports({
             <Text
               style={[
                 styles.adminNoteText,
-                { color: palette.textMuted, fontSize: scaleFont(12) },
+                { color: palette.textMuted, fontSize: scaleFont(font.body) },
               ]}
             >
               {rep.adminNotes}
@@ -169,7 +171,7 @@ export function DashboardReports({
               backgroundColor: palette.surfaceElevated,
               borderColor: palette.border,
               color: palette.text,
-              fontSize: scaleFont(12),
+              fontSize: scaleFont(font.body),
             },
           ]}
           testID={`admin-report-note-${rep.id}`}
@@ -196,7 +198,7 @@ export function DashboardReports({
               <Text
                 style={[
                   styles.btnText,
-                  { color: palette.text, fontSize: scaleFont(12) },
+                  { color: palette.text, fontSize: scaleFont(font.body) },
                 ]}
               >
                 {language === 'en' ? 'Investigate' : 'Investigasi'}
@@ -220,7 +222,7 @@ export function DashboardReports({
               <Text
                 style={[
                   styles.btnText,
-                  { color: '#FFFFFF', fontSize: scaleFont(12) },
+                  { color: '#FFFFFF', fontSize: scaleFont(font.body) },
                 ]}
               >
                 {language === 'en' ? 'Resolve' : 'Selesaikan'}
@@ -251,7 +253,7 @@ export function DashboardReports({
               <Text
                 style={[
                   styles.btnText,
-                  { color: palette.danger, fontSize: scaleFont(12) },
+                  { color: palette.danger, fontSize: scaleFont(font.body) },
                 ]}
               >
                 {language === 'en' ? 'Block Tech' : 'Blokir Teknisi'}
@@ -275,7 +277,7 @@ export function DashboardReports({
               <Text
                 style={[
                   styles.btnText,
-                  { color: palette.textMuted, fontSize: scaleFont(12) },
+                  { color: palette.textMuted, fontSize: scaleFont(font.body) },
                 ]}
               >
                 {language === 'en' ? 'Dismiss' : 'Tutup'}
@@ -296,11 +298,11 @@ export function DashboardReports({
             { backgroundColor: palette.surface, borderColor: palette.border },
           ]}
         >
-          <CheckCircle2 size={36} color="#16A34A" />
+          <CheckCircle2 size={ICON_SIZE} strokeWidth={ICON_STROKE} color="#16A34A" />
           <Text
             style={[
               styles.emptyTitle,
-              { color: palette.text, fontSize: scaleFont(16) },
+              { color: palette.text, fontSize: scaleFont(font.heading) },
             ]}
           >
             {language === 'en' ? 'No Open Reports' : 'Tidak Ada Laporan Terbuka'}
@@ -308,7 +310,7 @@ export function DashboardReports({
           <Text
             style={[
               styles.emptySubtitle,
-              { color: palette.textMuted, fontSize: scaleFont(12) },
+              { color: palette.textMuted, fontSize: scaleFont(font.body) },
             ]}
           >
             {language === 'en'

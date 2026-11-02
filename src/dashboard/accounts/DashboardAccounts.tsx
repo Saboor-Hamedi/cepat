@@ -1,4 +1,6 @@
 import { Check, Search, ShieldCheck } from 'lucide-react-native';
+import { font } from '../../theme/typography';
+import { ICON_SIZE, ICON_STROKE } from '../../theme/icons';
 import React, { useMemo, useState } from 'react';
 import {
   Pressable,
@@ -62,7 +64,7 @@ export function DashboardAccounts({
             { backgroundColor: palette.inputBg, borderColor: palette.border },
           ]}
         >
-          <Search size={16} color={palette.textMuted} />
+          <Search size={ICON_SIZE} strokeWidth={ICON_STROKE} color={palette.textMuted} />
           <TextInput
             onChangeText={setSearch}
             placeholder={
@@ -286,7 +288,7 @@ const styles = StyleSheet.create({
   },
   searchInput: {
     flex: 1,
-    fontSize: 13,
+    fontSize: font.label,
     minHeight: 38,
   },
   chipRow: {
@@ -302,7 +304,7 @@ const styles = StyleSheet.create({
     paddingVertical: 6,
   },
   filterChipText: {
-    fontSize: 11,
+    fontSize: font.caption,
     fontWeight: '700',
   },
   card: {
@@ -317,11 +319,11 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
   },
   cardTitle: {
-    fontSize: 15,
+    fontSize: font.title,
     fontWeight: '800',
   },
   cardMeta: {
-    fontSize: 12,
+    fontSize: font.body,
     marginTop: 4,
   },
   verifiedTag: {
@@ -333,7 +335,7 @@ const styles = StyleSheet.create({
   },
   verifiedTagText: {
     color: '#FFFFFF',
-    fontSize: 10,
+    fontSize: font.caption,
     fontWeight: '900',
   },
   statusBadge: {
@@ -342,12 +344,12 @@ const styles = StyleSheet.create({
     paddingVertical: 4,
   },
   statusBadgeText: {
-    fontSize: 10,
+    fontSize: font.caption,
     fontWeight: '800',
   },
   adminNoteBox: {
     borderRadius: radii.sm,
-    fontSize: 12,
+    fontSize: font.body,
     fontWeight: '600',
     marginTop: spacing.xs,
     padding: spacing.sm,
@@ -368,7 +370,7 @@ const styles = StyleSheet.create({
   },
   primaryBtnText: {
     color: '#FFFFFF',
-    fontSize: 11,
+    fontSize: font.caption,
     fontWeight: '800',
   },
   secondaryBtn: {
@@ -380,7 +382,7 @@ const styles = StyleSheet.create({
     paddingVertical: 6,
   },
   secondaryBtnText: {
-    fontSize: 11,
+    fontSize: font.caption,
     fontWeight: '800',
   },
   warningBtn: {
@@ -393,7 +395,7 @@ const styles = StyleSheet.create({
     paddingVertical: 6,
   },
   warningBtnText: {
-    fontSize: 11,
+    fontSize: font.caption,
     fontWeight: '800',
   },
   dangerBtn: {
@@ -406,7 +408,7 @@ const styles = StyleSheet.create({
     paddingVertical: 6,
   },
   dangerBtnText: {
-    fontSize: 11,
+    fontSize: font.caption,
     fontWeight: '800',
   },
 });

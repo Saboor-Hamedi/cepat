@@ -319,15 +319,18 @@ describe("marketplace, auth-gated booking, social technician profile, and sideba
 
     expect(await screen.findByText("Pengaturan")).toBeTruthy();
     expect(screen.queryByTestId("setting-tab-all")).toBeNull();
+    await fireEvent.press(screen.getByTestId("setting-tab-account"));
     expect(screen.getByTestId("setting-section-account")).toBeTruthy();
     expect(screen.getByTestId("account-session-card")).toBeTruthy();
     expect(screen.queryByTestId("private-email-input")).toBeNull();
     expect(screen.queryByTestId("private-phone-input")).toBeNull();
 
-    expect(await screen.findByTestId("account-language-section")).toBeTruthy();
+    await fireEvent.press(screen.getByTestId("settings-back-btn"));
+    await fireEvent.press(screen.getByTestId("setting-tab-language"));
     expect(screen.getByTestId("language-id")).toBeTruthy();
     expect(screen.getByTestId("language-en")).toBeTruthy();
 
+    await fireEvent.press(screen.getByTestId("settings-back-btn"));
     await fireEvent.press(screen.getByTestId("setting-tab-appearance"));
     expect(
       await screen.findByTestId("setting-section-appearance"),

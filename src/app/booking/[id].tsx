@@ -56,6 +56,8 @@ import type {
   TechnicianPost,
   TechnicianService,
 } from "../../types/marketplace";
+import { ICON_SIZE, ICON_STROKE } from '../../theme/icons';
+import { font } from '../../theme/typography';
 
 export default function BookingEntryScreen() {
   const { id, serviceId, postId, postCaption, categorySlug, serviceName } =
@@ -425,7 +427,7 @@ export default function BookingEntryScreen() {
           }}
           style={styles.back}
         >
-          <ChevronLeft color={palette.primary} size={20} />
+          <ChevronLeft color={palette.primary} size={ICON_SIZE} strokeWidth={ICON_STROKE} />
           <Text style={[styles.backLabel, { color: palette.primary }]}>
             {language === "en" ? "Back" : "Kembali"}
           </Text>
@@ -514,7 +516,7 @@ export default function BookingEntryScreen() {
                       },
                     ]}
                   >
-                    <AlertTriangle color="#EAB308" size={36} style={{ marginBottom: 8 }} />
+                    <AlertTriangle color="#EAB308" size={ICON_SIZE} strokeWidth={ICON_STROKE} style={{ marginBottom: 8 }} />
                     <Text style={[styles.stepTitle, { textAlign: "center", marginBottom: 6 }]}>
                       {language === "en"
                         ? "This is your technician profile"
@@ -668,7 +670,7 @@ export default function BookingEntryScreen() {
                         },
                       ]}
                     >
-                      <MapPin color={palette.primary} size={16} />
+                      <MapPin color={palette.primary} size={ICON_SIZE} strokeWidth={ICON_STROKE} />
                       <View style={{ flex: 1, paddingRight: 4 }}>
                         <Text
                           numberOfLines={2}
@@ -886,7 +888,7 @@ function createStyles(palette: ThemePalette) {
     paddingVertical: spacing.xs,
   },
   back: { alignItems: "center", flexDirection: "row", gap: 6, minHeight: 44 },
-  backLabel: { color: palette.primary, fontSize: 14, fontWeight: "700" },
+  backLabel: { color: palette.primary, fontSize: font.subtitle, fontWeight: "700" },
   allBookingsLink: {
     backgroundColor: palette.primarySoft,
     borderRadius: 5,
@@ -895,7 +897,7 @@ function createStyles(palette: ThemePalette) {
   },
   allBookingsLinkText: {
     color: palette.primary,
-    fontSize: 12,
+    fontSize: font.body,
     fontWeight: "800",
   },
   scrollContent: { paddingBottom: spacing.xl },
@@ -909,19 +911,19 @@ function createStyles(palette: ThemePalette) {
   badgeWrap: { marginBottom: spacing.sm },
   eyebrow: {
     color: palette.primary,
-    fontSize: 10,
+    fontSize: font.caption,
     fontWeight: "800",
     letterSpacing: 1.2,
   },
   title: {
     color: palette.text,
-    fontSize: 28,
+    fontSize: font.display,
     fontWeight: "800",
     letterSpacing: -0.7,
     marginTop: 4,
   },
   activeBookingTitle: {
-    fontSize: 20,
+    fontSize: font.section,
     fontWeight: "800",
     letterSpacing: -0.4,
     marginTop: spacing.sm,
@@ -929,7 +931,7 @@ function createStyles(palette: ThemePalette) {
   },
   description: {
     color: palette.textMuted,
-    fontSize: 14,
+    fontSize: font.subtitle,
     lineHeight: 20,
     marginTop: 4,
   },
@@ -952,12 +954,12 @@ function createStyles(palette: ThemePalette) {
     paddingVertical: 10,
   },
   selectedAddressText: {
-    fontSize: 13,
+    fontSize: font.label,
     fontWeight: "600",
     lineHeight: 18,
   },
   selectedAddressSub: {
-    fontSize: 11,
+    fontSize: font.caption,
     marginTop: 2,
   },
   changeAddressBtn: {
@@ -969,7 +971,7 @@ function createStyles(palette: ThemePalette) {
     paddingHorizontal: 10,
   },
   changeAddressBtnText: {
-    fontSize: 11,
+    fontSize: font.caption,
     fontWeight: "700",
   },
   simpleAddAddressBtn: {
@@ -985,18 +987,18 @@ function createStyles(palette: ThemePalette) {
     width: "100%",
   },
   simpleAddAddressText: {
-    fontSize: 13,
+    fontSize: font.label,
     fontWeight: "700",
   },
   postContextEyebrow: {
     color: palette.primary,
-    fontSize: 10,
+    fontSize: font.caption,
     fontWeight: "800",
     letterSpacing: 0.8,
   },
   postContextCaption: {
     color: palette.text,
-    fontSize: 13,
+    fontSize: font.label,
     fontStyle: "italic",
     lineHeight: 18,
     marginVertical: spacing.xs,
@@ -1009,12 +1011,12 @@ function createStyles(palette: ThemePalette) {
   },
   postContextServiceName: {
     color: palette.primary,
-    fontSize: 13,
+    fontSize: font.label,
     fontWeight: "800",
   },
   postContextServicePrice: {
     color: palette.text,
-    fontSize: 13,
+    fontSize: font.label,
     fontWeight: "800",
   },
   addAddressLink: {
@@ -1026,7 +1028,7 @@ function createStyles(palette: ThemePalette) {
   },
   addAddressLinkText: {
     color: palette.primary,
-    fontSize: 12,
+    fontSize: font.body,
     fontWeight: "700",
     textDecorationLine: "underline",
   },
@@ -1048,8 +1050,8 @@ function createStyles(palette: ThemePalette) {
     paddingBottom: spacing.sm,
   },
   techCopy: { flex: 1 },
-  techName: { color: palette.text, fontSize: 16, fontWeight: "800" },
-  techPerson: { color: palette.textMuted, fontSize: 12, marginBottom: 4 },
+  techName: { color: palette.text, fontSize: font.heading, fontWeight: "800" },
+  techPerson: { color: palette.textMuted, fontSize: font.body, marginBottom: 4 },
   idRow: {
     alignItems: "center",
     flexDirection: "row",
@@ -1057,11 +1059,11 @@ function createStyles(palette: ThemePalette) {
   },
   selectionLabel: {
     color: palette.textMuted,
-    fontSize: 9,
+    fontSize: font.caption,
     fontWeight: "800",
     letterSpacing: 0.9,
   },
-  selectionId: { color: palette.text, fontSize: 12, fontWeight: "700" },
+  selectionId: { color: palette.text, fontSize: font.body, fontWeight: "700" },
   formCard: {
     backgroundColor: palette.surface,
     borderColor: palette.border,
@@ -1072,7 +1074,7 @@ function createStyles(palette: ThemePalette) {
   },
   stepTitle: {
     color: palette.text,
-    fontSize: 15,
+    fontSize: font.title,
     fontWeight: "800",
     marginBottom: spacing.sm,
     marginTop: spacing.md,
@@ -1093,11 +1095,11 @@ function createStyles(palette: ThemePalette) {
     borderColor: palette.primary,
   },
   serviceOptionCopy: { flex: 1, marginRight: spacing.sm },
-  serviceOptionName: { color: palette.text, fontSize: 14, fontWeight: "700" },
-  serviceOptionDesc: { color: palette.textMuted, fontSize: 11, marginTop: 2 },
+  serviceOptionName: { color: palette.text, fontSize: font.subtitle, fontWeight: "700" },
+  serviceOptionDesc: { color: palette.textMuted, fontSize: font.caption, marginTop: 2 },
   serviceOptionPrice: {
     color: palette.primary,
-    fontSize: 13,
+    fontSize: font.label,
     fontWeight: "800",
   },
   savedChipRow: {
@@ -1118,7 +1120,7 @@ function createStyles(palette: ThemePalette) {
     backgroundColor: palette.primarySoft,
     borderColor: palette.primary,
   },
-  chipText: { color: palette.textMuted, fontSize: 11, fontWeight: "700" },
+  chipText: { color: palette.textMuted, fontSize: font.caption, fontWeight: "700" },
   chipTextSelected: { color: palette.primary, fontWeight: "800" },
   input: {
     backgroundColor: palette.inputBg,
@@ -1126,7 +1128,7 @@ function createStyles(palette: ThemePalette) {
     borderRadius: radii.sm,
     borderWidth: 1,
     color: palette.text,
-    fontSize: 13,
+    fontSize: font.label,
     marginBottom: spacing.sm,
     minHeight: 44,
     paddingHorizontal: spacing.md,
@@ -1135,14 +1137,14 @@ function createStyles(palette: ThemePalette) {
   notesArea: { minHeight: 74, textAlignVertical: "top" },
   errorText: {
     color: palette.danger,
-    fontSize: 12,
+    fontSize: font.body,
     fontWeight: "600",
     marginVertical: spacing.xs,
   },
   submitWrap: { marginTop: spacing.md },
   notice: {
     color: palette.textMuted,
-    fontSize: 11,
+    fontSize: font.caption,
     lineHeight: 16,
     marginTop: spacing.md,
   },
@@ -1156,7 +1158,7 @@ function createStyles(palette: ThemePalette) {
   },
   noServiceText: {
     color: palette.textMuted,
-    fontSize: 13,
+    fontSize: font.label,
     lineHeight: 19,
   },
   });

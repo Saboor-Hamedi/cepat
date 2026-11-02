@@ -19,6 +19,8 @@ import {
   validateStrictImageAsset,
   type ImageCandidateInput,
 } from '../utils/imageValidator';
+import { ICON_SIZE, ICON_STROKE } from '../theme/icons';
+import { font } from '../theme/typography';
 
 interface NativeImageAsset {
   uri: string;
@@ -344,7 +346,7 @@ export function ImageSourceSheet({
                 testID={`${testIDPrefix}-take-photo-btn`}
               >
                 <View style={styles.optionIconCircle}>
-                  <Camera color={palette.primary} size={22} />
+                  <Camera color={palette.primary} size={ICON_SIZE} strokeWidth={ICON_STROKE} />
                 </View>
                 <View style={styles.optionTextWrap}>
                   <Text style={[styles.optionTitle, { color: palette.text }]}>
@@ -369,7 +371,11 @@ export function ImageSourceSheet({
                 testID={`${testIDPrefix}-choose-gallery-btn`}
               >
                 <View style={styles.optionIconCircle}>
-                  <ImageIcon color={palette.primary} size={22} />
+                  <ImageIcon
+                    color={palette.primary}
+                    size={ICON_SIZE}
+                    strokeWidth={ICON_STROKE}
+                  />
                 </View>
                 <View style={styles.optionTextWrap}>
                   <Text style={[styles.optionTitle, { color: palette.text }]}>
@@ -422,7 +428,7 @@ const styles = StyleSheet.create({
     minHeight: 46,
   },
   cancelBtnText: {
-    fontSize: 14,
+    fontSize: font.subtitle,
     fontWeight: '800',
   },
   errorBox: {
@@ -436,7 +442,7 @@ const styles = StyleSheet.create({
   },
   errorText: {
     color: colors.danger,
-    fontSize: 12,
+    fontSize: font.body,
     fontWeight: '600',
   },
   menuSheet: {
@@ -468,25 +474,22 @@ const styles = StyleSheet.create({
     opacity: 0.8,
   },
   optionHint: {
-    fontSize: 12,
+    fontSize: font.body,
     marginTop: 2,
-  },
-  optionIcon: {
-    fontSize: 20,
   },
   optionIconCircle: {
     alignItems: 'center',
     backgroundColor: colors.greenSoft,
-    borderRadius: 22,
-    height: 44,
+    borderRadius: 16,
+    height: 32,
     justifyContent: 'center',
-    width: 44,
+    width: 32,
   },
   optionTextWrap: {
     flex: 1,
   },
   optionTitle: {
-    fontSize: 15,
+    fontSize: font.title,
     fontWeight: '700',
   },
   optionsList: {
@@ -500,13 +503,13 @@ const styles = StyleSheet.create({
     width: 40,
   },
   sheetSubtitle: {
-    fontSize: 13,
+    fontSize: font.label,
     lineHeight: 18,
     marginBottom: spacing.lg,
     marginTop: 4,
   },
   sheetTitle: {
-    fontSize: 18,
+    fontSize: font.heading,
     fontWeight: '800',
     letterSpacing: -0.3,
   },

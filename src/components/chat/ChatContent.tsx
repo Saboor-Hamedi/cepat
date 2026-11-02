@@ -1,4 +1,5 @@
 import { Archive, Lock, MessageCircle } from 'lucide-react-native';
+import { ICON_SIZE, ICON_STROKE } from '../../theme/icons';
 import { useMemo, useRef } from 'react';
 import {
   Pressable,
@@ -58,7 +59,7 @@ export function ChatContent({
         style={[styles.securityBanner, { borderColor: palette.border }]}
         testID="chat-security-banner"
       >
-        <Lock color={palette.textMuted} size={12} strokeWidth={2.2} />
+        <Lock color={palette.textMuted} size={ICON_SIZE} strokeWidth={ICON_STROKE} />
         <Text style={[styles.securityText, { color: palette.textMuted }]}>
           {language === 'en'
             ? 'Protected chat — sharing phone numbers, WhatsApp, or links is disabled.'
@@ -81,7 +82,7 @@ export function ChatContent({
             style={[styles.closedBanner, { borderColor: palette.border }]}
             testID="chat-closed-banner"
           >
-            <Archive color={palette.textMuted} size={12} strokeWidth={2.2} />
+            <Archive color={palette.textMuted} size={ICON_SIZE} strokeWidth={ICON_STROKE} />
             <Text
               style={[styles.closedBannerText, { color: palette.textMuted }]}
             >
@@ -125,7 +126,7 @@ export function ChatContent({
                 { backgroundColor: palette.primarySoft },
               ]}
             >
-              <MessageCircle color={palette.primary} size={28} strokeWidth={2.2} />
+              <MessageCircle color={palette.primary} size={ICON_SIZE} strokeWidth={ICON_STROKE} />
             </View>
             <Text style={[styles.emptyTitle, { color: palette.text }]}>
               {language === 'en' ? 'No messages yet' : 'Belum ada pesan'}

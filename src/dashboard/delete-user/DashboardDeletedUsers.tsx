@@ -6,7 +6,9 @@ import {
   Tag,
   UserX,
 } from 'lucide-react-native';
+import { ICON_SIZE, ICON_STROKE } from '../../theme/icons';
 import React, { useMemo, useState } from 'react';
+import { font } from '../../theme/typography';
 import {
   Pressable,
   StyleSheet,
@@ -119,7 +121,7 @@ export function DashboardDeletedUsers({ feedbacks }: DashboardDeletedUsersProps)
         <View style={styles.cardHeader}>
           <View style={{ flex: 1, gap: 4 }}>
             <View style={styles.userIdentityRow}>
-              <Text style={[styles.userName, { color: palette.text, fontSize: scaleFont(15) }]}>
+              <Text style={[styles.userName, { color: palette.text, fontSize: scaleFont(font.title) }]}>
                 {item.userDisplayName}
               </Text>
               <View
@@ -141,7 +143,7 @@ export function DashboardDeletedUsers({ feedbacks }: DashboardDeletedUsersProps)
                         item.userRole === 'technician'
                           ? '#0D9488'
                           : palette.primary,
-                      fontSize: scaleFont(10),
+                      fontSize: scaleFont(font.caption),
                     },
                   ]}
                 >
@@ -154,16 +156,16 @@ export function DashboardDeletedUsers({ feedbacks }: DashboardDeletedUsersProps)
             <View style={styles.metaRow}>
               {item.userEmail && item.userEmail.trim().length > 0 ? (
                 <View style={styles.metaItem}>
-                  <Mail size={13} color={palette.textMuted} />
-                  <Text style={[styles.metaText, { color: palette.textMuted, fontSize: scaleFont(11) }]}>
+                  <Mail size={ICON_SIZE} strokeWidth={ICON_STROKE} color={palette.textMuted} />
+                  <Text style={[styles.metaText, { color: palette.textMuted, fontSize: scaleFont(font.caption) }]}>
                     {item.userEmail.trim()}
                   </Text>
                 </View>
               ) : null}
 
               <View style={styles.metaItem}>
-                <Calendar size={13} color={palette.textMuted} />
-                <Text style={[styles.metaText, { color: palette.textMuted, fontSize: scaleFont(11) }]}>
+                <Calendar size={ICON_SIZE} strokeWidth={ICON_STROKE} color={palette.textMuted} />
+                <Text style={[styles.metaText, { color: palette.textMuted, fontSize: scaleFont(font.caption) }]}>
                   {formatDate(item.deletedAt)}
                 </Text>
               </View>
@@ -177,8 +179,8 @@ export function DashboardDeletedUsers({ feedbacks }: DashboardDeletedUsersProps)
               { backgroundColor: `${palette.danger}12`, borderColor: `${palette.danger}35` },
             ]}
           >
-            <Tag size={12} color={palette.danger} />
-            <Text style={[styles.reasonPillText, { color: palette.danger, fontSize: scaleFont(11) }]}>
+            <Tag size={ICON_SIZE} strokeWidth={ICON_STROKE} color={palette.danger} />
+            <Text style={[styles.reasonPillText, { color: palette.danger, fontSize: scaleFont(font.caption) }]}>
               {getReasonLabel(item.reasonCategory)}
             </Text>
           </View>
@@ -191,16 +193,16 @@ export function DashboardDeletedUsers({ feedbacks }: DashboardDeletedUsersProps)
             { backgroundColor: palette.surfaceElevated, borderColor: palette.border },
           ]}
         >
-          <Text style={[styles.feedbackLabel, { color: palette.primary, fontSize: scaleFont(11) }]}>
+          <Text style={[styles.feedbackLabel, { color: palette.primary, fontSize: scaleFont(font.caption) }]}>
             {language === 'en' ? 'Reason & Feedback:' : 'Alasan & Masukan:'}
           </Text>
 
           {item.feedbackNotes && item.feedbackNotes.trim().length > 0 ? (
-            <Text style={[styles.feedbackBody, { color: palette.text, fontSize: scaleFont(13) }]}>
+            <Text style={[styles.feedbackBody, { color: palette.text, fontSize: scaleFont(font.label) }]}>
               {item.feedbackNotes.trim()}
             </Text>
           ) : (
-            <Text style={[styles.noFeedbackText, { color: palette.textMuted, fontSize: scaleFont(12) }]}>
+            <Text style={[styles.noFeedbackText, { color: palette.textMuted, fontSize: scaleFont(font.body) }]}>
               {language === 'en'
                 ? 'No additional written feedback provided.'
                 : 'Tidak ada catatan tertulis tambahan.'}
@@ -226,7 +228,7 @@ export function DashboardDeletedUsers({ feedbacks }: DashboardDeletedUsersProps)
             { backgroundColor: palette.inputBg, borderColor: palette.border },
           ]}
         >
-          <Search size={16} color={palette.textMuted} />
+          <Search size={ICON_SIZE} strokeWidth={ICON_STROKE} color={palette.textMuted} />
           <TextInput
             onChangeText={(txt) => {
               setSearchQuery(txt);
@@ -238,7 +240,7 @@ export function DashboardDeletedUsers({ feedbacks }: DashboardDeletedUsersProps)
                 : 'Cari masukan atau alasan penghapusan...'
             }
             placeholderTextColor={palette.textMuted}
-            style={[styles.searchInput, { color: palette.text, fontSize: scaleFont(13) }]}
+            style={[styles.searchInput, { color: palette.text, fontSize: scaleFont(font.label) }]}
             testID="admin-deletion-search"
             value={searchQuery}
           />
@@ -273,7 +275,7 @@ export function DashboardDeletedUsers({ feedbacks }: DashboardDeletedUsersProps)
                 <Text
                   style={[
                     styles.filterChipText,
-                    { color: isSelected ? '#FFFFFF' : palette.text, fontSize: scaleFont(11) },
+                    { color: isSelected ? '#FFFFFF' : palette.text, fontSize: scaleFont(font.caption) },
                   ]}
                 >
                   {label}
@@ -292,13 +294,13 @@ export function DashboardDeletedUsers({ feedbacks }: DashboardDeletedUsersProps)
             { backgroundColor: palette.surface, borderColor: palette.border },
           ]}
         >
-          <CheckCircle2 size={36} color="#16A34A" />
-          <Text style={[styles.emptyStateTitle, { color: palette.text, fontSize: scaleFont(16) }]}>
+          <CheckCircle2 size={ICON_SIZE} strokeWidth={ICON_STROKE} color="#16A34A" />
+          <Text style={[styles.emptyStateTitle, { color: palette.text, fontSize: scaleFont(font.heading) }]}>
             {language === 'en'
               ? 'No Deletion Records Found'
               : 'Tidak Ada Rekaman Penghapusan'}
           </Text>
-          <Text style={[styles.emptyStateText, { color: palette.textMuted, fontSize: scaleFont(12) }]}>
+          <Text style={[styles.emptyStateText, { color: palette.textMuted, fontSize: scaleFont(font.body) }]}>
             {language === 'en'
               ? 'No user account deletion feedback matches your active search query.'
               : 'Tidak ada masukan pengunduran diri yang cocok dengan pencarian Anda.'}

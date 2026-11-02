@@ -1,4 +1,5 @@
 import { router } from "expo-router";
+import { font } from '../../theme/typography';
 import { ArrowLeft, Check, CheckCircle2, MapPin, Plus, Trash2 } from "lucide-react-native";
 import React, { useState } from "react";
 import {
@@ -15,6 +16,7 @@ import { localizeArea, useLanguage } from "../../i18n/locale";
 import { radii, spacing } from "../../theme/tokens";
 import type { SavedAddress } from "../../types/marketplace";
 import { SettingSection } from "../components/SettingSection";
+import { ICON_SIZE, ICON_STROKE } from '../../theme/icons';
 
 const DEFAULT_AREAS = [
   "Jakarta Selatan",
@@ -129,12 +131,12 @@ export function SettingAddress({
           testID="address-return-to-banner"
         >
           <View style={{ flex: 1 }}>
-            <Text style={[styles.returnToTitle, { color: palette.text, fontSize: scaleFont(13) }]}>
+            <Text style={[styles.returnToTitle, { color: palette.text, fontSize: scaleFont(font.label) }]}>
               {language === "en"
                 ? "Scheduling a Service"
                 : "Menjadwalkan Layanan"}
             </Text>
-            <Text style={[styles.returnToSub, { color: palette.textMuted, fontSize: scaleFont(12) }]}>
+            <Text style={[styles.returnToSub, { color: palette.textMuted, fontSize: scaleFont(font.body) }]}>
               {language === "en"
                 ? "Add or select an address below to use for your booking."
                 : "Tambah atau pilih alamat di bawah untuk pesanan Anda."}
@@ -146,7 +148,7 @@ export function SettingAddress({
             style={[styles.returnBtn, { backgroundColor: palette.primary }]}
             testID="address-return-to-btn"
           >
-            <ArrowLeft size={14} color="#FFFFFF" strokeWidth={2.2} />
+            <ArrowLeft size={ICON_SIZE} color="#FFFFFF" strokeWidth={ICON_STROKE} />
             <Text style={styles.returnBtnText}>
               {language === "en" ? "Back to Booking" : "Kembali ke Jadwal"}
             </Text>
@@ -156,7 +158,7 @@ export function SettingAddress({
 
       {/* Saved Addresses List */}
       <View style={styles.sectionBlock}>
-        <Text style={[styles.subSectionTitle, { color: palette.text, fontSize: scaleFont(14) }]}>
+        <Text style={[styles.subSectionTitle, { color: palette.text, fontSize: scaleFont(font.subtitle) }]}>
           {language === "en" ? "Saved Addresses" : "Alamat Tersimpan"} ({savedAddresses.length})
         </Text>
 
@@ -167,8 +169,8 @@ export function SettingAddress({
               { backgroundColor: palette.surfaceElevated, borderColor: palette.border },
             ]}
           >
-            <MapPin size={24} color={palette.textMuted} />
-            <Text style={[styles.emptyAddressText, { color: palette.textMuted, fontSize: scaleFont(12) }]}>
+            <MapPin size={ICON_SIZE} strokeWidth={ICON_STROKE} color={palette.textMuted} />
+            <Text style={[styles.emptyAddressText, { color: palette.textMuted, fontSize: scaleFont(font.body) }]}>
               {language === "en"
                 ? "No saved addresses yet. Enter your address below."
                 : "Belum ada alamat tersimpan. Masukkan alamat Anda di bawah."}
@@ -190,8 +192,8 @@ export function SettingAddress({
               >
                 <View style={styles.cardHeaderRow}>
                   <View style={styles.labelRow}>
-                    <MapPin size={16} color={palette.primary} />
-                    <Text style={[styles.addressLabel, { color: palette.text, fontSize: scaleFont(14) }]}>
+                    <MapPin size={ICON_SIZE} strokeWidth={ICON_STROKE} color={palette.primary} />
+                    <Text style={[styles.addressLabel, { color: palette.text, fontSize: scaleFont(font.subtitle) }]}>
                       {addr.label}
                     </Text>
                     {addr.isDefault && (
@@ -216,7 +218,7 @@ export function SettingAddress({
                         style={[styles.smallBtn, { borderColor: palette.border }]}
                         testID={`set-default-address-${addr.id}`}
                       >
-                        <Text style={[styles.smallBtnText, { color: palette.text, fontSize: scaleFont(11) }]}>
+                        <Text style={[styles.smallBtnText, { color: palette.text, fontSize: scaleFont(font.caption) }]}>
                           {language === "en" ? "Set default" : "Jadikan utama"}
                         </Text>
                       </Pressable>
@@ -224,19 +226,19 @@ export function SettingAddress({
                     <Pressable
                       accessibilityRole="button"
                       onPress={() => void onDeleteAddress(addr.id)}
-                      style={[styles.smallDangerBtn, { borderColor: `${palette.danger}40` }]}
+                      style={styles.smallDangerBtn}
                       testID={`delete-address-${addr.id}`}
                     >
-                      <Trash2 size={13} color={palette.danger} />
+                      <Trash2 size={ICON_SIZE} strokeWidth={ICON_STROKE} color={palette.danger} />
                     </Pressable>
                   </View>
                 </View>
 
-                <Text style={[styles.streetText, { color: palette.text, fontSize: scaleFont(13) }]}>
+                <Text style={[styles.streetText, { color: palette.text, fontSize: scaleFont(font.label) }]}>
                   {addr.streetAddress}
                 </Text>
 
-                <Text style={[styles.areaText, { color: palette.textMuted, fontSize: scaleFont(11) }]}>
+                <Text style={[styles.areaText, { color: palette.textMuted, fontSize: scaleFont(font.caption) }]}>
                   {localizeArea(addr.area, language)}
                   {addr.notes ? ` · ${addr.notes}` : ""}
                 </Text>
@@ -250,7 +252,7 @@ export function SettingAddress({
                     }}
                     style={[styles.useForBookingBtn, { backgroundColor: palette.primary }]}
                   >
-                    <Check size={14} color="#FFFFFF" strokeWidth={2.2} />
+                    <Check size={ICON_SIZE} color="#FFFFFF" strokeWidth={ICON_STROKE} />
                     <Text style={styles.useForBookingBtnText}>
                       {language === "en" ? "Use this address for booking" : "Gunakan alamat ini"}
                     </Text>
@@ -264,20 +266,17 @@ export function SettingAddress({
 
       {/* Add New Address Form */}
       <View
-        style={[
-          styles.addAddressBox,
-          { backgroundColor: palette.surface, borderColor: palette.border },
-        ]}
+        style={styles.addAddressBox}
       >
         <View style={styles.formHeader}>
-          <Plus size={16} color={palette.primary} />
-          <Text style={[styles.formTitle, { color: palette.text, fontSize: scaleFont(14) }]}>
+          <Plus size={ICON_SIZE} strokeWidth={ICON_STROKE} color={palette.primary} />
+          <Text style={[styles.formTitle, { color: palette.text, fontSize: scaleFont(font.subtitle) }]}>
             {language === "en" ? "Add New Service Address" : "Tambah Alamat Layanan Baru"}
           </Text>
         </View>
 
         {/* Preset Label Pills */}
-        <Text style={[styles.inputLabel, { color: palette.text, fontSize: scaleFont(12) }]}>
+        <Text style={[styles.inputLabel, { color: palette.text, fontSize: scaleFont(font.body) }]}>
           {language === "en" ? "Address Label" : "Label Alamat"}
         </Text>
         <View style={styles.pillRow}>
@@ -302,7 +301,7 @@ export function SettingAddress({
                     styles.presetPillText,
                     {
                       color: isSelected ? "#FFFFFF" : palette.text,
-                      fontSize: scaleFont(11),
+                      fontSize: scaleFont(font.caption),
                       fontWeight: isSelected ? "700" : "500",
                     },
                   ]}
@@ -315,7 +314,7 @@ export function SettingAddress({
         </View>
 
         {/* Complete Street Address Textarea */}
-        <Text style={[styles.inputLabel, { color: palette.text, fontSize: scaleFont(12) }]}>
+        <Text style={[styles.inputLabel, { color: palette.text, fontSize: scaleFont(font.body) }]}>
           {language === "en" ? "Complete Street Address" : "Alamat Lengkap"} *
         </Text>
         <TextInput
@@ -334,7 +333,7 @@ export function SettingAddress({
               backgroundColor: palette.surfaceElevated,
               borderColor: palette.border,
               color: palette.text,
-              fontSize: scaleFont(13),
+              fontSize: scaleFont(font.label),
             },
           ]}
           testID="new-address-street"
@@ -342,7 +341,7 @@ export function SettingAddress({
         />
 
         {/* Service Area Selector Chips */}
-        <Text style={[styles.inputLabel, { color: palette.text, fontSize: scaleFont(12) }]}>
+        <Text style={[styles.inputLabel, { color: palette.text, fontSize: scaleFont(font.body) }]}>
           {language === "en" ? "Service Area / City" : "Area Layanan / Kota"} *
         </Text>
         <View style={styles.pillRow}>
@@ -366,7 +365,7 @@ export function SettingAddress({
                     styles.presetPillText,
                     {
                       color: isSelected ? palette.primary : palette.text,
-                      fontSize: scaleFont(11),
+                      fontSize: scaleFont(font.caption),
                       fontWeight: isSelected ? "700" : "500",
                     },
                   ]}
@@ -379,7 +378,7 @@ export function SettingAddress({
         </View>
 
         {/* Optional Landmark or Notes */}
-        <Text style={[styles.inputLabel, { color: palette.text, fontSize: scaleFont(12) }]}>
+        <Text style={[styles.inputLabel, { color: palette.text, fontSize: scaleFont(font.body) }]}>
           {language === "en" ? "Landmark / Notes (Optional)" : "Patokan / Catatan (Opsional)"}
         </Text>
         <TextInput
@@ -396,7 +395,7 @@ export function SettingAddress({
               backgroundColor: palette.surfaceElevated,
               borderColor: palette.border,
               color: palette.text,
-              fontSize: scaleFont(12),
+              fontSize: scaleFont(font.body),
             },
           ]}
           value={notes}
@@ -404,7 +403,7 @@ export function SettingAddress({
 
         {/* Error message */}
         {localError ? (
-          <Text style={[styles.errorText, { color: palette.danger, fontSize: scaleFont(12) }]}>
+          <Text style={[styles.errorText, { color: palette.danger, fontSize: scaleFont(font.body) }]}>
             {localError}
           </Text>
         ) : null}
@@ -412,8 +411,8 @@ export function SettingAddress({
         {/* Success Feedback */}
         {addressFeedback ? (
           <View style={styles.feedbackRow}>
-            <CheckCircle2 size={14} color="#16A34A" />
-            <Text style={[styles.feedbackText, { fontSize: scaleFont(12) }]}>
+            <CheckCircle2 size={ICON_SIZE} strokeWidth={ICON_STROKE} color="#16A34A" />
+            <Text style={[styles.feedbackText, { fontSize: scaleFont(font.body) }]}>
               {addressFeedback}
             </Text>
           </View>
@@ -470,7 +469,7 @@ const styles = StyleSheet.create({
   },
   returnBtnText: {
     color: "#FFFFFF",
-    fontSize: 11,
+    fontSize: font.caption,
     fontWeight: "700",
   },
   sectionBlock: {
@@ -520,7 +519,7 @@ const styles = StyleSheet.create({
     paddingVertical: 1,
   },
   defaultBadgeText: {
-    fontSize: 9,
+    fontSize: font.caption,
     fontWeight: "800",
     letterSpacing: 0.5,
   },
@@ -540,11 +539,8 @@ const styles = StyleSheet.create({
   },
   smallDangerBtn: {
     alignItems: "center",
-    borderRadius: radii.xs,
-    borderWidth: 1,
-    height: 26,
     justifyContent: "center",
-    width: 26,
+    padding: 4,
   },
   streetText: {
     lineHeight: 18,
@@ -564,13 +560,12 @@ const styles = StyleSheet.create({
   },
   useForBookingBtnText: {
     color: "#FFFFFF",
-    fontSize: 12,
+    fontSize: font.body,
     fontWeight: "700",
   },
   addAddressBox: {
-    borderRadius: radii.md,
-    borderWidth: 1,
-    padding: spacing.md,
+    marginTop: spacing.sm,
+    paddingVertical: spacing.xs,
   },
   formHeader: {
     alignItems: "center",
@@ -639,7 +634,7 @@ const styles = StyleSheet.create({
   },
   saveBtnText: {
     color: "#FFFFFF",
-    fontSize: 13,
+    fontSize: font.label,
     fontWeight: "700",
   },
 });

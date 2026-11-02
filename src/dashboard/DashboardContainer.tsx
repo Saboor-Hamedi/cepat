@@ -1,4 +1,5 @@
 import { router } from 'expo-router';
+import { font } from '../theme/typography';
 import React, { useEffect, useMemo, useState } from 'react';
 import {
   ScrollView,
@@ -260,17 +261,7 @@ export function DashboardContainer({
           />
         ) : (
           <>
-            {/* Top Navigation Tabs Bar (Immediately below header, same as settings) */}
-            <DashboardTabs
-              activeTab={activeTab}
-              onSelectTab={setActiveTab}
-              openReportsCount={openReportsCount}
-              deletedUsersCount={deletionFeedbacks.length}
-              pendingApprovalsCount={pendingApprovalsCount}
-              accountsCount={accounts.length}
-              bookingsCount={bookings.length}
-              categoriesCount={categories.length}
-            />
+            {/* Clean Single Component without redundant horizontal tabs */}
 
             {/* Action feedback banner */}
             {adminNotice ? (
@@ -405,7 +396,7 @@ const styles = StyleSheet.create({
     padding: spacing.md,
   },
   noticeText: {
-    fontSize: 12,
+    fontSize: font.body,
     fontWeight: '700',
   },
   errorBanner: {
@@ -415,11 +406,11 @@ const styles = StyleSheet.create({
     padding: spacing.md,
   },
   errorTitle: {
-    fontSize: 13,
+    fontSize: font.label,
     fontWeight: '800',
   },
   errorDescription: {
-    fontSize: 12,
+    fontSize: font.body,
     marginTop: spacing.xs,
   },
 });

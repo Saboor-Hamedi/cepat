@@ -1,4 +1,4 @@
-import { ChevronLeft, MapPin } from 'lucide-react-native';
+import { BadgeCheck, ChevronLeft, MapPin } from 'lucide-react-native';
 import { useMemo } from 'react';
 import { Image, Pressable, Text, View } from 'react-native';
 
@@ -6,6 +6,7 @@ import { useAppearance } from '../../context/AppearanceContext';
 import { fixtureTechnicians } from '../../data/fixtures';
 import { formatRupiah } from '../../data/marketplaceRepository';
 import { useLanguage } from '../../i18n/locale';
+import { ICON_SIZE, ICON_STROKE } from '../../theme/icons';
 import type { BookingRecord, Technician } from '../../types/marketplace';
 import { Avatar } from '../marketplace-ui';
 import { ChatDropdown } from './ChatDropdown';
@@ -88,13 +89,16 @@ export function ChatHeader({
           ]}
           testID="chat-standalone-back-btn"
         >
-          <ChevronLeft color={palette.text} size={22} />
+          <ChevronLeft
+            color={palette.text}
+            size={ICON_SIZE}
+            strokeWidth={ICON_STROKE}
+          />
         </Pressable>
 
         <View style={styles.partnerInfoRow}>
           <View style={styles.avatarWrap}>
             <Avatar name={partnerName} size={40} uri={partnerAvatarUri} />
-            
           </View>
           <View style={styles.partnerTextGroup}>
             <View style={styles.nameLine}>
@@ -111,13 +115,17 @@ export function ChatHeader({
                     { backgroundColor: palette.primarySoft },
                   ]}
                 >
+                  <BadgeCheck
+                    color={palette.primary}
+                    size={ICON_SIZE}
+                    strokeWidth={ICON_STROKE}
+                  />
                   <Text
                     style={[
                       styles.verifiedPillText,
                       { color: palette.primary },
                     ]}
                   >
-                    ✓{' '}
                     {language === 'en' ? 'Verified' : 'Terverifikasi'}
                   </Text>
                 </View>
@@ -177,7 +185,7 @@ export function ChatHeader({
               style={[styles.pinnedDivider, { backgroundColor: palette.border }]}
             />
             <View style={styles.pinnedAddressRow}>
-              <MapPin color={palette.textMuted} size={12} />
+              <MapPin color={palette.textMuted} size={ICON_SIZE} strokeWidth={ICON_STROKE} />
               <Text
                 numberOfLines={1}
                 style={[styles.pinnedAddress, { color: palette.textMuted }]}

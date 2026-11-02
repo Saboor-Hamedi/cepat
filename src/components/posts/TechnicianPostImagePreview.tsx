@@ -1,5 +1,8 @@
-import { Image, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { X } from 'lucide-react-native';
+import { Image, Pressable, ScrollView, StyleSheet, View } from 'react-native';
+
 import { useAppearance } from '../../context/AppearanceContext';
+import { ICON_SIZE, ICON_STROKE } from '../../theme/icons';
 import { radii, spacing } from '../../theme/tokens';
 
 export interface TechnicianPostImagePreviewProps {
@@ -52,7 +55,7 @@ export function TechnicianPostImagePreview({
               testID={`remove-image-${index}`}
               hitSlop={8}
             >
-              <Text style={styles.removeBtnText}>×</Text>
+              <X color="#FFFFFF" size={ICON_SIZE} strokeWidth={ICON_STROKE} />
             </Pressable>
           </View>
         ))}
@@ -96,12 +99,5 @@ const styles = StyleSheet.create({
     top: 4,
     width: 24,
     zIndex: 10,
-  },
-  removeBtnText: {
-    color: '#FFFFFF',
-    fontSize: 16,
-    fontWeight: '700',
-    lineHeight: 18,
-    textAlign: 'center',
   },
 });

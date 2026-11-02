@@ -1,5 +1,6 @@
 import { createContext, useContext, useState, type PropsWithChildren } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { font } from '../../theme/typography';
 
 import { useAppearance } from '../../context/AppearanceContext';
 import { useLanguage } from '../../i18n/locale';
@@ -155,7 +156,7 @@ const styles = StyleSheet.create({
     width: 40,
   },
   triggerText: {
-    fontSize: 20,
+    fontSize: font.section,
     fontWeight: '800',
     letterSpacing: 1,
     marginTop: -4,
@@ -197,7 +198,7 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
   },
   menuText: {
-    fontSize: 13,
+    fontSize: font.label,
     fontWeight: '700',
   },
   divider: {

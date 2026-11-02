@@ -20,6 +20,7 @@
 
 import { router } from 'expo-router';
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { font } from '../theme/typography';
 import {
   Animated,
   PanResponder,
@@ -43,6 +44,7 @@ import {
   Wrench,
   X,
 } from 'lucide-react-native';
+import { ICON_SIZE, ICON_STROKE } from '../theme/icons';
 import { useAuth } from '../auth/AuthProvider';
 import { AppNavigationBar, EmptyState, LoadingState } from '../components/marketplace-ui';
 import { SegmentedTabs } from '../components/SegmentedTabs';
@@ -281,7 +283,7 @@ export default function NotificationsScreen() {
             ]}
             testID="notifications-header-back-btn"
           >
-            <ArrowLeft size={18} color={palette.text} strokeWidth={2.2} />
+            <ArrowLeft size={ICON_SIZE} color={palette.text} strokeWidth={ICON_STROKE} />
           </Pressable>
 
           <View style={styles.headerTitleWrap}>
@@ -437,7 +439,7 @@ function SwipeableNotificationCard({
           style={styles.deleteButton}
           testID={`delete-notification-${item.id}`}
         >
-          <Trash2 color="#FFFFFF" size={18} />
+          <Trash2 color="#FFFFFF" size={ICON_SIZE} strokeWidth={ICON_STROKE} />
           <Text style={styles.deleteButtonText}>
             {language === 'en' ? 'Delete' : 'Hapus'}
           </Text>
@@ -510,12 +512,12 @@ function SwipeableNotificationCard({
           <Pressable
             accessibilityLabel="Delete notification"
             accessibilityRole="button"
-            hitSlop={6}
+            hitSlop={10}
             onPress={onDelete}
             style={styles.inlineDeleteBtn}
             testID={`quick-delete-notification-${item.id}`}
           >
-            <X color={palette.textMuted} size={16} />
+            <X color={palette.textMuted} size={ICON_SIZE} strokeWidth={ICON_STROKE} />
           </Pressable>
         </View>
       </Animated.View>
@@ -525,14 +527,14 @@ function SwipeableNotificationCard({
 
 function NotificationIcon({ item, color }: { item: CepatNotification; color: string }) {
   const event = item.data.event;
-  if (event === 'chat_message') return <MessageSquare color={color} size={20} />;
-  if (event === 'booking_requested') return <Wrench color={color} size={20} />;
-  if (event === 'booking_accepted') return <Handshake color={color} size={20} />;
-  if (event === 'booking_schedule_confirmed') return <Calendar color={color} size={20} />;
+  if (event === 'chat_message') return <MessageSquare color={color} size={ICON_SIZE} strokeWidth={ICON_STROKE} />;
+  if (event === 'booking_requested') return <Wrench color={color} size={ICON_SIZE} strokeWidth={ICON_STROKE} />;
+  if (event === 'booking_accepted') return <Handshake color={color} size={ICON_SIZE} strokeWidth={ICON_STROKE} />;
+  if (event === 'booking_schedule_confirmed') return <Calendar color={color} size={ICON_SIZE} strokeWidth={ICON_STROKE} />;
   if (event === 'booking_completed' || event === 'booking_work_completed') {
-    return <CheckCircle2 color={color} size={20} />;
+    return <CheckCircle2 color={color} size={ICON_SIZE} strokeWidth={ICON_STROKE} />;
   }
-  return <Bell color={color} size={20} />;
+  return <Bell color={color} size={ICON_SIZE} strokeWidth={ICON_STROKE} />;
 }
 
 function localizedTitle(item: CepatNotification, language: 'id' | 'en') {
@@ -683,7 +685,7 @@ function createStyles(palette: ThemePalette) {
       justifyContent: 'center',
     },
     headerTitle: {
-      fontSize: 16,
+      fontSize: font.heading,
       fontWeight: '700',
     },
     headingRow: {
@@ -696,19 +698,19 @@ function createStyles(palette: ThemePalette) {
     headingCopy: { flex: 1 },
     eyebrow: {
       color: palette.primary,
-      fontSize: 10,
+      fontSize: font.caption,
       fontWeight: '800',
       letterSpacing: 1,
     },
     heading: {
       color: palette.text,
-      fontSize: 26,
+      fontSize: font.display,
       fontWeight: '800',
       marginTop: 3,
     },
     subheading: {
       color: palette.textMuted,
-      fontSize: 12,
+      fontSize: font.body,
       marginTop: 2,
     },
     markAllButton: {
@@ -717,7 +719,7 @@ function createStyles(palette: ThemePalette) {
       paddingHorizontal: spacing.md,
       paddingVertical: spacing.sm,
     },
-    markAllText: { color: palette.primary, fontSize: 12, fontWeight: '800' },
+    markAllText: { color: palette.primary, fontSize: font.body, fontWeight: '800' },
     tabsWrap: {
       marginBottom: spacing.xs,
     },
@@ -729,8 +731,8 @@ function createStyles(palette: ThemePalette) {
       gap: spacing.xs,
       padding: spacing.md,
     },
-    errorText: { color: palette.danger, fontSize: 12 },
-    retryText: { color: palette.primary, fontSize: 13, fontWeight: '800' },
+    errorText: { color: palette.danger, fontSize: font.body},
+    retryText: { color: palette.primary, fontSize: font.label, fontWeight: '800' },
     notificationList: { gap: spacing.sm },
     cardPressArea: {
       alignItems: 'center',
@@ -763,9 +765,6 @@ function createStyles(palette: ThemePalette) {
     unreadAvatar: {
       backgroundColor: palette.primarySoft,
     },
-    avatarEmoji: {
-      fontSize: 22,
-    },
     notificationContent: {
       flex: 1,
       gap: 3,
@@ -778,7 +777,7 @@ function createStyles(palette: ThemePalette) {
     },
     notificationTitle: {
       color: palette.text,
-      fontSize: 15,
+      fontSize: font.title,
       fontWeight: '700',
     },
     unreadTitle: {
@@ -792,7 +791,7 @@ function createStyles(palette: ThemePalette) {
     },
     notificationBody: {
       color: palette.textMuted,
-      fontSize: 13,
+      fontSize: font.label,
       lineHeight: 18,
     },
     unreadNotificationBody: {
@@ -800,7 +799,7 @@ function createStyles(palette: ThemePalette) {
     },
     notificationTime: {
       color: palette.textMuted,
-      fontSize: 11,
+      fontSize: font.caption,
       marginTop: 2,
     },
     rightSection: {
@@ -814,12 +813,6 @@ function createStyles(palette: ThemePalette) {
       height: 24,
       justifyContent: 'center',
       width: 24,
-    },
-    inlineDeleteText: {
-      color: palette.textMuted,
-      fontSize: 18,
-      fontWeight: '600',
-      lineHeight: 20,
     },
     swipeContainer: {
       borderRadius: radii.lg,
@@ -844,12 +837,9 @@ function createStyles(palette: ThemePalette) {
       justifyContent: 'center',
       width: '100%',
     },
-    deleteIconText: {
-      fontSize: 16,
-    },
     deleteButtonText: {
       color: '#FFFFFF',
-      fontSize: 11,
+      fontSize: font.caption,
       fontWeight: '800',
     },
     swipeForeground: {

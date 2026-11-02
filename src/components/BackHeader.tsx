@@ -13,6 +13,8 @@ import {
 import { useAppearance } from '../context/AppearanceContext';
 import { useLanguage } from '../i18n/locale';
 import { spacing } from '../theme/tokens';
+import { ICON_SIZE, ICON_STROKE } from '../theme/icons';
+import { font } from '../theme/typography';
 
 export interface BackHeaderProps {
   title?: string;
@@ -61,7 +63,7 @@ export function BackHeader({
         ]}
         testID={backBtnTestID}
       >
-        <ArrowLeft size={18} color={palette.text} strokeWidth={2.2} />
+        <ArrowLeft size={ICON_SIZE} color={palette.text} strokeWidth={ICON_STROKE} />
       </Pressable>
 
       {/* Dynamic Title (Centered) */}
@@ -114,7 +116,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 8,
   },
   titleText: {
-    fontSize: 16,
+    fontSize: font.heading,
     fontWeight: '700',
     textAlign: 'center',
   },

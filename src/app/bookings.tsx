@@ -30,6 +30,8 @@ import type {
   TechnicianReview,
 } from "../types/marketplace";
 import { colors, radii, spacing } from "../theme/tokens";
+import { ICON_SIZE, ICON_STROKE } from '../theme/icons';
+import { font } from '../theme/typography';
 
 type CustomerHubTab =
   "current" | "history" | "messages" | "saved" | "reviews_reports";
@@ -188,7 +190,7 @@ export default function CustomerBookingsScreen() {
               ]}
               testID="customer-bookings-back-btn"
             >
-              <ArrowLeft size={18} color={palette.text} strokeWidth={2.2} />
+              <ArrowLeft size={ICON_SIZE} color={palette.text} strokeWidth={ICON_STROKE} />
             </Pressable>
 
             <View style={styles.headerTitleWrap}>
@@ -565,20 +567,20 @@ const styles = StyleSheet.create({
   },
   eyebrow: {
     color: colors.orange,
-    fontSize: 10,
+    fontSize: font.caption,
     fontWeight: "800",
     letterSpacing: 1.2,
   },
   title: {
     color: colors.ink,
-    fontSize: 28,
+    fontSize: font.display,
     fontWeight: "800",
     letterSpacing: -0.7,
     marginTop: 4,
   },
   subtitle: {
     color: colors.muted,
-    fontSize: 13,
+    fontSize: font.label,
     lineHeight: 19,
     marginTop: 4,
     maxWidth: 520,
@@ -597,7 +599,7 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     gap: spacing.sm,
   },
-  cardTitle: { color: colors.ink, flex: 1, fontSize: 16, fontWeight: "800" },
+  cardTitle: { color: colors.ink, flex: 1, fontSize: font.heading, fontWeight: "800" },
   statusChip: {
     backgroundColor: colors.greenSoft,
     borderRadius: 5,
@@ -609,18 +611,18 @@ const styles = StyleSheet.create({
     borderColor: "#34A853",
     borderWidth: 1,
   },
-  statusChipText: { color: colors.greenDark, fontSize: 10, fontWeight: "800" },
+  statusChipText: { color: colors.greenDark, fontSize: font.caption, fontWeight: "800" },
   statusChipCompletedText: {
     color: "#137333",
     fontWeight: "800",
   },
   cardProvider: {
     color: colors.greenDark,
-    fontSize: 13,
+    fontSize: font.label,
     fontWeight: "700",
     marginTop: 4,
   },
-  cardSub: { color: colors.muted, fontSize: 12, marginTop: 4 },
+  cardSub: { color: colors.muted, fontSize: font.body, marginTop: 4 },
   cardFooter: {
     alignItems: "center",
     borderTopColor: colors.line,
@@ -630,13 +632,13 @@ const styles = StyleSheet.create({
     marginTop: spacing.md,
     paddingTop: spacing.sm,
   },
-  cardDate: { color: colors.muted, fontSize: 11, fontWeight: "600" },
-  cardPrice: { color: colors.greenDark, fontSize: 13, fontWeight: "800" },
+  cardDate: { color: colors.muted, fontSize: font.caption, fontWeight: "600" },
+  cardPrice: { color: colors.greenDark, fontSize: font.label, fontWeight: "800" },
   chatOpenBadge: {
     backgroundColor: colors.greenDark,
     borderRadius: 5,
     color: "#FFFFFF",
-    fontSize: 11,
+    fontSize: font.caption,
     fontWeight: "800",
     paddingHorizontal: 10,
     paddingVertical: 4,
@@ -663,7 +665,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   headerTitle: {
-    fontSize: 16,
+    fontSize: font.heading,
     fontWeight: "700",
   },
   headerNotifBtn: {
@@ -688,13 +690,13 @@ const styles = StyleSheet.create({
   },
   notifBadgeText: {
     color: "#FFFFFF",
-    fontSize: 9,
+    fontSize: font.caption,
     fontWeight: "800",
   },
   sectionList: { gap: spacing.sm },
   sectionSubheading: {
     color: colors.ink,
-    fontSize: 15,
+    fontSize: font.title,
     fontWeight: "800",
     marginTop: spacing.md,
   },
@@ -703,7 +705,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.orangeSoft,
     borderRadius: radii.sm,
     color: colors.orange,
-    fontSize: 10,
+    fontSize: font.caption,
     fontWeight: "800",
     marginTop: 6,
     paddingHorizontal: 8,

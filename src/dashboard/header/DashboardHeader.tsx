@@ -11,27 +11,35 @@ import { BackHeader } from '../../components/BackHeader';
 import { SourceBadge } from '../../components/marketplace-ui';
 import { useAppearance } from '../../context/AppearanceContext';
 import { useLanguage } from '../../i18n/locale';
+import { ICON_SIZE, ICON_STROKE } from '../../theme/icons';
 
 interface DashboardHeaderProps {
   onRefresh: () => void;
   refreshing: boolean;
   isPreview: boolean;
+  title?: string;
+  onPressBack?: () => void;
 }
 
 export function DashboardHeader({
   onRefresh,
   refreshing,
   isPreview,
+  title,
+  onPressBack,
 }: DashboardHeaderProps) {
   const { language } = useLanguage();
   const { palette } = useAppearance();
 
+  const defaultTitle = language === 'en' ? 'Admin Dashboard' : 'Dasbor Admin';
+
   return (
     <BackHeader
-      title={language === 'en' ? 'Admin Dashboard' : 'Dasbor Admin'}
+      title={title || defaultTitle}
       titleTestID="admin-console-heading"
       backBtnTestID="admin-header-back-btn"
       testID="admin-header-bar"
+      onPressBack={onPressBack}
       rightElement={
         <View style={styles.headerActionsRight}>
           {isPreview && <SourceBadge source="fixtures" />}
@@ -49,7 +57,7 @@ export function DashboardHeader({
             {refreshing ? (
               <ActivityIndicator size="small" color={palette.primary} />
             ) : (
-              <RefreshCw size={16} color={palette.text} strokeWidth={2.2} />
+              <RefreshCw size={ICON_SIZE} color={palette.text} strokeWidth={ICON_STROKE} />
             )}
           </Pressable>
         </View>
@@ -68,7 +76,7 @@ const styles = StyleSheet.create({
   },
   roundActionBtn: {
     alignItems: 'center',
-    borderRadius: 18,
+    borderRadius: 5,
     borderWidth: 1,
     height: 36,
     justifyContent: 'center',

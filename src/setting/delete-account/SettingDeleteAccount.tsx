@@ -1,4 +1,5 @@
 import { router } from "expo-router";
+import { font } from '../../theme/typography';
 import { AlertTriangle, Check, Eye, EyeOff, Lock, Mail, Trash2 } from "lucide-react-native";
 import { useState } from "react";
 import {
@@ -19,6 +20,7 @@ import { supabase } from "../../data/marketplaceRepository";
 import { useLanguage } from "../../i18n/locale";
 import { radii, spacing } from "../../theme/tokens";
 import { SettingSection } from "../components/SettingSection";
+import { ICON_SIZE, ICON_STROKE } from '../../theme/icons';
 
 type DeletionReasonKey = "alternative" | "issues" | "privacy" | "no_need" | "other";
 
@@ -373,29 +375,29 @@ export function SettingDeleteAccount({
           testID="delete-account-warning-box"
         >
           <View style={styles.warningHeader}>
-            <AlertTriangle size={22} color={palette.danger} strokeWidth={2.4} />
-            <Text style={[styles.warningTitle, { color: palette.danger, fontSize: scaleFont(15) }]}>
+            <AlertTriangle size={ICON_SIZE} color={palette.danger} strokeWidth={ICON_STROKE} />
+            <Text style={[styles.warningTitle, { color: palette.danger, fontSize: scaleFont(font.title) }]}>
               {language === "en"
                 ? "Warning: Permanent & Irreversible Action"
                 : "Peringatan: Tindakan Permanen & Tidak Dapat Dipulihkan"}
             </Text>
           </View>
-          <Text style={[styles.warningText, { color: palette.text, fontSize: scaleFont(13) }]}>
+          <Text style={[styles.warningText, { color: palette.text, fontSize: scaleFont(font.label) }]}>
             {language === "en"
               ? "You cannot recover this account once deleted. All data will be permanently erased, including:"
               : "Anda tidak dapat memulihkan akun ini setelah dihapus. Semua data Anda akan dihapus secara permanen, meliputi:"}
           </Text>
           <View style={styles.warningBullets}>
-            <Text style={[styles.bulletItem, { color: palette.textSecondary, fontSize: scaleFont(12) }]}>
+            <Text style={[styles.bulletItem, { color: palette.textSecondary, fontSize: scaleFont(font.body) }]}>
               • {language === "en" ? "Your public profile, username, and private contact info" : "Profil publik, username, dan informasi kontak privat Anda"}
             </Text>
-            <Text style={[styles.bulletItem, { color: palette.textSecondary, fontSize: scaleFont(12) }]}>
+            <Text style={[styles.bulletItem, { color: palette.textSecondary, fontSize: scaleFont(font.body) }]}>
               • {language === "en" ? "All published technician posts, photos, and media files" : "Semua postingan teknisi, foto hasil kerja, dan berkas media"}
             </Text>
-            <Text style={[styles.bulletItem, { color: palette.textSecondary, fontSize: scaleFont(12) }]}>
+            <Text style={[styles.bulletItem, { color: palette.textSecondary, fontSize: scaleFont(font.body) }]}>
               • {language === "en" ? "All services, portfolio items, and availability schedules" : "Semua layanan, portofolio, dan jadwal ketersediaan Anda"}
             </Text>
-            <Text style={[styles.bulletItem, { color: palette.textSecondary, fontSize: scaleFont(12) }]}>
+            <Text style={[styles.bulletItem, { color: palette.textSecondary, fontSize: scaleFont(font.body) }]}>
               • {language === "en" ? "Your booking history, reviews, and chat conversations" : "Riwayat pesanan layanan, ulasan, dan percakapan obrolan"}
             </Text>
           </View>
@@ -408,7 +410,7 @@ export function SettingDeleteAccount({
             { backgroundColor: palette.surface, borderColor: palette.border },
           ]}
         >
-          <Text style={[styles.stepTitle, { color: palette.text, fontSize: scaleFont(14) }]}>
+          <Text style={[styles.stepTitle, { color: palette.text, fontSize: scaleFont(font.subtitle) }]}>
             {language === "en"
               ? "1. Please select a reason for leaving"
               : "1. Mohon pilih alasan penghapusan akun"}
@@ -441,9 +443,9 @@ export function SettingDeleteAccount({
                       },
                     ]}
                   >
-                    {selected ? <Check size={12} color="#FFFFFF" strokeWidth={3} /> : null}
+                    {selected ? <Check size={ICON_SIZE} color="#FFFFFF" strokeWidth={ICON_STROKE} /> : null}
                   </View>
-                  <Text style={[styles.radioLabel, { color: palette.text, fontSize: scaleFont(13) }]}>
+                  <Text style={[styles.radioLabel, { color: palette.text, fontSize: scaleFont(font.label) }]}>
                     {reason.label}
                   </Text>
                 </Pressable>
@@ -454,7 +456,7 @@ export function SettingDeleteAccount({
           {/* Show custom textarea if "other" is selected */}
           {selectedReason === "other" && (
             <View style={styles.otherInputWrap}>
-              <Text style={[styles.fieldLabel, { color: palette.text, fontSize: scaleFont(13) }]}>
+              <Text style={[styles.fieldLabel, { color: palette.text, fontSize: scaleFont(font.label) }]}>
                 {language === "en" ? "Tell us more:" : "Jelaskan lebih lanjut:"}
               </Text>
               <TextInput
@@ -473,7 +475,7 @@ export function SettingDeleteAccount({
                     backgroundColor: palette.background,
                     borderColor: palette.border,
                     color: palette.text,
-                    fontSize: scaleFont(13),
+                    fontSize: scaleFont(font.label),
                   },
                 ]}
                 testID="delete-other-reason-input"
@@ -490,12 +492,12 @@ export function SettingDeleteAccount({
             { backgroundColor: palette.surface, borderColor: palette.border },
           ]}
         >
-          <Text style={[styles.stepTitle, { color: palette.text, fontSize: scaleFont(14) }]}>
+          <Text style={[styles.stepTitle, { color: palette.text, fontSize: scaleFont(font.subtitle) }]}>
             {language === "en"
               ? "2. Confirm your email address"
               : "2. Konfirmasi alamat email Anda"}
           </Text>
-          <Text style={[styles.fieldHint, { color: palette.textSecondary, fontSize: scaleFont(12) }]}>
+          <Text style={[styles.fieldHint, { color: palette.textSecondary, fontSize: scaleFont(font.body) }]}>
             {userEmail
               ? language === "en"
                 ? `To verify ownership, type your email: ${userEmail}`
@@ -520,7 +522,7 @@ export function SettingDeleteAccount({
             ]}
           >
             <View style={styles.leftIcon}>
-              <Mail size={18} color={palette.textSecondary} />
+              <Mail size={ICON_SIZE} strokeWidth={ICON_STROKE} color={palette.textSecondary} />
             </View>
             <TextInput
               autoCapitalize="none"
@@ -531,7 +533,7 @@ export function SettingDeleteAccount({
                 language === "en" ? "Confirm the email" : "Konfirmasi email"
               }
               placeholderTextColor={palette.textSecondary}
-              style={[styles.input, { color: palette.text, fontSize: scaleFont(14) }]}
+              style={[styles.input, { color: palette.text, fontSize: scaleFont(font.subtitle) }]}
               testID="delete-confirm-email-input"
               value={confirmEmail}
             />
@@ -545,7 +547,7 @@ export function SettingDeleteAccount({
             { backgroundColor: palette.surface, borderColor: palette.border },
           ]}
         >
-          <Text style={[styles.stepTitle, { color: palette.text, fontSize: scaleFont(14) }]}>
+          <Text style={[styles.stepTitle, { color: palette.text, fontSize: scaleFont(font.subtitle) }]}>
             {language === "en"
               ? "3. Enter your account password"
               : "3. Masukkan kata sandi akun Anda"}
@@ -558,7 +560,7 @@ export function SettingDeleteAccount({
             ]}
           >
             <View style={styles.leftIcon}>
-              <Lock size={18} color={palette.textSecondary} />
+              <Lock size={ICON_SIZE} strokeWidth={ICON_STROKE} color={palette.textSecondary} />
             </View>
             <TextInput
               autoCapitalize="none"
@@ -569,7 +571,7 @@ export function SettingDeleteAccount({
               }
               placeholderTextColor={palette.textSecondary}
               secureTextEntry={!showPassword}
-              style={[styles.input, { color: palette.text, fontSize: scaleFont(14) }]}
+              style={[styles.input, { color: palette.text, fontSize: scaleFont(font.subtitle) }]}
               testID="delete-confirm-password-input"
               value={password}
             />
@@ -580,9 +582,9 @@ export function SettingDeleteAccount({
               style={styles.eyeBtn}
             >
               {showPassword ? (
-                <EyeOff size={18} color={palette.textSecondary} />
+                <EyeOff size={ICON_SIZE} strokeWidth={ICON_STROKE} color={palette.textSecondary} />
               ) : (
-                <Eye size={18} color={palette.textSecondary} />
+                <Eye size={ICON_SIZE} strokeWidth={ICON_STROKE} color={palette.textSecondary} />
               )}
             </Pressable>
           </View>
@@ -611,9 +613,9 @@ export function SettingDeleteAccount({
               },
             ]}
           >
-            {acceptedTerms ? <Check size={16} color="#FFFFFF" strokeWidth={3} /> : null}
+            {acceptedTerms ? <Check size={ICON_SIZE} color="#FFFFFF" strokeWidth={ICON_STROKE} /> : null}
           </View>
-          <Text style={[styles.checkboxLabel, { color: palette.text, fontSize: scaleFont(13) }]}>
+          <Text style={[styles.checkboxLabel, { color: palette.text, fontSize: scaleFont(font.label) }]}>
             {language === "en"
               ? "I understand and confirm that deleting my account is permanent and irreversible. All my data will be permanently wiped and I will be logged out."
               : "Saya memahami dan menyetujui bahwa penghapusan akun ini permanen dan tidak dapat dibatalkan. Semua data saya akan dihapus dan saya akan keluar dari aplikasi."}
@@ -627,7 +629,7 @@ export function SettingDeleteAccount({
               { backgroundColor: `${palette.danger}15`, borderColor: palette.danger },
             ]}
           >
-            <Text style={[styles.errorText, { color: palette.danger, fontSize: scaleFont(13) }]}>
+            <Text style={[styles.errorText, { color: palette.danger, fontSize: scaleFont(font.label) }]}>
               {error}
             </Text>
           </View>
@@ -646,7 +648,7 @@ export function SettingDeleteAccount({
               ]}
               testID="delete-account-cancel-btn"
             >
-              <Text style={[styles.cancelBtnText, { color: palette.text, fontSize: scaleFont(14) }]}>
+              <Text style={[styles.cancelBtnText, { color: palette.text, fontSize: scaleFont(font.subtitle) }]}>
                 {language === "en" ? "Cancel" : "Batal"}
               </Text>
             </Pressable>
@@ -669,8 +671,8 @@ export function SettingDeleteAccount({
               <ActivityIndicator color="#FFFFFF" size="small" />
             ) : (
               <View style={styles.btnContent}>
-                <Trash2 size={18} color="#FFFFFF" />
-                <Text style={[styles.deleteBtnText, { fontSize: scaleFont(14) }]}>
+                <Trash2 size={ICON_SIZE} strokeWidth={ICON_STROKE} color="#FFFFFF" />
+                <Text style={[styles.deleteBtnText, { fontSize: scaleFont(font.subtitle) }]}>
                   {language === "en"
                     ? "Permanently Delete Account"
                     : "Hapus Akun Secara Permanen"}

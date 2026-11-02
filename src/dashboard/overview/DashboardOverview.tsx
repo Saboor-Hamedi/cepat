@@ -10,7 +10,9 @@ import {
   UserX,
   Users,
 } from 'lucide-react-native';
+import { ICON_SIZE, ICON_STROKE } from '../../theme/icons';
 import React from 'react';
+import { font } from '../../theme/typography';
 import {
   Pressable,
   StyleSheet,
@@ -65,12 +67,12 @@ export function DashboardOverview({
           style={[styles.kpiCard, { backgroundColor: palette.surface, borderColor: palette.border }]}
         >
           <View style={[styles.kpiIconWrap, { backgroundColor: `${palette.primary}15` }]}>
-            <Users size={16} color={palette.primary} />
+            <Users size={ICON_SIZE} strokeWidth={ICON_STROKE} color={palette.primary} />
           </View>
-          <Text style={[styles.kpiValue, { color: palette.text, fontSize: scaleFont(20) }]}>
+          <Text style={[styles.kpiValue, { color: palette.text, fontSize: scaleFont(font.section) }]}>
             {userCounts ? userCounts.customers : '—'}
           </Text>
-          <Text style={[styles.kpiLabel, { color: palette.textMuted, fontSize: scaleFont(11) }]}>
+          <Text style={[styles.kpiLabel, { color: palette.textMuted, fontSize: scaleFont(font.caption) }]}>
             {language === 'en' ? 'Customers' : 'Pelanggan'}
           </Text>
         </Pressable>
@@ -81,12 +83,12 @@ export function DashboardOverview({
           style={[styles.kpiCard, { backgroundColor: palette.surface, borderColor: palette.border }]}
         >
           <View style={[styles.kpiIconWrap, { backgroundColor: '#0D948815' }]}>
-            <Briefcase size={16} color="#0D9488" />
+            <Briefcase size={ICON_SIZE} strokeWidth={ICON_STROKE} color="#0D9488" />
           </View>
-          <Text style={[styles.kpiValue, { color: '#0D9488', fontSize: scaleFont(20) }]}>
+          <Text style={[styles.kpiValue, { color: '#0D9488', fontSize: scaleFont(font.section) }]}>
             {userCounts ? userCounts.technicians : '—'}
           </Text>
-          <Text style={[styles.kpiLabel, { color: palette.textMuted, fontSize: scaleFont(11) }]}>
+          <Text style={[styles.kpiLabel, { color: palette.textMuted, fontSize: scaleFont(font.caption) }]}>
             {language === 'en' ? 'Technicians' : 'Teknisi'}
           </Text>
         </Pressable>
@@ -97,12 +99,12 @@ export function DashboardOverview({
           style={[styles.kpiCard, { backgroundColor: palette.surface, borderColor: palette.border }]}
         >
           <View style={[styles.kpiIconWrap, { backgroundColor: '#16A34A15' }]}>
-            <DollarSign size={16} color="#16A34A" />
+            <DollarSign size={ICON_SIZE} strokeWidth={ICON_STROKE} color="#16A34A" />
           </View>
-          <Text style={[styles.kpiValue, { color: '#16A34A', fontSize: scaleFont(18) }]}>
+          <Text style={[styles.kpiValue, { color: '#16A34A', fontSize: scaleFont(font.heading) }]}>
             {formatRupiah(metrics.totalRevenue, language)}
           </Text>
-          <Text style={[styles.kpiLabel, { color: palette.textMuted, fontSize: scaleFont(11) }]}>
+          <Text style={[styles.kpiLabel, { color: palette.textMuted, fontSize: scaleFont(font.caption) }]}>
             {language === 'en' ? 'Gross Volume' : 'Volume (GMV)'}
           </Text>
         </Pressable>
@@ -113,12 +115,12 @@ export function DashboardOverview({
           style={[styles.kpiCard, { backgroundColor: palette.surface, borderColor: palette.border }]}
         >
           <View style={[styles.kpiIconWrap, { backgroundColor: `${palette.primary}15` }]}>
-            <TrendingUp size={16} color={palette.primary} />
+            <TrendingUp size={ICON_SIZE} strokeWidth={ICON_STROKE} color={palette.primary} />
           </View>
-          <Text style={[styles.kpiValue, { color: palette.text, fontSize: scaleFont(20) }]}>
+          <Text style={[styles.kpiValue, { color: palette.text, fontSize: scaleFont(font.section) }]}>
             {bookings.length}
           </Text>
-          <Text style={[styles.kpiLabel, { color: palette.textMuted, fontSize: scaleFont(11) }]}>
+          <Text style={[styles.kpiLabel, { color: palette.textMuted, fontSize: scaleFont(font.caption) }]}>
             {language === 'en' ? 'All Bookings' : 'Semua Pesanan'}
           </Text>
         </Pressable>
@@ -129,12 +131,12 @@ export function DashboardOverview({
           style={[styles.kpiCard, { backgroundColor: palette.surface, borderColor: palette.border }]}
         >
           <View style={[styles.kpiIconWrap, { backgroundColor: '#EA580C15' }]}>
-            <Activity size={16} color="#EA580C" />
+            <Activity size={ICON_SIZE} strokeWidth={ICON_STROKE} color="#EA580C" />
           </View>
-          <Text style={[styles.kpiValue, { color: '#EA580C', fontSize: scaleFont(20) }]}>
+          <Text style={[styles.kpiValue, { color: '#EA580C', fontSize: scaleFont(font.section) }]}>
             {metrics.activeBookingsCount}
           </Text>
-          <Text style={[styles.kpiLabel, { color: palette.textMuted, fontSize: scaleFont(11) }]}>
+          <Text style={[styles.kpiLabel, { color: palette.textMuted, fontSize: scaleFont(font.caption) }]}>
             {language === 'en' ? 'Active Jobs' : 'Pekerjaan Aktif'}
           </Text>
         </Pressable>
@@ -151,15 +153,15 @@ export function DashboardOverview({
           testID="admin-kpi-deleted-users"
         >
           <View style={[styles.kpiIconWrap, { backgroundColor: `${palette.danger}15` }]}>
-            <UserX size={16} color={palette.danger} />
+            <UserX size={ICON_SIZE} strokeWidth={ICON_STROKE} color={palette.danger} />
           </View>
           <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-            <Text style={[styles.kpiValue, { color: palette.danger, fontSize: scaleFont(20) }]}>
+            <Text style={[styles.kpiValue, { color: palette.danger, fontSize: scaleFont(font.section) }]}>
               {deletedUsersCount}
             </Text>
-            <ChevronRight size={16} color={palette.danger} />
+            <ChevronRight size={ICON_SIZE} strokeWidth={ICON_STROKE} color={palette.danger} />
           </View>
-          <Text style={[styles.kpiLabel, { color: palette.danger, fontWeight: '700', fontSize: scaleFont(11) }]}>
+          <Text style={[styles.kpiLabel, { color: palette.danger, fontWeight: '700', fontSize: scaleFont(font.caption) }]}>
             {language === 'en' ? 'Deleted Accounts →' : 'Akun Dihapus →'}
           </Text>
         </Pressable>
@@ -168,7 +170,7 @@ export function DashboardOverview({
       {/* Database Source Notice */}
       {userCounts ? (
         <Text
-          style={[styles.dataSourceNote, { color: palette.textMuted, fontSize: scaleFont(11) }]}
+          style={[styles.dataSourceNote, { color: palette.textMuted, fontSize: scaleFont(font.caption) }]}
           testID="admin-user-count-source"
         >
           {userCounts.source === 'supabase'
@@ -181,6 +183,153 @@ export function DashboardOverview({
         </Text>
       ) : null}
 
+      
+      {/* Admin Navigation Tools List (Single-component navigation) */}
+      <View style={styles.adminNavList}>
+        <Text style={[styles.sectionTitle, { color: palette.text, fontSize: scaleFont(font.subtitle) }]}>
+          {language === 'en' ? 'Administration Tools' : 'Alat Administrasi'}
+        </Text>
+        <View style={styles.adminNavGrid}>
+          <Pressable
+            accessibilityRole="button"
+            onPress={() => onNavigateTab('accounts')}
+            style={({ pressed }) => [
+              styles.adminNavLink,
+              { backgroundColor: palette.surfaceElevated, borderColor: palette.border, opacity: pressed ? 0.75 : 1 },
+            ]}
+            testID="admin-tab-accounts"
+          >
+            <View style={[styles.adminNavIconTile, { backgroundColor: '#EFF6FF' }]}>
+              <Users size={18} strokeWidth={ICON_STROKE} color="#2563EB" />
+            </View>
+            <View style={styles.adminNavContent}>
+              <Text style={[styles.adminNavTitle, { color: palette.text, fontSize: scaleFont(font.label) }]}>
+                {language === 'en' ? 'User Accounts' : 'Akun Pengguna'}
+              </Text>
+              <Text style={[styles.adminNavSub, { color: palette.textMuted, fontSize: scaleFont(font.caption) }]}>
+                {language === 'en' ? 'Manage roles & verify technicians' : 'Kelola peran & verifikasi teknisi'}
+              </Text>
+            </View>
+            <ChevronRight size={16} strokeWidth={ICON_STROKE} color={palette.textMuted} />
+          </Pressable>
+
+          <Pressable
+            accessibilityRole="button"
+            onPress={() => onNavigateTab('reports')}
+            style={({ pressed }) => [
+              styles.adminNavLink,
+              { backgroundColor: palette.surfaceElevated, borderColor: palette.border, opacity: pressed ? 0.75 : 1 },
+            ]}
+            testID="admin-tab-reports"
+          >
+            <View style={[styles.adminNavIconTile, { backgroundColor: '#FEF2F2' }]}>
+              <AlertTriangle size={18} strokeWidth={ICON_STROKE} color="#DC2626" />
+            </View>
+            <View style={styles.adminNavContent}>
+              <Text style={[styles.adminNavTitle, { color: palette.text, fontSize: scaleFont(font.label) }]}>
+                {language === 'en' ? 'Moderation Reports' : 'Laporan Moderasi'}
+              </Text>
+              <Text style={[styles.adminNavSub, { color: palette.textMuted, fontSize: scaleFont(font.caption) }]}>
+                {openReports.length} {language === 'en' ? 'pending disputes' : 'laporan terbuka'}
+              </Text>
+            </View>
+            <ChevronRight size={16} strokeWidth={ICON_STROKE} color={palette.textMuted} />
+          </Pressable>
+
+          <Pressable
+            accessibilityRole="button"
+            onPress={() => onNavigateTab('approvals')}
+            style={({ pressed }) => [
+              styles.adminNavLink,
+              { backgroundColor: palette.surfaceElevated, borderColor: palette.border, opacity: pressed ? 0.75 : 1 },
+            ]}
+            testID="admin-tab-approvals"
+          >
+            <View style={[styles.adminNavIconTile, { backgroundColor: '#F5F3FF' }]}>
+              <Award size={18} strokeWidth={ICON_STROKE} color="#7C3AED" />
+            </View>
+            <View style={styles.adminNavContent}>
+              <Text style={[styles.adminNavTitle, { color: palette.text, fontSize: scaleFont(font.label) }]}>
+                {language === 'en' ? 'Technician Approvals' : 'Persetujuan Teknisi'}
+              </Text>
+              <Text style={[styles.adminNavSub, { color: palette.textMuted, fontSize: scaleFont(font.caption) }]}>
+                {language === 'en' ? 'Review onboarding credentials' : 'Tinjau kredensial teknisi'}
+              </Text>
+            </View>
+            <ChevronRight size={16} strokeWidth={ICON_STROKE} color={palette.textMuted} />
+          </Pressable>
+
+          <Pressable
+            accessibilityRole="button"
+            onPress={() => onNavigateTab('bookings')}
+            style={({ pressed }) => [
+              styles.adminNavLink,
+              { backgroundColor: palette.surfaceElevated, borderColor: palette.border, opacity: pressed ? 0.75 : 1 },
+            ]}
+            testID="admin-tab-bookings"
+          >
+            <View style={[styles.adminNavIconTile, { backgroundColor: '#ECFDF5' }]}>
+              <TrendingUp size={18} strokeWidth={ICON_STROKE} color="#059669" />
+            </View>
+            <View style={styles.adminNavContent}>
+              <Text style={[styles.adminNavTitle, { color: palette.text, fontSize: scaleFont(font.label) }]}>
+                {language === 'en' ? 'Bookings Management' : 'Manajemen Pesanan'}
+              </Text>
+              <Text style={[styles.adminNavSub, { color: palette.textMuted, fontSize: scaleFont(font.caption) }]}>
+                {bookings.length} {language === 'en' ? 'recorded orders' : 'pesanan tercatat'}
+              </Text>
+            </View>
+            <ChevronRight size={16} strokeWidth={ICON_STROKE} color={palette.textMuted} />
+          </Pressable>
+
+          <Pressable
+            accessibilityRole="button"
+            onPress={() => onNavigateTab('categories')}
+            style={({ pressed }) => [
+              styles.adminNavLink,
+              { backgroundColor: palette.surfaceElevated, borderColor: palette.border, opacity: pressed ? 0.75 : 1 },
+            ]}
+            testID="admin-tab-categories"
+          >
+            <View style={[styles.adminNavIconTile, { backgroundColor: '#FFFBEB' }]}>
+              <Briefcase size={18} strokeWidth={ICON_STROKE} color="#D97706" />
+            </View>
+            <View style={styles.adminNavContent}>
+              <Text style={[styles.adminNavTitle, { color: palette.text, fontSize: scaleFont(font.label) }]}>
+                {language === 'en' ? 'Service Categories' : 'Kategori Layanan'}
+              </Text>
+              <Text style={[styles.adminNavSub, { color: palette.textMuted, fontSize: scaleFont(font.caption) }]}>
+                {language === 'en' ? 'Manage offered catalog services' : 'Kelola katalog layanan'}
+              </Text>
+            </View>
+            <ChevronRight size={16} strokeWidth={ICON_STROKE} color={palette.textMuted} />
+          </Pressable>
+
+          <Pressable
+            accessibilityRole="button"
+            onPress={() => onNavigateTab('delete-user')}
+            style={({ pressed }) => [
+              styles.adminNavLink,
+              { backgroundColor: palette.surfaceElevated, borderColor: `${palette.danger}30`, opacity: pressed ? 0.75 : 1 },
+            ]}
+            testID="admin-tab-delete-user"
+          >
+            <View style={[styles.adminNavIconTile, { backgroundColor: '#FEF2F2' }]}>
+              <UserX size={18} strokeWidth={ICON_STROKE} color="#DC2626" />
+            </View>
+            <View style={styles.adminNavContent}>
+              <Text style={[styles.adminNavTitle, { color: palette.danger, fontSize: scaleFont(font.label) }]}>
+                {language === 'en' ? 'Deleted Accounts' : 'Akun Dihapus'}
+              </Text>
+              <Text style={[styles.adminNavSub, { color: palette.textMuted, fontSize: scaleFont(font.caption) }]}>
+                {deletedUsersCount} {language === 'en' ? 'deletion feedbacks' : 'umpan balik'}
+              </Text>
+            </View>
+            <ChevronRight size={16} strokeWidth={ICON_STROKE} color={palette.danger} />
+          </Pressable>
+        </View>
+      </View>
+
       {/* 2. Platform Graphs (Fulfillment Meter & Ratings) */}
       <View style={styles.graphsGrid}>
         <View
@@ -189,10 +338,10 @@ export function DashboardOverview({
             { backgroundColor: palette.surface, borderColor: palette.border },
           ]}
         >
-          <Text style={[styles.graphTitle, { color: palette.text, fontSize: scaleFont(14) }]}>
+          <Text style={[styles.graphTitle, { color: palette.text, fontSize: scaleFont(font.subtitle) }]}>
             {language === 'en' ? 'Fulfillment & Completion Rate' : 'Tingkat Penyelesaian Pesanan'}
           </Text>
-          <Text style={[styles.graphBigNumber, { color: '#16A34A', fontSize: scaleFont(26) }]}>
+          <Text style={[styles.graphBigNumber, { color: '#16A34A', fontSize: scaleFont(font.display) }]}>
             {metrics.completionRate}%
           </Text>
           <View
@@ -211,7 +360,7 @@ export function DashboardOverview({
               ]}
             />
           </View>
-          <Text style={[styles.graphSubtext, { color: palette.textMuted, fontSize: scaleFont(11) }]}>
+          <Text style={[styles.graphSubtext, { color: palette.textMuted, fontSize: scaleFont(font.caption) }]}>
             {metrics.completedBookingsCount} / {metrics.totalBookingsCount}{' '}
             {language === 'en' ? 'completed bookings' : 'pesanan diselesaikan'}
           </Text>
@@ -223,16 +372,16 @@ export function DashboardOverview({
             { backgroundColor: palette.surface, borderColor: palette.border },
           ]}
         >
-          <Text style={[styles.graphTitle, { color: palette.text, fontSize: scaleFont(14) }]}>
+          <Text style={[styles.graphTitle, { color: palette.text, fontSize: scaleFont(font.subtitle) }]}>
             {language === 'en' ? 'Customer Satisfaction' : 'Kepuasan Pelanggan'}
           </Text>
           <View style={styles.starRow}>
-            <Star size={24} color="#F59E0B" fill="#F59E0B" />
-            <Text style={[styles.graphBigNumber, { color: '#F59E0B', fontSize: scaleFont(26) }]}>
+            <Star size={ICON_SIZE} strokeWidth={ICON_STROKE} color="#F59E0B" fill="#F59E0B" />
+            <Text style={[styles.graphBigNumber, { color: '#F59E0B', fontSize: scaleFont(font.display) }]}>
               {metrics.averageRating}
             </Text>
           </View>
-          <Text style={[styles.graphSubtext, { color: palette.textMuted, fontSize: scaleFont(11) }]}>
+          <Text style={[styles.graphSubtext, { color: palette.textMuted, fontSize: scaleFont(font.caption) }]}>
             {metrics.totalReviewsCount}{' '}
             {language === 'en' ? 'verified ratings' : 'ulasan terverifikasi'} ({metrics.satisfactionRate}% positive)
           </Text>
@@ -248,17 +397,17 @@ export function DashboardOverview({
         testID="admin-most-booked-services"
       >
         <View style={styles.cardHeaderRow}>
-          <Text style={[styles.cardTitle, { color: palette.text, fontSize: scaleFont(15) }]}>
+          <Text style={[styles.cardTitle, { color: palette.text, fontSize: scaleFont(font.title) }]}>
             {language === 'en'
               ? 'Most Requested Services Distribution'
               : 'Distribusi Layanan Paling Banyak Dipesan'}
           </Text>
-          <Text style={[styles.cardHeaderBadge, { color: palette.textMuted, fontSize: scaleFont(11) }]}>
+          <Text style={[styles.cardHeaderBadge, { color: palette.textMuted, fontSize: scaleFont(font.caption) }]}>
             {bookings.length} {language === 'en' ? 'total orders' : 'total order'}
           </Text>
         </View>
 
-        <Text style={[styles.cardMeta, { color: palette.textMuted, fontSize: scaleFont(12) }]}>
+        <Text style={[styles.cardMeta, { color: palette.textMuted, fontSize: scaleFont(font.body) }]}>
           {language === 'en'
             ? `Ranked from ${bookings.length} bookings currently recorded in this platform database.`
             : `Diurutkan dari ${bookings.length} pesanan yang tercatat di database platform.`}
@@ -270,12 +419,12 @@ export function DashboardOverview({
               <View style={styles.serviceMetricHeader}>
                 <Text
                   numberOfLines={1}
-                  style={[styles.serviceMetricName, { color: palette.text, fontSize: scaleFont(12) }]}
+                  style={[styles.serviceMetricName, { color: palette.text, fontSize: scaleFont(font.body) }]}
                 >
                   {index + 1}. {service.name}
                 </Text>
                 <Text
-                  style={[styles.serviceMetricCount, { color: palette.textMuted, fontSize: scaleFont(11) }]}
+                  style={[styles.serviceMetricCount, { color: palette.textMuted, fontSize: scaleFont(font.caption) }]}
                 >
                   {service.count} {language === 'en' ? 'orders' : 'pesanan'} ({service.percentage}%)
                 </Text>
@@ -317,8 +466,8 @@ export function DashboardOverview({
       >
         <View style={styles.cardHeaderRow}>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-            <AlertTriangle size={16} color={openReports.length > 0 ? palette.danger : '#16A34A'} />
-            <Text style={[styles.cardTitle, { color: palette.text, fontSize: scaleFont(15) }]}>
+            <AlertTriangle size={ICON_SIZE} strokeWidth={ICON_STROKE} color={openReports.length > 0 ? palette.danger : '#16A34A'} />
+            <Text style={[styles.cardTitle, { color: palette.text, fontSize: scaleFont(font.title) }]}>
               {language === 'en' ? 'Reports & Trust Status' : 'Status Moderasi & Laporan'}
             </Text>
           </View>
@@ -328,14 +477,14 @@ export function DashboardOverview({
             onPress={() => onNavigateTab('reports')}
             style={styles.linkRow}
           >
-            <Text style={[styles.linkText, { color: palette.primary, fontSize: scaleFont(12) }]}>
+            <Text style={[styles.linkText, { color: palette.primary, fontSize: scaleFont(font.body) }]}>
               {language === 'en' ? 'View all' : 'Lihat semua'} ({reports.length}) →
             </Text>
           </Pressable>
         </View>
 
         {openReports.length === 0 ? (
-          <Text style={[styles.cardMeta, { color: palette.textMuted, marginTop: 4, fontSize: scaleFont(12) }]}>
+          <Text style={[styles.cardMeta, { color: palette.textMuted, marginTop: 4, fontSize: scaleFont(font.body) }]}>
             {language === 'en'
               ? '✓ All marketplace disputes and service reports are clear. No pending investigations.'
               : '✓ Semua laporan sengketa selesai. Tidak ada investigasi tertunda.'}
@@ -349,10 +498,10 @@ export function DashboardOverview({
                 testID={`admin-report-card-${rep.id}`}
               >
                 <View style={{ flex: 1 }}>
-                  <Text style={[styles.reportPreviewTitle, { color: palette.text, fontSize: scaleFont(13) }]}>
+                  <Text style={[styles.reportPreviewTitle, { color: palette.text, fontSize: scaleFont(font.label) }]}>
                     {rep.technicianName} · {rep.category.replace(/_/g, ' ')}
                   </Text>
-                  <Text numberOfLines={1} style={[styles.reportPreviewDesc, { color: palette.textMuted, fontSize: scaleFont(11) }]}>
+                  <Text numberOfLines={1} style={[styles.reportPreviewDesc, { color: palette.textMuted, fontSize: scaleFont(font.caption) }]}>
                     {rep.description}
                   </Text>
                 </View>
@@ -365,7 +514,7 @@ export function DashboardOverview({
                   <Text
                     style={[
                       styles.severityBadgeText,
-                      { color: rep.severity === 'high' ? palette.danger : '#F59E0B', fontSize: scaleFont(10) },
+                      { color: rep.severity === 'high' ? palette.danger : '#F59E0B', fontSize: scaleFont(font.caption) },
                     ]}
                   >
                     {rep.severity.toUpperCase()}
@@ -524,6 +673,45 @@ const styles = StyleSheet.create({
     paddingHorizontal: 8,
     paddingVertical: 3,
   },
+
+  adminNavList: {
+    marginBottom: spacing.md,
+  },
+  sectionTitle: {
+    fontWeight: '700',
+    marginBottom: spacing.xs,
+  },
+  adminNavGrid: {
+    gap: 6,
+  },
+  adminNavLink: {
+    alignItems: 'center',
+    borderRadius: radii.sm,
+    borderWidth: 1,
+    flexDirection: 'row',
+    gap: 12,
+    minHeight: 52,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+  },
+  adminNavIconTile: {
+    alignItems: 'center',
+    borderRadius: 8,
+    height: 36,
+    justifyContent: 'center',
+    width: 36,
+  },
+  adminNavContent: {
+    flex: 1,
+    justifyContent: 'center',
+  },
+  adminNavTitle: {
+    fontWeight: '600',
+  },
+  adminNavSub: {
+    marginTop: 2,
+  },
+
   severityBadgeText: {
     fontWeight: '800',
   },

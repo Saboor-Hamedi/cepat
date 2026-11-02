@@ -1,4 +1,16 @@
 import { router, useLocalSearchParams } from "expo-router";
+import {
+  Bell,
+  FileText,
+  Globe,
+  Info,
+  Lock,
+  MapPin,
+  Palette,
+  ShieldCheck,
+  Trash2,
+  User,
+} from "lucide-react-native";
 import { useEffect, useState } from "react";
 import { ScrollView, StyleSheet, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -20,7 +32,6 @@ import {
   saveTechnicianWorkspaceProfile,
   saveUserPreferences,
   setDefaultCustomerAddress,
-  submitAccountDeletionRequest,
 } from "../data/marketplaceStore";
 import { setInAppPushEnabled } from "../data/notifications";
 import { useLanguage } from "../i18n/locale";
@@ -32,17 +43,16 @@ import type {
 } from "../types/marketplace";
 import { SettingAccount } from "./account/SettingAccount";
 import { SettingPassword } from "./account/SettingPassword";
+import { SettingAddress } from "./address/SettingAddress";
 import { SettingAppearance } from "./appearance/SettingAppearance";
-import {
-  SettingHeader,
-  type SettingSectionKey,
-} from "./components/SettingHeader";
+import { type SettingSectionKey } from "./components/SettingHeader";
+import { SettingNavLink } from "./components/SettingNavLink";
+import { SettingDeleteAccount } from "./delete-account/SettingDeleteAccount";
 import { SettingLanguage } from "./language/SettingLanguage";
 import { SettingNotifications } from "./notifications/SettingNotifications";
 import { SettingPolicy } from "./policy/SettingPolicy";
 import { SettingSecurity } from "./security/SettingSecurity";
-import { SettingAddress } from "./address/SettingAddress";
-import { SettingDeleteAccount } from "./delete-account/SettingDeleteAccount";
+import { APP_VERSION, SettingVersion } from "./version";
 
 export function SettingContainer() {
   const { language } = useLanguage();
@@ -50,20 +60,26 @@ export function SettingContainer() {
     useAppearance();
   const { user, effectiveRole, updateUserProfile } = useAuth();
   const params = useLocalSearchParams<{ tab?: string; returnTo?: string }>();
-  const initialTab: SettingSectionKey =
+
+  // If a tab param was explicitly passed in the URL, open that panel directly
+  const explicitTab: SettingSectionKey | null =
     params.tab === "address" ||
+    params.tab === "security" ||
     params.tab === "password" ||
     params.tab === "notifications" ||
     params.tab === "language" ||
     params.tab === "appearance" ||
-    params.tab === "security" ||
     params.tab === "policy" ||
-    params.tab === "delete-account"
-      ? params.tab
-      : "account";
+    params.tab === "version" ||
+    params.tab === "delete-account" ||
+    params.tab === "account"
+      ? (params.tab as SettingSectionKey)
+      : null;
+
   const [selectedSection, setSelectedSection] =
-    useState<SettingSectionKey | null>(null);
-  const activeSection = selectedSection ?? initialTab;
+    useState<SettingSectionKey | null>(explicitTab);
+
+  const activeSection = selectedSection;
 
   const isAuthenticated = Boolean(user);
   const isCustomerRole = effectiveRole === "customer";
@@ -80,18 +96,21 @@ export function SettingContainer() {
   const [addressFeedback, setAddressFeedback] = useState<string | null>(null);
 
   const [techProfile, setTechProfile] = useState<Technician | null>(null);
-  const [deletionRequest, setDeletionRequest] = useState<{
+  const [, setDeletionRequest] = useState<{
     requestedAt: string;
     reason: string;
   } | null>(null);
 
-  const visibleSection: SettingSectionKey =
+  // If not authenticated and a protected section is active, redirect to null
+  const visibleSection: SettingSectionKey | null =
     !isAuthenticated &&
+    activeSection &&
     activeSection !== "account" &&
     activeSection !== "language" &&
     activeSection !== "appearance" &&
-    activeSection !== "policy"
-      ? "account"
+    activeSection !== "policy" &&
+    activeSection !== "version"
+      ? null
       : activeSection;
 
   useEffect(() => {
@@ -99,11 +118,14 @@ export function SettingContainer() {
 
     let active = true;
     const fallbackName =
-      (typeof user.user_metadata?.display_name === "string" && user.user_metadata.display_name.trim()) ||
-      (typeof user.user_metadata?.full_name === "string" && user.user_metadata.full_name.trim()) ||
+      (typeof user.user_metadata?.display_name === "string" &&
+        user.user_metadata.display_name.trim()) ||
+      (typeof user.user_metadata?.full_name === "string" &&
+        user.user_metadata.full_name.trim()) ||
       (user.email ? user.email.split("@")[0] : "");
     const fallbackUsername =
-      (typeof user.user_metadata?.username === "string" && user.user_metadata.username.trim()) ||
+      (typeof user.user_metadata?.username === "string" &&
+        user.user_metadata.username.trim()) ||
       (user.email ? user.email.split("@")[0] : "");
 
     void Promise.all([
@@ -152,7 +174,8 @@ export function SettingContainer() {
   }, [setLargeText, setReduceMotion, setThemeMode, user]);
 
   const handleSavePrivateContact = async () => {
-    const targetUserId = user?.id || (isAuthenticated ? "demo-customer" : undefined);
+    const targetUserId =
+      user?.id || (isAuthenticated ? "demo-customer" : undefined);
     if (!targetUserId) return;
     const updated = await saveAccountProfileDetails(targetUserId, {
       displayName,
@@ -165,8 +188,12 @@ export function SettingContainer() {
     setPhoneNumber(updated.phoneNumber);
   };
 
-  const handleSaveProfileIdentity = async (newName: string, newUsername?: string) => {
-    const targetUserId = user?.id || (isAuthenticated ? "demo-customer" : undefined);
+  const handleSaveProfileIdentity = async (
+    newName: string,
+    newUsername?: string,
+  ) => {
+    const targetUserId =
+      user?.id || (isAuthenticated ? "demo-customer" : undefined);
     if (!targetUserId) return;
     const updated = await saveAccountProfileDetails(targetUserId, {
       displayName: newName,
@@ -244,12 +271,6 @@ export function SettingContainer() {
     await handleSaveTechProfile(next);
   };
 
-  const handleDeletionRequest = async (reason: string) => {
-    if (!user) return;
-    const result = await submitAccountDeletionRequest(user.id, reason);
-    setDeletionRequest(result);
-  };
-
   const activeBg =
     preferences.appearance === "dark" || palette.background === "#18191A"
       ? palette.background
@@ -259,121 +280,350 @@ export function SettingContainer() {
           ? "#FFFFFF"
           : palette.background;
 
+  const getSectionTitle = (section: SettingSectionKey): string => {
+    switch (section) {
+      case "account":
+        return language === "en" ? "Account" : "Akun";
+      case "address":
+        return language === "en" ? "Address" : "Alamat";
+      case "security":
+        return language === "en" ? "Security" : "Keamanan";
+      case "password":
+        return language === "en" ? "Password" : "Kata Sandi";
+      case "language":
+        return language === "en" ? "Language" : "Bahasa";
+      case "notifications":
+        return language === "en" ? "Notifications" : "Notifikasi";
+      case "appearance":
+        return language === "en" ? "Appearance" : "Tampilan";
+      case "policy":
+        return language === "en" ? "Term Policy" : "Kebijakan & Syarat";
+      case "version":
+        return language === "en" ? "Current Version" : "Versi Saat Ini";
+      case "delete-account":
+        return language === "en" ? "Delete Account" : "Hapus Akun";
+    }
+  };
+
+  const handleBackPress = () => {
+    if (visibleSection !== null) {
+      // Return to main settings list
+      if (params.returnTo && explicitTab === visibleSection) {
+        router.replace(params.returnTo as any);
+      } else {
+        setSelectedSection(null);
+      }
+    } else if (params.returnTo) {
+      router.replace(params.returnTo as any);
+    } else if (router.canGoBack()) {
+      router.back();
+    } else {
+      router.replace("/" as any);
+    }
+  };
+
+  const currentThemeLabel =
+    preferences.appearance === "dark"
+      ? language === "en"
+        ? "Dark"
+        : "Gelap"
+      : preferences.appearance === "light"
+        ? language === "en"
+          ? "Light"
+          : "Terang"
+        : language === "en"
+          ? "System"
+          : "Sistem";
+
   return (
     <SafeAreaView
       style={[styles.safeArea, { backgroundColor: activeBg }]}
       edges={["top", "bottom"]}
     >
-      <ScrollView style={styles.screenContent} contentContainerStyle={styles.scrollContent}>
+      <ScrollView
+        style={styles.screenContent}
+        contentContainerStyle={styles.scrollContent}
+      >
         <View style={styles.content}>
-          {/* Global BackHeader with round 36x36 back button and dynamic centered title */}
+          {/* Header with dynamic title and back navigation */}
           <BackHeader
-            title={language === "en" ? "Settings" : "Pengaturan"}
+            title={
+              visibleSection
+                ? getSectionTitle(visibleSection)
+                : language === "en"
+                  ? "Settings"
+                  : "Pengaturan"
+            }
             backBtnTestID="settings-back-btn"
             testID="settings-screen-header"
-            onPressBack={
-              params.returnTo
-                ? () => {
-                    router.replace(params.returnTo as any);
+            onPressBack={handleBackPress}
+          />
+
+          {/* FIRST PAGE: Clean, improved Navlinks list with 5px gap */}
+          {visibleSection === null && (
+            <View style={styles.navLinksWrapper}>
+              <View style={styles.navLinksList} testID="settings-navlinks-list">
+                {/* 1. Account */}
+                <SettingNavLink
+                  icon={User}
+                  iconColor="#2563EB"
+                  iconBgColor="#EFF6FF"
+                  title={language === "en" ? "Account" : "Akun"}
+                  subtitle={
+                    user
+                      ? displayName || user.email || ""
+                      : language === "en"
+                        ? "Sign in or create account"
+                        : "Masuk atau buat akun baru"
                   }
-                : undefined
-            }
-          />
+                  onPress={() => setSelectedSection("account")}
+                  testID="setting-tab-account"
+                />
 
-          <SettingHeader
-            activeSection={visibleSection}
-            onSelectSection={setSelectedSection}
-            isAuthenticated={isAuthenticated}
-          />
+                {/* 2. Address (Auth Only) */}
+                {isAuthenticated && (
+                  <SettingNavLink
+                    icon={MapPin}
+                    iconColor="#059669"
+                    iconBgColor="#ECFDF5"
+                    title={language === "en" ? "Address" : "Alamat"}
+                    subtitle={
+                      savedAddresses.length > 0
+                        ? language === "en"
+                          ? `${savedAddresses.length} saved addresses`
+                          : `${savedAddresses.length} alamat tersimpan`
+                        : language === "en"
+                          ? "Manage service and delivery addresses"
+                          : "Kelola alamat pengantaran layanan"
+                    }
+                    onPress={() => setSelectedSection("address")}
+                    testID="setting-tab-address"
+                  />
+                )}
 
-          {visibleSection === "account" && (
-            <>
-              <SettingAccount
-                isCustomerRole={isCustomerRole}
-                isTechnicianAvailable={techProfile?.available ?? true}
-                onToggleTechnicianAvailability={handleToggleTechAvailability}
-                email={isAuthenticated ? email : ""}
-                phoneNumber={isAuthenticated ? phoneNumber : ""}
-                onChangePhoneNumber={setPhoneNumber}
-                onSavePrivateContact={handleSavePrivateContact}
-                savedAddresses={isAuthenticated ? savedAddresses : []}
-                onAddAddress={handleAddAddress}
-                onDeleteAddress={handleDeleteAddress}
-                onSetDefaultAddress={handleSetDefaultAddress}
-                addressFeedback={addressFeedback}
-                preferences={preferences}
-                onUpdateBookingPrefs={(bookingPreferences) => {
-                  void handleUpdatePrefs({
-                    ...preferences,
-                    bookingPreferences,
-                  });
-                }}
-                onUpdateNotifications={(notifications) => {
-                  void setInAppPushEnabled(notifications.push);
-                  void handleUpdatePrefs({ ...preferences, notifications });
-                }}
-              />
-            </>
+                {/* 3. Security (Auth Only) */}
+                {isAuthenticated && (
+                  <SettingNavLink
+                    icon={ShieldCheck}
+                    iconColor="#7C3AED"
+                    iconBgColor="#F5F3FF"
+                    title={language === "en" ? "Security" : "Keamanan"}
+                    subtitle={
+                      language === "en"
+                        ? "Profile name, phone & private credentials"
+                        : "Nama profil, nomor HP & kontak privat"
+                    }
+                    onPress={() => setSelectedSection("security")}
+                    testID="setting-tab-security"
+                  />
+                )}
+
+                {/* 4. Password (Auth Only) */}
+                {isAuthenticated && (
+                  <SettingNavLink
+                    icon={Lock}
+                    iconColor="#D97706"
+                    iconBgColor="#FFFBEB"
+                    title={language === "en" ? "Password" : "Kata Sandi"}
+                    subtitle={
+                      language === "en"
+                        ? "Update your account password"
+                        : "Perbarui kata sandi akun"
+                    }
+                    onPress={() => setSelectedSection("password")}
+                    testID="setting-tab-password"
+                  />
+                )}
+
+                {/* 5. Language */}
+                <SettingNavLink
+                  icon={Globe}
+                  iconColor="#0284C7"
+                  iconBgColor="#F0F9FF"
+                  title={language === "en" ? "Language" : "Bahasa"}
+                  subtitle={
+                    language === "en"
+                      ? "Choose interface language"
+                      : "Pilih bahasa tampilan"
+                  }
+                  valueText={
+                    language === "en" ? "English" : "Bahasa Indonesia"
+                  }
+                  onPress={() => setSelectedSection("language")}
+                  testID="setting-tab-language"
+                />
+
+                {/* 6. Notifications (Auth Only) */}
+                {isAuthenticated && (
+                  <SettingNavLink
+                    icon={Bell}
+                    iconColor="#EA580C"
+                    iconBgColor="#FFF7ED"
+                    title={language === "en" ? "Notifications" : "Notifikasi"}
+                    subtitle={
+                      language === "en"
+                        ? "Push alerts, booking updates & chat"
+                        : "Notifikasi push, pembaruan pesanan & chat"
+                    }
+                    onPress={() => setSelectedSection("notifications")}
+                    testID="setting-tab-notifications"
+                  />
+                )}
+
+                {/* 7. Appearance */}
+                <SettingNavLink
+                  icon={Palette}
+                  iconColor="#9333EA"
+                  iconBgColor="#FAF5FF"
+                  title={language === "en" ? "Appearance" : "Tampilan"}
+                  subtitle={
+                    language === "en"
+                      ? "Color theme & accessibility"
+                      : "Tema warna & aksesibilitas"
+                  }
+                  valueText={currentThemeLabel}
+                  onPress={() => setSelectedSection("appearance")}
+                  testID="setting-tab-appearance"
+                />
+
+                {/* 8. Term Policy */}
+                <SettingNavLink
+                  icon={FileText}
+                  iconColor="#475569"
+                  iconBgColor="#F1F5F9"
+                  title={language === "en" ? "Term Policy" : "Kebijakan & Syarat"}
+                  subtitle={
+                    language === "en"
+                      ? "Terms of service, privacy & community safety"
+                      : "Ketentuan layanan, privasi & keamanan"
+                  }
+                  onPress={() => setSelectedSection("policy")}
+                  testID="setting-tab-policy"
+                />
+
+                {/* 9. Current Version - displays version directly on the nav link */}
+                <SettingNavLink
+                  icon={Info}
+                  iconColor="#0D9488"
+                  iconBgColor="#F0FDFA"
+                  title={language === "en" ? "Current Version" : "Versi Saat Ini"}
+                  subtitle={
+                    language === "en"
+                      ? "App release & build status"
+                      : "Rilis aplikasi & status build"
+                  }
+                  valueText={`v${APP_VERSION}`}
+                  onPress={() => setSelectedSection("version")}
+                  testID="setting-tab-version"
+                />
+
+                {/* 10. Delete Account (Auth Only) */}
+                {isAuthenticated && (
+                  <SettingNavLink
+                    icon={Trash2}
+                    title={language === "en" ? "Delete Account" : "Hapus Akun"}
+                    subtitle={
+                      language === "en"
+                        ? "Permanently erase account & all data"
+                        : "Hapus akun & seluruh data secara permanen"
+                    }
+                    isDanger
+                    onPress={() => setSelectedSection("delete-account")}
+                    testID="setting-tab-delete-account"
+                  />
+                )}
+              </View>
+            </View>
           )}
 
-          {isAuthenticated && visibleSection === "address" && (
-            <SettingAddress
-              savedAddresses={isAuthenticated ? savedAddresses : []}
-              onAddAddress={handleAddAddress}
-              onDeleteAddress={handleDeleteAddress}
-              onSetDefaultAddress={handleSetDefaultAddress}
-              addressFeedback={addressFeedback}
-              returnTo={params.returnTo}
-            />
+          {/* SINGLE SUB-PANEL: Rendered cleanly without redundant top tabs */}
+          {visibleSection !== null && (
+            <View style={styles.panelContainer}>
+              {visibleSection === "account" && (
+                <SettingAccount
+                  isCustomerRole={isCustomerRole}
+                  isTechnicianAvailable={techProfile?.available ?? true}
+                  onToggleTechnicianAvailability={handleToggleTechAvailability}
+                  email={isAuthenticated ? email : ""}
+                  phoneNumber={phoneNumber}
+                  onChangePhoneNumber={setPhoneNumber}
+                  onSavePrivateContact={handleSavePrivateContact}
+                  preferences={preferences}
+                  onUpdateBookingPrefs={(bookingPreferences) => {
+                    void handleUpdatePrefs({
+                      ...preferences,
+                      bookingPreferences,
+                    });
+                  }}
+                />
+              )}
+
+              {isAuthenticated && visibleSection === "address" && (
+                <SettingAddress
+                  savedAddresses={isAuthenticated ? savedAddresses : []}
+                  onAddAddress={handleAddAddress}
+                  onDeleteAddress={handleDeleteAddress}
+                  onSetDefaultAddress={handleSetDefaultAddress}
+                  addressFeedback={addressFeedback}
+                  returnTo={params.returnTo}
+                />
+              )}
+
+              {visibleSection === "language" && <SettingLanguage />}
+
+              {isAuthenticated && visibleSection === "notifications" && (
+                <SettingNotifications
+                  preferences={preferences}
+                  onUpdateNotifications={(notifications) => {
+                    void setInAppPushEnabled(notifications.push);
+                    void handleUpdatePrefs({ ...preferences, notifications });
+                  }}
+                />
+              )}
+
+              {visibleSection === "appearance" && (
+                <SettingAppearance
+                  preferences={preferences}
+                  onUpdateAppearance={(appearance) => {
+                    void handleUpdatePrefs({ ...preferences, appearance });
+                  }}
+                  onUpdateAccessibility={(accessibility) => {
+                    void handleUpdatePrefs({ ...preferences, accessibility });
+                  }}
+                />
+              )}
+
+              {isAuthenticated && visibleSection === "password" && (
+                <SettingPassword />
+              )}
+
+              {isAuthenticated && visibleSection === "security" && (
+                <SettingSecurity
+                  email={email}
+                  phoneNumber={phoneNumber}
+                  onChangePhoneNumber={setPhoneNumber}
+                  onSavePrivateContact={handleSavePrivateContact}
+                  displayName={displayName}
+                  username={username}
+                  onSaveDisplayName={handleSaveDisplayName}
+                  onSaveProfileIdentity={handleSaveProfileIdentity}
+                  onNavigateToDeleteAccount={() =>
+                    setSelectedSection("delete-account")
+                  }
+                />
+              )}
+
+              {visibleSection === "version" && <SettingVersion />}
+
+              {isAuthenticated && visibleSection === "delete-account" && (
+                <SettingDeleteAccount
+                  onCancel={() => setSelectedSection(null)}
+                />
+              )}
+
+              {visibleSection === "policy" && <SettingPolicy />}
+            </View>
           )}
-
-          {visibleSection === "language" && <SettingLanguage />}
-
-          {isAuthenticated && visibleSection === "notifications" && (
-            <SettingNotifications
-              preferences={preferences}
-              onUpdateNotifications={(notifications) => {
-                void setInAppPushEnabled(notifications.push);
-                void handleUpdatePrefs({ ...preferences, notifications });
-              }}
-            />
-          )}
-
-          {visibleSection === "appearance" && (
-            <SettingAppearance
-              preferences={preferences}
-              onUpdateAppearance={(appearance) => {
-                void handleUpdatePrefs({ ...preferences, appearance });
-              }}
-              onUpdateAccessibility={(accessibility) => {
-                void handleUpdatePrefs({ ...preferences, accessibility });
-              }}
-            />
-          )}
-
-          {isAuthenticated && visibleSection === "password" && (
-            <SettingPassword />
-          )}
-
-          {isAuthenticated && visibleSection === "security" && (
-            <SettingSecurity
-              email={email}
-              phoneNumber={phoneNumber}
-              onChangePhoneNumber={setPhoneNumber}
-              onSavePrivateContact={handleSavePrivateContact}
-              displayName={displayName}
-              username={username}
-              onSaveDisplayName={handleSaveDisplayName}
-              onSaveProfileIdentity={handleSaveProfileIdentity}
-              onNavigateToDeleteAccount={() => setSelectedSection("delete-account")}
-            />
-          )}
-
-          {isAuthenticated && visibleSection === "delete-account" && (
-            <SettingDeleteAccount onCancel={() => setSelectedSection("account")} />
-          )}
-
-          {visibleSection === "policy" && <SettingPolicy />}
         </View>
       </ScrollView>
       <AppNavigationBar activeTab="settings" />
@@ -394,34 +644,26 @@ const styles = StyleSheet.create({
   },
   content: {
     alignSelf: "center",
-    maxWidth: 820,
-    paddingHorizontal: 5,
+    maxWidth: 580,
+    paddingHorizontal: spacing.md,
     paddingTop: spacing.sm,
     width: "100%",
   },
-  headerBar: {
+  navLinksWrapper: {
     alignItems: "center",
-    flexDirection: "row",
-    justifyContent: "space-between",
-    marginBottom: 8,
-    marginTop: 4,
     width: "100%",
   },
-  headerBackBtn: {
-    alignItems: "center",
-    borderRadius: 5,
-    borderWidth: 1,
-    height: 36,
-    justifyContent: "center",
-    width: 36,
+  navLinksList: {
+    gap: 5,
+    maxWidth: 480,
+    marginTop: spacing.xs,
+    paddingBottom: spacing.lg,
+    width: "100%",
   },
-  headerTitleWrap: {
-    alignItems: "center",
-    flex: 1,
-    justifyContent: "center",
-  },
-  headerTitle: {
-    fontSize: 16,
-    fontWeight: "700",
+  panelContainer: {
+    alignSelf: "center",
+    maxWidth: 500,
+    paddingTop: spacing.sm,
+    width: "100%",
   },
 });

@@ -1,3 +1,4 @@
+import { Briefcase, Image as ImageIcon } from 'lucide-react-native';
 import { useState } from 'react';
 import {
   ActivityIndicator,
@@ -10,13 +11,14 @@ import {
   TextInput,
   View,
 } from 'react-native';
-import { Briefcase, Image as ImageIcon } from 'lucide-react-native';
 
 import { useAuth } from '../../auth/AuthProvider';
 import { useAppearance } from '../../context/AppearanceContext';
 import { containsBlockedContactOrUrl } from '../../data/marketplaceStore';
 import { useLanguage } from '../../i18n/locale';
+import { ICON_SIZE, ICON_STROKE } from '../../theme/icons';
 import { colors, radii, spacing } from '../../theme/tokens';
+import { font } from '../../theme/typography';
 import { Avatar } from '../marketplace-ui';
 import { StrictImagePicker } from '../StrictImagePicker';
 import { Toggle } from '../toggle';
@@ -233,7 +235,7 @@ export function TechnicianPostComposer({
             styles.textInput,
             {
               color: palette.text,
-              fontSize: scaleFont(15),
+              fontSize: scaleFont(font.title),
               lineHeight: scaleFont(22),
             },
           ]}
@@ -282,7 +284,11 @@ export function TechnicianPostComposer({
                     { backgroundColor: palette.primarySoft },
                   ]}
                 >
-                  <ImageIcon size={15} color={palette.primary} />
+                  <ImageIcon
+                    color={palette.primary}
+                    size={ICON_SIZE}
+                    strokeWidth={ICON_STROKE}
+                  />
                   {images.length > 0 && (
                     <View style={[styles.mediaCountBadge, { backgroundColor: palette.primary }]}>
                       <Text style={styles.mediaCountBadgeText}>
@@ -294,7 +300,7 @@ export function TechnicianPostComposer({
                 <Text
                   style={[
                     styles.mediaActionLabel,
-                    { color: palette.text, fontSize: scaleFont(12) },
+                    { color: palette.text, fontSize: scaleFont(font.body) },
                   ]}
                 >
                   {language === 'en' ? 'Photo' : 'Foto'}
@@ -317,7 +323,7 @@ export function TechnicianPostComposer({
               testID="service-post-toggle"
             >
               <Briefcase
-                size={13}
+                size={ICON_SIZE} strokeWidth={ICON_STROKE}
                 color={isServicePost ? palette.primary : palette.textMuted}
               />
               <Text
@@ -325,7 +331,7 @@ export function TechnicianPostComposer({
                   styles.servicePillText,
                   {
                     color: isServicePost ? palette.primary : palette.textMuted,
-                    fontSize: scaleFont(12),
+                    fontSize: scaleFont(font.body),
                   },
                 ]}
               >
@@ -375,7 +381,7 @@ export function TechnicianPostComposer({
               {busy ? (
                 <ActivityIndicator size="small" color="#FFFFFF" />
               ) : (
-                <Text style={[styles.postBtnText, { fontSize: scaleFont(13) }]}>
+                <Text style={[styles.postBtnText, { fontSize: scaleFont(font.label) }]}>
                   {language === 'en' ? 'Post' : 'Posting'}
                 </Text>
               )}
@@ -417,10 +423,10 @@ export function TechnicianPostComposer({
             testID="composer-image-picker-wrap"
           >
             <View style={[styles.pickerHandle, { backgroundColor: palette.border }]} />
-            <Text style={[styles.pickerTitle, { color: palette.text, fontSize: scaleFont(18) }]}>
+            <Text style={[styles.pickerTitle, { color: palette.text, fontSize: scaleFont(font.heading) }]}>
               {language === 'en' ? 'Add Photo to Post' : 'Tambah Foto ke Postingan'}
             </Text>
-            <Text style={[styles.pickerSubtitle, { color: palette.textMuted, fontSize: scaleFont(13) }]}>
+            <Text style={[styles.pickerSubtitle, { color: palette.textMuted, fontSize: scaleFont(font.label) }]}>
               {language === 'en'
                 ? 'Take a work photo or choose from your device gallery.'
                 : 'Ambil foto pekerjaan atau pilih dari galeri perangkat Anda.'}
@@ -438,7 +444,7 @@ export function TechnicianPostComposer({
               <Text
                 style={[
                   styles.cancelPickerBtnText,
-                  { color: palette.textMuted, fontSize: scaleFont(13) },
+                  { color: palette.textMuted, fontSize: scaleFont(font.label) },
                 ]}
               >
                 {language === 'en' ? 'Cancel' : 'Batal'}
@@ -481,7 +487,7 @@ const styles = StyleSheet.create({
     minWidth: 0,
   },
   authorName: {
-    fontSize: 14,
+    fontSize: font.subtitle,
     fontWeight: '700',
   },
   audienceTag: {
@@ -495,7 +501,7 @@ const styles = StyleSheet.create({
     width: 6,
   },
   audienceText: {
-    fontSize: 11,
+    fontSize: font.caption,
     fontWeight: '500',
   },
   textareaContainer: {
@@ -505,7 +511,7 @@ const styles = StyleSheet.create({
     width: '100%',
   },
   textInput: {
-    fontSize: 15,
+    fontSize: font.title,
     lineHeight: 22,
     minHeight: 80,
     paddingHorizontal: spacing.md,
@@ -556,7 +562,7 @@ const styles = StyleSheet.create({
     gap: 6,
   },
   mediaActionLabel: {
-    fontSize: 12,
+    fontSize: font.body,
     fontWeight: '600',
   },
   mediaBtnDisabled: {
@@ -583,7 +589,7 @@ const styles = StyleSheet.create({
   },
   mediaCountBadgeText: {
     color: '#FFFFFF',
-    fontSize: 9,
+    fontSize: font.caption,
     fontWeight: '700',
   },
   servicePillToggle: {
@@ -596,11 +602,11 @@ const styles = StyleSheet.create({
     paddingVertical: 5,
   },
   servicePillText: {
-    fontSize: 12,
+    fontSize: font.body,
     fontWeight: '600',
   },
   charCounter: {
-    fontSize: 12,
+    fontSize: font.body,
     fontWeight: '600',
     textAlign: 'right',
   },
@@ -619,7 +625,7 @@ const styles = StyleSheet.create({
   },
   postBtnText: {
     color: '#FFFFFF',
-    fontSize: 13,
+    fontSize: font.label,
     fontWeight: '700',
   },
   pickerOverlay: {
@@ -665,7 +671,7 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   errorText: {
-    fontSize: 12,
+    fontSize: font.body,
     fontWeight: '500',
     marginTop: spacing.xs,
   },

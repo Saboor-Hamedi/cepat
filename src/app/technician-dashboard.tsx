@@ -27,6 +27,7 @@ import { useLanguage } from '../i18n/locale';
 import { TaskContainer } from '../task';
 import { colors, radii, spacing } from '../theme/tokens';
 import type { BookingRecord } from '../types/marketplace';
+import { font } from '../theme/typography';
 
 export default function TechnicianDashboardScreen() {
   const { language, t } = useLanguage();
@@ -245,13 +246,13 @@ const styles = StyleSheet.create({
   },
   pendingTitle: {
     color: colors.ink,
-    fontSize: 18,
+    fontSize: font.heading,
     fontWeight: '800',
     marginBottom: spacing.xs,
   },
   pendingBody: {
     color: colors.muted,
-    fontSize: 13,
+    fontSize: font.label,
     lineHeight: 18,
   },
   errorNoticeBox: {
@@ -263,7 +264,7 @@ const styles = StyleSheet.create({
   errorNoticeText: {
     color: colors.danger,
     flex: 1,
-    fontSize: 12,
+    fontSize: font.body,
   },
   retryBtn: {
     backgroundColor: colors.greenDark,
@@ -273,7 +274,7 @@ const styles = StyleSheet.create({
   },
   retryBtnText: {
     color: '#FFFFFF',
-    fontSize: 12,
+    fontSize: font.body,
     fontWeight: '700',
   },
 });

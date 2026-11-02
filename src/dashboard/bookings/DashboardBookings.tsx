@@ -1,4 +1,5 @@
 import React from 'react';
+import { font } from '../../theme/typography';
 import {
   Pressable,
   StyleSheet,
@@ -134,11 +135,11 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
   },
   cardTitle: {
-    fontSize: 15,
+    fontSize: font.title,
     fontWeight: '800',
   },
   cardMeta: {
-    fontSize: 12,
+    fontSize: font.body,
     marginTop: 4,
   },
   statusBadge: {
@@ -147,7 +148,7 @@ const styles = StyleSheet.create({
     paddingVertical: 4,
   },
   statusBadgeText: {
-    fontSize: 10,
+    fontSize: font.caption,
     fontWeight: '800',
   },
   actionRow: {
@@ -165,7 +166,7 @@ const styles = StyleSheet.create({
     paddingVertical: 6,
   },
   secondaryBtnText: {
-    fontSize: 11,
+    fontSize: font.caption,
     fontWeight: '800',
   },
   dangerBtn: {
@@ -178,7 +179,7 @@ const styles = StyleSheet.create({
     paddingVertical: 6,
   },
   dangerBtnText: {
-    fontSize: 11,
+    fontSize: font.caption,
     fontWeight: '800',
   },
 });
