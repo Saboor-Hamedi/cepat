@@ -583,8 +583,12 @@ export default function TechnicianProfileScreen() {
 
   const handleDeletePost = async (postId: string) => {
     const ownerId = user?.id || technician.id;
-    await deleteTechnicianPost({ actorUserId: ownerId, postId });
-    await postFeed.refresh();
+    try {
+      await deleteTechnicianPost({ actorUserId: ownerId, postId });
+      await postFeed.refresh();
+    } catch (err) {
+      console.warn('[handleDeletePost] Failed to delete post:', err);
+    }
   };
 
   const handleEditPost = async (

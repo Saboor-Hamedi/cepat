@@ -279,33 +279,42 @@ export function AuthProvider({ children }: PropsWithChildren) {
   useEffect(() => {
     let active = true;
     if (!user) return;
-    const loadAvatar = async () => {
+    const syncUserProfile = async () => {
       try {
         const local = await AsyncStorage.getItem(`@cepat_avatar_${user.id}`);
-        let remote: string | null = null;
+        let remoteAvatar: string | null = null;
+        let remoteDisplayName: string | null = null;
         if (supabase) {
           const { data } = await supabase
             .from('profiles')
-            .select('*')
+            .select('display_name, avatar_path')
             .eq('id', user.id)
             .maybeSingle();
+          if (typeof data?.display_name === 'string' && data.display_name.trim()) {
+            remoteDisplayName = data.display_name.trim();
+          }
           const remoteCandidate =
             (typeof data?.avatar_path === 'string' && data.avatar_path) ||
-            (typeof data?.avatar_url === 'string' && data.avatar_url) ||
-            (typeof data?.avatar === 'string' && data.avatar) ||
-            (typeof data?.avatar_uri === 'string' && data.avatar_uri) ||
             null;
-          if (remoteCandidate) remote = remoteCandidate;
+          if (remoteCandidate) remoteAvatar = remoteCandidate;
         }
-        const avatar = remote || local;
-        if (active && avatar && (!user.user_metadata?.avatar_url || user.user_metadata.avatar_url !== avatar)) {
+        const avatar = remoteAvatar || local;
+        const currentMeta = user.user_metadata || {};
+        const needAvatarUpdate = avatar && currentMeta.avatar_url !== avatar;
+        const needNameUpdate =
+          remoteDisplayName && currentMeta.display_name !== remoteDisplayName;
+
+        if (active && (needAvatarUpdate || needNameUpdate)) {
           setUser((curr) => {
             if (!curr || curr.id !== user.id) return curr;
             return {
               ...curr,
               user_metadata: {
                 ...curr.user_metadata,
-                avatar_url: avatar,
+                ...(needAvatarUpdate ? { avatar_url: avatar } : {}),
+                ...(needNameUpdate
+                  ? { display_name: remoteDisplayName, full_name: remoteDisplayName }
+                  : {}),
               },
             } as User;
           });
@@ -314,7 +323,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
         // Ignored
       }
     };
-    void loadAvatar();
+    void syncUserProfile();
     return () => {
       active = false;
     };

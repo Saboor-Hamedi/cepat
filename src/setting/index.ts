@@ -8,4 +8,5 @@ export { SettingLanguage } from './language/SettingLanguage';
 export { SettingNotifications } from './notifications/SettingNotifications';
 export { SettingAppearance } from './appearance/SettingAppearance';
 export { SettingSecurity } from './security/SettingSecurity';
+export { SettingAddress } from './address/SettingAddress';
 export { SettingDeleteAccount } from './delete-account/SettingDeleteAccount';

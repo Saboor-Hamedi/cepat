@@ -109,8 +109,15 @@ export function BookingParticipantsHeader({
             <View style={styles.activeDot} />
           </View>
           <Text numberOfLines={1} style={[styles.participantName, { color: palette.text }]}>
-            {technicianBusinessName || technicianName || (language === 'en' ? 'Technician' : 'Teknisi')}
+            {technicianName || technicianBusinessName || (language === 'en' ? 'Technician' : 'Teknisi')}
           </Text>
+          {technicianBusinessName &&
+          technicianBusinessName.trim() !== '' &&
+          technicianBusinessName.trim() !== (technicianName || '').trim() ? (
+            <Text numberOfLines={1} style={[styles.participantSub, { color: palette.textMuted }]}>
+              {technicianBusinessName}
+            </Text>
+          ) : null}
           <View style={[styles.rolePill, { backgroundColor: palette.primarySoft }]}>
             <Text style={[styles.roleText, { color: palette.primary }]}>
               {language === 'en' ? 'Verified Pro' : 'Teknisi Pro'}
@@ -188,6 +195,12 @@ function createStyles(palette: {
       fontWeight: '800',
       marginTop: 2,
       textAlign: 'center',
+    },
+    participantSub: {
+      fontSize: 11,
+      fontWeight: '500',
+      textAlign: 'center',
+      marginTop: -1,
     },
     participantsRow: {
       alignItems: 'center',

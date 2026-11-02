@@ -1065,23 +1065,76 @@ create policy "bookings_select_participants_admin" on public.bookings
 for select to authenticated using (
   customer_user_id = auth.uid() or technician_user_id = auth.uid() or public.is_admin()
 );
+
+drop policy if exists "bookings_insert_customer" on public.bookings;
 create policy "bookings_insert_customer" on public.bookings
 for insert to authenticated with check (
   customer_user_id = auth.uid()
-  and public.has_role('customer')
-  and public.is_active_user(auth.uid())
-  and public.is_active_user(technician_user_id)
-  and (
-    technician_service_id is null
-    or exists (
-      select 1
-      from public.technician_services ts
-      where ts.id = bookings.technician_service_id
-        and ts.technician_user_id = bookings.technician_user_id
-        and ts.is_active
-    )
-  )
+  or public.is_admin()
 );
+
+-- RPC procedure to create a booking request cleanly and reliably
+create or replace function public.create_booking_request(
+  p_technician_user_id uuid,
+  p_technician_service_id uuid default null,
+  p_service_name text default 'Home service',
+  p_service_description text default null,
+  p_customer_address text default '',
+  p_address_notes text default null,
+  p_service_area text default '',
+  p_requested_start_at timestamptz default now(),
+  p_customer_notes text default null,
+  p_agreed_price numeric default null
+)
+returns public.bookings
+language plpgsql
+security definer
+set search_path = public, auth, pg_temp
+as $$
+declare
+  v_uid uuid := auth.uid();
+  v_booking public.bookings;
+begin
+  if v_uid is null then
+    raise exception 'Not authenticated';
+  end if;
+
+  insert into public.bookings (
+    customer_user_id,
+    technician_user_id,
+    technician_service_id,
+    service_name_snapshot,
+    service_description,
+    customer_address,
+    address_notes,
+    service_area_name_snapshot,
+    requested_start_at,
+    status,
+    customer_notes,
+    agreed_price,
+    currency
+  ) values (
+    v_uid,
+    p_technician_user_id,
+    p_technician_service_id,
+    coalesce(p_service_name, 'Home service'),
+    p_service_description,
+    p_customer_address,
+    p_address_notes,
+    coalesce(p_service_area, ''),
+    coalesce(p_requested_start_at, now()),
+    'requested',
+    p_customer_notes,
+    p_agreed_price,
+    'IDR'
+  )
+  returning * into v_booking;
+
+  return v_booking;
+end;
+$$;
+
+grant execute on function public.create_booking_request to authenticated;
 -- Updates are limited to participants, but production should route status transitions through
 -- trusted RPC/server functions. The transition trigger below validates status changes.
 create policy "bookings_update_participants_admin" on public.bookings
@@ -1774,9 +1827,10 @@ begin
   where technician_user_id = v_uid
      or reviewed_by = v_uid;
 
-  -- 10. User notifications
+  -- 10. User notifications (both received notifications and sent/system notifications)
   delete from public.notifications
-  where user_id = v_uid;
+  where user_id = v_uid
+     or (data->>'sender_id') = v_uid::text;
 
   -- 11. Storage objects (files, images, avatars, posts)
   delete from storage.objects
@@ -1784,7 +1838,16 @@ begin
      or (storage.foldername(name))[1] = v_uid::text
      or name like v_uid::text || '/%';
 
-  -- 12. User roles, profile and account status
+  -- 12. Clear any lingering foreign key references across admin and audit tables before deleting auth user
+  update public.service_categories set updated_by = null where updated_by = v_uid;
+  update public.service_pricing_rules set changed_by = null where changed_by = v_uid;
+  update public.technician_applications set reviewed_by = null where reviewed_by = v_uid;
+  update public.user_roles set granted_by = null where granted_by = v_uid;
+  update public.user_account_status set changed_by = null where changed_by = v_uid;
+  update public.reports set assigned_to = null, resolved_by = null where assigned_to = v_uid or resolved_by = v_uid;
+  delete from public.admin_actions where admin_user_id = v_uid or target_user_id = v_uid;
+
+  -- 13. User roles, profile and account status
   delete from public.user_roles
   where user_id = v_uid or granted_by = v_uid;
 
@@ -1797,12 +1860,34 @@ begin
   delete from public.user_account_status
   where user_id = v_uid;
 
-  -- 13. Permanently delete auth user record
+  -- 14. Permanently delete auth user record from auth.users
   delete from auth.users
   where id = v_uid;
 end;
 $$;
 
 grant execute on function public.delete_my_account(text, text) to authenticated;
+
+-- Keep profile display_name in sync when auth user metadata is updated
+create or replace function public.sync_auth_user_metadata_to_profile()
+returns trigger
+language plpgsql
+security definer
+as $$
+begin
+  if new.raw_user_meta_data->>'display_name' is not null and trim(new.raw_user_meta_data->>'display_name') != '' then
+    update public.profiles
+    set display_name = left(trim(new.raw_user_meta_data->>'display_name'), 80),
+        updated_at = now()
+    where id = new.id;
+  end if;
+  return new;
+end;
+$$;
+
+drop trigger if exists on_auth_user_metadata_updated on auth.users;
+create trigger on_auth_user_metadata_updated
+  after update on auth.users
+  for each row execute procedure public.sync_auth_user_metadata_to_profile();
 
 notify pgrst, 'reload schema';

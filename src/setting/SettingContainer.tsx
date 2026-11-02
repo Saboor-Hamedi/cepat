@@ -1,10 +1,10 @@
 import { router, useLocalSearchParams } from "expo-router";
-import { ArrowLeft } from "lucide-react-native";
 import { useEffect, useState } from "react";
-import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { ScrollView, StyleSheet, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { useAuth } from "../auth/AuthProvider";
+import { BackHeader } from "../components/BackHeader";
 import { AppNavigationBar } from "../components/marketplace-ui";
 import { useAppearance } from "../context/AppearanceContext";
 import {
@@ -41,6 +41,7 @@ import { SettingLanguage } from "./language/SettingLanguage";
 import { SettingNotifications } from "./notifications/SettingNotifications";
 import { SettingPolicy } from "./policy/SettingPolicy";
 import { SettingSecurity } from "./security/SettingSecurity";
+import { SettingAddress } from "./address/SettingAddress";
 import { SettingDeleteAccount } from "./delete-account/SettingDeleteAccount";
 
 export function SettingContainer() {
@@ -48,8 +49,9 @@ export function SettingContainer() {
   const { palette, setThemeMode, setLargeText, setReduceMotion } =
     useAppearance();
   const { user, effectiveRole, updateUserProfile } = useAuth();
-  const params = useLocalSearchParams<{ tab?: string }>();
+  const params = useLocalSearchParams<{ tab?: string; returnTo?: string }>();
   const initialTab: SettingSectionKey =
+    params.tab === "address" ||
     params.tab === "password" ||
     params.tab === "notifications" ||
     params.tab === "language" ||
@@ -264,35 +266,19 @@ export function SettingContainer() {
     >
       <ScrollView style={styles.screenContent} contentContainerStyle={styles.scrollContent}>
         <View style={styles.content}>
-          {/* Header with Back button, Title, and balance spacer matching Booking and Task */}
-          <View style={styles.headerBar} testID="settings-screen-header">
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel={language === "en" ? "Back" : "Kembali"}
-              onPress={() => {
-                if (router.canGoBack()) {
-                  router.back();
-                } else {
-                  router.replace("/");
-                }
-              }}
-              style={[
-                styles.headerBackBtn,
-                { backgroundColor: palette.surface, borderColor: palette.border },
-              ]}
-              testID="settings-back-btn"
-            >
-              <ArrowLeft size={18} color={palette.text} strokeWidth={2.2} />
-            </Pressable>
-
-            <View style={styles.headerTitleWrap}>
-              <Text style={[styles.headerTitle, { color: palette.text }]}>
-                {language === "en" ? "Settings" : "Pengaturan"}
-              </Text>
-            </View>
-
-            <View style={{ width: 36 }} />
-          </View>
+          {/* Global BackHeader with round 36x36 back button and dynamic centered title */}
+          <BackHeader
+            title={language === "en" ? "Settings" : "Pengaturan"}
+            backBtnTestID="settings-back-btn"
+            testID="settings-screen-header"
+            onPressBack={
+              params.returnTo
+                ? () => {
+                    router.replace(params.returnTo as any);
+                  }
+                : undefined
+            }
+          />
 
           <SettingHeader
             activeSection={visibleSection}
@@ -328,6 +314,17 @@ export function SettingContainer() {
                 }}
               />
             </>
+          )}
+
+          {isAuthenticated && visibleSection === "address" && (
+            <SettingAddress
+              savedAddresses={isAuthenticated ? savedAddresses : []}
+              onAddAddress={handleAddAddress}
+              onDeleteAddress={handleDeleteAddress}
+              onSetDefaultAddress={handleSetDefaultAddress}
+              addressFeedback={addressFeedback}
+              returnTo={params.returnTo}
+            />
           )}
 
           {visibleSection === "language" && <SettingLanguage />}

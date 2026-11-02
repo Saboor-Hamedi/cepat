@@ -397,7 +397,7 @@ export function SettingAccount({
         </View>
 
         {/* Customer Address Management */}
-        {isCustomerRole && effectiveRole === "customer" && (
+        {Boolean(user) && (
           <View style={styles.customerBlock}>
             <Text style={styles.subSectionTitle}>
               {language === "en" ? "Saved Addresses" : "Alamat Tersimpan"}

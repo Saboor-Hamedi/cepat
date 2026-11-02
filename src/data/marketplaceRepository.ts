@@ -223,7 +223,11 @@ export function mapTechnician(
   const themeValue = row.profile_theme;
   return {
     id: stringValue(row.user_id) ?? '',
-    displayName: stringValue(profile?.display_name) ?? stringValue(row.business_name) ?? 'Teknisi Cepat',
+    displayName:
+      stringValue(profile?.display_name) ??
+      stringValue(profile?.username) ??
+      stringValue(row.business_name) ??
+      'Teknisi Cepat',
     businessName: stringValue(row.business_name),
     headline: stringValue(row.headline),
     bio: stringValue(row.bio),

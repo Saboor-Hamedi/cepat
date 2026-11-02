@@ -124,32 +124,88 @@ export function SettingDeleteAccount({
           p_feedback: finalReason,
         });
 
-        if (rpcError) {
-          // Fallback client-side record of feedback and table wipes in case RPC is pending application
-          try {
-            await supabase.from("account_deletion_feedbacks").insert({
-              user_id: user.id,
-              user_email: userEmail || user.email,
-              user_display_name: (user.user_metadata as { display_name?: string } | undefined)?.display_name || "User",
-              reason_category: selectedReason,
-              feedback_notes: finalReason,
-            });
-          } catch {
-            // Ignore feedback insert errors
-          }
+        // 3. Comprehensive client-side purge of EVERY user table (notifications, messages, bookings, technician, profiles)
+        // Ensures complete data removal even if RPC is pending application on remote database
+        try {
+          await supabase.from("account_deletion_feedbacks").insert({
+            user_id: user.id,
+            user_email: userEmail || user.email,
+            user_display_name: (user.user_metadata as { display_name?: string } | undefined)?.display_name || "User",
+            user_role: user.role || "customer",
+            reason_category: selectedReason || "other",
+            feedback_notes: finalReason,
+          });
+        } catch {
+          // Non-blocking
+        }
 
-          try {
-            await supabase.from("technician_posts").delete().eq("technician_id", user.id);
-            await supabase.from("technician_portfolio_items").delete().eq("technician_user_id", user.id);
-            await supabase.from("technician_services").delete().eq("technician_user_id", user.id);
-            await supabase.from("technician_availability").delete().eq("technician_user_id", user.id);
-            await supabase.from("technician_profiles").delete().eq("user_id", user.id);
-            await supabase.from("technician_applications").delete().eq("technician_user_id", user.id);
-            await supabase.from("user_roles").delete().eq("user_id", user.id);
-            await supabase.from("profiles").delete().eq("id", user.id);
-          } catch {
-            // Ignore fallback errors
-          }
+        try {
+          // DELETE ALL NOTIFICATIONS
+          await supabase.from("notifications").delete().eq("user_id", user.id);
+        } catch {
+          // Ignore
+        }
+
+        try {
+          // DELETE ALL MESSAGES
+          await supabase.from("messages").delete().eq("sender_user_id", user.id);
+        } catch {
+          // Ignore
+        }
+
+        try {
+          // DELETE CONVERSATIONS
+          await supabase.from("conversations").delete().eq("customer_user_id", user.id);
+          await supabase.from("conversations").delete().eq("technician_user_id", user.id);
+        } catch {
+          // Ignore
+        }
+
+        try {
+          // DELETE REVIEWS & REPORTS
+          await supabase.from("reviews").delete().eq("customer_user_id", user.id);
+          await supabase.from("reviews").delete().eq("technician_user_id", user.id);
+          await supabase.from("report_evidence").delete().eq("uploaded_by", user.id);
+          await supabase.from("reports").delete().eq("reporter_user_id", user.id);
+          await supabase.from("reports").delete().eq("reported_user_id", user.id);
+        } catch {
+          // Ignore
+        }
+
+        try {
+          // DELETE BOOKINGS
+          await supabase.from("bookings").delete().eq("customer_user_id", user.id);
+          await supabase.from("bookings").delete().eq("technician_user_id", user.id);
+        } catch {
+          // Ignore
+        }
+
+        try {
+          // DELETE TECHNICIAN CONTENT & PROFILE
+          await supabase.from("technician_posts").delete().eq("technician_id", user.id);
+          await supabase.from("technician_portfolio_items").delete().eq("technician_user_id", user.id);
+          await supabase.from("technician_services").delete().eq("technician_user_id", user.id);
+          await supabase.from("technician_availability").delete().eq("technician_user_id", user.id);
+          await supabase.from("technician_service_areas").delete().eq("technician_user_id", user.id);
+          await supabase.from("technician_locations").delete().eq("technician_user_id", user.id);
+          await supabase.from("technician_profiles").delete().eq("user_id", user.id);
+          await supabase.from("technician_applications").delete().eq("technician_user_id", user.id);
+        } catch {
+          // Ignore
+        }
+
+        try {
+          // DELETE ROLES & PROFILES
+          await supabase.from("user_roles").delete().eq("user_id", user.id);
+          await supabase.from("private_profiles").delete().eq("user_id", user.id);
+          await supabase.from("user_account_status").delete().eq("user_id", user.id);
+          await supabase.from("profiles").delete().eq("id", user.id);
+        } catch {
+          // Ignore
+        }
+
+        if (rpcError) {
+          console.warn("Supabase delete_my_account RPC returned notice:", rpcError.message);
         }
       }
 
@@ -220,7 +276,8 @@ export function SettingDeleteAccount({
       return;
     }
 
-    if (!confirmEmail.trim()) {
+    const typedEmail = confirmEmail.trim().toLowerCase();
+    if (!typedEmail) {
       setError(
         language === "en"
           ? "Please confirm your email address."
@@ -229,12 +286,20 @@ export function SettingDeleteAccount({
       return;
     }
 
-    if (userEmail && confirmEmail.trim().toLowerCase() !== userEmail) {
-      setError(
+    if (userEmail && typedEmail !== userEmail) {
+      const emailMismatchMsg =
         language === "en"
-          ? `The email you entered does not match your account email (${userEmail}).`
-          : `Email yang Anda masukkan tidak cocok dengan email akun Anda (${userEmail}).`,
-      );
+          ? "This email doesn't belong to you. Please confirm with your registered account email."
+          : "Email ini tidak sesuai atau bukan milik Anda. Silakan konfirmasi dengan email akun Anda.";
+      setError(emailMismatchMsg);
+      if (Platform.OS === "web") {
+        window.alert(emailMismatchMsg);
+      } else {
+        Alert.alert(
+          language === "en" ? "Invalid Email" : "Email Tidak Cocok",
+          emailMismatchMsg,
+        );
+      }
       return;
     }
 

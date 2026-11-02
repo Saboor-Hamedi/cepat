@@ -374,8 +374,12 @@ export default function MarketplaceScreen() {
 
   const handleDeletePost = async (postId: string) => {
     if (!user) return;
-    await deleteTechnicianPost({ actorUserId: user.id, postId });
-    await postFeed.refresh();
+    try {
+      await deleteTechnicianPost({ actorUserId: user.id, postId });
+      await postFeed.refresh();
+    } catch (err) {
+      console.warn('[handleDeletePost] Failed to delete post:', err);
+    }
   };
 
   const handleSuspendPost = async (postId: string, suspended: boolean) => {

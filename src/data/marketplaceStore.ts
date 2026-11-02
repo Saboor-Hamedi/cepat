@@ -375,9 +375,9 @@ export async function loadAccountProfileDetails(
 ): Promise<AccountProfileDetails> {
   const defaultProfile: AccountProfileDetails = shouldUseFixtures()
     ? {
-        displayName: fallbackName || (userId ? 'Pengguna Cepat' : 'Andi Wijaya'),
+        displayName: fallbackName || (userId ? 'Pengguna Cepat' : 'Pelanggan'),
         username: fallbackUsername || '',
-        email: fallbackEmail || (userId ? '' : 'andi.wijaya@cepat.id'),
+        email: fallbackEmail || (userId ? '' : ''),
         phoneNumber: '+62 812-8890-1120',
         avatarUri: '',
         addressNotes: 'Kebayoran Baru, Jakarta Selatan',
@@ -409,7 +409,7 @@ export async function loadAccountProfileDetails(
       return {
         displayName:
           pub?.display_name ||
-          (stored.displayName === 'Andi Wijaya' ? fallbackName : stored.displayName) ||
+          (stored.displayName === 'Andi Wijaya' || stored.displayName === 'Pelanggan' ? fallbackName : stored.displayName) ||
           fallbackName,
         username: pub?.username || stored.username || fallbackUsername || '',
         email: fallbackEmail || (stored.email === 'andi.wijaya@cepat.id' ? '' : stored.email),
@@ -796,11 +796,18 @@ export async function createBookingRequest(input: CreateBookingInput): Promise<B
     throw new Error('cannot_book_own_service');
   }
 
+  const rawCustomerName = input.customerName?.trim();
+  const fallbackCustomerName = input.customerUserId ? 'Pelanggan Cepat' : 'Pelanggan';
+  const resolvedCustomerName =
+    rawCustomerName && rawCustomerName !== 'Andi Wijaya'
+      ? rawCustomerName
+      : fallbackCustomerName;
+
   const now = new Date().toISOString();
   const newBooking: BookingRecord = {
     id: `booking-${Date.now()}`,
     customerUserId: input.customerUserId || 'demo-customer',
-    customerName: input.customerName?.trim() || 'Andi Wijaya',
+    customerName: resolvedCustomerName,
     technicianUserId: input.technician.id,
     technicianName: input.technician.displayName,
     technicianBusinessName: input.technician.businessName,
@@ -886,22 +893,52 @@ export async function createBookingRequest(input: CreateBookingInput): Promise<B
       })
       .select('*')
       .single();
+    let bookingRow = data;
     if (error) {
-      if (
-        error.code === '23503' &&
-        error.message.toLowerCase().includes('technician')
-      ) {
-        throw new Error('booking_technician_profile_missing');
+      // Fallback to SECURITY DEFINER RPC in case RLS policy restricted direct insert
+      const { data: rpcData, error: rpcError } = await supabase.rpc('create_booking_request', {
+        p_technician_user_id: input.technician.id,
+        p_technician_service_id: serviceUuid,
+        p_service_name: newBooking.serviceNameSnapshot,
+        p_service_description: newBooking.serviceDescription ?? null,
+        p_customer_address: newBooking.customerAddress,
+        p_address_notes: newBooking.addressNotes ?? null,
+        p_service_area: area,
+        p_requested_start_at: newBooking.requestedStartAt,
+        p_customer_notes: newBooking.customerNotes ?? null,
+        p_agreed_price: newBooking.agreedPrice ?? null,
+      });
+
+      if (!rpcError && rpcData) {
+        bookingRow = rpcData;
+      } else {
+        if (
+          error.code === '23503' &&
+          error.message.toLowerCase().includes('technician')
+        ) {
+          throw new Error('booking_technician_profile_missing');
+        }
+        throw new Error(`booking_create_failed: ${error.message}`);
       }
-      throw new Error(`booking_create_failed: ${error.message}`);
     }
 
     const namesById = new Map([
       [sessionUserId, newBooking.customerName],
       [input.technician.id, input.technician.displayName],
     ]);
+    try {
+      const { data: profs } = await supabase
+        .from('profiles')
+        .select('id, display_name')
+        .in('id', [sessionUserId, input.technician.id]);
+      for (const p of profs ?? []) {
+        if (p.id && p.display_name) {
+          namesById.set(String(p.id), String(p.display_name));
+        }
+      }
+    } catch {}
     return mapSupabaseBooking(
-      data,
+      bookingRow,
       namesById,
       new Map(),
     );

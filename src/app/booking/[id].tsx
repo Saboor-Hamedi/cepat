@@ -1,5 +1,5 @@
-import { router, useLocalSearchParams } from "expo-router";
-import { useEffect, useMemo, useState } from "react";
+import { router, useFocusEffect, useLocalSearchParams } from "expo-router";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   KeyboardAvoidingView,
   Platform,
@@ -24,9 +24,16 @@ import {
   Rating,
   SourceBadge,
 } from "../../components/marketplace-ui";
-import { formatRupiah, loadTechnician } from "../../data/marketplaceRepository";
+import {
+  formatRupiah,
+  isUuid,
+  loadTechnician,
+  resolveImageUrl,
+  supabase,
+} from "../../data/marketplaceRepository";
 import {
   createBookingRequest,
+  loadAccountProfileDetails,
   loadBookingById,
   loadBookingMessages,
   loadSavedAddresses,
@@ -91,11 +98,22 @@ export default function BookingEntryScreen() {
   );
   const [messages, setMessages] = useState<BookingMessage[]>([]);
   const [loadedPost, setLoadedPost] = useState<TechnicianPost | null>(null);
+  const [customerDisplayName, setCustomerDisplayName] = useState<string>("");
+  const [customerAvatarUri, setCustomerAvatarUri] = useState<string>("");
 
   useEffect(() => {
     let active = true;
     void (async () => {
       try {
+        if (user?.id) {
+          void loadAccountProfileDetails(user.id).then((prof) => {
+            if (active && prof.displayName) {
+              setCustomerDisplayName(prof.displayName);
+              if (prof.avatarUri) setCustomerAvatarUri(prof.avatarUri);
+            }
+          }).catch(() => {});
+        }
+
         const addresses = await loadSavedAddresses(user?.id);
         const preferredAddress =
           addresses.find((address) => address.isDefault) ?? addresses[0];
@@ -119,6 +137,21 @@ export default function BookingEntryScreen() {
               loadBookingMessages(existing.id),
             ]);
             if (active) {
+              if (techResult.item && supabase && isUuid(techResult.item.id)) {
+                try {
+                  const { data: profData } = await supabase
+                    .from("profiles")
+                    .select("display_name, avatar_path")
+                    .eq("id", techResult.item.id)
+                    .maybeSingle();
+                  if (profData?.display_name && String(profData.display_name).trim()) {
+                    techResult.item.displayName = String(profData.display_name).trim();
+                  }
+                  if (profData?.avatar_path) {
+                    techResult.item.avatarUri = resolveImageUrl(profData.avatar_path) || techResult.item.avatarUri;
+                  }
+                } catch {}
+              }
               setTechnician(techResult.item);
               setMessages(msgs);
             }
@@ -137,10 +170,37 @@ export default function BookingEntryScreen() {
 
         // Otherwise load technician by ID
         if (id) {
-          const techResult = await loadTechnician(id);
+          let techResult = await loadTechnician(id);
+          if (!techResult.item && supabase && isUuid(id)) {
+            try {
+              const { data: postData } = await supabase
+                .from("technician_posts")
+                .select("technician_id")
+                .eq("id", id)
+                .maybeSingle();
+              if (postData?.technician_id) {
+                techResult = await loadTechnician(String(postData.technician_id));
+              }
+            } catch {}
+          }
           if (!active) return;
           if (techResult.item) {
             let item = { ...techResult.item };
+            if (supabase && isUuid(item.id)) {
+              try {
+                const { data: profData } = await supabase
+                  .from("profiles")
+                  .select("display_name, avatar_path")
+                  .eq("id", item.id)
+                  .maybeSingle();
+                if (profData?.display_name && String(profData.display_name).trim()) {
+                  item.displayName = String(profData.display_name).trim();
+                }
+                if (profData?.avatar_path) {
+                  item.avatarUri = resolveImageUrl(profData.avatar_path) || item.avatarUri;
+                }
+              } catch {}
+            }
             if (item.services.length === 0 || serviceName) {
               const decodedServiceName = serviceName ? decodeURIComponent(serviceName) : '';
               const matchedExisting = item.services.find((s) => s.id === serviceId);
@@ -178,6 +238,32 @@ export default function BookingEntryScreen() {
       active = false;
     };
   }, [id, postId, serviceId, user?.id]);
+
+  useFocusEffect(
+    useCallback(() => {
+      let active = true;
+      void (async () => {
+        try {
+          const addresses = await loadSavedAddresses(user?.id);
+          if (active) {
+            setSavedAddresses(addresses);
+            const preferredAddress =
+              addresses.find((address) => address.isDefault) ?? addresses[0];
+            if (preferredAddress) {
+              setCustomerAddress(preferredAddress.streetAddress);
+              setAddressNotes(preferredAddress.notes ?? "");
+              setServiceArea(preferredAddress.area);
+            }
+          }
+        } catch {
+          // ignore
+        }
+      })();
+      return () => {
+        active = false;
+      };
+    }, [user?.id])
+  );
 
   const effectivePostCaption =
     postCaption?.trim() || loadedPost?.caption?.trim() || "";
@@ -266,12 +352,16 @@ export default function BookingEntryScreen() {
 
     try {
       const requestedStartAt = toIndonesiaDateTime(selectedDate, selectedTime);
+      const resolvedCustomerName =
+        customerDisplayName.trim() ||
+        (typeof user?.user_metadata?.display_name === "string" &&
+          user.user_metadata.display_name.trim()) ||
+        user?.email?.split("@")[0] ||
+        (language === "en" ? "Customer" : "Pelanggan");
+
       const created = await createBookingRequest({
         customerUserId: user?.id,
-        customerName:
-          (typeof user?.user_metadata?.display_name === "string" &&
-            user.user_metadata.display_name) ||
-          "Andi Wijaya",
+        customerName: resolvedCustomerName,
         technician,
         service: selectedService,
         customerAddress,
@@ -381,11 +471,13 @@ export default function BookingEntryScreen() {
               {!activeBooking && technician && (
                 <BookingParticipantsHeader
                   customerAvatarUri={
+                    customerAvatarUri ||
                     (typeof user?.user_metadata?.avatar_url === "string" &&
                       user.user_metadata.avatar_url) ||
                     "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80"
                   }
                   customerName={
+                    customerDisplayName.trim() ||
                     (typeof user?.user_metadata?.display_name === "string" &&
                       user.user_metadata.display_name.trim()) ||
                     user?.email?.split("@")[0] ||
@@ -576,9 +668,12 @@ export default function BookingEntryScreen() {
                         },
                       ]}
                     >
-                      <MapPin color={palette.primary} size={18} />
-                      <View style={{ flex: 1 }}>
-                        <Text style={[styles.selectedAddressText, { color: palette.text }]}>
+                      <MapPin color={palette.primary} size={16} />
+                      <View style={{ flex: 1, paddingRight: 4 }}>
+                        <Text
+                          numberOfLines={2}
+                          style={[styles.selectedAddressText, { color: palette.text }]}
+                        >
                           {customerAddress}
                         </Text>
                         {serviceArea ? (
@@ -587,6 +682,31 @@ export default function BookingEntryScreen() {
                           </Text>
                         ) : null}
                       </View>
+                      <Pressable
+                        accessibilityRole="button"
+                        onPress={() => {
+                          if (user) {
+                            router.push({
+                              pathname: "/account",
+                              params: {
+                                tab: "address",
+                                returnTo: `/booking/${displayedTechnicianId}`,
+                              },
+                            });
+                          }
+                        }}
+                        style={[
+                          styles.changeAddressBtn,
+                          {
+                            backgroundColor: palette.surface,
+                            borderColor: palette.border,
+                          },
+                        ]}
+                      >
+                        <Text style={[styles.changeAddressBtnText, { color: palette.primary }]}>
+                          {language === "en" ? "Change" : "Ubah"}
+                        </Text>
+                      </Pressable>
                     </View>
                   ) : (
                     <>
@@ -594,7 +714,13 @@ export default function BookingEntryScreen() {
                         accessibilityRole="button"
                         onPress={() => {
                           if (user) {
-                            router.push({ pathname: "/account", params: { tab: "account" } });
+                            router.push({
+                              pathname: "/account",
+                              params: {
+                                tab: "address",
+                                returnTo: `/booking/${displayedTechnicianId}`,
+                              },
+                            });
                           } else {
                             router.push({
                               pathname: "/login",
@@ -817,35 +943,50 @@ function createStyles(palette: ThemePalette) {
   },
   selectedAddressCard: {
     alignItems: "center",
-    borderRadius: 5,
+    borderRadius: radii.sm,
     borderWidth: 1,
     flexDirection: "row",
-    gap: spacing.sm,
-    marginBottom: spacing.md,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm + 2,
+    gap: 10,
+    marginBottom: spacing.sm,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
   },
   selectedAddressText: {
-    fontSize: 14,
-    fontWeight: "700",
+    fontSize: 13,
+    fontWeight: "600",
+    lineHeight: 18,
   },
   selectedAddressSub: {
-    fontSize: 12,
+    fontSize: 11,
     marginTop: 2,
+  },
+  changeAddressBtn: {
+    alignItems: "center",
+    borderRadius: radii.xs,
+    borderWidth: 1,
+    height: 28,
+    justifyContent: "center",
+    paddingHorizontal: 10,
+  },
+  changeAddressBtnText: {
+    fontSize: 11,
+    fontWeight: "700",
   },
   simpleAddAddressBtn: {
     alignItems: "center",
-    borderRadius: 5,
+    borderRadius: radii.sm,
     borderStyle: "dashed",
-    borderWidth: 1.5,
+    borderWidth: 1,
+    flexDirection: "row",
+    gap: 6,
+    height: 40,
     justifyContent: "center",
-    marginBottom: spacing.md,
-    paddingVertical: 12,
+    marginBottom: spacing.xs,
     width: "100%",
   },
   simpleAddAddressText: {
     fontSize: 13,
-    fontWeight: "800",
+    fontWeight: "700",
   },
   postContextEyebrow: {
     color: palette.primary,

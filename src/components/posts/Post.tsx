@@ -152,7 +152,11 @@ export function Post({
   const handleConfirmDelete = async () => {
     if (!onDelete) return;
     setConfirmDeleteVisible(false);
-    await onDelete(post.id);
+    try {
+      await onDelete(post.id);
+    } catch (err) {
+      console.warn('[Post] Delete post error:', err);
+    }
   };
 
   const handleDeletePress = () => {

@@ -6,6 +6,7 @@ import { radii, spacing } from "../../theme/tokens";
 
 export type SettingSectionKey =
   | "account"
+  | "address"
   | "password"
   | "notifications"
   | "language"
@@ -38,6 +39,11 @@ export function SettingHeader({
     isDanger?: boolean;
   }[] = [
     { key: "account", label: language === "en" ? "Account" : "Akun" },
+    {
+      key: "address",
+      label: language === "en" ? "Address" : "Alamat",
+      authOnly: true,
+    },
     { key: "appearance", label: language === "en" ? "Appearance" : "Tampilan" },
     {
       key: "security",
