@@ -41,6 +41,7 @@ import { SettingLanguage } from "./language/SettingLanguage";
 import { SettingNotifications } from "./notifications/SettingNotifications";
 import { SettingPolicy } from "./policy/SettingPolicy";
 import { SettingSecurity } from "./security/SettingSecurity";
+import { SettingDeleteAccount } from "./delete-account/SettingDeleteAccount";
 
 export function SettingContainer() {
   const { language } = useLanguage();
@@ -54,7 +55,8 @@ export function SettingContainer() {
     params.tab === "language" ||
     params.tab === "appearance" ||
     params.tab === "security" ||
-    params.tab === "policy"
+    params.tab === "policy" ||
+    params.tab === "delete-account"
       ? params.tab
       : "account";
   const [selectedSection, setSelectedSection] =
@@ -296,26 +298,6 @@ export function SettingContainer() {
             activeSection={visibleSection}
             onSelectSection={setSelectedSection}
             isAuthenticated={isAuthenticated}
-            userName={displayName || user?.email?.split("@")[0]}
-            avatarUri={
-              avatarUri ||
-              (typeof user?.user_metadata?.avatar_url === "string"
-                ? user.user_metadata.avatar_url
-                : undefined)
-            }
-            userRole={
-              effectiveRole === "customer"
-                ? language === "en"
-                  ? "Customer"
-                  : "Pelanggan"
-                : effectiveRole === "technician"
-                  ? language === "en"
-                    ? "Technician"
-                    : "Teknisi"
-                  : effectiveRole === "admin"
-                    ? "Admin"
-                    : undefined
-            }
           />
 
           {visibleSection === "account" && (
@@ -378,8 +360,6 @@ export function SettingContainer() {
 
           {isAuthenticated && visibleSection === "security" && (
             <SettingSecurity
-              deletionRequest={deletionRequest}
-              onSubmitDeletionRequest={handleDeletionRequest}
               email={email}
               phoneNumber={phoneNumber}
               onChangePhoneNumber={setPhoneNumber}
@@ -388,7 +368,12 @@ export function SettingContainer() {
               username={username}
               onSaveDisplayName={handleSaveDisplayName}
               onSaveProfileIdentity={handleSaveProfileIdentity}
+              onNavigateToDeleteAccount={() => setSelectedSection("delete-account")}
             />
+          )}
+
+          {isAuthenticated && visibleSection === "delete-account" && (
+            <SettingDeleteAccount onCancel={() => setSelectedSection("account")} />
           )}
 
           {visibleSection === "policy" && <SettingPolicy />}

@@ -11,7 +11,8 @@ export type SettingSectionKey =
   | "language"
   | "appearance"
   | "security"
-  | "policy";
+  | "policy"
+  | "delete-account";
 
 export interface SettingHeaderProps {
   activeSection: SettingSectionKey;
@@ -26,9 +27,6 @@ export function SettingHeader({
   activeSection,
   onSelectSection,
   isAuthenticated,
-  userName,
-  avatarUri,
-  userRole,
 }: SettingHeaderProps) {
   const { language } = useLanguage();
   const { palette, scaleFont } = useAppearance();
@@ -37,6 +35,7 @@ export function SettingHeader({
     key: SettingSectionKey;
     label: string;
     authOnly?: boolean;
+    isDanger?: boolean;
   }[] = [
     { key: "account", label: language === "en" ? "Account" : "Akun" },
     { key: "appearance", label: language === "en" ? "Appearance" : "Tampilan" },
@@ -54,13 +53,19 @@ export function SettingHeader({
       key: "policy",
       label: language === "en" ? "Policy" : "Kebijakan",
     },
+    {
+      key: "delete-account",
+      label: language === "en" ? "Delete Account" : "Hapus Akun",
+      authOnly: true,
+      isDanger: true,
+    },
   ];
 
   const visibleTabs = allTabs.filter((tab) => !tab.authOnly || isAuthenticated);
 
   return (
     <View style={styles.headerContainer}>
-      {/* Categories like Account, Language, etc. are on the VERY TOP */}
+      {/* Categories like Account, Language, etc. on top */}
       <ScrollView
         horizontal
         showsHorizontalScrollIndicator={false}
@@ -69,6 +74,7 @@ export function SettingHeader({
       >
         {visibleTabs.map((tab) => {
           const selected = activeSection === tab.key;
+          const isDanger = Boolean(tab.isDanger);
           return (
             <Pressable
               key={tab.key}
@@ -77,15 +83,18 @@ export function SettingHeader({
               onPress={() => onSelectSection(tab.key)}
               style={[
                 styles.tabPill,
-                { backgroundColor: palette.pillBg },
-                selected && { backgroundColor: palette.primary },
+                { backgroundColor: isDanger ? `${palette.danger}15` : palette.pillBg },
+                selected && { backgroundColor: isDanger ? palette.danger : palette.primary },
               ]}
               testID={`setting-tab-${tab.key}`}
             >
               <Text
                 style={[
                   styles.tabPillText,
-                  { color: palette.pillText, fontSize: scaleFont(13) },
+                  {
+                    color: isDanger ? palette.danger : palette.pillText,
+                    fontSize: scaleFont(13),
+                  },
                   selected && { color: "#FFFFFF", fontWeight: "700" },
                 ]}
               >
@@ -101,27 +110,20 @@ export function SettingHeader({
 
 const styles = StyleSheet.create({
   headerContainer: {
-    marginBottom: spacing.md,
-    marginTop: spacing.xs,
-  },
-  srOnly: {
-    height: 0,
-    opacity: 0,
-    position: "absolute",
-    width: 0,
+    marginBottom: spacing.sm,
   },
   tabRow: {
-    gap: 8,
-    paddingVertical: 4,
+    flexDirection: "row",
+    gap: spacing.xs,
+    paddingBottom: spacing.xs,
+    paddingHorizontal: 12,
   },
   tabPill: {
-    backgroundColor: "#E4E6EB",
     borderRadius: radii.pill,
     paddingHorizontal: 16,
-    paddingVertical: 9,
+    paddingVertical: 8,
   },
   tabPillText: {
-    color: "#050505",
-    fontWeight: "700",
+    fontWeight: "600",
   },
 });

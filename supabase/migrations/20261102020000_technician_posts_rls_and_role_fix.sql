@@ -166,6 +166,80 @@ create policy "user_roles_select_public" on public.user_roles
 -- Ensure registered technicians have is_verified set
 update public.technician_profiles set is_verified = true where is_verified = false;
 
+-- 6. Permanent account deletion function
+create or replace function public.delete_my_account(p_reason text default null)
+returns void
+language plpgsql
+security definer
+set search_path = public, auth, storage
+as $$
+declare
+  v_uid uuid := auth.uid();
+begin
+  if v_uid is null then
+    raise exception 'Not authenticated';
+  end if;
+
+  -- 1. Delete technician posts
+  delete from public.technician_posts where technician_id = v_uid;
+
+  -- 2. Delete portfolio items
+  delete from public.technician_portfolio_items where technician_user_id = v_uid;
+
+  -- 3. Delete technician availability & services
+  delete from public.technician_availability where technician_user_id = v_uid;
+  delete from public.technician_service_areas where technician_user_id = v_uid;
+  delete from public.technician_services where technician_user_id = v_uid;
+  delete from public.technician_locations where technician_user_id = v_uid;
+
+  -- 4. Delete technician profile and application
+  delete from public.technician_profiles where user_id = v_uid;
+  delete from public.technician_applications where technician_user_id = v_uid;
+
+  -- 5. Delete reviews written by or for the user
+  delete from public.reviews where customer_user_id = v_uid or technician_user_id = v_uid;
+
+  -- 6. Delete bookings and status history
+  delete from public.booking_status_history where booking_id in (
+    select id from public.bookings where customer_user_id = v_uid or technician_user_id = v_uid
+  );
+  delete from public.bookings where customer_user_id = v_uid or technician_user_id = v_uid;
+
+  -- 7. Delete messages and conversations
+  delete from public.messages where conversation_id in (
+    select id from public.conversations where customer_user_id = v_uid or technician_user_id = v_uid
+  );
+  delete from public.conversations where customer_user_id = v_uid or technician_user_id = v_uid;
+
+  -- 8. Delete reports and evidence
+  delete from public.dispute_evidence where uploaded_by = v_uid;
+  delete from public.reports where reporter_user_id = v_uid or reported_user_id = v_uid;
+
+  -- 9. Delete notifications
+  delete from public.notifications where user_id = v_uid;
+
+  -- 10. Delete uploaded files and images from storage
+  delete from storage.objects where bucket_id = 'technician-posts' and (
+    (storage.foldername(name))[1] = v_uid::text or owner = v_uid
+  );
+  delete from storage.objects where bucket_id = 'avatars' and (
+    (storage.foldername(name))[1] = v_uid::text or owner = v_uid
+  );
+  delete from storage.objects where owner = v_uid;
+
+  -- 11. Delete roles and profile tables
+  delete from public.user_roles where user_id = v_uid;
+  delete from public.private_profiles where user_id = v_uid;
+  delete from public.profiles where id = v_uid;
+  delete from public.user_account_status where user_id = v_uid;
+
+  -- 12. Delete user account from auth.users
+  delete from auth.users where id = v_uid;
+end;
+$$;
+
+grant execute on function public.delete_my_account(text) to authenticated;
+
 notify pgrst, 'reload schema';
 
 commit;

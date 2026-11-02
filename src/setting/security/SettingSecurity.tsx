@@ -1,14 +1,14 @@
-import { View } from "react-native";
+import { ArrowRight, Trash2 } from "lucide-react-native";
+import { Pressable, StyleSheet, Text, View } from "react-native";
 
+import { useAppearance } from "../../context/AppearanceContext";
 import { useLanguage } from "../../i18n/locale";
+import { radii, spacing } from "../../theme/tokens";
 import { SettingSection } from "../components/SettingSection";
-import { AccountDeletionPanel } from "./components/AccountDeletionPanel";
 import { PrivateContactEditor } from "./components/PrivateContactEditor";
 import { ProfileNameEditor } from "./components/ProfileNameEditor";
 
 export interface SettingSecurityProps {
-  deletionRequest: { requestedAt: string; reason: string } | null;
-  onSubmitDeletionRequest: (reason: string) => Promise<void>;
   email?: string;
   phoneNumber?: string;
   onChangePhoneNumber?: (value: string) => void;
@@ -17,11 +17,10 @@ export interface SettingSecurityProps {
   username?: string;
   onSaveDisplayName?: (newName: string) => Promise<void>;
   onSaveProfileIdentity?: (newDisplayName: string, newUsername: string) => Promise<void>;
+  onNavigateToDeleteAccount?: () => void;
 }
 
 export function SettingSecurity({
-  deletionRequest,
-  onSubmitDeletionRequest,
   email,
   phoneNumber,
   onChangePhoneNumber,
@@ -30,8 +29,10 @@ export function SettingSecurity({
   username,
   onSaveDisplayName,
   onSaveProfileIdentity,
+  onNavigateToDeleteAccount,
 }: SettingSecurityProps) {
   const { language, t } = useLanguage();
+  const { palette, scaleFont } = useAppearance();
 
   return (
     <SettingSection
@@ -39,8 +40,8 @@ export function SettingSecurity({
       title={t("settings.securityPrivacyTitle")}
       description={
         language === "en"
-          ? "Manage your public profile identity, private contact credentials, and account deletion."
-          : "Kelola identitas profil publik, kontak privat terlindungi, dan penghapusan akun."
+          ? "Manage your public profile identity and private contact credentials."
+          : "Kelola identitas profil publik dan kontak privat terlindungi Anda."
       }
       testID="setting-section-security"
     >
@@ -61,12 +62,61 @@ export function SettingSecurity({
           onSavePrivateContact={onSavePrivateContact}
         />
 
-        {/* 3. Account Deletion Panel */}
-        <AccountDeletionPanel
-          deletionRequest={deletionRequest}
-          onSubmitDeletionRequest={onSubmitDeletionRequest}
-        />
+        {/* 3. Dedicated shortcut to Delete Account if available */}
+        {onNavigateToDeleteAccount && (
+          <Pressable
+            accessibilityRole="button"
+            onPress={onNavigateToDeleteAccount}
+            style={[
+              styles.deleteShortcutCard,
+              {
+                backgroundColor: `${palette.danger}10`,
+                borderColor: `${palette.danger}40`,
+              },
+            ]}
+            testID="security-to-delete-account-btn"
+          >
+            <View style={styles.shortcutLeft}>
+              <Trash2 size={18} color={palette.danger} />
+              <View>
+                <Text style={[styles.shortcutTitle, { color: palette.danger, fontSize: scaleFont(13) }]}>
+                  {language === "en" ? "Delete Account" : "Hapus Akun"}
+                </Text>
+                <Text style={[styles.shortcutSub, { color: palette.textSecondary, fontSize: scaleFont(11) }]}>
+                  {language === "en"
+                    ? "Permanently erase account, posts, photos & data"
+                    : "Hapus permanen akun, postingan, foto & data Anda"}
+                </Text>
+              </View>
+            </View>
+            <ArrowRight size={16} color={palette.danger} />
+          </Pressable>
+        )}
       </View>
     </SettingSection>
   );
 }
+
+const styles = StyleSheet.create({
+  deleteShortcutCard: {
+    alignItems: "center",
+    borderRadius: radii.sm,
+    borderWidth: 1,
+    flexDirection: "row",
+    justifyContent: "space-between",
+    marginTop: spacing.xs,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+  },
+  shortcutLeft: {
+    alignItems: "center",
+    flexDirection: "row",
+    gap: 12,
+  },
+  shortcutTitle: {
+    fontWeight: "700",
+  },
+  shortcutSub: {
+    marginTop: 2,
+  },
+});
