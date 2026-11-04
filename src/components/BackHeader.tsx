@@ -1,5 +1,5 @@
 import { router } from 'expo-router';
-import { ArrowLeft } from 'lucide-react-native';
+import { ChevronLeft } from 'lucide-react-native';
 import React from 'react';
 import {
   Pressable,
@@ -12,8 +12,8 @@ import {
 
 import { useAppearance } from '../context/AppearanceContext';
 import { useLanguage } from '../i18n/locale';
-import { spacing } from '../theme/tokens';
 import { ICON_SIZE, ICON_STROKE } from '../theme/icons';
+import { radii, spacing } from '../theme/tokens';
 import { font } from '../theme/typography';
 
 export interface BackHeaderProps {
@@ -21,6 +21,10 @@ export interface BackHeaderProps {
   titleComponent?: React.ReactNode;
   titleTestID?: string;
   onPressBack?: () => void;
+  fallbackRoute?: string;
+  backLabel?: string;
+  showBackLabel?: boolean;
+  color?: string;
   rightElement?: React.ReactNode;
   backBtnTestID?: string;
   testID?: string;
@@ -32,6 +36,10 @@ export function BackHeader({
   titleComponent,
   titleTestID,
   onPressBack,
+  fallbackRoute,
+  backLabel,
+  showBackLabel = true,
+  color,
   rightElement,
   backBtnTestID = 'back-header-btn',
   testID = 'back-header',
@@ -45,25 +53,48 @@ export function BackHeader({
       onPressBack();
     } else if (router.canGoBack()) {
       router.back();
+    } else if (fallbackRoute) {
+      router.replace(fallbackRoute as any);
     } else {
       router.replace('/');
     }
   };
 
+  const resolvedBackLabel = backLabel ?? (language === 'en' ? 'Back' : 'Kembali');
+  const tintColor = color ?? palette.primary;
+
   return (
-    <View style={[styles.headerBar, style]} testID={testID}>
-      {/* Round Back Button */}
+    <View
+      style={[
+        styles.headerBar,
+        {
+          backgroundColor: `${palette.surface}88`,
+          borderColor: `${palette.border}60`,
+        },
+        style,
+      ]}
+      testID={testID}
+    >
+      {/* Universal Go Back Button (NO background on the button itself) */}
       <Pressable
-        accessibilityLabel={language === 'en' ? 'Back' : 'Kembali'}
+        accessibilityLabel={resolvedBackLabel}
         accessibilityRole="button"
         onPress={handleBack}
-        style={[
-          styles.roundBackBtn,
-          { backgroundColor: palette.surface, borderColor: palette.border },
+        style={({ pressed }) => [
+          styles.backBtn,
+          {
+            opacity: pressed ? 0.6 : 1,
+            backgroundColor: 'transparent',
+          },
         ]}
         testID={backBtnTestID}
       >
-        <ArrowLeft size={ICON_SIZE} color={palette.text} strokeWidth={ICON_STROKE} />
+        <ChevronLeft size={ICON_SIZE} color={tintColor} strokeWidth={ICON_STROKE} />
+        {showBackLabel && (
+          <Text style={[styles.backLabel, { color: tintColor }]}>
+            {resolvedBackLabel}
+          </Text>
+        )}
       </Pressable>
 
       {/* Dynamic Title (Centered) */}
@@ -81,12 +112,10 @@ export function BackHeader({
         ) : null}
       </View>
 
-      {/* Right Element or symmetrical 36px spacer for centering */}
-      {rightElement ? (
-        <View style={styles.rightWrap}>{rightElement}</View>
-      ) : (
-        <View style={styles.spacer} />
-      )}
+      {/* Right Element or Symmetrical Spacer to keep title centered */}
+      <View style={styles.rightWrap}>
+        {rightElement || null}
+      </View>
     </View>
   );
 }
@@ -94,20 +123,31 @@ export function BackHeader({
 const styles = StyleSheet.create({
   headerBar: {
     alignItems: 'center',
+    borderRadius: radii.sm,
+    borderWidth: 1,
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginBottom: spacing.md,
-    marginTop: 4,
-    paddingHorizontal: 4,
+    marginBottom: spacing.sm,
+    marginTop: 2,
+    minHeight: 46,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
     width: '100%',
   },
-  roundBackBtn: {
+  backBtn: {
     alignItems: 'center',
-    borderRadius: 18,
-    borderWidth: 1,
-    height: 36,
-    justifyContent: 'center',
-    width: 36,
+    backgroundColor: 'transparent',
+    borderRadius: radii.sm,
+    flexDirection: 'row',
+    gap: 4,
+    minHeight: 38,
+    minWidth: 70,
+    paddingHorizontal: 4,
+    paddingVertical: 4,
+  },
+  backLabel: {
+    fontSize: font.subtitle,
+    fontWeight: '700',
   },
   titleWrap: {
     alignItems: 'center',
@@ -124,9 +164,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     flexDirection: 'row',
     justifyContent: 'flex-end',
-    minWidth: 36,
-  },
-  spacer: {
-    width: 36,
+    minHeight: 38,
+    minWidth: 70,
   },
 });

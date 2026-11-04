@@ -5,6 +5,7 @@ import {
   BadgeCheck,
   Camera,
   CheckCircle,
+  ChevronLeft,
   FileText,
   MapPin,
   Pencil,
@@ -573,23 +574,27 @@ export default function TechnicianProfileScreen() {
     mediaUrls?: string[];
     isServicePost: boolean;
   }) => {
-    const ownerId = user?.id || technician.id;
-    await createTechnicianPost({
-      actorUserId: ownerId,
-      technicianId: ownerId,
-      technicianName: technician.displayName,
-      technicianBusinessName: technician.businessName,
-      technicianAvatarUri: technician.avatarUri,
-      technicianVerified: isAdminUser || technician.verified,
-      caption: input.caption,
-      imageUri: input.imageUri,
-      mediaUrls: input.mediaUrls,
-      isServicePost: input.isServicePost,
-      serviceArea: technician.serviceAreas[0] ?? "Semua area",
-      categorySlug: technician.services[0]?.categorySlug ?? "general",
-      published: true,
-    });
-    await postFeed.refresh();
+    try {
+      const ownerId = user?.id || technician.id;
+      await createTechnicianPost({
+        actorUserId: ownerId,
+        technicianId: ownerId,
+        technicianName: technician.displayName,
+        technicianBusinessName: technician.businessName,
+        technicianAvatarUri: technician.avatarUri,
+        technicianVerified: isAdminUser || technician.verified,
+        caption: input.caption,
+        imageUri: input.imageUri,
+        mediaUrls: input.mediaUrls,
+        isServicePost: input.isServicePost,
+        serviceArea: technician.serviceAreas[0] ?? "Semua area",
+        categorySlug: technician.services[0]?.categorySlug ?? "general",
+        published: true,
+      });
+      await postFeed.refresh();
+    } catch (err) {
+      console.warn('[handleCreatePost] Error creating post:', err);
+    }
   };
 
   const handleDeletePost = async (postId: string) => {
@@ -677,18 +682,17 @@ export default function TechnicianProfileScreen() {
             <Header onBack={goBack} overlay />
             {isProfileOwner && (
               <View style={styles.coverTopRightRow}>
-                <MediaPickerButton
+                <Pressable
+                  accessibilityRole="button"
                   accessibilityLabel={
                     language === "en" ? "Change cover photo" : "Ubah foto sampul"
                   }
-                  icon="plus"
-                  label={language === "en" ? "Cover" : "Sampul"}
                   onPress={() => setCoverMenuVisible(true)}
-                  showLabel
-                  style={styles.coverPillBtn}
+                  style={styles.coverIconBtn}
                   testID="change-cover-btn"
-                  variant="overlay"
-                />
+                >
+                  <Camera color={palette.primary} size={22} strokeWidth={2.2} />
+                </Pressable>
 
                 <Pressable
                   accessibilityRole="button"
@@ -696,13 +700,10 @@ export default function TechnicianProfileScreen() {
                     language === "en" ? "Settings" : "Pengaturan"
                   }
                   onPress={() => router.push("/account")}
-                  style={[
-                    styles.coverIconBtn,
-                    { backgroundColor: palette.primary, borderColor: "#FFFFFF" },
-                  ]}
+                  style={styles.coverIconBtn}
                   testID="profile-settings-btn"
                 >
-                  <Settings color="#FFFFFF" size={ICON_SIZE} strokeWidth={ICON_STROKE} />
+                  <Settings color={palette.primary} size={22} strokeWidth={2.2} />
                 </Pressable>
               </View>
             )}
@@ -2383,7 +2384,7 @@ function Header({
   onBack: () => void;
   overlay?: boolean;
 }) {
-  const { t } = useLanguage();
+  const { language, t } = useLanguage();
   const { palette } = useAppearance();
   return (
     <View
@@ -2400,18 +2401,24 @@ function Header({
         style={[
           styles.sleekBackBtn,
           {
-            backgroundColor: overlay
-              ? "rgba(0, 0, 0, 0.45)"
-              : palette.surface,
-            borderColor: overlay ? "rgba(255,255,255,0.25)" : palette.border,
+            backgroundColor: "transparent",
+            borderWidth: 0,
           },
         ]}
       >
-        <ArrowLeft
-          size={ICON_SIZE}
-          color={overlay ? "#FFFFFF" : palette.text}
-          strokeWidth={ICON_STROKE}
+        <ChevronLeft
+          size={22}
+          color={palette.primary}
+          strokeWidth={2.2}
         />
+        <Text
+          style={[
+            styles.backLabelText,
+            { color: palette.primary },
+          ]}
+        >
+          {t("profile.back") || (language === "en" ? "Back" : "Kembali")}
+        </Text>
       </Pressable>
       {!overlay && <View style={styles.navBalance} />}
     </View>
@@ -2485,11 +2492,11 @@ const styles = StyleSheet.create({
     marginHorizontal: 0,
   },
   profileHero: { borderRadius: 0, width: "100%" },
-  coverContainer: { height: 140, position: "relative", width: "100%" },
-  coverImage: { height: 140, width: "100%" },
+  coverContainer: { height: 170, position: "relative", width: "100%" },
+  coverImage: { height: 170, width: "100%" },
   coverFallback: {
     backgroundColor: "#064E3B",
-    height: 140,
+    height: 170,
     overflow: "hidden",
     width: "100%",
   },
@@ -2514,11 +2521,11 @@ const styles = StyleSheet.create({
   },
   coverIconBtn: {
     alignItems: "center",
-    borderRadius: 18,
-    borderWidth: 1.5,
-    height: 36,
+    backgroundColor: "transparent",
+    borderWidth: 0,
+    height: 40,
     justifyContent: "center",
-    width: 36,
+    width: 40,
   },
   coverPillBtn: {
     borderRadius: 18,
@@ -3009,11 +3016,17 @@ const styles = StyleSheet.create({
   },
   sleekBackBtn: {
     alignItems: 'center',
-    borderRadius: 18,
-    borderWidth: 1,
-    height: 36,
-    justifyContent: 'center',
-    width: 36,
+    borderRadius: radii.sm,
+    flexDirection: 'row',
+    gap: 4,
+    minHeight: 38,
+    minWidth: 70,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+  },
+  backLabelText: {
+    fontSize: font.subtitle,
+    fontWeight: '700',
   },
   cameraAccentBadge: {
     alignItems: 'center',

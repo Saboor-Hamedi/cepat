@@ -219,6 +219,38 @@ export function DashboardContainer({
     );
   };
 
+  
+  const getTabTitle = (tab: DashboardTab): string => {
+    switch (tab) {
+      case 'dashboard':
+        return language === 'en' ? 'Admin Dashboard' : 'Dasbor Admin';
+      case 'reports':
+        return language === 'en' ? 'Moderation Reports' : 'Laporan Moderasi';
+      case 'delete-user':
+        return language === 'en' ? 'Deleted Accounts' : 'Akun Dihapus';
+      case 'accounts':
+        return language === 'en' ? 'User Accounts' : 'Akun Pengguna';
+      case 'approvals':
+        return language === 'en' ? 'Technician Approvals' : 'Persetujuan Teknisi';
+      case 'bookings':
+        return language === 'en' ? 'Bookings Management' : 'Manajemen Pesanan';
+      case 'categories':
+        return language === 'en' ? 'Service Categories' : 'Kategori Layanan';
+      case 'performance':
+        return language === 'en' ? 'Platform Performance' : 'Performa Platform';
+    }
+  };
+
+  const handleAdminBack = () => {
+    if (activeTab !== 'dashboard') {
+      setActiveTab('dashboard');
+    } else if (router.canGoBack()) {
+      router.back();
+    } else {
+      router.replace('/');
+    }
+  };
+
   return (
     <ScrollView
       style={styles.screenContent}
@@ -230,6 +262,8 @@ export function DashboardContainer({
           onRefresh={() => void loadAllData(true)}
           refreshing={refreshing}
           isPreview={isPreview}
+          title={getTabTitle(activeTab)}
+          onPressBack={handleAdminBack}
         />
 
         {!isAdminAuthorized ? (

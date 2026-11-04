@@ -1,7 +1,7 @@
-import { Eye, EyeOff } from "lucide-react-native";
+import { Check, Eye, EyeOff } from "lucide-react-native";
 import { font } from "../../theme/typography";
 import { useState } from "react";
-import { Pressable, StyleSheet, Text, TextInput, View } from "react-native";
+import { ActivityIndicator, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
 
 import { useAppearance } from "../../context/AppearanceContext";
 import { useAuth } from "../../auth/AuthProvider";
@@ -239,7 +239,8 @@ export function SettingPassword() {
               void handleUpdatePassword();
             }}
             style={[
-              styles.smallSaveBtn,
+              styles.saveBtn,
+              { backgroundColor: palette.primary },
               (busy ||
                 !currentPassword.trim() ||
                 !newPassword.trim() ||
@@ -248,21 +249,20 @@ export function SettingPassword() {
             ]}
             testID="save-password-button"
           >
-            <Text style={styles.smallSaveBtnText}>
-              {busy
-                ? language === "en"
-                  ? "Saving..."
-                  : "Menyimpan..."
-                : language === "en"
-                  ? "Save"
-                  : "Simpan"}
-            </Text>
+            {busy ? (
+              <ActivityIndicator size="small" color="#FFFFFF" />
+            ) : (
+              <Text style={styles.saveBtnText}>
+                {language === "en" ? "Save" : "Simpan"}
+              </Text>
+            )}
           </Pressable>
 
           {savedNotice ? (
-            <Text style={[styles.inlineSavedNotice, { color: palette.primary }]}>
-              {savedNotice}
-            </Text>
+            <View style={styles.savedNoticeRow} testID="password-saved-notice">
+              <Check size={16} strokeWidth={2.5} color={colors.greenDark} />
+              <Text style={styles.savedNoticeText}>{savedNotice}</Text>
+            </View>
           ) : null}
         </View>
       </View>
@@ -310,18 +310,27 @@ const styles = StyleSheet.create({
     fontSize: font.label,
     fontWeight: "700",
   },
-  smallSaveBtn: {
+  saveBtn: {
     alignItems: "center",
-    backgroundColor: colors.greenDark,
     borderRadius: radii.sm,
+    height: 38,
     justifyContent: "center",
-    minHeight: 38,
     paddingHorizontal: spacing.lg,
   },
-  smallSaveBtnText: {
+  saveBtnText: {
     color: "#FFFFFF",
     fontSize: font.body,
     fontWeight: "800",
+  },
+  savedNoticeRow: {
+    alignItems: "center",
+    flexDirection: "row",
+    gap: 6,
+  },
+  savedNoticeText: {
+    color: colors.greenDark,
+    fontSize: font.body,
+    fontWeight: "700",
   },
   errorText: {
     color: colors.danger,

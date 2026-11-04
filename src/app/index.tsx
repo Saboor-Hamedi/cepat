@@ -98,22 +98,29 @@ type MarketplaceListItem =
   | { key: string; kind: 'recommended-technician'; technician: Technician }
   | { key: string; kind: 'technician'; technician: Technician };
 
+let cachedCategories: ServiceCategory[] = [];
+let cachedTechnicians: Technician[] = [];
+let cachedServiceAreas: string[] = [];
+let cachedSource: DataSource = 'fixtures';
+let cachedHasMore = false;
+let hasInitialLoaded = false;
+
 export default function MarketplaceScreen() {
   const { language, t } = useLanguage();
   const { palette } = useAppearance();
   const { user, roles, effectiveRole } = useAuth();
-  const [categories, setCategories] = useState<ServiceCategory[]>([]);
-  const [technicians, setTechnicians] = useState<Technician[]>([]);
-  const [serviceAreas, setServiceAreas] = useState<string[]>([]);
+  const [categories, setCategories] = useState<ServiceCategory[]>(cachedCategories);
+  const [technicians, setTechnicians] = useState<Technician[]>(cachedTechnicians);
+  const [serviceAreas, setServiceAreas] = useState<string[]>(cachedServiceAreas);
   const [savedAddresses, setSavedAddresses] = useState<SavedAddress[]>([]);
   const [savedTechIds, setSavedTechIds] = useState<string[]>([]);
-  const [source, setSource] = useState<DataSource>('fixtures');
+  const [source, setSource] = useState<DataSource>(cachedSource);
   const [query, setQuery] = useState('');
   const [area, setArea] = useState('Semua area');
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [areaModalVisible, setAreaModalVisible] = useState(false);
   const [pinNotice, setPinNotice] = useState<string | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(!hasInitialLoaded);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [hasMore, setHasMore] = useState(false);
@@ -185,6 +192,12 @@ export default function MarketplaceScreen() {
           savedIds,
         ]) => {
           if (!active) return;
+          cachedCategories = categoryResult.items;
+          cachedTechnicians = technicianResult.items;
+          cachedServiceAreas = areaResult.items;
+          cachedSource = technicianResult.source;
+          cachedHasMore = technicianResult.hasMore;
+          hasInitialLoaded = true;
           setCategories(categoryResult.items);
           setTechnicians(technicianResult.items);
           setServiceAreas(areaResult.items);

@@ -366,8 +366,6 @@ export function SettingContainer() {
                 {/* 1. Account */}
                 <SettingNavLink
                   icon={User}
-                  iconColor="#2563EB"
-                  iconBgColor="#EFF6FF"
                   title={language === "en" ? "Account" : "Akun"}
                   subtitle={
                     user
@@ -384,8 +382,6 @@ export function SettingContainer() {
                 {isAuthenticated && (
                   <SettingNavLink
                     icon={MapPin}
-                    iconColor="#059669"
-                    iconBgColor="#ECFDF5"
                     title={language === "en" ? "Address" : "Alamat"}
                     subtitle={
                       savedAddresses.length > 0
@@ -405,8 +401,6 @@ export function SettingContainer() {
                 {isAuthenticated && (
                   <SettingNavLink
                     icon={ShieldCheck}
-                    iconColor="#7C3AED"
-                    iconBgColor="#F5F3FF"
                     title={language === "en" ? "Security" : "Keamanan"}
                     subtitle={
                       language === "en"
@@ -422,8 +416,6 @@ export function SettingContainer() {
                 {isAuthenticated && (
                   <SettingNavLink
                     icon={Lock}
-                    iconColor="#D97706"
-                    iconBgColor="#FFFBEB"
                     title={language === "en" ? "Password" : "Kata Sandi"}
                     subtitle={
                       language === "en"
@@ -438,8 +430,6 @@ export function SettingContainer() {
                 {/* 5. Language */}
                 <SettingNavLink
                   icon={Globe}
-                  iconColor="#0284C7"
-                  iconBgColor="#F0F9FF"
                   title={language === "en" ? "Language" : "Bahasa"}
                   subtitle={
                     language === "en"
@@ -457,8 +447,6 @@ export function SettingContainer() {
                 {isAuthenticated && (
                   <SettingNavLink
                     icon={Bell}
-                    iconColor="#EA580C"
-                    iconBgColor="#FFF7ED"
                     title={language === "en" ? "Notifications" : "Notifikasi"}
                     subtitle={
                       language === "en"
@@ -473,8 +461,6 @@ export function SettingContainer() {
                 {/* 7. Appearance */}
                 <SettingNavLink
                   icon={Palette}
-                  iconColor="#9333EA"
-                  iconBgColor="#FAF5FF"
                   title={language === "en" ? "Appearance" : "Tampilan"}
                   subtitle={
                     language === "en"
@@ -489,8 +475,6 @@ export function SettingContainer() {
                 {/* 8. Term Policy */}
                 <SettingNavLink
                   icon={FileText}
-                  iconColor="#475569"
-                  iconBgColor="#F1F5F9"
                   title={language === "en" ? "Term Policy" : "Kebijakan & Syarat"}
                   subtitle={
                     language === "en"
@@ -504,8 +488,6 @@ export function SettingContainer() {
                 {/* 9. Current Version - displays version directly on the nav link */}
                 <SettingNavLink
                   icon={Info}
-                  iconColor="#0D9488"
-                  iconBgColor="#F0FDFA"
                   title={language === "en" ? "Current Version" : "Versi Saat Ini"}
                   subtitle={
                     language === "en"

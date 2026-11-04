@@ -1,4 +1,4 @@
-import { Check, Edit3, User } from "lucide-react-native";
+import { Check, User } from "lucide-react-native";
 import { font } from "../../../theme/typography";
 import { useEffect, useRef, useState } from "react";
 import {
@@ -214,15 +214,8 @@ export function ProfileNameEditor({
         </Text>
       ) : null}
 
-      {savedNotice ? (
-        <View style={styles.savedNoticeRow} testID="profile-name-saved">
-          <Check size={16} strokeWidth={2.5} color={colors.greenDark} />
-          <Text style={styles.savedNoticeText}>{savedNotice}</Text>
-        </View>
-      ) : null}
-
-      {/* Save Action Button */}
-      <View style={styles.actionRow}>
+      {/* Save Action Button Aligned on the LEFT */}
+      <View style={styles.actionRowWithNotice}>
         <Pressable
           accessibilityRole="button"
           disabled={!hasChanged || isSaving}
@@ -239,14 +232,18 @@ export function ProfileNameEditor({
           {isSaving ? (
             <ActivityIndicator size="small" color="#FFFFFF" />
           ) : (
-            <View style={styles.btnContent}>
-              <Edit3 size={16} strokeWidth={2} color="#FFFFFF" />
-              <Text style={styles.saveBtnText}>
-                {language === "en" ? "Save Changes" : "Simpan Perubahan"}
-              </Text>
-            </View>
+            <Text style={styles.saveBtnText}>
+              {language === "en" ? "Save" : "Simpan"}
+            </Text>
           )}
         </Pressable>
+
+        {savedNotice ? (
+          <View style={styles.savedNoticeRow} testID="profile-name-saved">
+            <Check size={16} strokeWidth={2.5} color={colors.greenDark} />
+            <Text style={styles.savedNoticeText}>{savedNotice}</Text>
+          </View>
+        ) : null}
       </View>
     </View>
   );
@@ -306,15 +303,16 @@ const styles = StyleSheet.create({
     alignItems: "center",
     flexDirection: "row",
     gap: 6,
-    marginTop: spacing.xs,
   },
   savedNoticeText: {
     color: colors.greenDark,
     fontSize: font.body,
     fontWeight: "700",
   },
-  actionRow: {
-    alignItems: "flex-end",
+  actionRowWithNotice: {
+    alignItems: "center",
+    flexDirection: "row",
+    gap: 12,
     marginTop: spacing.md,
   },
   saveBtn: {
@@ -326,11 +324,6 @@ const styles = StyleSheet.create({
   },
   saveBtnDisabled: {
     opacity: 0.5,
-  },
-  btnContent: {
-    alignItems: "center",
-    flexDirection: "row",
-    gap: 6,
   },
   saveBtnText: {
     color: "#FFFFFF",

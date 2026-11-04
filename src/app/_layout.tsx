@@ -70,18 +70,18 @@ function ThemedStack() {
         screenOptions={{
           headerShown: false,
           contentStyle: { backgroundColor: palette.background },
-          animation: 'none',
+          animation: stackAnim,
         }}
       >
-        <Stack.Screen name="index" options={{ animation: 'none' }} />
+        <Stack.Screen name="index" options={{ animation: stackAnim }} />
         <Stack.Screen name="category/[slug]" options={{ animation: stackAnim }} />
         <Stack.Screen name="technician/[id]" options={{ animation: stackAnim }} />
         <Stack.Screen name="booking/[id]" options={{ animation: stackAnim }} />
-        <Stack.Screen name="bookings" options={{ animation: 'none' }} />
+        <Stack.Screen name="bookings" options={{ animation: stackAnim }} />
         <Stack.Screen name="notifications" options={{ animation: stackAnim }} />
-        <Stack.Screen name="technician-dashboard" options={{ animation: 'none' }} />
-        <Stack.Screen name="admin" options={{ animation: 'none' }} />
-        <Stack.Screen name="account" options={{ animation: 'none' }} />
+        <Stack.Screen name="technician-dashboard" options={{ animation: stackAnim }} />
+        <Stack.Screen name="admin" options={{ animation: stackAnim }} />
+        <Stack.Screen name="account" options={{ animation: stackAnim }} />
         <Stack.Screen name="login" options={{ animation: stackAnim }} />
         <Stack.Screen name="register" options={{ animation: stackAnim }} />
         <Stack.Screen name="forgot-password" options={{ animation: stackAnim }} />

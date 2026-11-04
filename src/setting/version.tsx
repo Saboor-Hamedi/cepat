@@ -1,13 +1,13 @@
 import Constants from "expo-constants";
-import { CheckCircle2, Cpu, Info, ShieldCheck } from "lucide-react-native";
+import { CheckCircle2, ShieldCheck } from "lucide-react-native";
 import { StyleSheet, Text, View } from "react-native";
 
 import appConfig from "../../app.json";
 import pkgConfig from "../../package.json";
 import { useAppearance } from "../context/AppearanceContext";
 import { useLanguage } from "../i18n/locale";
-import { ICON_SIZE, ICON_STROKE } from "../theme/icons";
-import { radii, spacing } from "../theme/tokens";
+import { ICON_STROKE } from "../theme/icons";
+import { spacing } from "../theme/tokens";
 import { font } from "../theme/typography";
 import { SettingSection } from "./components/SettingSection";
 
@@ -47,34 +47,16 @@ export function SettingVersion() {
       title={language === "en" ? "Current Version" : "Versi Saat Ini"}
       description={
         language === "en"
-          ? "View details about your current app release and build system."
-          : "Lihat rincian rilis aplikasi dan sistem build yang sedang berjalan."
+          ? "Official release and build system information."
+          : "Informasi rilis resmi dan sistem build aplikasi."
       }
       testID="setting-section-version"
     >
-      <View
-        style={[
-          styles.container,
-          {
-            backgroundColor: palette.surfaceElevated,
-            borderColor: palette.border,
-          },
-        ]}
-      >
-        <View style={styles.badgeRow}>
-          <View
-            style={[
-              styles.iconWrapper,
-              { backgroundColor: `${palette.primary}15` },
-            ]}
-          >
-            <Info
-              size={ICON_SIZE}
-              strokeWidth={ICON_STROKE}
-              color={palette.primary}
-            />
-          </View>
-          <View style={styles.appNameWrap}>
+      {/* Flat, minimalist presentation with zero nested cards */}
+      <View style={styles.cleanContainer}>
+        {/* App Identity Row */}
+        <View style={styles.identityRow}>
+          <View style={styles.nameCluster}>
             <Text
               style={[
                 styles.appName,
@@ -85,118 +67,113 @@ export function SettingVersion() {
             </Text>
             <Text
               style={[
-                styles.appSub,
-                { color: palette.textMuted, fontSize: scaleFont(font.caption) },
+                styles.versionSubtitle,
+                { color: palette.textMuted, fontSize: scaleFont(font.body) },
               ]}
             >
-              {language === "en"
-                ? "Fast On-Demand Technician Services"
-                : "Layanan Teknisi Cepat Terpercaya"}
+              {language === "en" ? `Version ${version}` : `Versi ${version}`}
+            </Text>
+          </View>
+
+          <View style={styles.statusBadge}>
+            <CheckCircle2 size={15} strokeWidth={ICON_STROKE} color="#10B981" />
+            <Text
+              style={[
+                styles.statusText,
+                { fontSize: scaleFont(font.caption) },
+              ]}
+            >
+              {language === "en" ? "Up to date" : "Terkini"}
             </Text>
           </View>
         </View>
 
-        <View
-          style={[
-            styles.versionCard,
-            {
-              backgroundColor: palette.surface,
-              borderColor: palette.border,
-            },
-          ]}
-        >
+        <View style={[styles.hairline, { backgroundColor: palette.border }]} />
+
+        {/* Flat metadata list with hairline dividers */}
+        <View style={styles.metaList}>
           <View style={styles.metaRow}>
-            <View style={styles.metaLabelWrap}>
-              <Cpu size={16} strokeWidth={ICON_STROKE} color={palette.textMuted} />
-              <Text
-                style={[
-                  styles.metaLabel,
-                  { color: palette.textMuted, fontSize: scaleFont(font.caption) },
-                ]}
-              >
-                {language === "en" ? "App Version" : "Versi Aplikasi"}
-              </Text>
-            </View>
-            <View
+            <Text
               style={[
-                styles.versionPill,
-                { backgroundColor: `${palette.primary}15` },
+                styles.metaLabel,
+                { color: palette.textMuted, fontSize: scaleFont(font.body) },
               ]}
             >
-              <Text
-                style={[
-                  styles.versionPillText,
-                  { color: palette.primary, fontSize: scaleFont(font.caption) },
-                ]}
-              >
-                v{version}
-              </Text>
-            </View>
-          </View>
-
-          <View
-            style={[
-              styles.divider,
-              { backgroundColor: palette.border },
-            ]}
-          />
-
-          <View style={styles.metaRow}>
-            <View style={styles.metaLabelWrap}>
-              <ShieldCheck
-                size={16}
-                strokeWidth={ICON_STROKE}
-                color={palette.textMuted}
-              />
-              <Text
-                style={[
-                  styles.metaLabel,
-                  { color: palette.textMuted, fontSize: scaleFont(font.caption) },
-                ]}
-              >
-                {language === "en" ? "Build Channel" : "Jalur Rilis"}
-              </Text>
-            </View>
+              {language === "en" ? "Build Channel" : "Jalur Rilis"}
+            </Text>
             <Text
               style={[
                 styles.metaValue,
-                { color: palette.text, fontSize: scaleFont(font.caption) },
+                { color: palette.text, fontSize: scaleFont(font.body) },
               ]}
             >
               Production (Stable)
             </Text>
           </View>
 
-          <View
-            style={[
-              styles.divider,
-              { backgroundColor: palette.border },
-            ]}
-          />
+          <View style={[styles.hairline, { backgroundColor: palette.border }]} />
 
           <View style={styles.metaRow}>
-            <View style={styles.metaLabelWrap}>
-              <CheckCircle2
-                size={16}
-                strokeWidth={ICON_STROKE}
-                color="#10B981"
-              />
+            <Text
+              style={[
+                styles.metaLabel,
+                { color: palette.textMuted, fontSize: scaleFont(font.body) },
+              ]}
+            >
+              {language === "en" ? "Platform Framework" : "Kerangka Kerja"}
+            </Text>
+            <Text
+              style={[
+                styles.metaValue,
+                { color: palette.text, fontSize: scaleFont(font.body) },
+              ]}
+            >
+              Expo SDK 58
+            </Text>
+          </View>
+
+          <View style={[styles.hairline, { backgroundColor: palette.border }]} />
+
+          <View style={styles.metaRow}>
+            <Text
+              style={[
+                styles.metaLabel,
+                { color: palette.textMuted, fontSize: scaleFont(font.body) },
+              ]}
+            >
+              {language === "en" ? "Runtime Environment" : "Lingkungan Runtime"}
+            </Text>
+            <Text
+              style={[
+                styles.metaValue,
+                { color: palette.text, fontSize: scaleFont(font.body) },
+              ]}
+            >
+              React Native 0.88
+            </Text>
+          </View>
+
+          <View style={[styles.hairline, { backgroundColor: palette.border }]} />
+
+          <View style={styles.metaRow}>
+            <View style={styles.secureWrap}>
+              <ShieldCheck size={16} strokeWidth={ICON_STROKE} color={palette.textMuted} />
               <Text
                 style={[
                   styles.metaLabel,
-                  { color: palette.textMuted, fontSize: scaleFont(font.caption) },
+                  { color: palette.textMuted, fontSize: scaleFont(font.body) },
                 ]}
               >
-                {language === "en" ? "Status" : "Status Pembaruan"}
+                {language === "en" ? "Security Policies" : "Kebijakan Keamanan"}
               </Text>
             </View>
             <Text
               style={[
-                styles.statusGood,
-                { fontSize: scaleFont(font.caption) },
+                styles.metaValue,
+                { color: palette.text, fontSize: scaleFont(font.body) },
               ]}
             >
-              {language === "en" ? "Up to date" : "Versi Terkini"}
+              Supabase RLS Active
             </Text>
           </View>
         </View>
@@ -206,49 +183,48 @@ export function SettingVersion() {
 }
 
 const styles = StyleSheet.create({
-  container: {
-    borderRadius: radii.md,
-    borderWidth: 1,
-    padding: spacing.md,
+  cleanContainer: {
+    paddingVertical: spacing.xs,
+    width: "100%",
   },
-  badgeRow: {
+  identityRow: {
     alignItems: "center",
     flexDirection: "row",
-    gap: spacing.md,
-    marginBottom: spacing.md,
+    justifyContent: "space-between",
+    paddingBottom: spacing.sm,
   },
-  iconWrapper: {
-    alignItems: "center",
-    borderRadius: radii.md,
-    height: 48,
-    justifyContent: "center",
-    width: 48,
-  },
-  appNameWrap: {
-    flex: 1,
+  nameCluster: {
+    gap: 2,
   },
   appName: {
-    fontWeight: "700",
+    fontWeight: "800",
+    letterSpacing: -0.5,
   },
-  appSub: {
-    marginTop: 2,
+  versionSubtitle: {
+    fontWeight: "500",
   },
-  versionCard: {
-    borderRadius: radii.sm,
-    borderWidth: 1,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
+  statusBadge: {
+    alignItems: "center",
+    flexDirection: "row",
+    gap: 5,
+  },
+  statusText: {
+    color: "#10B981",
+    fontWeight: "600",
+  },
+  metaList: {
+    width: "100%",
   },
   metaRow: {
     alignItems: "center",
     flexDirection: "row",
     justifyContent: "space-between",
-    paddingVertical: spacing.xs,
+    paddingVertical: 12,
   },
-  metaLabelWrap: {
+  secureWrap: {
     alignItems: "center",
     flexDirection: "row",
-    gap: spacing.xs,
+    gap: 6,
   },
   metaLabel: {
     fontWeight: "500",
@@ -256,20 +232,8 @@ const styles = StyleSheet.create({
   metaValue: {
     fontWeight: "600",
   },
-  versionPill: {
-    borderRadius: radii.pill,
-    paddingHorizontal: spacing.sm,
-    paddingVertical: 2,
-  },
-  versionPillText: {
-    fontWeight: "700",
-  },
-  statusGood: {
-    color: "#10B981",
-    fontWeight: "600",
-  },
-  divider: {
+  hairline: {
     height: 1,
-    marginVertical: 4,
+    width: "100%",
   },
 });

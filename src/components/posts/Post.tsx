@@ -540,7 +540,7 @@ export function Post({
             accessibilityRole="button"
             onPress={() =>
               router.push({
-                pathname: `/booking/${encodeURIComponent(post.technicianId)}` as any,
+                pathname: "/booking/[id]" as any,
                 params: {
                   id: post.technicianId,
                   postId: post.id,

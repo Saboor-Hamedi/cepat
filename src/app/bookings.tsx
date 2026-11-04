@@ -1,5 +1,4 @@
 import { router } from "expo-router";
-import { ArrowLeft, Bell } from "lucide-react-native";
 import { useEffect, useMemo, useState } from "react";
 import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -10,6 +9,7 @@ import {
   LoadingState,
   TechnicianCard,
 } from "../components/marketplace-ui";
+import { BackHeader } from "../components/BackHeader";
 import { SegmentedTabs } from "../components/SegmentedTabs";
 import { useAppearance } from "../context/AppearanceContext";
 import { formatRupiah, loadTechnicians } from "../data/marketplaceRepository";
@@ -30,7 +30,6 @@ import type {
   TechnicianReview,
 } from "../types/marketplace";
 import { colors, radii, spacing } from "../theme/tokens";
-import { ICON_SIZE, ICON_STROKE } from '../theme/icons';
 import { font } from '../theme/typography';
 
 type CustomerHubTab =
@@ -173,34 +172,11 @@ export default function CustomerBookingsScreen() {
       >
         <View style={styles.container}>
           {/* Header with Back button, Title, and Booking Notification */}
-          <View style={styles.headerBar} testID="customer-bookings-header">
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel={language === "en" ? "Back" : "Kembali"}
-              onPress={() => {
-                if (router.canGoBack()) {
-                  router.back();
-                } else {
-                  router.replace("/");
-                }
-              }}
-              style={[
-                styles.headerBackBtn,
-                { backgroundColor: palette.surface, borderColor: palette.border },
-              ]}
-              testID="customer-bookings-back-btn"
-            >
-              <ArrowLeft size={ICON_SIZE} color={palette.text} strokeWidth={ICON_STROKE} />
-            </Pressable>
-
-            <View style={styles.headerTitleWrap}>
-              <Text style={[styles.headerTitle, { color: palette.text }]}>
-                {t("dashboard.customerTitle")}
-              </Text>
-            </View>
-
-            <View style={{ width: 36 }} />
-          </View>
+          <BackHeader
+            title={t("dashboard.customerTitle")}
+            backBtnTestID="customer-bookings-back-btn"
+            testID="customer-bookings-header"
+          />
 
           {/* Hidden semantic tag to preserve test compatibility */}
           <Text style={styles.srOnly} testID="bookings-heading">

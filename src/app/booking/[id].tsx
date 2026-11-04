@@ -12,8 +12,9 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
-import { AlertTriangle, ChevronLeft, MapPin } from "lucide-react-native";
+import { AlertTriangle, MapPin } from "lucide-react-native";
 import { useAuth } from "../../auth/AuthProvider";
+import { BackHeader } from "../../components/BackHeader";
 import { BookingLifecyclePanel } from "../../components/BookingLifecyclePanel";
 import { BookingParticipantsHeader } from "../../components/BookingParticipantsHeader";
 import { useAppearance, type ThemePalette } from "../../context/AppearanceContext";
@@ -264,7 +265,7 @@ export default function BookingEntryScreen() {
       return () => {
         active = false;
       };
-    }, [user?.id])
+    }, [user])
   );
 
   const effectivePostCaption =
@@ -407,32 +408,14 @@ export default function BookingEntryScreen() {
       style={[styles.safeArea, { backgroundColor: palette.background }]}
       edges={["top", "bottom"]}
     >
-      <View
-        style={[
-          styles.topNav,
-          {
-            backgroundColor: palette.surface,
-            borderBottomColor: palette.border,
-          },
-        ]}
-      >
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel={language === "en" ? "Back" : "Kembali"}
-          onPress={() => {
-            if (router.canGoBack()) router.back();
-            else if (displayedTechnicianId)
-              router.replace(`/technician/${displayedTechnicianId}`);
-            else router.replace("/");
-          }}
-          style={styles.back}
-        >
-          <ChevronLeft color={palette.primary} size={ICON_SIZE} strokeWidth={ICON_STROKE} />
-          <Text style={[styles.backLabel, { color: palette.primary }]}>
-            {language === "en" ? "Back" : "Kembali"}
-          </Text>
-        </Pressable>
-      </View>
+      <BackHeader
+        fallbackRoute={
+          displayedTechnicianId
+            ? `/technician/${displayedTechnicianId}`
+            : "/"
+        }
+        testID="booking-back-header"
+      />
 
       {loading ? (
         <LoadingState label={t("home.loading")} />

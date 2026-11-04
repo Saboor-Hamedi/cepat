@@ -34,13 +34,14 @@ export function SettingNavLink({
 }: SettingNavLinkProps) {
   const { palette, scaleFont } = useAppearance();
 
+  // Subtle, cohesive neutral styling - not heavy/rainbow
   const effectiveIconColor = isDanger
     ? palette.danger
-    : iconColor || palette.primary;
+    : iconColor || palette.text;
 
   const effectiveBgColor = isDanger
-    ? `${palette.danger}15`
-    : iconBgColor || `${palette.primary}12`;
+    ? `${palette.danger}12`
+    : iconBgColor || `${palette.text}08`;
 
   return (
     <Pressable
@@ -50,8 +51,8 @@ export function SettingNavLink({
         styles.row,
         {
           backgroundColor: palette.surfaceElevated,
-          borderColor: isDanger ? `${palette.danger}35` : palette.border,
-          opacity: pressed ? 0.7 : 1,
+          borderColor: isDanger ? `${palette.danger}25` : palette.border,
+          opacity: pressed ? 0.72 : 1,
         },
       ]}
       testID={testID}
@@ -63,7 +64,7 @@ export function SettingNavLink({
         ]}
       >
         <Icon
-          size={19}
+          size={18}
           strokeWidth={ICON_STROKE}
           color={effectiveIconColor}
         />
@@ -99,28 +100,19 @@ export function SettingNavLink({
       </View>
 
       <View style={styles.accessoryWrap}>
+        {/* Unboxed, subtle plain text for values like "English", without highlight badge */}
         {valueText ? (
-          <View
+          <Text
             style={[
-              styles.valueBadge,
+              styles.valuePlainText,
               {
-                backgroundColor: palette.surface,
-                borderColor: palette.border,
+                color: palette.textMuted,
+                fontSize: scaleFont(font.body),
               },
             ]}
           >
-            <Text
-              style={[
-                styles.valueBadgeText,
-                {
-                  color: palette.textSecondary,
-                  fontSize: scaleFont(font.caption),
-                },
-              ]}
-            >
-              {valueText}
-            </Text>
-          </View>
+            {valueText}
+          </Text>
         ) : null}
 
         {showChevron && (
@@ -142,7 +134,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     flexDirection: "row",
     gap: 12,
-    minHeight: 56,
+    minHeight: 54,
     paddingHorizontal: 14,
     paddingVertical: 10,
     width: "100%",
@@ -150,9 +142,9 @@ const styles = StyleSheet.create({
   iconTile: {
     alignItems: "center",
     borderRadius: 8,
-    height: 38,
+    height: 36,
     justifyContent: "center",
-    width: 38,
+    width: 36,
   },
   contentWrap: {
     flex: 1,
@@ -168,15 +160,10 @@ const styles = StyleSheet.create({
   accessoryWrap: {
     alignItems: "center",
     flexDirection: "row",
-    gap: 8,
+    gap: 6,
   },
-  valueBadge: {
-    borderRadius: radii.pill,
-    borderWidth: 1,
-    paddingHorizontal: 10,
-    paddingVertical: 3,
-  },
-  valueBadgeText: {
-    fontWeight: "600",
+  valuePlainText: {
+    fontWeight: "500",
+    marginRight: 2,
   },
 });

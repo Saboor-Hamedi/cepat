@@ -1,10 +1,18 @@
+import { Check } from "lucide-react-native";
 import { font } from '../../../theme/typography';
 import { useEffect, useRef, useState } from "react";
-import { Pressable, StyleSheet, Text, TextInput, View } from "react-native";
+import {
+  ActivityIndicator,
+  Pressable,
+  StyleSheet,
+  Text,
+  TextInput,
+  View,
+} from "react-native";
 
 import { useAppearance } from "../../../context/AppearanceContext";
 import { useLanguage } from "../../../i18n/locale";
-import { colors, spacing } from "../../../theme/tokens";
+import { colors, radii, spacing } from "../../../theme/tokens";
 
 export interface PrivateContactEditorProps {
   email?: string;
@@ -130,24 +138,27 @@ export function PrivateContactEditor({
             onPress={() => {
               void handleSave();
             }}
-            style={[styles.smallSaveBtn, isSaving && styles.btnDisabled]}
+            style={[
+              styles.saveBtn,
+              { backgroundColor: palette.primary },
+              isSaving && styles.saveBtnDisabled,
+            ]}
             testID="save-private-contact"
           >
-            <Text style={styles.smallSaveBtnText}>
-              {isSaving
-                ? language === "en"
-                  ? "Saving..."
-                  : "Menyimpan..."
-                : language === "en"
-                  ? "Save"
-                  : "Simpan"}
-            </Text>
+            {isSaving ? (
+              <ActivityIndicator size="small" color="#FFFFFF" />
+            ) : (
+              <Text style={styles.saveBtnText}>
+                {language === "en" ? "Save" : "Simpan"}
+              </Text>
+            )}
           </Pressable>
 
           {savedNotice ? (
-            <Text style={[styles.inlineSavedNotice, { color: palette.primary }]}>
-              {savedNotice}
-            </Text>
+            <View style={styles.savedNoticeRow} testID="private-contact-saved">
+              <Check size={16} strokeWidth={2.5} color={colors.greenDark} />
+              <Text style={styles.savedNoticeText}>{savedNotice}</Text>
+            </View>
           ) : null}
         </View>
       )}
@@ -163,9 +174,8 @@ export function PrivateContactEditor({
 
 const styles = StyleSheet.create({
   card: {
-    borderRadius: 5,
+    borderRadius: radii.sm,
     borderWidth: 1,
-    marginBottom: spacing.md,
     padding: spacing.md,
   },
   cardTitle: {
@@ -200,27 +210,32 @@ const styles = StyleSheet.create({
     alignItems: "center",
     flexDirection: "row",
     gap: 12,
-    marginTop: 2,
+    marginTop: spacing.md,
   },
-  smallSaveBtn: {
+  saveBtn: {
     alignItems: "center",
-    backgroundColor: colors.greenDark,
-    borderRadius: 5,
+    borderRadius: radii.sm,
+    height: 38,
     justifyContent: "center",
-    minHeight: 36,
     paddingHorizontal: spacing.lg,
   },
-  smallSaveBtnText: {
+  saveBtnDisabled: {
+    opacity: 0.5,
+  },
+  saveBtnText: {
     color: "#FFFFFF",
     fontSize: font.body,
     fontWeight: "800",
   },
-  inlineSavedNotice: {
-    fontSize: font.label,
-    fontWeight: "700",
+  savedNoticeRow: {
+    alignItems: "center",
+    flexDirection: "row",
+    gap: 6,
   },
-  btnDisabled: {
-    opacity: 0.5,
+  savedNoticeText: {
+    color: colors.greenDark,
+    fontSize: font.body,
+    fontWeight: "700",
   },
   errorText: {
     color: colors.danger,

@@ -471,9 +471,30 @@ export async function createTechnicianPost(input: {
         is_service_post: newPost.isServicePost,
         published: newPost.published,
       });
-      if (error) throw new Error(postTableErrorMessage(error));
+      if (error) {
+        const msg = String(error.message || '');
+        if (
+          shouldUseFixtures() ||
+          msg.includes('permission denied') ||
+          error.code === '42501' ||
+          msg.includes('schema cache')
+        ) {
+          console.warn('[createTechnicianPost] Supabase insert warning (falling back to local cache):', msg);
+        } else {
+          throw new Error(postTableErrorMessage(error));
+        }
+      }
     } catch (error) {
-      throw error instanceof Error ? error : new Error(String(error));
+      const msg = error instanceof Error ? error.message : String(error);
+      if (
+        shouldUseFixtures() ||
+        msg.includes('permission denied') ||
+        msg.includes('schema cache')
+      ) {
+        console.warn('[createTechnicianPost] Storing locally after Supabase insert warning:', msg);
+      } else {
+        throw error instanceof Error ? error : new Error(String(error));
+      }
     }
   }
 

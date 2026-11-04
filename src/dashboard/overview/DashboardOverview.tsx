@@ -199,8 +199,8 @@ export function DashboardOverview({
             ]}
             testID="admin-tab-accounts"
           >
-            <View style={[styles.adminNavIconTile, { backgroundColor: '#EFF6FF' }]}>
-              <Users size={18} strokeWidth={ICON_STROKE} color="#2563EB" />
+            <View style={[styles.adminNavIconTile, { backgroundColor: `${palette.text}08` }]}>
+              <Users size={18} strokeWidth={ICON_STROKE} color={palette.text} />
             </View>
             <View style={styles.adminNavContent}>
               <Text style={[styles.adminNavTitle, { color: palette.text, fontSize: scaleFont(font.label) }]}>
@@ -222,8 +222,8 @@ export function DashboardOverview({
             ]}
             testID="admin-tab-reports"
           >
-            <View style={[styles.adminNavIconTile, { backgroundColor: '#FEF2F2' }]}>
-              <AlertTriangle size={18} strokeWidth={ICON_STROKE} color="#DC2626" />
+            <View style={[styles.adminNavIconTile, { backgroundColor: `${palette.text}08` }]}>
+              <AlertTriangle size={18} strokeWidth={ICON_STROKE} color={palette.text} />
             </View>
             <View style={styles.adminNavContent}>
               <Text style={[styles.adminNavTitle, { color: palette.text, fontSize: scaleFont(font.label) }]}>
@@ -245,8 +245,8 @@ export function DashboardOverview({
             ]}
             testID="admin-tab-approvals"
           >
-            <View style={[styles.adminNavIconTile, { backgroundColor: '#F5F3FF' }]}>
-              <Award size={18} strokeWidth={ICON_STROKE} color="#7C3AED" />
+            <View style={[styles.adminNavIconTile, { backgroundColor: `${palette.text}08` }]}>
+              <Award size={18} strokeWidth={ICON_STROKE} color={palette.text} />
             </View>
             <View style={styles.adminNavContent}>
               <Text style={[styles.adminNavTitle, { color: palette.text, fontSize: scaleFont(font.label) }]}>
@@ -268,8 +268,8 @@ export function DashboardOverview({
             ]}
             testID="admin-tab-bookings"
           >
-            <View style={[styles.adminNavIconTile, { backgroundColor: '#ECFDF5' }]}>
-              <TrendingUp size={18} strokeWidth={ICON_STROKE} color="#059669" />
+            <View style={[styles.adminNavIconTile, { backgroundColor: `${palette.text}08` }]}>
+              <TrendingUp size={18} strokeWidth={ICON_STROKE} color={palette.text} />
             </View>
             <View style={styles.adminNavContent}>
               <Text style={[styles.adminNavTitle, { color: palette.text, fontSize: scaleFont(font.label) }]}>
@@ -291,8 +291,8 @@ export function DashboardOverview({
             ]}
             testID="admin-tab-categories"
           >
-            <View style={[styles.adminNavIconTile, { backgroundColor: '#FFFBEB' }]}>
-              <Briefcase size={18} strokeWidth={ICON_STROKE} color="#D97706" />
+            <View style={[styles.adminNavIconTile, { backgroundColor: `${palette.text}08` }]}>
+              <Briefcase size={18} strokeWidth={ICON_STROKE} color={palette.text} />
             </View>
             <View style={styles.adminNavContent}>
               <Text style={[styles.adminNavTitle, { color: palette.text, fontSize: scaleFont(font.label) }]}>
@@ -314,8 +314,8 @@ export function DashboardOverview({
             ]}
             testID="admin-tab-delete-user"
           >
-            <View style={[styles.adminNavIconTile, { backgroundColor: '#FEF2F2' }]}>
-              <UserX size={18} strokeWidth={ICON_STROKE} color="#DC2626" />
+            <View style={[styles.adminNavIconTile, { backgroundColor: `${palette.text}08` }]}>
+              <UserX size={18} strokeWidth={ICON_STROKE} color={palette.text} />
             </View>
             <View style={styles.adminNavContent}>
               <Text style={[styles.adminNavTitle, { color: palette.danger, fontSize: scaleFont(font.label) }]}>

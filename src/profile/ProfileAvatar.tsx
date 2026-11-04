@@ -7,6 +7,7 @@ import {
   type ImageSourceMode,
 } from '../components/ImageSourceSheet';
 import { Avatar } from '../components/marketplace-ui';
+import { useAppearance } from '../context/AppearanceContext';
 import { useLanguage } from '../i18n/locale';
 import { ICON_SIZE, ICON_STROKE } from '../theme/icons';
 import { colors } from '../theme/tokens';
@@ -34,6 +35,7 @@ export function ProfileAvatar({
   testID = 'profile-avatar',
 }: ProfileAvatarProps) {
   const { language } = useLanguage();
+  const { palette } = useAppearance();
   const [menuVisible, setMenuVisible] = useState(false);
 
   const handleAvatarPress = () => {
@@ -69,13 +71,12 @@ export function ProfileAvatar({
               {
                 width: size === 80 ? 28 : Math.max(22, Math.round(size * 0.3)),
                 height: size === 80 ? 28 : Math.max(22, Math.round(size * 0.3)),
-                borderRadius: size === 80 ? 14 : Math.max(11, Math.round(size * 0.15)),
-                backgroundColor: '#10B981',
+                backgroundColor: "transparent",
               },
             ]}
             testID={`${testID}-camera-badge`}
           >
-            <Camera color="#FFFFFF" size={ICON_SIZE} strokeWidth={ICON_STROKE} />
+            <Camera color={palette.primary} size={20} strokeWidth={2.2} />
           </View>
         )}
       </Pressable>
@@ -113,11 +114,9 @@ const styles = StyleSheet.create({
   },
   cameraBadge: {
     alignItems: 'center',
-    backgroundColor: colors.greenDark,
-    borderColor: '#FFFFFF',
-    borderWidth: 2,
+    backgroundColor: 'transparent',
+    borderWidth: 0,
     bottom: 0,
-    elevation: 3,
     justifyContent: 'center',
     position: 'absolute',
     right: 0,

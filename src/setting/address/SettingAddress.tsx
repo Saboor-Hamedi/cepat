@@ -408,36 +408,37 @@ export function SettingAddress({
           </Text>
         ) : null}
 
-        {/* Success Feedback */}
-        {addressFeedback ? (
-          <View style={styles.feedbackRow}>
-            <CheckCircle2 size={ICON_SIZE} strokeWidth={ICON_STROKE} color="#16A34A" />
-            <Text style={[styles.feedbackText, { fontSize: scaleFont(font.body) }]}>
-              {addressFeedback}
-            </Text>
-          </View>
-        ) : null}
+        {/* Save Action Button Aligned on the LEFT */}
+        <View style={styles.actionRowWithNotice}>
+          <Pressable
+            accessibilityRole="button"
+            disabled={saving || !streetAddress.trim()}
+            onPress={() => void handleSave()}
+            style={[
+              styles.saveBtn,
+              { backgroundColor: palette.primary },
+              (!streetAddress.trim() || saving) && styles.saveBtnDisabled,
+            ]}
+            testID="add-saved-address-button"
+          >
+            {saving ? (
+              <ActivityIndicator size="small" color="#FFFFFF" />
+            ) : (
+              <Text style={styles.saveBtnText}>
+                {language === "en" ? "Save" : "Simpan"}
+              </Text>
+            )}
+          </Pressable>
 
-        {/* Save Address Button */}
-        <Pressable
-          accessibilityRole="button"
-          disabled={saving || !streetAddress.trim()}
-          onPress={() => void handleSave()}
-          style={[
-            styles.saveBtn,
-            { backgroundColor: palette.primary },
-            (!streetAddress.trim() || saving) && styles.saveBtnDisabled,
-          ]}
-          testID="add-saved-address-button"
-        >
-          {saving ? (
-            <ActivityIndicator size="small" color="#FFFFFF" />
-          ) : (
-            <Text style={styles.saveBtnText}>
-              {language === "en" ? "Save Address" : "Simpan Alamat"}
-            </Text>
-          )}
-        </Pressable>
+          {addressFeedback ? (
+            <View style={styles.feedbackRow}>
+              <CheckCircle2 size={ICON_SIZE} strokeWidth={ICON_STROKE} color="#16A34A" />
+              <Text style={[styles.feedbackText, { fontSize: scaleFont(font.body) }]}>
+                {addressFeedback}
+              </Text>
+            </View>
+          ) : null}
+        </View>
       </View>
     </SettingSection>
   );
@@ -622,19 +623,25 @@ const styles = StyleSheet.create({
     color: "#16A34A",
     fontWeight: "600",
   },
+  actionRowWithNotice: {
+    alignItems: "center",
+    flexDirection: "row",
+    gap: 12,
+    marginTop: spacing.md,
+  },
   saveBtn: {
     alignItems: "center",
     borderRadius: radii.sm,
-    height: 40,
+    height: 38,
     justifyContent: "center",
-    marginTop: spacing.sm,
+    paddingHorizontal: spacing.lg,
   },
   saveBtnDisabled: {
     opacity: 0.5,
   },
   saveBtnText: {
     color: "#FFFFFF",
-    fontSize: font.label,
-    fontWeight: "700",
+    fontSize: font.body,
+    fontWeight: "800",
   },
 });

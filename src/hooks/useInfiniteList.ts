@@ -54,10 +54,29 @@ export function useInfiniteList<T>({
   fetchPage,
   keyExtractor,
 }: UseInfiniteListOptions<T>) {
-  const [items, setItems] = useState<T[]>([]);
-  const [nextCursor, setNextCursor] = useState<string | null>(null);
-  const [hasMore, setHasMore] = useState(false);
-  const [loading, setLoading] = useState(enabled);
+  const [items, setItems] = useState<T[]>(() => {
+    if (!enabled) return [];
+    const cached = PAGE_CACHE.get(cacheKey) as CacheEntry<T> | undefined;
+    return cached ? (cached.items as T[]) : [];
+  });
+  const [nextCursor, setNextCursor] = useState<string | null>(() => {
+    if (!enabled) return null;
+    const cached = PAGE_CACHE.get(cacheKey) as CacheEntry<T> | undefined;
+    return cached ? cached.nextCursor : null;
+  });
+  const [hasMore, setHasMore] = useState(() => {
+    if (!enabled) return false;
+    const cached = PAGE_CACHE.get(cacheKey) as CacheEntry<T> | undefined;
+    return cached ? cached.hasMore : false;
+  });
+  const [loading, setLoading] = useState(() => {
+    if (!enabled) return false;
+    const cached = PAGE_CACHE.get(cacheKey) as CacheEntry<T> | undefined;
+    const cacheIsFresh = Boolean(
+      cached && Date.now() - cached.cachedAt < staleTimeMs,
+    );
+    return !cacheIsFresh;
+  });
   const [loadingMore, setLoadingMore] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);

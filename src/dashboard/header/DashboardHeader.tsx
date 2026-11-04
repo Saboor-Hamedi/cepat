@@ -4,6 +4,7 @@ import {
   ActivityIndicator,
   Pressable,
   StyleSheet,
+  Text,
   View,
 } from 'react-native';
 
@@ -11,7 +12,8 @@ import { BackHeader } from '../../components/BackHeader';
 import { SourceBadge } from '../../components/marketplace-ui';
 import { useAppearance } from '../../context/AppearanceContext';
 import { useLanguage } from '../../i18n/locale';
-import { ICON_SIZE, ICON_STROKE } from '../../theme/icons';
+import { ICON_STROKE } from '../../theme/icons';
+import { font } from '../../theme/typography';
 
 interface DashboardHeaderProps {
   onRefresh: () => void;
@@ -48,17 +50,22 @@ export function DashboardHeader({
             accessibilityRole="button"
             disabled={refreshing}
             onPress={onRefresh}
-            style={[
-              styles.roundActionBtn,
-              { backgroundColor: palette.surface, borderColor: palette.border },
+            style={({ pressed }) => [
+              styles.cleanRefreshBtn,
+              { opacity: pressed || refreshing ? 0.6 : 1 },
             ]}
             testID="admin-header-refresh-btn"
           >
             {refreshing ? (
               <ActivityIndicator size="small" color={palette.primary} />
             ) : (
-              <RefreshCw size={ICON_SIZE} color={palette.text} strokeWidth={ICON_STROKE} />
+              <RefreshCw size={15} color={palette.primary} strokeWidth={ICON_STROKE} />
             )}
+            <Text style={[styles.refreshText, { color: palette.primary }]}>
+              {refreshing
+                ? (language === 'en' ? 'Refreshing...' : 'Memuat...')
+                : (language === 'en' ? 'Refresh' : 'Segarkan')}
+            </Text>
           </Pressable>
         </View>
       }
@@ -70,16 +77,19 @@ const styles = StyleSheet.create({
   headerActionsRight: {
     alignItems: 'center',
     flexDirection: 'row',
-    gap: 6,
+    gap: 8,
     justifyContent: 'flex-end',
-    minWidth: 36,
   },
-  roundActionBtn: {
+  cleanRefreshBtn: {
     alignItems: 'center',
-    borderRadius: 5,
-    borderWidth: 1,
-    height: 36,
-    justifyContent: 'center',
-    width: 36,
+    flexDirection: 'row',
+    gap: 6,
+    minHeight: 40,
+    paddingHorizontal: 8,
+    paddingVertical: 6,
+  },
+  refreshText: {
+    fontSize: font.label,
+    fontWeight: '700',
   },
 });

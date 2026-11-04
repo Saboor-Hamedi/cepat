@@ -1,3 +1,4 @@
+import { BackHeader } from "../../components/BackHeader";
 import { router, useLocalSearchParams } from "expo-router";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { FlatList, Pressable, StyleSheet, Text, View } from "react-native";
@@ -88,18 +89,10 @@ export default function CategoryScreen() {
         keyExtractor={(item) => item.id}
         ListHeaderComponent={
           <View style={styles.header}>
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel={t("category.back")}
-              onPress={() => {
-                if (router.canGoBack()) router.back();
-                else router.replace("/");
-              }}
-              style={styles.backButton}
-            >
-              <Text style={styles.backGlyph}>‹</Text>
-              <Text style={styles.backLabel}>{t("category.back")}</Text>
-            </Pressable>
+            <BackHeader
+              fallbackRoute="/"
+              style={{ marginBottom: 0 }}
+            />
             {category && (
               <View style={styles.glyphWrap}>
                 <ServiceCategoryGlyph iconKey={category.icon} size={52} />

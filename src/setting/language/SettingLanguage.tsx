@@ -1,14 +1,14 @@
-import { font } from '../../theme/typography';
 import { Pressable, StyleSheet, Text, View } from "react-native";
 
 import { useAppearance } from "../../context/AppearanceContext";
 import { useLanguage, type Language } from "../../i18n/locale";
-import { colors, radii, spacing } from "../../theme/tokens";
+import { radii, spacing } from "../../theme/tokens";
+import { font } from "../../theme/typography";
 import { SettingSection } from "../components/SettingSection";
 
 export function SettingLanguage() {
   const { language, setLanguage, syncNote, accountLinked, t } = useLanguage();
-  const { palette } = useAppearance();
+  const { palette, scaleFont } = useAppearance();
 
   const options: {
     code: Language;
@@ -47,7 +47,7 @@ export function SettingLanguage() {
       }
       testID="setting-section-language"
     >
-      <View style={styles.optionsWrap}>
+      <View style={styles.optionsWrap} testID="account-language-section">
         {options.map((opt) => {
           const selected = language === opt.code;
           return (
@@ -58,15 +58,12 @@ export function SettingLanguage() {
               onPress={() => {
                 void setLanguage(opt.code);
               }}
-              style={[
+              style={({ pressed }) => [
                 styles.languageOption,
                 {
-                  backgroundColor: palette.surface,
-                  borderColor: palette.border,
-                },
-                selected && {
-                  backgroundColor: palette.primarySoft,
-                  borderColor: palette.primary,
+                  backgroundColor: palette.surfaceElevated,
+                  borderColor: selected ? palette.primary : palette.border,
+                  opacity: pressed ? 0.75 : 1,
                 },
               ]}
               testID={opt.testID}
@@ -76,20 +73,40 @@ export function SettingLanguage() {
                 <Text
                   style={[
                     styles.languageName,
-                    { color: selected ? palette.primary : palette.text },
+                    {
+                      color: selected ? palette.primary : palette.text,
+                      fontSize: scaleFont(font.label),
+                    },
                     selected && styles.languageNameSelected,
                   ]}
                 >
                   {opt.label}
                 </Text>
                 <Text
-                  style={[styles.languageSub, { color: palette.textMuted }]}
+                  style={[
+                    styles.languageSub,
+                    { color: palette.textMuted, fontSize: scaleFont(font.caption) },
+                  ]}
                 >
                   {opt.nativeLabel} · {opt.region}
                 </Text>
               </View>
-              <View style={[styles.radio, selected && styles.radioSelected]}>
-                {selected && <View style={styles.radioDot} />}
+              <View
+                style={[
+                  styles.radio,
+                  {
+                    borderColor: selected ? palette.primary : palette.border,
+                  },
+                ]}
+              >
+                {selected && (
+                  <View
+                    style={[
+                      styles.radioDot,
+                      { backgroundColor: palette.primary },
+                    ]}
+                  />
+                )}
               </View>
             </Pressable>
           );
@@ -97,10 +114,14 @@ export function SettingLanguage() {
       </View>
 
       {syncNote && (
-        <Text style={styles.saveNote}>{t(`settings.${syncNote}`)}</Text>
+        <Text style={[styles.saveNote, { color: palette.primary }]}>
+          {t(`settings.${syncNote}`)}
+        </Text>
       )}
       {!accountLinked && (
-        <Text style={styles.deviceNote}>{t("settings.deviceOnly")}</Text>
+        <Text style={[styles.deviceNote, { color: palette.textMuted }]}>
+          {t("settings.deviceOnly")}
+        </Text>
       )}
     </SettingSection>
   );
@@ -108,72 +129,55 @@ export function SettingLanguage() {
 
 const styles = StyleSheet.create({
   optionsWrap: {
-    gap: spacing.xs,
+    gap: 6,
+    width: "100%",
   },
   languageOption: {
     alignItems: "center",
-    backgroundColor: colors.surface,
-    borderColor: colors.line,
-    borderRadius: radii.md,
+    borderRadius: radii.sm,
     borderWidth: 1,
     flexDirection: "row",
     gap: spacing.md,
-    minHeight: 60,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
-  },
-  languageOptionSelected: {
-    backgroundColor: "#F0FDF4",
-    borderColor: colors.greenDark,
-    borderWidth: 1.5,
+    minHeight: 56,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    width: "100%",
   },
   flagIcon: {
-    fontSize: font.section,
+    fontSize: 22,
   },
   textWrap: {
     flex: 1,
   },
   languageName: {
-    color: colors.ink,
-    fontSize: font.subtitle,
-    fontWeight: "700",
+    fontWeight: "600",
   },
   languageNameSelected: {
-    color: colors.greenDark,
-    fontWeight: "800",
+    fontWeight: "700",
   },
   languageSub: {
-    color: colors.muted,
-    fontSize: font.body,
     marginTop: 2,
   },
   radio: {
     alignItems: "center",
-    borderColor: colors.line,
     borderRadius: radii.pill,
     borderWidth: 2,
     height: 20,
     justifyContent: "center",
     width: 20,
   },
-  radioSelected: {
-    borderColor: colors.greenDark,
-  },
   radioDot: {
-    backgroundColor: colors.greenDark,
     borderRadius: radii.pill,
     height: 10,
     width: 10,
   },
   saveNote: {
-    color: colors.greenDark,
     fontSize: font.body,
-    fontWeight: "700",
+    fontWeight: "600",
     marginTop: spacing.sm,
   },
   deviceNote: {
-    color: colors.muted,
     fontSize: font.caption,
-    marginTop: spacing.xs,
+    marginTop: 4,
   },
 });

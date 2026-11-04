@@ -1,12 +1,12 @@
-import { font } from '../../theme/typography';
 import type { PropsWithChildren, ReactNode } from "react";
 import { StyleSheet, Text, View } from "react-native";
 
 import { useAppearance } from "../../context/AppearanceContext";
-import { radii, spacing } from "../../theme/tokens";
+import { spacing } from "../../theme/tokens";
+import { font } from "../../theme/typography";
 
 export interface SettingSectionProps extends PropsWithChildren {
-  eyebrow: string;
+  eyebrow?: string;
   title: string;
   description?: string;
   badge?: ReactNode;
@@ -22,18 +22,28 @@ export function SettingSection({
 }: SettingSectionProps) {
   const { palette, scaleFont } = useAppearance();
   return (
-    <View
-      style={[
-        styles.card,
-        { backgroundColor: palette.surface, borderColor: palette.border },
-      ]}
-      testID={testID}
-    >
+    <View style={styles.container} testID={testID}>
       <View style={styles.headerRow}>
         <View style={styles.headerCopy}>
-          <Text style={[styles.title, { color: palette.text, fontSize: scaleFont(font.heading) }]}>{title}</Text>
+          <Text
+            style={[
+              styles.title,
+              { color: palette.text, fontSize: scaleFont(font.heading) },
+            ]}
+          >
+            {title}
+          </Text>
           {description ? (
-            <Text style={[styles.description, { color: palette.textMuted, fontSize: scaleFont(font.body), lineHeight: scaleFont(18) }]}>
+            <Text
+              style={[
+                styles.description,
+                {
+                  color: palette.textMuted,
+                  fontSize: scaleFont(font.body),
+                  lineHeight: scaleFont(19),
+                },
+              ]}
+            >
               {description}
             </Text>
           ) : null}
@@ -46,30 +56,29 @@ export function SettingSection({
 }
 
 const styles = StyleSheet.create({
-  card: {
-    borderRadius: radii.md,
-    borderWidth: 1,
+  container: {
+    backgroundColor: "transparent",
     marginBottom: spacing.md,
-    padding: spacing.lg,
+    paddingTop: spacing.xs,
+    width: "100%",
   },
   headerRow: {
     alignItems: "flex-start",
     flexDirection: "row",
     justifyContent: "space-between",
-    marginBottom: spacing.sm,
+    marginBottom: spacing.md,
   },
   headerCopy: {
     flex: 1,
-    minWidth: 0,
   },
   title: {
-    fontWeight: "800",
-    letterSpacing: -0.2,
+    fontWeight: "700",
+    letterSpacing: -0.3,
   },
   description: {
-    marginTop: 2,
+    marginTop: 4,
   },
   body: {
-    marginTop: spacing.xs,
+    width: "100%",
   },
 });

@@ -34,7 +34,6 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import {
-  ArrowLeft,
   Bell,
   Calendar,
   CheckCircle2,
@@ -47,6 +46,7 @@ import {
 import { ICON_SIZE, ICON_STROKE } from '../theme/icons';
 import { useAuth } from '../auth/AuthProvider';
 import { AppNavigationBar, EmptyState, LoadingState } from '../components/marketplace-ui';
+import { BackHeader } from "../components/BackHeader";
 import { SegmentedTabs } from '../components/SegmentedTabs';
 import { useAppearance, type ThemePalette } from '../context/AppearanceContext';
 import {
@@ -266,47 +266,25 @@ export default function NotificationsScreen() {
         }
       >
         {/* Sleek Header Bar matching Booking and Task */}
-        <View style={styles.headerBar} testID="notifications-screen-header">
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel={language === "en" ? "Back" : "Kembali"}
-            onPress={() => {
-              if (router.canGoBack()) {
-                router.back();
-              } else {
-                router.replace("/");
-              }
-            }}
-            style={[
-              styles.headerBackBtn,
-              { backgroundColor: palette.surface, borderColor: palette.border },
-            ]}
-            testID="notifications-header-back-btn"
-          >
-            <ArrowLeft size={ICON_SIZE} color={palette.text} strokeWidth={ICON_STROKE} />
-          </Pressable>
-
-          <View style={styles.headerTitleWrap}>
-            <Text style={[styles.headerTitle, { color: palette.text }]}>
-              {language === "en" ? "Notifications" : "Notifikasi"}
-            </Text>
-          </View>
-
-          {unreadCount > 0 ? (
-            <Pressable
-              accessibilityRole="button"
-              onPress={() => void handleMarkAllRead()}
-              style={[styles.markAllButton, { paddingVertical: 6, paddingHorizontal: 10 }]}
-              testID="notifications-mark-all-read"
-            >
-              <Text style={styles.markAllText}>
-                {language === 'en' ? 'Mark read' : 'Tandai dibaca'}
-              </Text>
-            </Pressable>
-          ) : (
-            <View style={{ width: 36 }} />
-          )}
-        </View>
+        <BackHeader
+          title={language === "en" ? "Notifications" : "Notifikasi"}
+          backBtnTestID="notifications-header-back-btn"
+          testID="notifications-screen-header"
+          rightElement={
+            unreadCount > 0 ? (
+              <Pressable
+                accessibilityRole="button"
+                onPress={() => void handleMarkAllRead()}
+                style={[styles.markAllButton, { paddingVertical: 6, paddingHorizontal: 10 }]}
+                testID="notifications-mark-all-read"
+              >
+                <Text style={styles.markAllText}>
+                  {language === 'en' ? 'Mark read' : 'Tandai dibaca'}
+                </Text>
+              </Pressable>
+            ) : null
+          }
+        />
 
         {/* Facebook-style Category Filter Tabs */}
         {visibleNotifications.length > 0 && (
