@@ -1,13 +1,6 @@
 import { router } from 'expo-router';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import {
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TextInput,
-  View,
-} from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { useAuth } from '../auth/AuthProvider';
@@ -23,9 +16,11 @@ import {
 } from '../components/marketplace-ui';
 import { InfiniteFlatList } from '../components/InfiniteFlatList';
 import {
-  InlineMarketplaceMapCard,
-  MarketplaceMapSearchModal,
-} from '../components/MarketplaceMapSearch';
+  buildCategoryFilters,
+  CategoryTabs,
+} from '../components/CategoryTabs';
+import { MarketplaceMapSearchModal } from '../components/MarketplaceMapSearch';
+import { SearchField } from '../components/SearchField';
 import {
   TechnicianPostCard,
 } from '../components/TechnicianPostCard';
@@ -51,7 +46,7 @@ import {
   updateTechnicianPost,
 } from '../data/postsStore';
 import { useInfiniteList } from '../hooks/useInfiniteList';
-import { categoryName, localizeArea, useLanguage } from '../i18n/locale';
+import { localizeArea, useLanguage } from '../i18n/locale';
 import { colors, radii, spacing } from '../theme/tokens';
 import type {
   DataSource,
@@ -72,24 +67,6 @@ interface PopularTaskItem {
   technicianName: string;
 }
 
-interface MarketplaceCategoryFilter {
-  slug: string;
-  label: string;
-}
-
-const CORE_CATEGORY_FILTERS: Record<string, { id: string; en: string }> = {
-  'ac-repair': { id: 'Servis AC', en: 'AC Service' },
-  plumbing: { id: 'Plumbing', en: 'Plumbing' },
-  electrical: { id: 'Kelistrikan', en: 'Electrical' },
-  cleaning: { id: 'Kebersihan', en: 'Cleaning' },
-  painting: { id: 'Pengecatan', en: 'Painting' },
-  'appliance-repair': { id: 'Perbaikan Elektronik', en: 'Appliance Repair' },
-  locksmith: { id: 'Tukang Kunci', en: 'Locksmith' },
-  'pest-control': { id: 'Pengendalian Hama', en: 'Pest Control' },
-  moving: { id: 'Pindahan', en: 'Moving' },
-  renovation: { id: 'Renovasi', en: 'Renovation' },
-};
-
 type MarketplaceListItem =
   | { key: string; kind: 'posts-heading' }
   | { key: string; kind: 'recommendations-heading' }
@@ -102,7 +79,6 @@ let cachedCategories: ServiceCategory[] = [];
 let cachedTechnicians: Technician[] = [];
 let cachedServiceAreas: string[] = [];
 let cachedSource: DataSource = 'fixtures';
-let cachedHasMore = false;
 let hasInitialLoaded = false;
 
 export default function MarketplaceScreen() {
@@ -115,7 +91,6 @@ export default function MarketplaceScreen() {
   const [savedAddresses, setSavedAddresses] = useState<SavedAddress[]>([]);
   const [savedTechIds, setSavedTechIds] = useState<string[]>([]);
   const [source, setSource] = useState<DataSource>(cachedSource);
-  const [query, setQuery] = useState('');
   const [area, setArea] = useState('Semua area');
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [areaModalVisible, setAreaModalVisible] = useState(false);
@@ -128,40 +103,25 @@ export default function MarketplaceScreen() {
   const [reloadKey, setReloadKey] = useState(0);
   const refreshInFlightRef = useRef(false);
 
-  const categoryFilters = useMemo<MarketplaceCategoryFilter[]>(() => {
-    const coreFilters = Object.entries(CORE_CATEGORY_FILTERS).map(([slug, labels]) => ({
-      slug,
-      label: language === 'en' ? labels.en : labels.id,
-    }));
-    const knownSlugs = new Set(coreFilters.map((category) => category.slug));
-    const additionalFilters = categories
-      .filter((category) => !knownSlugs.has(category.slug))
-      .map((category) => ({
-        slug: category.slug,
-        label: categoryName(category.slug, category.name, t),
-      }));
-    return [
-      { slug: 'all', label: language === 'en' ? 'All' : 'Semua' },
-      ...coreFilters,
-      ...additionalFilters,
-    ];
-  }, [categories, language, t]);
+  const categoryFilters = useMemo(
+    () => buildCategoryFilters(categories, language, t),
+    [categories, language, t],
+  );
 
   const fetchPostPage = useCallback(
     (cursor: string | null, pageSize: number) =>
       loadMarketplacePublishedPostsPage(
         {
           area,
-          query,
           categorySlug: selectedCategory === 'all' ? undefined : selectedCategory,
         },
         cursor,
         pageSize,
       ),
-    [area, query, selectedCategory],
+    [area, selectedCategory],
   );
   const postFeed = useInfiniteList({
-    cacheKey: `marketplace-posts:${area}:${query.trim().toLowerCase()}:${selectedCategory}`,
+    cacheKey: `marketplace-posts:${area}:${selectedCategory}`,
     fetchPage: fetchPostPage,
     keyExtractor: (post: TechnicianPost) => post.id,
     pageSize: 10,
@@ -196,7 +156,6 @@ export default function MarketplaceScreen() {
           cachedTechnicians = technicianResult.items;
           cachedServiceAreas = areaResult.items;
           cachedSource = technicianResult.source;
-          cachedHasMore = technicianResult.hasMore;
           hasInitialLoaded = true;
           setCategories(categoryResult.items);
           setTechnicians(technicianResult.items);
@@ -228,12 +187,12 @@ export default function MarketplaceScreen() {
   const visibleTechnicians = useMemo(() => {
     return filterTechnicians(
       technicians,
-      query,
+      '',
       area,
       selectedCategory === 'all' ? undefined : selectedCategory,
       { prioritizeArea: true },
     );
-  }, [technicians, query, area, selectedCategory]);
+  }, [technicians, area, selectedCategory]);
 
   const popularTasks = useMemo<PopularTaskItem[]>(() => {
     const items: PopularTaskItem[] = [];
@@ -406,49 +365,20 @@ export default function MarketplaceScreen() {
     <View style={styles.contentWidth}>
       {/* Search Bar + Location Button (Split layout) */}
       <View style={styles.searchRow}>
-        <View
-          style={[
-            styles.searchBox,
-            { backgroundColor: palette.inputBg, borderColor: palette.border },
-          ]}
-          testID="marketplace-search-shell"
-        >
-          <View style={styles.searchIconBox}>
-            <View
-              style={[styles.searchCircle, { borderColor: palette.textMuted }]}
-            />
-            <View
-              style={[styles.searchHandle, { backgroundColor: palette.textMuted }]}
-            />
-          </View>
-          <TextInput
-            accessibilityLabel={t('home.search')}
-            autoCapitalize="none"
-            onChangeText={setQuery}
-            placeholder={t('home.search')}
-            placeholderTextColor={palette.textMuted}
-            returnKeyType="search"
-            style={[styles.searchInput, { color: palette.text }]}
-            testID="marketplace-search"
-            value={query}
-          />
-          {query.length > 0 && (
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel={t('home.clearSearch')}
-              onPress={() => setQuery('')}
-              style={[
-                styles.clearSearch,
-                { backgroundColor: palette.pillBg },
-              ]}
-              testID="clear-search"
-            >
-              <Text style={[styles.clearSearchText, { color: palette.textMuted }]}>
-                ×
-              </Text>
-            </Pressable>
-          )}
-        </View>
+        <SearchField
+          accessibilityLabel={t('home.search')}
+          onPress={() =>
+            router.push({
+              pathname: '/search',
+              params: {
+                area,
+                category: selectedCategory,
+              },
+            })
+          }
+          placeholder={t('home.search')}
+          testID="marketplace-search"
+        />
 
         <Pressable
           accessibilityRole="button"
@@ -491,47 +421,11 @@ export default function MarketplaceScreen() {
         </Pressable>
       </View>
 
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        contentContainerStyle={styles.categoryFilters}
-        testID="marketplace-category-filters"
-      >
-        {categoryFilters.map((category) => {
-          const selected = selectedCategory === category.slug;
-          return (
-            <Pressable
-              key={category.slug}
-              accessibilityRole="tab"
-              accessibilityState={{ selected }}
-              onPress={() => setSelectedCategory(category.slug)}
-              style={({ pressed }) => [
-                styles.categoryFilter,
-                {
-                  backgroundColor: selected
-                    ? palette.primary
-                    : 'transparent',
-                  borderColor: selected ? palette.primary : palette.border,
-                  transform: [{ scale: pressed ? 0.96 : 1 }],
-                },
-              ]}
-              testID={`category-${category.slug}`}
-            >
-              <Text
-                style={[
-                  styles.categoryFilterText,
-                  {
-                    color: selected ? '#FFFFFF' : palette.textMuted,
-                    fontWeight: selected ? '800' : '600',
-                  },
-                ]}
-              >
-                {category.label}
-              </Text>
-            </Pressable>
-          );
-        })}
-      </ScrollView>
+      <CategoryTabs
+        categories={categoryFilters}
+        selected={selectedCategory}
+        onSelect={setSelectedCategory}
+      />
       {pinNotice ? <Text style={styles.pinNoticeText}>{pinNotice}</Text> : null}
 
       
@@ -557,12 +451,8 @@ export default function MarketplaceScreen() {
         </View>
       )}
 
-      {source === 'supabase' && query.length > 0 && (
-        <Text style={styles.searchScopeNote}>{t('home.searchScope')}</Text>
-      )}
-
       {/* Popular Tasks Discovery */}
-      {!query && popularTasks.length > 0 && (
+      {popularTasks.length > 0 && (
         <>
           <SectionTitle
             eyebrow={t('home.popularServicesEyebrow')}
@@ -621,7 +511,7 @@ export default function MarketplaceScreen() {
       )}
 
       {/* Bookmarked / Saved Technicians */}
-      {!query && savedTechnicians.length > 0 && (
+      {savedTechnicians.length > 0 && (
         <View style={styles.savedHighlightBar}>
           <View style={styles.savedHighlightCopy}>
             <Text style={styles.savedEyebrow}>{t('home.savedSectionEyebrow')}</Text>
@@ -673,10 +563,6 @@ export default function MarketplaceScreen() {
                   ? language === 'en'
                     ? 'No results in this category yet'
                     : 'Belum ada hasil di kategori ini'
-                  : query
-                  ? hasMore || postFeed.hasMore
-                    ? t('home.noSearchMoreTitle')
-                    : t('home.noSearchTitle')
                   : hasMore || postFeed.hasMore
                     ? t('home.noAreaMoreTitle')
                     : t('home.noAreaTitle')
@@ -686,10 +572,6 @@ export default function MarketplaceScreen() {
                   ? language === 'en'
                     ? 'Try another service category or return to all services.'
                     : 'Coba kategori layanan lain atau tampilkan semua layanan.'
-                  : query
-                  ? hasMore || postFeed.hasMore
-                    ? t('home.noSearchMoreDescription')
-                    : t('home.noSearchDescription')
                   : hasMore || postFeed.hasMore
                     ? t('home.noAreaMoreDescription')
                     : t('home.noAreaDescription')
@@ -701,18 +583,14 @@ export default function MarketplaceScreen() {
                     ? language === 'en'
                       ? 'Show all categories'
                       : 'Tampilkan semua kategori'
-                    : query
-                      ? t('home.clearSearch')
-                      : t('home.allAreas')
+                    : t('home.allAreas')
               }
               onAction={() =>
                 hasMore || postFeed.hasMore
                   ? void loadMoreAll()
                   : selectedCategory !== 'all'
                     ? setSelectedCategory('all')
-                    : query
-                      ? setQuery('')
-                      : handleSelectArea('Semua area')
+                    : handleSelectArea('Semua area')
               }
             />
           )
@@ -759,7 +637,7 @@ export default function MarketplaceScreen() {
                           ),
                         })
                   }
-                  title={query ? t('home.searchResultsTitle') : t('home.resultsTitle')}
+                  title={t('home.resultsTitle')}
                   trailing={`${visibleTechnicians.length}${hasMore ? '+' : ''} ${t('home.profiles')}`}
                 />
               </View>
@@ -911,60 +789,6 @@ const styles = StyleSheet.create({
     fontSize: font.label,
     fontWeight: '800',
   },
-  searchBox: {
-    alignItems: 'center',
-    backgroundColor: colors.paper,
-    borderColor: colors.line,
-    borderRadius: 12,
-    borderWidth: 1,
-    flex: 1,
-    flexDirection: 'row',
-    height: 48,
-    paddingHorizontal: spacing.sm,
-    width: '100%',
-  },
-  searchIconBox: {
-    alignItems: 'center',
-    height: 20,
-    justifyContent: 'center',
-    marginRight: spacing.xs,
-    width: 20,
-  },
-  searchCircle: {
-    borderColor: '#65676B',
-    borderRadius: 5,
-    borderWidth: 2,
-    height: 12,
-    width: 12,
-  },
-  searchHandle: {
-    backgroundColor: '#65676B',
-    borderRadius: 1,
-    height: 5,
-    marginRight: -9,
-    marginTop: -2,
-    transform: [{ rotate: '-45deg' }],
-    width: 2,
-  },
-  searchInput: {
-    color: colors.ink,
-    flex: 1,
-    fontSize: font.title,
-    height: '100%',
-  },
-  clearSearch: {
-    alignItems: 'center',
-    backgroundColor: colors.line,
-    borderRadius: 5,
-    height: 24,
-    justifyContent: 'center',
-    width: 24,
-  },
-  clearSearchText: {
-    color: colors.muted,
-    fontSize: font.heading,
-    lineHeight: 18,
-  },
   pinNoticeText: {
     color: colors.greenDark,
     fontSize: font.caption,
@@ -984,30 +808,6 @@ const styles = StyleSheet.create({
     fontSize: font.caption,
     lineHeight: 16,
     marginTop: 6,
-  },
-  searchScopeNote: {
-    color: colors.muted,
-    fontSize: font.caption,
-    lineHeight: 16,
-    marginTop: spacing.sm,
-  },
-  categoryFilters: {
-    flexDirection: 'row',
-    gap: 8,
-    paddingBottom: spacing.xs,
-    paddingRight: spacing.md,
-    paddingTop: spacing.sm,
-  },
-  categoryFilter: {
-    alignItems: 'center',
-    borderRadius: 20,
-    borderWidth: 1,
-    justifyContent: 'center',
-    paddingHorizontal: 14,
-    paddingVertical: 7,
-  },
-  categoryFilterText: {
-    fontSize: font.label,
   },
   popularGrid: {
     flexDirection: 'row',

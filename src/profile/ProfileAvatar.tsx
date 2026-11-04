@@ -9,8 +9,6 @@ import {
 import { Avatar } from '../components/marketplace-ui';
 import { useAppearance } from '../context/AppearanceContext';
 import { useLanguage } from '../i18n/locale';
-import { ICON_SIZE, ICON_STROKE } from '../theme/icons';
-import { colors } from '../theme/tokens';
 import type { ImageCandidateInput } from '../utils/imageValidator';
 
 export { pickImageSafely } from '../components/ImageSourceSheet';
@@ -69,9 +67,11 @@ export function ProfileAvatar({
             style={[
               styles.cameraBadge,
               {
-                width: size === 80 ? 28 : Math.max(22, Math.round(size * 0.3)),
-                height: size === 80 ? 28 : Math.max(22, Math.round(size * 0.3)),
-                backgroundColor: "transparent",
+                width: size === 80 ? 28 : Math.max(24, Math.round(size * 0.32)),
+                height: size === 80 ? 28 : Math.max(24, Math.round(size * 0.32)),
+                borderRadius: 999,
+                backgroundColor: palette.surface,
+                borderColor: palette.border,
               },
             ]}
             testID={`${testID}-camera-badge`}
@@ -114,8 +114,7 @@ const styles = StyleSheet.create({
   },
   cameraBadge: {
     alignItems: 'center',
-    backgroundColor: 'transparent',
-    borderWidth: 0,
+    borderWidth: 1,
     bottom: 0,
     justifyContent: 'center',
     position: 'absolute',

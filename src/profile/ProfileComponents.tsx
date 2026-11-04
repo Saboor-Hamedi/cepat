@@ -12,7 +12,7 @@ export function SectionHeader({
   trailing,
   compact = false,
 }: {
-  eyebrow: string;
+  eyebrow?: string;
   title: string;
   trailing?: string;
   compact?: boolean;
@@ -22,9 +22,11 @@ export function SectionHeader({
   return (
     <View style={[styles.sectionHeading, compact && styles.sectionHeadingCompact]}>
       <View>
-        <Text style={[styles.sectionEyebrow, { color: palette.primary }]}>
-          {eyebrow}
-        </Text>
+        {eyebrow ? (
+          <Text style={[styles.sectionEyebrow, { color: palette.primary }]}>
+            {eyebrow}
+          </Text>
+        ) : null}
         <Text style={[styles.sectionTitle, { color: palette.text }]}>{title}</Text>
       </View>
       {trailing && (

@@ -1,4 +1,4 @@
-import { Briefcase, Image as ImageIcon } from 'lucide-react-native';
+import { Briefcase, Camera } from 'lucide-react-native';
 import { useState } from 'react';
 import {
   ActivityIndicator,
@@ -19,9 +19,7 @@ import { useLanguage } from '../../i18n/locale';
 import { ICON_SIZE, ICON_STROKE } from '../../theme/icons';
 import { colors, radii, spacing } from '../../theme/tokens';
 import { font } from '../../theme/typography';
-import { Avatar } from '../marketplace-ui';
 import { StrictImagePicker } from '../StrictImagePicker';
-import { Toggle } from '../toggle';
 import { TechnicianPostImagePreview } from './TechnicianPostImagePreview';
 
 export interface TechnicianPostComposerProps {
@@ -169,21 +167,6 @@ export function TechnicianPostComposer({
     }
   };
 
-  const authorName =
-    technicianProfile?.displayName ||
-    (typeof user?.user_metadata?.display_name === 'string' &&
-      user.user_metadata.display_name.trim()) ||
-    user?.email?.split('@')[0] ||
-    (language === 'en' ? 'Technician' : 'Teknisi Cepat');
-
-  const firstName = authorName.split(' ')[0] || authorName;
-
-  const authorAvatarUri =
-    technicianProfile?.avatarUri ||
-    (typeof user?.user_metadata?.avatar_url === 'string'
-      ? user.user_metadata.avatar_url
-      : undefined);
-
   return (
     <KeyboardAvoidingView
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
@@ -193,27 +176,6 @@ export function TechnicianPostComposer({
       ]}
       testID="technician-post-composer"
     >
-      {/* Author Header */}
-      <View style={styles.composerHeader}>
-        <Avatar uri={authorAvatarUri} name={authorName} size={40} />
-        <View style={styles.authorInfo}>
-          <Text
-            numberOfLines={1}
-            style={[styles.authorName, { color: palette.text }]}
-          >
-            {authorName}
-          </Text>
-          <View style={styles.audienceTag}>
-            <View
-              style={[styles.audienceDot, { backgroundColor: palette.primary }]}
-            />
-            <Text style={[styles.audienceText, { color: palette.textMuted }]}>
-              {language === 'en' ? 'Public • Marketplace' : 'Publik • Marketplace'}
-            </Text>
-          </View>
-        </View>
-      </View>
-
       {/* Unified Textarea Box with Inner Footer */}
       <View
         style={[
@@ -227,8 +189,8 @@ export function TechnicianPostComposer({
           onChangeText={handleTextChange}
           placeholder={
             language === 'en'
-              ? `${firstName}, what's on your mind?`
-              : `${firstName}, apa yang Anda pikirkan?`
+              ? "What's on your mind?"
+              : 'Apa yang Anda pikirkan?'
           }
           placeholderTextColor={palette.textMuted}
           style={[
@@ -242,16 +204,6 @@ export function TechnicianPostComposer({
           testID="create-post-caption-input"
           value={caption}
         />
-
-        {/* Pre-upload Image Attachment Strip (Inside the container) */}
-        {images.length > 0 && (
-          <View style={styles.imagesInsideContainer}>
-            <TechnicianPostImagePreview
-              images={images}
-              onRemoveImage={handleRemoveImage}
-            />
-          </View>
-        )}
 
         {/* Footer inside the textarea container */}
         <View
@@ -284,7 +236,7 @@ export function TechnicianPostComposer({
                     { backgroundColor: palette.primarySoft },
                   ]}
                 >
-                  <ImageIcon
+                  <Camera
                     color={palette.primary}
                     size={ICON_SIZE}
                     strokeWidth={ICON_STROKE}
@@ -297,14 +249,6 @@ export function TechnicianPostComposer({
                     </View>
                   )}
                 </View>
-                <Text
-                  style={[
-                    styles.mediaActionLabel,
-                    { color: palette.text, fontSize: scaleFont(font.body) },
-                  ]}
-                >
-                  {language === 'en' ? 'Photo' : 'Foto'}
-                </Text>
               </View>
             </Pressable>
 
@@ -337,9 +281,6 @@ export function TechnicianPostComposer({
               >
                 {language === 'en' ? 'Offer Service' : 'Tawarkan Layanan'}
               </Text>
-              <View pointerEvents="none" style={{ marginLeft: 6 }}>
-                <Toggle checked={isServicePost} size="sm" disabled={busy} />
-              </View>
             </Pressable>
           </View>
 
@@ -388,6 +329,21 @@ export function TechnicianPostComposer({
             </Pressable>
           </View>
         </View>
+
+        {/* Image previews stay below the actions so the Post button never shifts */}
+        {images.length > 0 && (
+          <View
+            style={[
+              styles.imagesInsideContainer,
+              { borderTopColor: palette.border },
+            ]}
+          >
+            <TechnicianPostImagePreview
+              images={images}
+              onRemoveImage={handleRemoveImage}
+            />
+          </View>
+        )}
       </View>
 
       {/* Error / Validation Warning */}
@@ -467,43 +423,6 @@ const styles = StyleSheet.create({
     padding: spacing.md,
     width: '100%',
   },
-  composerHeader: {
-    alignItems: 'center',
-    flexDirection: 'row',
-    gap: spacing.md,
-    marginBottom: spacing.md,
-  },
-  avatarRing: {
-    alignItems: 'center',
-    borderRadius: 5,
-    borderWidth: 1,
-    height: 46,
-    justifyContent: 'center',
-    width: 46,
-  },
-  authorInfo: {
-    flex: 1,
-    gap: 3,
-    minWidth: 0,
-  },
-  authorName: {
-    fontSize: font.subtitle,
-    fontWeight: '700',
-  },
-  audienceTag: {
-    alignItems: 'center',
-    flexDirection: 'row',
-    gap: 5,
-  },
-  audienceDot: {
-    borderRadius: 3,
-    height: 6,
-    width: 6,
-  },
-  audienceText: {
-    fontSize: font.caption,
-    fontWeight: '500',
-  },
   textareaContainer: {
     borderRadius: 5,
     borderWidth: 1,
@@ -513,15 +432,17 @@ const styles = StyleSheet.create({
   textInput: {
     fontSize: font.title,
     lineHeight: 22,
-    minHeight: 80,
+    minHeight: 92,
     paddingHorizontal: spacing.md,
     paddingTop: spacing.md,
     paddingBottom: spacing.sm,
     textAlignVertical: 'top',
   },
   imagesInsideContainer: {
-    paddingHorizontal: spacing.sm,
-    paddingBottom: spacing.xs,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    paddingBottom: spacing.sm,
+    paddingHorizontal: spacing.md,
+    paddingTop: spacing.xs,
   },
   textareaFooter: {
     alignItems: 'center',
@@ -552,29 +473,25 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     borderRadius: 5,
     borderWidth: 1,
+    height: 36,
     justifyContent: 'center',
-    paddingHorizontal: 8,
-    paddingVertical: 5,
+    paddingHorizontal: 6,
   },
   mediaActionContent: {
     alignItems: 'center',
     flexDirection: 'row',
     gap: 6,
   },
-  mediaActionLabel: {
-    fontSize: font.body,
-    fontWeight: '600',
-  },
   mediaBtnDisabled: {
     opacity: 0.4,
   },
   mediaIconCanvas: {
     alignItems: 'center',
-    borderRadius: 4,
-    height: 22,
+    borderRadius: 999,
+    height: 26,
     justifyContent: 'center',
     position: 'relative',
-    width: 22,
+    width: 26,
   },
   mediaCountBadge: {
     borderRadius: 8,
@@ -597,9 +514,9 @@ const styles = StyleSheet.create({
     borderRadius: 5,
     borderWidth: 1,
     flexDirection: 'row',
-    gap: 5,
-    paddingHorizontal: 8,
-    paddingVertical: 5,
+    height: 36,
+    gap: 6,
+    paddingHorizontal: 10,
   },
   servicePillText: {
     fontSize: font.body,
@@ -614,10 +531,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     borderRadius: 5,
     justifyContent: 'center',
-    minHeight: 32,
-    minWidth: 70,
-    paddingHorizontal: 16,
-    paddingVertical: 6,
+    minHeight: 36,
+    minWidth: 76,
+    paddingHorizontal: 18,
+    paddingVertical: 7,
     flexShrink: 0,
   },
   postBtnDisabled: {

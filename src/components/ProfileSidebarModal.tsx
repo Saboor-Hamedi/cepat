@@ -3,4 +3,4 @@ export {
   type ProfileSidebarModalProps,
   Sidebar,
   type SidebarProps,
-} from './Sidebar';
+} from './sidebar';

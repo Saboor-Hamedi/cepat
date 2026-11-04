@@ -1,7 +1,6 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { router, useLocalSearchParams } from "expo-router";
 import {
-  ArrowLeft,
   BadgeCheck,
   Camera,
   CheckCircle,
@@ -9,7 +8,6 @@ import {
   FileText,
   MapPin,
   Pencil,
-  PlusSquare,
   Settings,
   ShieldCheck,
   Star,
@@ -36,7 +34,6 @@ import {
   ServiceCategoryGlyph,
 } from "../../components/marketplace-ui";
 import { ImageSourceSheet } from "../../components/ImageSourceSheet";
-import { MediaPickerButton } from "../../components/MediaPickerButton";
 import {
   PortfolioPhoto,
   ProfileAvatar,
@@ -74,7 +71,7 @@ import type {
   TechnicianReport,
   TechnicianReview,
 } from "../../types/marketplace";
-import { colors, getProfileTheme, radii, spacing } from "../../theme/tokens";
+import { colors, radii, spacing } from "../../theme/tokens";
 import { ICON_SIZE, ICON_STROKE } from "../../theme/icons";
 import { font } from "../../theme/typography";
 
@@ -127,7 +124,7 @@ export default function TechnicianProfileScreen() {
     "posts" | "services" | "portfolio" | "reviews" | "about"
   >("posts");
   const [coverUri, setCoverUri] = useState<string | undefined>(undefined);
-  const [source, setSource] = useState<DataSource>("fixtures");
+  const [, setSource] = useState<DataSource>("fixtures");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
   const [retryKey, setRetryKey] = useState(0);
@@ -161,10 +158,6 @@ export default function TechnicianProfileScreen() {
   const [portfolioSheetVisible, setPortfolioSheetVisible] = useState(false);
 
   // Review State & Permissions
-  const [isAddingReview, setIsAddingReview] = useState(false);
-  const [draftReviewRating, setDraftReviewRating] = useState(5);
-  const [draftReviewComment, setDraftReviewComment] = useState('');
-  const [savingReview, setSavingReview] = useState(false);
   const [hasCompletedTaskWithTech, setHasCompletedTaskWithTech] = useState(false);
   const feedIsTechnician = roles.includes("technician") || effectiveRole === "technician";
   const feedIsOwner = Boolean(
@@ -548,7 +541,6 @@ export default function TechnicianProfileScreen() {
     '';
   const formattedTechHandle = rawTechUsername ? `@${rawTechUsername.replace(/^@/, '')}` : '';
 
-  const theme = getProfileTheme(technician.theme);
   const startingPrice = firstPrice(technician.services);
   const headline =
     language === "en"
@@ -559,7 +551,6 @@ export default function TechnicianProfileScreen() {
   const weekdayNames = language === "en" ? WEEKDAY_NAMES_EN : WEEKDAY_NAMES_ID;
   const availabilitySchedule = technician.availabilitySchedule ?? [];
   const canPost = isProfileOwner && (isTechnicianUser || isAdminUser);
-  const canDeletePost = isProfileOwner || isAdminUser;
   const canAddReview = Boolean(
     isTechnicianProfile &&
     user &&
@@ -688,7 +679,13 @@ export default function TechnicianProfileScreen() {
                     language === "en" ? "Change cover photo" : "Ubah foto sampul"
                   }
                   onPress={() => setCoverMenuVisible(true)}
-                  style={styles.coverIconBtn}
+                  style={[
+                    styles.coverIconBtn,
+                    {
+                      backgroundColor: palette.surface,
+                      borderColor: palette.border,
+                    },
+                  ]}
                   testID="change-cover-btn"
                 >
                   <Camera color={palette.primary} size={22} strokeWidth={2.2} />
@@ -700,7 +697,13 @@ export default function TechnicianProfileScreen() {
                     language === "en" ? "Settings" : "Pengaturan"
                   }
                   onPress={() => router.push("/account")}
-                  style={styles.coverIconBtn}
+                  style={[
+                    styles.coverIconBtn,
+                    {
+                      backgroundColor: palette.surface,
+                      borderColor: palette.border,
+                    },
+                  ]}
                   testID="profile-settings-btn"
                 >
                   <Settings color={palette.primary} size={22} strokeWidth={2.2} />
@@ -719,13 +722,16 @@ export default function TechnicianProfileScreen() {
               <View
                 style={[
                   styles.avatarWrapper,
-                  { borderColor: "#FFFFFF" },
+                  {
+                    borderColor: palette.background,
+                    backgroundColor: palette.background,
+                  },
                 ]}
               >
                 <ProfileAvatar
                   uri={technician.avatarUri}
                   name={cleanTechnicianTypo(technician.displayName)}
-                  size={80}
+                  size={88}
                   editable={isProfileOwner}
                   onImageSelected={handleAvatarSelected}
                   testID="technician-profile-avatar"
@@ -733,7 +739,12 @@ export default function TechnicianProfileScreen() {
               </View>
               <View style={styles.profileIdentity}>
                 <View style={styles.nameLine}>
-                  <Text style={[styles.profileName, { color: palette.text }]}>
+                  <Text
+                    style={[
+                      styles.profileName,
+                      { color: palette.text },
+                    ]}
+                  >
                     {cleanTechnicianTypo(technician.displayName)}
                   </Text>
                   {(technician.verified || isProfileVerified) ? (
@@ -765,7 +776,10 @@ export default function TechnicianProfileScreen() {
                 </View>
                 {formattedTechHandle ? (
                   <Text
-                    style={[styles.profileHandle, { color: palette.textMuted }]}
+                    style={[
+                      styles.profileHandle,
+                      { color: palette.textMuted, textAlign: "center" },
+                    ]}
                     testID="technician-profile-handle"
                   >
                     {user ? formattedTechHandle : rawTechUsername}
@@ -876,101 +890,31 @@ export default function TechnicianProfileScreen() {
               </View>
             )}
 
-            {/* Quick Actions Bar - Only for Profile Owner or Technician with Review permissions */}
-            {(isProfileOwner || (isTechnicianProfile && canAddReview)) && (
+            {/* Review quick action - other actions live in the tabs below */}
+            {!isProfileOwner && isTechnicianProfile && canAddReview && (
               <View style={styles.singleLineActionsRow}>
-                {isProfileOwner && (
-                  <Pressable
-                    accessibilityRole="button"
-                    onPress={() => {
-                      setActiveProfileTab("about");
-                      setIsEditingAbout(true);
-                    }}
-                    style={[
-                      styles.singleActionBadge,
-                      { backgroundColor: palette.surface, borderColor: palette.border },
-                    ]}
-                    testID="quick-action-about"
+                <Pressable
+                  accessibilityRole="button"
+                  onPress={() => {
+                    setActiveProfileTab("reviews");
+                  }}
+                  style={[
+                    styles.singleActionBadge,
+                    {
+                      backgroundColor: palette.primarySoft,
+                      borderColor: palette.primarySoft,
+                    },
+                  ]}
+                  testID="quick-action-review"
+                >
+                  <Star size={ICON_SIZE} color={palette.primary} strokeWidth={ICON_STROKE} />
+                  <Text
+                    numberOfLines={1}
+                    style={[styles.actionBadgeText, { color: palette.primary, fontWeight: '700' }]}
                   >
-                    <Pencil size={ICON_SIZE} color={palette.primary} strokeWidth={ICON_STROKE} />
-                    <Text
-                      numberOfLines={1}
-                      style={[styles.actionBadgeText, { color: palette.text }]}
-                    >
-                      {language === "en" ? "Edit About" : "Ubah Bio"}
-                    </Text>
-                  </Pressable>
-                )}
-
-                {isProfileOwner && (
-                  <Pressable
-                    accessibilityRole="button"
-                    onPress={() => {
-                      setActiveProfileTab("posts");
-                    }}
-                    style={[
-                      styles.singleActionBadge,
-                      { backgroundColor: palette.surface, borderColor: palette.border },
-                    ]}
-                    testID="quick-action-post"
-                  >
-                    <PlusSquare size={ICON_SIZE} color={palette.primary} strokeWidth={ICON_STROKE} />
-                    <Text
-                      numberOfLines={1}
-                      style={[styles.actionBadgeText, { color: palette.text }]}
-                    >
-                      {language === "en" ? "New Post" : "Buat Post"}
-                    </Text>
-                  </Pressable>
-                )}
-
-                {isProfileOwner && isTechnicianProfile && (
-                  <Pressable
-                    accessibilityRole="button"
-                    onPress={() => {
-                      setActiveProfileTab("portfolio");
-                      setIsAddingPortfolio(true);
-                    }}
-                    style={[
-                      styles.singleActionBadge,
-                      { backgroundColor: palette.surface, borderColor: palette.border },
-                    ]}
-                    testID="quick-action-portfolio"
-                  >
-                    <Camera size={ICON_SIZE} color={palette.primary} strokeWidth={ICON_STROKE} />
-                    <Text
-                      numberOfLines={1}
-                      style={[styles.actionBadgeText, { color: palette.text }]}
-                    >
-                      {language === "en" ? "Add Work" : "+ Portofolio"}
-                    </Text>
-                  </Pressable>
-                )}
-
-                {!isProfileOwner && isTechnicianProfile && canAddReview && (
-                  <Pressable
-                    accessibilityRole="button"
-                    onPress={() => {
-                      setActiveProfileTab("reviews");
-                    }}
-                    style={[
-                      styles.singleActionBadge,
-                      {
-                        backgroundColor: palette.primarySoft,
-                        borderColor: palette.primarySoft,
-                      },
-                    ]}
-                    testID="quick-action-review"
-                  >
-                    <Star size={ICON_SIZE} color={palette.primary} strokeWidth={ICON_STROKE} />
-                    <Text
-                      numberOfLines={1}
-                      style={[styles.actionBadgeText, { color: palette.primary, fontWeight: '700' }]}
-                    >
-                      {language === "en" ? "Review" : "Ulasan"}
-                    </Text>
-                  </Pressable>
-                )}
+                    {language === "en" ? "Review" : "Ulasan"}
+                  </Text>
+                </Pressable>
               </View>
             )}
 
@@ -1173,8 +1117,7 @@ export default function TechnicianProfileScreen() {
             <View>
               <View style={styles.sectionHeaderRow}>
                 <SectionHeader
-                  eyebrow={t("profile.aboutEyebrow")}
-                  title={t("profile.aboutTitle")}
+                  title={language === "en" ? "About" : "Tentang"}
                   compact
                 />
                 {(isProfileOwner || isAdminUser) && !isEditingAbout && (
@@ -1338,8 +1281,7 @@ export default function TechnicianProfileScreen() {
               )}
 
               <SectionHeader
-                eyebrow={t("profile.areasEyebrow")}
-                title={t("profile.areasTitle")}
+                title={language === "en" ? "Service Areas" : "Area Layanan"}
                 compact
               />
               {technician.serviceAreas.length ? (
@@ -1422,11 +1364,8 @@ export default function TechnicianProfileScreen() {
           {isTechnicianProfile && currentTab === "services" && (
             <View>
               <SectionHeader
-                eyebrow={t("profile.servicesEyebrow")}
-                title={t("profile.servicesTitle")}
-                trailing={t("profile.serviceCount", {
-                  count: technician.services.length,
-                })}
+                title={language === "en" ? "Services" : "Layanan"}
+                compact
               />
               {technician.services.length ? (
                 technician.services.map((service) => {
@@ -1568,11 +1507,7 @@ export default function TechnicianProfileScreen() {
             <View>
               <View style={styles.sectionHeaderRow}>
                 <SectionHeader
-                  eyebrow={t("profile.portfolioEyebrow")}
-                  title={t("profile.portfolioTitle")}
-                  trailing={t("profile.portfolioCount", {
-                    count: technician.portfolio.length,
-                  })}
+                  title={language === "en" ? "Portfolio" : "Portofolio"}
                   compact
                 />
                 {(isProfileOwner || isAdminUser) && !isAddingPortfolio && (
@@ -1902,15 +1837,8 @@ export default function TechnicianProfileScreen() {
             <View>
               <View style={styles.sectionHeaderRow}>
                 <SectionHeader
-                  eyebrow={t("profile.reviewsEyebrow")}
-                  title={t("profile.reviewsTitle")}
-                  trailing={
-                    technician.reviewCount
-                      ? t("profile.reviewCount", {
-                          count: technician.reviewCount,
-                        })
-                      : undefined
-                  }
+                  title={language === "en" ? "Reviews" : "Ulasan"}
+                  compact
                 />
               </View>
 
@@ -2058,12 +1986,6 @@ export default function TechnicianProfileScreen() {
                       ? "Customer feedback will appear here after completed jobs."
                       : "Ulasan pelanggan akan tampil setelah pekerjaan selesai."
                   }
-                  actionLabel={language === "en" ? "+ Write the First Review" : "+ Beri Ulasan Pertama"}
-                  onAction={() => {
-                    setDraftReviewRating(5);
-                    setDraftReviewComment('');
-                    setIsAddingReview(true);
-                  }}
                 />
               )}
 
@@ -2492,11 +2414,11 @@ const styles = StyleSheet.create({
     marginHorizontal: 0,
   },
   profileHero: { borderRadius: 0, width: "100%" },
-  coverContainer: { height: 170, position: "relative", width: "100%" },
-  coverImage: { height: 170, width: "100%" },
+  coverContainer: { height: 230, position: "relative", width: "100%" },
+  coverImage: { height: 230, width: "100%" },
   coverFallback: {
     backgroundColor: "#064E3B",
-    height: 170,
+    height: 230,
     overflow: "hidden",
     width: "100%",
   },
@@ -2521,8 +2443,9 @@ const styles = StyleSheet.create({
   },
   coverIconBtn: {
     alignItems: "center",
-    backgroundColor: "transparent",
-    borderWidth: 0,
+    backgroundColor: "rgba(255,255,255,0.92)",
+    borderRadius: 20,
+    borderWidth: 1,
     height: 40,
     justifyContent: "center",
     width: 40,
@@ -2532,11 +2455,11 @@ const styles = StyleSheet.create({
     minHeight: 36,
   },
   avatarWrapper: {
-    marginTop: -40,
-    marginLeft: 16,
-    borderWidth: 3,
+    alignSelf: "center",
     borderColor: "#FFFFFF",
-    borderRadius: 40,
+    borderRadius: 48,
+    borderWidth: 4,
+    marginTop: -52,
   },
   profileHeroInner: {
     alignSelf: "center",
@@ -2548,8 +2471,8 @@ const styles = StyleSheet.create({
   },
   profileTopRow: {
     alignItems: "center",
-    flexDirection: "row",
-    gap: spacing.lg,
+    flexDirection: "column",
+    gap: spacing.xs,
   },
   profileTabBarWrap: {
     borderBottomWidth: 1,
@@ -2584,18 +2507,26 @@ const styles = StyleSheet.create({
     position: "absolute",
     right: "18%",
   },
-  profileIdentity: { flex: 1, minWidth: 0 },
+  profileIdentity: {
+    alignItems: "center",
+    alignSelf: "stretch",
+    minWidth: 0,
+    width: "100%",
+  },
   nameLine: {
     alignItems: "center",
     flexDirection: "row",
     flexWrap: "wrap",
     gap: 4,
+    justifyContent: "center",
+    width: "100%",
   },
   profileName: {
     color: colors.ink,
     fontSize: font.section,
     fontWeight: "700",
     letterSpacing: -0.4,
+    textAlign: "center",
   },
   verifiedTag: {
     backgroundColor: "transparent",
@@ -2973,11 +2904,11 @@ const styles = StyleSheet.create({
 
   singleLineBadgesRow: {
     flexDirection: 'row',
-    alignItems: 'center',
+    alignItems: 'stretch',
     justifyContent: 'space-between',
     gap: 8,
-    marginTop: 22,
-    marginBottom: 6,
+    marginTop: 20,
+    marginBottom: 8,
     width: '100%',
   },
   singleBadgeItem: {
@@ -2985,33 +2916,34 @@ const styles = StyleSheet.create({
     minWidth: 0,
     borderRadius: 5,
     borderWidth: 1,
-    paddingVertical: 10,
-    paddingHorizontal: 4,
+    paddingVertical: 12,
+    paddingHorizontal: 6,
     alignItems: 'center',
     justifyContent: 'center',
   },
   badgeTopRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 3,
+    gap: 4,
   },
   badgeGoldStar: {
     color: '#F59E0B',
-    fontSize: font.label,
+    fontSize: font.subtitle,
     fontWeight: '800',
   },
   badgeValueText: {
-    fontSize: font.label,
-    fontWeight: '700',
+    fontSize: font.heading,
+    fontWeight: '800',
+    letterSpacing: -0.2,
   },
   badgeValueArea: {
-    fontSize: font.caption,
+    fontSize: font.label,
     fontWeight: '700',
   },
   badgeLabelText: {
     fontSize: font.caption,
-    fontWeight: '500',
-    marginTop: 2,
+    fontWeight: '600',
+    marginTop: 3,
     textTransform: 'lowercase',
   },
   sleekBackBtn: {

@@ -14,7 +14,7 @@ import { useLanguage } from "../i18n/locale";
 import { useUserAvatar } from "../hooks/useUserAvatar";
 import { colors, radii, spacing } from "../theme/tokens";
 import { Avatar } from "./Avatar";
-import { Sidebar } from "./Sidebar";
+import { Sidebar } from "./sidebar";
 import { ICON_SIZE, ICON_STROKE } from '../theme/icons';
 import { font } from '../theme/typography';
 

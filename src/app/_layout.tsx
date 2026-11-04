@@ -74,6 +74,7 @@ function ThemedStack() {
         }}
       >
         <Stack.Screen name="index" options={{ animation: stackAnim }} />
+        <Stack.Screen name="search" options={{ animation: stackAnim }} />
         <Stack.Screen name="category/[slug]" options={{ animation: stackAnim }} />
         <Stack.Screen name="technician/[id]" options={{ animation: stackAnim }} />
         <Stack.Screen name="booking/[id]" options={{ animation: stackAnim }} />
