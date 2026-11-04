@@ -3,7 +3,7 @@ import { Pressable, StyleSheet, Text, View } from "react-native";
 
 import { useAppearance } from "../../context/AppearanceContext";
 import { useLanguage } from "../../i18n/locale";
-import { colors, radii, spacing } from "../../theme/tokens";
+import { radii, spacing } from "../../theme/tokens";
 import type { UserPreferences } from "../../types/marketplace";
 import { SettingItem } from "../components/SettingItem";
 import { SettingSection } from "../components/SettingSection";
@@ -21,7 +21,7 @@ export function SettingAppearance({
   onUpdateAccessibility,
   feedback,
 }: SettingAppearanceProps) {
-  const { language, t } = useLanguage();
+  const { language } = useLanguage();
   const {
     themeMode,
     largeText,
@@ -48,22 +48,9 @@ export function SettingAppearance({
   ];
 
   return (
-    <SettingSection
-      eyebrow={
-        language === "en"
-          ? "APPEARANCE & ACCESSIBILITY"
-          : "TAMPILAN & AKSESIBILITAS"
-      }
-      title={t("settings.AppearanceTitle")}
-      description={
-        language === "en"
-          ? "Customize surface contrast, text sizing, and motion preferences."
-          : "Sesuaikan kontras tampilan, ukuran teks, dan preferensi animasi."
-      }
-      testID="setting-section-appearance"
-    >
-      <Text style={[styles.subLabel, { color: palette.text, fontSize: scaleFont(font.body) }]}>
-        {language === "en" ? "Color theme" : "Tema warna aplikasi"}
+    <SettingSection testID="setting-section-appearance">
+      <Text style={[styles.subLabel, { color: palette.textMuted, fontSize: scaleFont(font.caption) }]}>
+        {(language === "en" ? "COLOR THEME" : "TEMA WARNA")}
       </Text>
       <View style={styles.chipRow}>
         {modes.map((item) => {
@@ -87,7 +74,7 @@ export function SettingAppearance({
                 styles.chip,
                 {
                   backgroundColor: palette.surfaceElevated,
-                  borderColor: palette.border,
+                  borderColor: "transparent",
                 },
                 selected && {
                   backgroundColor: palette.primary,
@@ -167,10 +154,10 @@ export function SettingAppearance({
 
 const styles = StyleSheet.create({
   subLabel: {
-    color: colors.ink,
-    fontSize: font.body,
     fontWeight: "700",
+    letterSpacing: 0.8,
     marginBottom: spacing.sm,
+    textTransform: "uppercase",
   },
   chipRow: {
     flexDirection: "row",
@@ -179,26 +166,19 @@ const styles = StyleSheet.create({
     marginBottom: spacing.md,
   },
   chip: {
-    backgroundColor: colors.paper,
-    borderColor: colors.line,
-    borderRadius: radii.pill,
+    borderRadius: radii.sm,
     borderWidth: 1,
     paddingHorizontal: 14,
     paddingVertical: 9,
   },
-  chipSelected: {
-    backgroundColor: colors.greenDark,
-    borderColor: colors.greenDark,
-  },
   chipText: {
-    color: colors.ink,
     fontWeight: "700",
   },
   chipTextSelected: {
     color: "#FFFFFF",
   },
   feedbackText: {
-    color: colors.greenDark,
+    color: "#16A34A",
     fontSize: font.body,
     fontWeight: "700",
     marginTop: spacing.sm,

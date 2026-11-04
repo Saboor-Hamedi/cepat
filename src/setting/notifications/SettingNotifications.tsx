@@ -1,6 +1,7 @@
-import { StyleSheet, Text } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 import { font } from '../../theme/typography';
 
+import { useAppearance } from '../../context/AppearanceContext';
 import { useLanguage } from '../../i18n/locale';
 import { colors, spacing } from '../../theme/tokens';
 import type { UserPreferences } from '../../types/marketplace';
@@ -18,7 +19,8 @@ export function SettingNotifications({
   onUpdateNotifications,
   feedback,
 }: SettingNotificationsProps) {
-  const { language, t } = useLanguage();
+  const { language } = useLanguage();
+  const { palette } = useAppearance();
 
   const items: {
     key: keyof UserPreferences['notifications'];
@@ -52,38 +54,42 @@ export function SettingNotifications({
   ];
 
   return (
-    <SettingSection
-      eyebrow={language === 'en' ? 'NOTIFICATIONS' : 'NOTIFIKASI'}
-      title={t('settings.notificationsTitle')}
-      description={
-        language === 'en'
-          ? 'Control how Cepat notifies you about bookings and messages.'
-          : 'Atur cara Cepat memberi tahu kamu tentang pesanan dan pesan.'
-      }
-      testID="setting-section-notifications"
-    >
-      {items.map((item) => (
-        <SettingItem
-          key={item.key}
-          accessibilityRole="switch"
-          active={preferences.notifications[item.key]}
-          description={item.description}
-          label={item.label}
-          onPress={() =>
-            onUpdateNotifications({
-              ...preferences.notifications,
-              [item.key]: !preferences.notifications[item.key],
-            })
-          }
-          testID={`pref-notif-${item.key}`}
-        />
-      ))}
+    <SettingSection testID="setting-section-notifications">
+      <View
+        style={[
+          styles.group,
+          { backgroundColor: palette.surface, borderColor: palette.border },
+        ]}
+      >
+        {items.map((item, index) => (
+          <SettingItem
+            key={item.key}
+            accessibilityRole="switch"
+            active={preferences.notifications[item.key]}
+            description={item.description}
+            label={item.label}
+            onPress={() =>
+              onUpdateNotifications({
+                ...preferences.notifications,
+                [item.key]: !preferences.notifications[item.key],
+              })
+            }
+            showDivider={index < items.length - 1}
+            testID={`pref-notif-${item.key}`}
+          />
+        ))}
+      </View>
       {feedback ? <Text style={styles.feedback}>{feedback}</Text> : null}
     </SettingSection>
   );
 }
 
 const styles = StyleSheet.create({
+  group: {
+    borderRadius: 5,
+    borderWidth: StyleSheet.hairlineWidth,
+    overflow: 'hidden',
+  },
   feedback: {
     color: colors.greenDark,
     fontSize: font.body,

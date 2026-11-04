@@ -158,19 +158,6 @@ export function createChatHeaderStyles(palette: {
       flexDirection: 'row',
       gap: 5,
     },
-    verifiedPill: {
-      alignItems: 'center',
-      borderRadius: 999,
-      flexDirection: 'row',
-      gap: 3,
-      paddingHorizontal: 8,
-      paddingVertical: 2,
-    },
-    verifiedPillText: {
-      fontSize: font.caption,
-      fontWeight: '700',
-      letterSpacing: 0.2,
-    },
   });
 }
 

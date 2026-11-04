@@ -6,6 +6,40 @@ import { ICON_SIZE, ICON_STROKE } from '../../theme/icons';
 import { radii, spacing } from '../../theme/tokens';
 import { font } from '../../theme/typography';
 
+function LeadingIcon({ mutedColor }: { mutedColor: string }) {
+  return (
+    <View style={styles.iconBox}>
+      <View style={[styles.iconCircle, { borderColor: mutedColor }]} />
+      <View style={[styles.iconHandle, { backgroundColor: mutedColor }]} />
+    </View>
+  );
+}
+
+export interface SearchFieldTriggerProps {
+  placeholder: string;
+}
+
+export function SearchFieldTrigger({ placeholder }: SearchFieldTriggerProps) {
+  const { palette } = useAppearance();
+
+  return (
+    <View
+      style={[
+        styles.shell,
+        { backgroundColor: palette.inputBg, borderColor: palette.border },
+      ]}
+    >
+      <LeadingIcon mutedColor={palette.textMuted} />
+      <Text
+        numberOfLines={1}
+        style={[styles.text, { color: palette.textMuted }]}
+      >
+        {placeholder}
+      </Text>
+    </View>
+  );
+}
+
 export interface SearchFieldProps {
   placeholder: string;
   accessibilityLabel?: string;
@@ -36,12 +70,6 @@ export function SearchField({
     { backgroundColor: palette.inputBg, borderColor: palette.border },
   ];
 
-  const leadingIcon = (
-    <View style={styles.iconBox}>
-      <View style={[styles.iconCircle, { borderColor: palette.textMuted }]} />
-      <View style={[styles.iconHandle, { backgroundColor: palette.textMuted }]} />
-    </View>
-  );
 
   const clearButton =
     !onPress && value && value.length > 0 && onClear ? (
@@ -65,7 +93,7 @@ export function SearchField({
         style={shell}
         testID={testID}
       >
-        {leadingIcon}
+        <LeadingIcon mutedColor={palette.textMuted} />
         <Text
           numberOfLines={1}
           style={[styles.text, { color: palette.textMuted }]}
@@ -78,7 +106,7 @@ export function SearchField({
 
   return (
     <View style={shell}>
-      {leadingIcon}
+      <LeadingIcon mutedColor={palette.textMuted} />
       <TextInput
         accessibilityLabel={accessibilityLabel}
         autoCapitalize="none"
@@ -100,7 +128,7 @@ export function SearchField({
 const styles = StyleSheet.create({
   shell: {
     alignItems: 'center',
-    borderRadius: radii.md,
+    borderRadius: 12,
     borderWidth: 1,
     flex: 1,
     flexDirection: 'row',

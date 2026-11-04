@@ -55,18 +55,7 @@ export function SettingAccount({
   // Logged-out view
   if (!user) {
     return (
-      <SettingSection
-        eyebrow={language === "en" ? "ACCOUNT" : "AKUN"}
-        title={
-          language === "en" ? "Sign In or Register" : "Masuk atau Buat Akun"
-        }
-        description={
-          language === "en"
-            ? "Sign in to access your bookings, saved addresses, and profile settings."
-            : "Masuk untuk mengakses pesanan, alamat tersimpan, dan pengaturan akun Anda."
-        }
-        testID="setting-section-account"
-      >
+      <SettingSection testID="setting-section-account">
         <View
           style={[
             styles.guestBox,
@@ -119,18 +108,8 @@ export function SettingAccount({
       : undefined;
 
   return (
-    <SettingSection
-      eyebrow={language === "en" ? "ACCOUNT" : "AKUN"}
-      title={language === "en" ? "Account & Profile" : "Akun & Profil"}
-      description={
-        language === "en"
-          ? "Manage your active session, service availability, and account status."
-          : "Kelola sesi aktif, ketersediaan layanan, dan status akun Anda."
-      }
-      testID="setting-section-account"
-    >
+    <SettingSection testID="setting-section-account">
       <View testID="account-session-card" style={styles.container}>
-        {/* Clean Facebook-style Profile Header without heavy box/background */}
         <View style={styles.cleanProfileRow}>
           <Avatar uri={avatarUrl} name={userName} size={56} />
           <View style={styles.profileInfo}>
@@ -185,7 +164,6 @@ export function SettingAccount({
 
         <View style={[styles.cleanDivider, { backgroundColor: palette.border }]} />
 
-        {/* Clean Service Availability Toggle without card background */}
         <View
           style={styles.cleanToggleRow}
           testID="technician-availability-setting"
@@ -225,7 +203,6 @@ export function SettingAccount({
 
         <View style={[styles.cleanDivider, { backgroundColor: palette.border }]} />
 
-        {/* Clean Sign Out Row */}
         <Pressable
           accessibilityRole="button"
           onPress={() => void signOut()}
@@ -310,7 +287,7 @@ const styles = StyleSheet.create({
   },
   roleBadge: {
     alignItems: "center",
-    borderRadius: radii.pill,
+    borderRadius: radii.sm,
     flexDirection: "row",
     gap: 4,
     paddingHorizontal: 8,
@@ -332,7 +309,7 @@ const styles = StyleSheet.create({
     marginTop: 2,
   },
   cleanDivider: {
-    height: 1,
+    height: StyleSheet.hairlineWidth,
     marginVertical: spacing.xs,
   },
   cleanSignOutBtn: {

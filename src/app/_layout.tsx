@@ -49,7 +49,7 @@ function disableFloatingDevGearButton() {
 
 function ThemedStack() {
   const { isDark, palette, reduceMotion, isHydrated } = useAppearance();
-  const stackAnim = reduceMotion ? 'none' : 'fade';
+  const stackAnim = reduceMotion ? 'none' : 'slide_from_right';
 
   useEffect(() => {
     disableFloatingDevGearButton();
@@ -75,6 +75,10 @@ function ThemedStack() {
       >
         <Stack.Screen name="index" options={{ animation: stackAnim }} />
         <Stack.Screen name="search" options={{ animation: stackAnim }} />
+        <Stack.Screen
+          name="compose"
+          options={{ animation: reduceMotion ? 'none' : 'slide_from_bottom' }}
+        />
         <Stack.Screen name="category/[slug]" options={{ animation: stackAnim }} />
         <Stack.Screen name="technician/[id]" options={{ animation: stackAnim }} />
         <Stack.Screen name="booking/[id]" options={{ animation: stackAnim }} />

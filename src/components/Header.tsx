@@ -1,7 +1,7 @@
 import { router } from "expo-router";
 import { useEffect, useState } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
-import { User } from "lucide-react-native";
+import { Plus, User } from "lucide-react-native";
 
 import { useAuth } from "../auth/AuthProvider";
 import { useAppearance } from "../context/AppearanceContext";
@@ -13,9 +13,8 @@ import {
 import { useLanguage } from "../i18n/locale";
 import { useUserAvatar } from "../hooks/useUserAvatar";
 import { colors, radii, spacing } from "../theme/tokens";
-import { Avatar } from "./Avatar";
 import { Sidebar } from "./sidebar";
-import { ICON_SIZE, ICON_STROKE } from '../theme/icons';
+import { ICON_STROKE } from '../theme/icons';
 import { font } from '../theme/typography';
 
 export type NavigationTabKey =
@@ -88,25 +87,6 @@ function NavTabIcon({
     );
   }
 
-  if (tabKey === "workspace") {
-    return (
-      <View style={styles.iconCanvas}>
-        <View style={[styles.briefcaseHandle, { borderColor: strokeColor }]} />
-        <View
-          style={[
-            styles.briefcaseBody,
-            { borderColor: strokeColor, backgroundColor: fillColor },
-          ]}
-        >
-          <View
-            style={[styles.briefcaseBelt, { backgroundColor: strokeColor }]}
-          />
-          <View style={[styles.briefcaseLatch, { borderColor: strokeColor }]} />
-        </View>
-      </View>
-    );
-  }
-
   return (
     <View style={styles.iconCanvas}>
       <View style={styles.sliderTrackRow}>
@@ -159,7 +139,6 @@ export function Header({ activeTab }: { activeTab: NavigationTabKey }) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [unreadNotifCount, setUnreadNotifCount] = useState(0);
 
-  const isAuthenticated = Boolean(user);
   const displayName =
     (typeof user?.user_metadata?.display_name === "string" &&
       user.user_metadata.display_name.trim()) ||
@@ -207,9 +186,9 @@ export function Header({ activeTab }: { activeTab: NavigationTabKey }) {
     };
   }, [user?.id]);
 
-  const allTabs: {
+  const tabs: {
     key: NavigationTabKey;
-    href: "/" | "/bookings" | "/notifications" | "/technician-dashboard" | "/account";
+    href: "/" | "/bookings" | "/notifications";
     testID: string;
     label: string;
     badgeCount?: number;
@@ -233,13 +212,78 @@ export function Header({ activeTab }: { activeTab: NavigationTabKey }) {
       label: language === "en" ? "Notification" : "Notifikasi",
       badgeCount: unreadNotifCount,
     },
-    {
-      key: "workspace",
-      href: "/technician-dashboard",
-      testID: "nav-workspace",
-      label: language === "en" ? "Task" : "Tugas",
-    },
   ];
+
+  const renderTab = (item: (typeof tabs)[number]) => {
+    const active = activeTab === item.key;
+    const strokeColor = active
+      ? isDark
+        ? "#4EBA97"
+        : colors.greenDark
+      : palette.textMuted;
+    const fillColor = active
+      ? isDark
+        ? "rgba(52, 113, 94, 0.35)"
+        : colors.greenSoft
+      : "transparent";
+
+    return (
+      <Pressable
+        key={item.key}
+        accessibilityRole="tab"
+        accessibilityLabel={item.label}
+        accessibilityState={{ selected: active }}
+        onPress={() => {
+          if (!active) router.navigate(item.href);
+        }}
+        style={styles.navTab}
+        testID={item.testID}
+      >
+        <View style={styles.iconWithBadgeWrap}>
+          <NavTabIcon
+            tabKey={item.key}
+            active={active}
+            strokeColor={strokeColor}
+            fillColor={fillColor}
+          />
+          {Boolean(item.badgeCount && item.badgeCount > 0) && (
+            <View style={styles.badgePill} testID={`${item.testID}-badge`}>
+              <Text style={styles.badgeText}>
+                {item.badgeCount! > 99 ? "99+" : item.badgeCount}
+              </Text>
+            </View>
+          )}
+        </View>
+        <Text
+          numberOfLines={1}
+          style={[
+            styles.tabLabel,
+            {
+              color: active
+                ? isDark
+                  ? "#4EBA97"
+                  : colors.greenDark
+                : palette.textMuted,
+            },
+            active && styles.tabLabelActive,
+          ]}
+        >
+          {item.label}
+        </Text>
+        <View
+          style={[
+            styles.activeBar,
+            active && [
+              styles.activeBarVisible,
+              {
+                backgroundColor: isDark ? "#4EBA97" : colors.greenDark,
+              },
+            ],
+          ]}
+        />
+      </Pressable>
+    );
+  };
 
   return (
     <View
@@ -252,101 +296,56 @@ export function Header({ activeTab }: { activeTab: NavigationTabKey }) {
       ]}
       testID="bottom-navigation-bar"
     >
-      {/* Hidden semantic tag to preserve suite compatibility without displaying redundant title */}
       <Text style={styles.srOnly}>cepat</Text>
 
       <View style={styles.singleBar}>
-        {/* Profile icon on the left: Opens Sidebar */}
+        <View style={[styles.slotGroup, styles.slotGroupLeft]}>
+          {renderTab(tabs[0])}
+          {renderTab(tabs[1])}
+        </View>
+
         <Pressable
+          accessibilityLabel={language === "en" ? "New post" : "Posting baru"}
           accessibilityRole="button"
-          accessibilityLabel="Open profile sidebar"
-          onPress={() => setSidebarOpen(true)}
-          style={styles.avatarEntryBtn}
-          testID="account-entry"
+          onPress={() => router.navigate("/compose" as never)}
+          style={({ pressed }) => [
+            styles.fab,
+            {
+              backgroundColor: palette.primary,
+              borderColor: palette.surface,
+              opacity: pressed ? 0.88 : 1,
+              shadowColor: palette.primary,
+            },
+          ]}
+          testID="nav-compose-fab"
         >
-          <View style={styles.avatarIconWrap}>
-            <User size={ICON_SIZE} color={palette.textMuted} strokeWidth={ICON_STROKE} />
-          </View>
-          <Text
-            numberOfLines={1}
-            style={[styles.tabLabel, { color: palette.textMuted }]}
-          >
-            Profile
-          </Text>
+          <Plus
+            color="#FFFFFF"
+            size={30}
+            strokeWidth={2.6}
+          />
         </Pressable>
 
-        {/* Center / Right navigation tabs */}
-        <View style={styles.navTabsRow}>
-          {allTabs.map((item) => {
-            const active = activeTab === item.key;
-            const strokeColor = active
-              ? isDark
-                ? "#4EBA97"
-                : colors.greenDark
-              : palette.textMuted;
-            const fillColor = active
-              ? isDark
-                ? "rgba(52, 113, 94, 0.35)"
-                : colors.greenSoft
-              : "transparent";
-
-            return (
-              <Pressable
-                key={item.key}
-                accessibilityRole="tab"
-                accessibilityLabel={item.label}
-                accessibilityState={{ selected: active }}
-                onPress={() => {
-                  if (!active) router.navigate(item.href);
-                }}
-                style={styles.navTab}
-                testID={item.testID}
-              >
-                <View style={styles.iconWithBadgeWrap}>
-                  <NavTabIcon
-                    tabKey={item.key}
-                    active={active}
-                    strokeColor={strokeColor}
-                    fillColor={fillColor}
-                  />
-                  {Boolean(item.badgeCount && item.badgeCount > 0) && (
-                    <View style={styles.badgePill} testID={`${item.testID}-badge`}>
-                      <Text style={styles.badgeText}>
-                        {item.badgeCount! > 99 ? "99+" : item.badgeCount}
-                      </Text>
-                    </View>
-                  )}
-                </View>
-                <Text
-                  numberOfLines={1}
-                  style={[
-                    styles.tabLabel,
-                    {
-                      color: active
-                        ? isDark
-                          ? "#4EBA97"
-                          : colors.greenDark
-                        : palette.textMuted,
-                    },
-                    active && styles.tabLabelActive,
-                  ]}
-                >
-                  {item.label}
-                </Text>
-                <View
-                  style={[
-                    styles.activeBar,
-                    active && [
-                      styles.activeBarVisible,
-                      {
-                        backgroundColor: isDark ? "#4EBA97" : colors.greenDark,
-                      },
-                    ],
-                  ]}
-                />
-              </Pressable>
-            );
-          })}
+        <View style={[styles.slotGroup, styles.slotGroupRight]}>
+          {renderTab(tabs[2])}
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Open profile sidebar"
+            onPress={() => setSidebarOpen(true)}
+            style={styles.navTab}
+            testID="account-entry"
+          >
+            <View style={styles.iconWithBadgeWrap}>
+              <User size={22} color={palette.textMuted} strokeWidth={ICON_STROKE} />
+            </View>
+            <Text
+              numberOfLines={1}
+              style={[styles.tabLabel, { color: palette.textMuted }]}
+            >
+              Profile
+            </Text>
+            <View style={styles.activeBar} />
+          </Pressable>
         </View>
       </View>
 
@@ -364,9 +363,11 @@ export const AppNavigationBar = Header;
 const styles = StyleSheet.create({
   navBarWrap: {
     borderTopWidth: 1,
-    height: 64,
+    height: 56,
     justifyContent: "center",
+    overflow: "visible",
     paddingHorizontal: spacing.md,
+    zIndex: 30,
   },
   srOnly: {
     height: 0,
@@ -378,37 +379,45 @@ const styles = StyleSheet.create({
     alignItems: "center",
     alignSelf: "center",
     flexDirection: "row",
-    height: 60,
+    height: 56,
     maxWidth: 820,
+    position: "relative",
     width: "100%",
   },
-  avatarEntryBtn: {
-    alignItems: "center",
-    height: 60,
-    justifyContent: "center",
-    marginRight: spacing.xs,
-    minWidth: 44,
-    paddingBottom: 4,
-    paddingTop: 4,
-  },
-  avatarIconWrap: {
-    alignItems: "center",
-    height: 24,
-    justifyContent: "center",
-    marginBottom: 2,
-    width: 24,
-  },
-  navTabsRow: {
+  slotGroup: {
     alignItems: "center",
     flex: 1,
     flexDirection: "row",
+    height: 56,
+    justifyContent: "space-evenly",
+  },
+  slotGroupLeft: {
+    paddingRight: spacing.md + 6,
+  },
+  slotGroupRight: {
+    paddingLeft: spacing.md + 6,
+  },
+  fab: {
+    alignItems: "center",
+    borderRadius: 30,
+    borderWidth: 4,
+    elevation: 12,
     height: 60,
-    justifyContent: "space-around",
+    justifyContent: "center",
+    left: "50%",
+    marginLeft: -30,
+    position: "absolute",
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.4,
+    shadowRadius: 14,
+    top: -30,
+    width: 60,
+    zIndex: 40,
   },
   navTab: {
     alignItems: "center",
     flex: 1,
-    height: 60,
+    height: 56,
     justifyContent: "center",
     paddingBottom: 4,
     paddingTop: 4,
@@ -416,7 +425,7 @@ const styles = StyleSheet.create({
   },
   iconWithBadgeWrap: {
     alignItems: "center",
-    height: 24,
+    height: 28,
     justifyContent: "center",
     position: "relative",
     width: 28,
@@ -454,9 +463,9 @@ const styles = StyleSheet.create({
     borderBottomLeftRadius: 3,
     borderBottomRightRadius: 3,
     height: 3,
-    left: "18%",
+    left: "22%",
     position: "absolute",
-    right: "18%",
+    right: "22%",
     top: 0,
   },
   activeBarVisible: {
@@ -464,10 +473,10 @@ const styles = StyleSheet.create({
   },
   iconCanvas: {
     alignItems: "center",
-    height: 24,
+    height: 26,
     justifyContent: "center",
     position: "relative",
-    width: 24,
+    width: 26,
   },
   homeRoof: {
     borderLeftWidth: 2,
@@ -504,7 +513,7 @@ const styles = StyleSheet.create({
     width: 2,
   },
   calBody: {
-    borderRadius: 3,
+    borderRadius: 4,
     borderWidth: 2,
     height: 14,
     paddingHorizontal: 2,
@@ -526,54 +535,24 @@ const styles = StyleSheet.create({
     width: "60%",
   },
   bellBody: {
-    borderTopLeftRadius: 7,
-    borderTopRightRadius: 7,
+    borderTopLeftRadius: 8,
+    borderTopRightRadius: 8,
     borderWidth: 1.8,
     borderBottomWidth: 0,
-    height: 11,
-    width: 12,
+    height: 12,
+    width: 13,
   },
   bellBase: {
     borderRadius: 1,
     height: 2,
     marginTop: 0,
-    width: 16,
+    width: 17,
   },
   bellClapper: {
     borderRadius: 1,
     height: 2,
     marginTop: 1,
     width: 4,
-  },
-  briefcaseHandle: {
-    borderTopLeftRadius: 2,
-    borderTopRightRadius: 2,
-    borderWidth: 1.5,
-    borderBottomWidth: 0,
-    height: 4,
-    marginBottom: -1,
-    width: 7,
-  },
-  briefcaseBody: {
-    alignItems: "center",
-    borderRadius: 3,
-    borderWidth: 1.8,
-    height: 13,
-    justifyContent: "center",
-    position: "relative",
-    width: 17,
-  },
-  briefcaseBelt: {
-    height: 1.5,
-    width: "100%",
-  },
-  briefcaseLatch: {
-    backgroundColor: "#FFFFFF",
-    borderRadius: 1,
-    borderWidth: 1,
-    height: 3,
-    position: "absolute",
-    width: 3,
   },
   sliderTrackRow: {
     alignItems: "center",

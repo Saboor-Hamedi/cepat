@@ -12,7 +12,7 @@ import {
   User,
 } from "lucide-react-native";
 import { useEffect, useState } from "react";
-import { ScrollView, StyleSheet, View } from "react-native";
+import { ScrollView, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { useAuth } from "../auth/AuthProvider";
@@ -36,6 +36,7 @@ import {
 import { setInAppPushEnabled } from "../data/notifications";
 import { useLanguage } from "../i18n/locale";
 import { colors, spacing } from "../theme/tokens";
+import { font } from "../theme/typography";
 import type {
   SavedAddress,
   Technician,
@@ -359,12 +360,24 @@ export function SettingContainer() {
             onPressBack={handleBackPress}
           />
 
-          {/* FIRST PAGE: Clean, improved Navlinks list with 5px gap */}
           {visibleSection === null && (
-            <View style={styles.navLinksWrapper}>
-              <View style={styles.navLinksList} testID="settings-navlinks-list">
-                {/* 1. Account */}
+            <View testID="settings-navlinks-list">
+
+              {/* SECTION 1 - ACCOUNT */}
+              <Text style={[styles.sectionLabel, { color: palette.textMuted }]}>
+                {language === "en" ? "ACCOUNT" : "AKUN"}
+              </Text>
+              <View
+                style={[
+                  styles.sectionCard,
+                  {
+                    backgroundColor: palette.surfaceElevated,
+                    borderColor: palette.border,
+                  },
+                ]}
+              >
                 <SettingNavLink
+                  showDivider={isAuthenticated}
                   icon={User}
                   title={language === "en" ? "Account" : "Akun"}
                   subtitle={
@@ -377,10 +390,9 @@ export function SettingContainer() {
                   onPress={() => setSelectedSection("account")}
                   testID="setting-tab-account"
                 />
-
-                {/* 2. Address (Auth Only) */}
                 {isAuthenticated && (
                   <SettingNavLink
+                    showDivider
                     icon={MapPin}
                     title={language === "en" ? "Address" : "Alamat"}
                     subtitle={
@@ -396,10 +408,9 @@ export function SettingContainer() {
                     testID="setting-tab-address"
                   />
                 )}
-
-                {/* 3. Security (Auth Only) */}
                 {isAuthenticated && (
                   <SettingNavLink
+                    showDivider
                     icon={ShieldCheck}
                     title={language === "en" ? "Security" : "Keamanan"}
                     subtitle={
@@ -411,8 +422,6 @@ export function SettingContainer() {
                     testID="setting-tab-security"
                   />
                 )}
-
-                {/* 4. Password (Auth Only) */}
                 {isAuthenticated && (
                   <SettingNavLink
                     icon={Lock}
@@ -426,26 +435,34 @@ export function SettingContainer() {
                     testID="setting-tab-password"
                   />
                 )}
+              </View>
 
-                {/* 5. Language */}
+              {/* SECTION 2 - PREFERENCES */}
+              <Text style={[styles.sectionLabel, { color: palette.textMuted }]}>
+                {language === "en" ? "PREFERENCES" : "PREFERENSI"}
+              </Text>
+              <View
+                style={[
+                  styles.sectionCard,
+                  {
+                    backgroundColor: palette.surfaceElevated,
+                    borderColor: palette.border,
+                  },
+                ]}
+              >
                 <SettingNavLink
+                  showDivider={isAuthenticated}
                   icon={Globe}
                   title={language === "en" ? "Language" : "Bahasa"}
-                  subtitle={
-                    language === "en"
-                      ? "Choose interface language"
-                      : "Pilih bahasa tampilan"
-                  }
                   valueText={
                     language === "en" ? "English" : "Bahasa Indonesia"
                   }
                   onPress={() => setSelectedSection("language")}
                   testID="setting-tab-language"
                 />
-
-                {/* 6. Notifications (Auth Only) */}
                 {isAuthenticated && (
                   <SettingNavLink
+                    showDivider
                     icon={Bell}
                     title={language === "en" ? "Notifications" : "Notifikasi"}
                     subtitle={
@@ -457,23 +474,30 @@ export function SettingContainer() {
                     testID="setting-tab-notifications"
                   />
                 )}
-
-                {/* 7. Appearance */}
                 <SettingNavLink
                   icon={Palette}
                   title={language === "en" ? "Appearance" : "Tampilan"}
-                  subtitle={
-                    language === "en"
-                      ? "Color theme & accessibility"
-                      : "Tema warna & aksesibilitas"
-                  }
                   valueText={currentThemeLabel}
                   onPress={() => setSelectedSection("appearance")}
                   testID="setting-tab-appearance"
                 />
+              </View>
 
-                {/* 8. Term Policy */}
+              {/* SECTION 3 - ABOUT & LEGAL */}
+              <Text style={[styles.sectionLabel, { color: palette.textMuted }]}>
+                {language === "en" ? "ABOUT & LEGAL" : "TENTANG & LEGAL"}
+              </Text>
+              <View
+                style={[
+                  styles.sectionCard,
+                  {
+                    backgroundColor: palette.surfaceElevated,
+                    borderColor: palette.border,
+                  },
+                ]}
+              >
                 <SettingNavLink
+                  showDivider
                   icon={FileText}
                   title={language === "en" ? "Term Policy" : "Kebijakan & Syarat"}
                   subtitle={
@@ -484,37 +508,47 @@ export function SettingContainer() {
                   onPress={() => setSelectedSection("policy")}
                   testID="setting-tab-policy"
                 />
-
-                {/* 9. Current Version - displays version directly on the nav link */}
                 <SettingNavLink
                   icon={Info}
                   title={language === "en" ? "Current Version" : "Versi Saat Ini"}
-                  subtitle={
-                    language === "en"
-                      ? "App release & build status"
-                      : "Rilis aplikasi & status build"
-                  }
                   valueText={`v${APP_VERSION}`}
                   onPress={() => setSelectedSection("version")}
                   testID="setting-tab-version"
                 />
-
-                {/* 10. Delete Account (Auth Only) */}
-                {isAuthenticated && (
-                  <SettingNavLink
-                    icon={Trash2}
-                    title={language === "en" ? "Delete Account" : "Hapus Akun"}
-                    subtitle={
-                      language === "en"
-                        ? "Permanently erase account & all data"
-                        : "Hapus akun & seluruh data secara permanen"
-                    }
-                    isDanger
-                    onPress={() => setSelectedSection("delete-account")}
-                    testID="setting-tab-delete-account"
-                  />
-                )}
               </View>
+
+              {/* SECTION 4 - ACCOUNT ACTIONS */}
+              {isAuthenticated && (
+                <>
+                  <Text style={[styles.sectionLabel, { color: palette.textMuted }]}>
+                    {language === "en" ? "ACCOUNT ACTIONS" : "AKSI AKUN"}
+                  </Text>
+                  <View
+                    style={[
+                      styles.sectionCard,
+                      {
+                        backgroundColor: `${palette.danger}0D`,
+                        borderColor: `${palette.danger}40`,
+                      },
+                    ]}
+                  >
+                    <SettingNavLink
+                      icon={Trash2}
+                      iconColor={palette.danger}
+                      iconBgColor={`${palette.danger}1A`}
+                      title={language === "en" ? "Delete Account" : "Hapus Akun"}
+                      subtitle={
+                        language === "en"
+                          ? "Permanently erase account & all data"
+                          : "Hapus akun & seluruh data secara permanen"
+                      }
+                      isDanger
+                      onPress={() => setSelectedSection("delete-account")}
+                      testID="setting-tab-delete-account"
+                    />
+                  </View>
+                </>
+              )}
             </View>
           )}
 
@@ -627,25 +661,29 @@ const styles = StyleSheet.create({
   content: {
     alignSelf: "center",
     maxWidth: 580,
-    paddingHorizontal: spacing.md,
-    paddingTop: spacing.sm,
+    paddingHorizontal: 16,
+    paddingTop: 5,
     width: "100%",
   },
-  navLinksWrapper: {
-    alignItems: "center",
-    width: "100%",
+  sectionLabel: {
+    fontSize: font.caption,
+    fontWeight: "700",
+    letterSpacing: 1.4,
+    marginBottom: 6,
+    marginTop: 14,
+    paddingHorizontal: 4,
   },
-  navLinksList: {
-    gap: 5,
-    maxWidth: 480,
-    marginTop: spacing.xs,
-    paddingBottom: spacing.lg,
+  sectionCard: {
+    borderRadius: 16,
+    borderWidth: StyleSheet.hairlineWidth,
+    maxWidth: 520,
+    overflow: "hidden",
     width: "100%",
   },
   panelContainer: {
     alignSelf: "center",
     maxWidth: 500,
-    paddingTop: spacing.sm,
+    paddingTop: 5,
     width: "100%",
   },
 });

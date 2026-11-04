@@ -7,7 +7,7 @@ import { font } from "../../theme/typography";
 
 export interface SettingSectionProps extends PropsWithChildren {
   eyebrow?: string;
-  title: string;
+  title?: string;
   description?: string;
   badge?: ReactNode;
   testID?: string;
@@ -23,33 +23,37 @@ export function SettingSection({
   const { palette, scaleFont } = useAppearance();
   return (
     <View style={styles.container} testID={testID}>
-      <View style={styles.headerRow}>
-        <View style={styles.headerCopy}>
-          <Text
-            style={[
-              styles.title,
-              { color: palette.text, fontSize: scaleFont(font.heading) },
-            ]}
-          >
-            {title}
-          </Text>
-          {description ? (
-            <Text
-              style={[
-                styles.description,
-                {
-                  color: palette.textMuted,
-                  fontSize: scaleFont(font.body),
-                  lineHeight: scaleFont(19),
-                },
-              ]}
-            >
-              {description}
-            </Text>
-          ) : null}
+      {title || description || badge ? (
+        <View style={styles.headerRow}>
+          <View style={styles.headerCopy}>
+            {title ? (
+              <Text
+                style={[
+                  styles.title,
+                  { color: palette.text, fontSize: scaleFont(font.heading) },
+                ]}
+              >
+                {title}
+              </Text>
+            ) : null}
+            {description ? (
+              <Text
+                style={[
+                  styles.description,
+                  {
+                    color: palette.textMuted,
+                    fontSize: scaleFont(font.body),
+                    lineHeight: scaleFont(19),
+                  },
+                ]}
+              >
+                {description}
+              </Text>
+            ) : null}
+          </View>
+          {badge}
         </View>
-        {badge}
-      </View>
+      ) : null}
       <View style={styles.body}>{children}</View>
     </View>
   );
@@ -59,7 +63,7 @@ const styles = StyleSheet.create({
   container: {
     backgroundColor: "transparent",
     marginBottom: spacing.md,
-    paddingTop: spacing.xs,
+    paddingTop: 5,
     width: "100%",
   },
   headerRow: {

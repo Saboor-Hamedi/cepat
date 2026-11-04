@@ -1,5 +1,5 @@
 import { router } from "expo-router";
-import { ArrowLeft, Bell } from "lucide-react-native";
+import { ArrowLeft } from "lucide-react-native";
 import { useMemo, useState } from "react";
 import { Modal, Pressable, StyleSheet, Text, View } from "react-native";
 
@@ -12,7 +12,7 @@ import { useAppearance } from "../context/AppearanceContext";
 import { createTechnicianPost, loadTechnicianPosts } from "../data/postsStore";
 import { localizeArea, useLanguage } from "../i18n/locale";
 import { BOOKING_TIME_SLOTS, toIndonesiaDateTime } from "./schedule";
-import { radii, spacing } from "../theme/tokens";
+import { spacing } from "../theme/tokens";
 import type { BookingRecord, TechnicianPost } from "../types/marketplace";
 import { TaskActiveCard } from "./components/TaskActiveCard";
 import { TaskHistoryCard } from "./components/TaskHistoryCard";
@@ -29,6 +29,7 @@ export interface TaskContainerProps {
     nextStatus: BookingRecord["status"],
     proposedStartAt?: string,
   ) => Promise<void>;
+  showHeader?: boolean;
 }
 export type JobsContainerProps = TaskContainerProps;
 
@@ -36,6 +37,7 @@ export function TaskContainer({
   bookings,
   loading = false,
   onBookingAction,
+  showHeader = true,
 }: TaskContainerProps) {
   const { language } = useLanguage();
   const { palette, reduceMotion } = useAppearance();
@@ -129,7 +131,7 @@ export function TaskContainer({
 
   return (
     <View style={styles.container}>
-      {/* Sleek Header with Back Button, Title, and Booking Notification Bell */}
+      {showHeader ? (
       <View style={styles.headerBar} testID="tasks-screen-header">
         <Pressable
           accessibilityRole="button"
@@ -158,6 +160,7 @@ export function TaskContainer({
 
         <View style={{ width: 36 }} />
       </View>
+      ) : null}
 
       <TaskTabBar
         activeTab={tab}

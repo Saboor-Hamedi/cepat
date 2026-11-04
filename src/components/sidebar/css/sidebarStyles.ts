@@ -1,26 +1,27 @@
 import { StyleSheet } from 'react-native';
 
 import type { ThemePalette } from '../../../context/AppearanceContext';
-import { colors, radii, spacing } from '../../../theme/tokens';
+import { spacing } from '../../../theme/tokens';
 import { font } from '../../../theme/typography';
 
 export function createSidebarStyles(palette: ThemePalette) {
   return StyleSheet.create({
     backdrop: {
-      backgroundColor: 'rgba(15, 20, 25, 0.45)',
+      backgroundColor: 'rgba(8, 12, 18, 0.6)',
       flex: 1,
       flexDirection: 'row',
     },
     drawer: {
       backgroundColor: palette.surface,
       borderRightColor: palette.border,
-      borderRightWidth: 1,
+      borderRightWidth: StyleSheet.hairlineWidth,
+      borderBottomRightRadius: 20,
+      borderTopRightRadius: 20,
       flexDirection: 'column',
       height: '100%',
-      justifyContent: 'space-between',
-      maxWidth: 310,
-      paddingTop: spacing.xl,
-      width: '82%',
+      maxWidth: 340,
+      paddingTop: spacing.lg,
+      width: '78%',
     },
     body: {
       flex: 1,
@@ -36,11 +37,28 @@ export function createSidebarHeaderStyles(palette: ThemePalette) {
     container: {
       paddingBottom: spacing.md,
       paddingHorizontal: spacing.xl,
+      paddingTop: spacing.sm,
     },
     profileRow: {
       alignItems: 'center',
       flexDirection: 'row',
-      gap: spacing.sm,
+      gap: spacing.md,
+    },
+    avatarWrap: {
+      position: 'relative',
+    },
+    verifiedBadge: {
+      alignItems: 'center',
+      backgroundColor: '#10B981',
+      borderColor: palette.surface,
+      borderRadius: 999,
+      borderWidth: 2,
+      bottom: 0,
+      height: 16,
+      justifyContent: 'center',
+      position: 'absolute',
+      right: 0,
+      width: 16,
     },
     profileCopy: {
       flex: 1,
@@ -49,10 +67,11 @@ export function createSidebarHeaderStyles(palette: ThemePalette) {
     closeBtn: {
       alignItems: 'center',
       alignSelf: 'flex-start',
-      backgroundColor: palette.surfaceElevated,
-      borderRadius: radii.pill,
+      backgroundColor: 'transparent',
+      borderRadius: 999,
       height: 32,
       justifyContent: 'center',
+      marginLeft: spacing.xs,
       width: 32,
     },
     displayName: {
@@ -63,12 +82,13 @@ export function createSidebarHeaderStyles(palette: ThemePalette) {
     },
     emailText: {
       color: palette.textMuted,
-      fontSize: font.subtitle,
-      marginTop: 2,
+      fontSize: font.label,
+      marginTop: 3,
     },
     divider: {
       backgroundColor: palette.border,
-      height: 1,
+      height: StyleSheet.hairlineWidth,
+      marginTop: spacing.md,
       width: '100%',
     },
   });
@@ -80,17 +100,27 @@ export function createSidebarMenuStyles(palette: ThemePalette) {
       flex: 1,
       paddingVertical: spacing.sm,
     },
+    group: {
+      gap: 2,
+    },
+    groupDivider: {
+      backgroundColor: palette.border,
+      height: StyleSheet.hairlineWidth,
+      marginHorizontal: spacing.xl,
+      marginVertical: spacing.sm,
+    },
     item: {
       alignItems: 'center',
+      borderRadius: 10,
       flexDirection: 'row',
-      gap: spacing.lg,
-      paddingHorizontal: spacing.xl,
-      paddingVertical: 14,
+      gap: spacing.md,
+      marginHorizontal: spacing.sm,
+      minHeight: 48,
+      paddingHorizontal: spacing.md,
+      paddingVertical: spacing.sm,
     },
-    itemText: {
-      color: palette.text,
-      fontSize: font.heading,
-      fontWeight: '700',
+    itemPressed: {
+      backgroundColor: `${palette.primary}14`,
     },
     itemIconCanvas: {
       alignItems: 'center',
@@ -98,81 +128,18 @@ export function createSidebarMenuStyles(palette: ThemePalette) {
       justifyContent: 'center',
       width: 22,
     },
-    iconUserHead: {
-      borderRadius: 5,
-      borderWidth: 2,
-      height: 9,
-      marginBottom: 2,
-      width: 9,
+    itemText: {
+      color: palette.text,
+      flex: 1,
+      fontSize: font.subtitle,
+      fontWeight: '600',
     },
-    iconUserShoulders: {
-      borderLeftWidth: 2,
-      borderRightWidth: 2,
-      borderTopLeftRadius: 6,
-      borderTopRightRadius: 6,
-      borderTopWidth: 2,
-      height: 6,
-      width: 15,
+    itemTextMuted: {
+      color: palette.textMuted,
     },
-    iconGearOuter: {
-      alignItems: 'center',
-      borderRadius: 8,
-      borderWidth: 2,
-      height: 16,
-      justifyContent: 'center',
-      width: 16,
-    },
-    iconGearInner: {
-      borderRadius: 2.5,
-      height: 5,
-      width: 5,
-    },
-    iconSliderLine: {
-      borderRadius: 1,
-      height: 2,
-      marginVertical: 2.5,
-      width: 16,
-    },
-    iconBriefcaseTop: {
-      borderLeftWidth: 2,
-      borderRightWidth: 2,
-      borderTopWidth: 2,
-      height: 4,
-      width: 8,
-    },
-    iconBriefcaseBox: {
-      borderRadius: 2,
-      borderWidth: 2,
-      height: 12,
-      width: 17,
-    },
-    iconShield: {
-      borderBottomLeftRadius: 8,
-      borderBottomRightRadius: 8,
-      borderTopLeftRadius: 2,
-      borderTopRightRadius: 2,
-      borderWidth: 2,
-      height: 17,
-      width: 15,
-    },
-    iconCalendarBox: {
-      borderRadius: 3,
-      borderWidth: 2,
-      height: 16,
-      width: 16,
-    },
-    iconNotificationBell: {
-      borderTopLeftRadius: 8,
-      borderTopRightRadius: 8,
-      borderWidth: 2,
-      height: 14,
-      width: 14,
-    },
-    iconNotificationBase: {
-      borderRadius: 2,
-      height: 2,
-      marginTop: 1,
-      width: 18,
+    chevron: {
+      color: palette.textMuted,
+      fontWeight: '700',
     },
   });
 }
@@ -181,58 +148,36 @@ export function createSidebarFooterStyles(palette: ThemePalette) {
   return StyleSheet.create({
     container: {
       borderTopColor: palette.border,
-      borderTopWidth: 1,
+      borderTopWidth: StyleSheet.hairlineWidth,
+      padding: spacing.md,
       paddingHorizontal: spacing.xl,
-      paddingVertical: spacing.lg,
     },
     logoutBtn: {
       alignItems: 'center',
+      backgroundColor: 'rgba(248, 113, 113, 0.12)',
+      borderRadius: 14,
       flexDirection: 'row',
       gap: spacing.md,
-      paddingVertical: 8,
+      justifyContent: 'center',
+      minHeight: 48,
+      paddingHorizontal: spacing.lg,
+      paddingVertical: spacing.sm,
+      width: '100%',
     },
     logoutBtnText: {
-      color: colors.danger,
-      fontSize: font.heading,
+      color: '#F87171',
+      fontSize: font.label,
       fontWeight: '800',
     },
-    logoutCanvas: {
-      alignItems: 'center',
-      flexDirection: 'row',
-      height: 20,
-      width: 20,
-    },
-    logoutFrame: {
-      borderBottomLeftRadius: 3,
-      borderBottomWidth: 2,
-      borderLeftWidth: 2,
-      borderTopLeftRadius: 3,
-      borderTopWidth: 2,
-      height: 16,
-      width: 8,
-    },
-    logoutShaft: {
-      height: 2,
-      marginLeft: -2,
-      width: 9,
-    },
-    logoutHead: {
-      borderRightWidth: 2,
-      borderTopWidth: 2,
-      height: 6,
-      marginLeft: -5,
-      transform: [{ rotate: '45deg' }],
-      width: 6,
-    },
     guestAuthActions: {
-      gap: spacing.xs,
+      gap: spacing.sm,
     },
     loginBtn: {
       alignItems: 'center',
-      backgroundColor: colors.greenDark,
-      borderRadius: radii.pill,
+      backgroundColor: palette.primary,
+      borderRadius: 12,
       justifyContent: 'center',
-      minHeight: 42,
+      minHeight: 48,
     },
     loginBtnText: {
       color: '#FFFFFF',
@@ -242,10 +187,10 @@ export function createSidebarFooterStyles(palette: ThemePalette) {
     registerBtn: {
       alignItems: 'center',
       borderColor: palette.border,
-      borderRadius: radii.pill,
-      borderWidth: 1,
+      borderRadius: 12,
+      borderWidth: StyleSheet.hairlineWidth,
       justifyContent: 'center',
-      minHeight: 42,
+      minHeight: 48,
     },
     registerBtnText: {
       color: palette.text,

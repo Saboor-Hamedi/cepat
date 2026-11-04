@@ -1,10 +1,11 @@
 import { router } from "expo-router";
-import { font } from '../../theme/typography';
-import { ArrowLeft, Check, CheckCircle2, MapPin, Plus, Trash2 } from "lucide-react-native";
+import { font } from "../../theme/typography";
+import { ArrowLeft, Check, CheckCircle2, MapPin, Trash2 } from "lucide-react-native";
 import React, { useState } from "react";
 import {
   ActivityIndicator,
   Pressable,
+  ScrollView,
   StyleSheet,
   Text,
   TextInput,
@@ -16,7 +17,7 @@ import { localizeArea, useLanguage } from "../../i18n/locale";
 import { radii, spacing } from "../../theme/tokens";
 import type { SavedAddress } from "../../types/marketplace";
 import { SettingSection } from "../components/SettingSection";
-import { ICON_SIZE, ICON_STROKE } from '../../theme/icons';
+import { ICON_SIZE, ICON_STROKE } from "../../theme/icons";
 
 const DEFAULT_AREAS = [
   "Jakarta Selatan",
@@ -91,7 +92,6 @@ export function SettingAddress({
       setStreetAddress("");
       setNotes("");
 
-      // If user came from booking flow, provide clean return
       if (returnTo) {
         setTimeout(() => {
           router.replace(returnTo as any);
@@ -110,176 +110,275 @@ export function SettingAddress({
     }
   };
 
+  const canSave = Boolean(streetAddress.trim()) && !saving;
+
   return (
-    <SettingSection
-      eyebrow={language === "en" ? "Address Management" : "Manajemen Alamat"}
-      title={language === "en" ? "Service Addresses" : "Alamat Layanan"}
-      description={
-        language === "en"
-          ? "Manage your saved service locations for quick scheduling and booking."
-          : "Kelola alamat layanan tersimpan untuk mempercepat pemesanan teknisi."
-      }
-      testID="setting-section-address"
-    >
-      {/* Return to Booking Notice if directed from Schedule a Service */}
+    <SettingSection testID="setting-section-address">
       {returnTo ? (
         <View
-          style={[
-            styles.returnToBanner,
-            { backgroundColor: palette.primarySoft, borderColor: palette.primary },
-          ]}
+          style={[styles.returnToBanner, { backgroundColor: palette.primarySoft }]}
           testID="address-return-to-banner"
         >
-          <View style={{ flex: 1 }}>
-            <Text style={[styles.returnToTitle, { color: palette.text, fontSize: scaleFont(font.label) }]}>
+          <View
+            style={[
+              styles.returnToIcon,
+              { backgroundColor: `${palette.primary}1F` },
+            ]}
+          >
+            <MapPin size={18} color={palette.primary} strokeWidth={ICON_STROKE} />
+          </View>
+          <View style={styles.returnToCopy}>
+            <Text
+              style={[
+                styles.returnToTitle,
+                { color: palette.text, fontSize: scaleFont(font.label) },
+              ]}
+            >
               {language === "en"
                 ? "Scheduling a Service"
                 : "Menjadwalkan Layanan"}
             </Text>
-            <Text style={[styles.returnToSub, { color: palette.textMuted, fontSize: scaleFont(font.body) }]}>
+            <Text
+              numberOfLines={2}
+              style={[
+                styles.returnToSub,
+                { color: palette.textMuted, fontSize: scaleFont(font.caption) },
+              ]}
+            >
               {language === "en"
-                ? "Add or select an address below to use for your booking."
-                : "Tambah atau pilih alamat di bawah untuk pesanan Anda."}
+                ? "Pick an address below to use for this booking."
+                : "Pilih alamat di bawah untuk pesanan ini."}
             </Text>
           </View>
           <Pressable
             accessibilityRole="button"
             onPress={() => router.replace(returnTo as any)}
-            style={[styles.returnBtn, { backgroundColor: palette.primary }]}
+            style={styles.returnBtn}
             testID="address-return-to-btn"
           >
-            <ArrowLeft size={ICON_SIZE} color="#FFFFFF" strokeWidth={ICON_STROKE} />
-            <Text style={styles.returnBtnText}>
-              {language === "en" ? "Back to Booking" : "Kembali ke Jadwal"}
-            </Text>
+            <ArrowLeft
+              size={ICON_SIZE}
+              color={palette.primary}
+              strokeWidth={ICON_STROKE}
+            />
           </Pressable>
         </View>
       ) : null}
 
-      {/* Saved Addresses List */}
       <View style={styles.sectionBlock}>
-        <Text style={[styles.subSectionTitle, { color: palette.text, fontSize: scaleFont(font.subtitle) }]}>
-          {language === "en" ? "Saved Addresses" : "Alamat Tersimpan"} ({savedAddresses.length})
-        </Text>
+        <View style={styles.sectionHeaderRow}>
+          <Text
+            style={[
+              styles.subSectionTitle,
+              { color: palette.text, fontSize: scaleFont(font.subtitle) },
+            ]}
+          >
+            {language === "en" ? "Saved Addresses" : "Alamat Tersimpan"}
+          </Text>
+          <View
+            style={[styles.countPill, { backgroundColor: palette.surfaceElevated }]}
+          >
+            <Text
+              style={[
+                styles.countPillText,
+                { color: palette.textSecondary ?? palette.textMuted },
+              ]}
+            >
+              {savedAddresses.length}
+            </Text>
+          </View>
+        </View>
 
         {savedAddresses.length === 0 ? (
           <View
             style={[
               styles.emptyAddressCard,
-              { backgroundColor: palette.surfaceElevated, borderColor: palette.border },
+              { backgroundColor: palette.surface, borderColor: palette.border },
             ]}
           >
-            <MapPin size={ICON_SIZE} strokeWidth={ICON_STROKE} color={palette.textMuted} />
-            <Text style={[styles.emptyAddressText, { color: palette.textMuted, fontSize: scaleFont(font.body) }]}>
+            <View
+              style={[
+                styles.emptyIconTile,
+                { backgroundColor: palette.surfaceElevated },
+              ]}
+            >
+              <MapPin
+                size={ICON_SIZE + 4}
+                strokeWidth={ICON_STROKE}
+                color={palette.textMuted}
+              />
+            </View>
+            <Text
+              style={[
+                styles.emptyAddressText,
+                { color: palette.textMuted, fontSize: scaleFont(font.body) },
+              ]}
+            >
               {language === "en"
-                ? "No saved addresses yet. Enter your address below."
-                : "Belum ada alamat tersimpan. Masukkan alamat Anda di bawah."}
+                ? "No saved addresses yet. Add your first one below."
+                : "Belum ada alamat tersimpan. Tambahkan yang pertama di bawah."}
             </Text>
           </View>
         ) : (
-          <View style={styles.addressList}>
-            {savedAddresses.map((addr) => (
-              <View
-                key={addr.id}
-                style={[
-                  styles.savedAddressCard,
-                  {
-                    backgroundColor: palette.surfaceElevated,
-                    borderColor: addr.isDefault ? palette.primary : palette.border,
-                  },
-                ]}
-                testID={`saved-address-${addr.id}`}
-              >
-                <View style={styles.cardHeaderRow}>
-                  <View style={styles.labelRow}>
-                    <MapPin size={ICON_SIZE} strokeWidth={ICON_STROKE} color={palette.primary} />
-                    <Text style={[styles.addressLabel, { color: palette.text, fontSize: scaleFont(font.subtitle) }]}>
-                      {addr.label}
-                    </Text>
-                    {addr.isDefault && (
-                      <View
+          <View
+            style={[
+              styles.addressList,
+              { backgroundColor: palette.surface, borderColor: palette.border },
+            ]}
+          >
+            {savedAddresses.map((addr, index) => {
+              const isLast = index === savedAddresses.length - 1;
+              return (
+                <View
+                  key={addr.id}
+                  style={[
+                    styles.savedAddressRow,
+                    !isLast && {
+                      borderBottomWidth: StyleSheet.hairlineWidth,
+                      borderBottomColor: palette.border,
+                    },
+                    addr.isDefault && { backgroundColor: palette.primarySoft },
+                  ]}
+                  testID={`saved-address-${addr.id}`}
+                >
+                  <View style={styles.savedAddressMain}>
+                    <View
+                      style={[
+                        styles.addressIconTile,
+                        { backgroundColor: `${palette.primary}14` },
+                      ]}
+                    >
+                      <MapPin
+                        size={16}
+                        strokeWidth={ICON_STROKE}
+                        color={palette.primary}
+                      />
+                    </View>
+
+                    <View style={styles.addressCopy}>
+                      <View style={styles.labelRow}>
+                        <Text
+                          numberOfLines={1}
+                          style={[
+                            styles.addressLabel,
+                            { color: palette.text, fontSize: scaleFont(font.label) },
+                          ]}
+                        >
+                          {addr.label}
+                        </Text>
+                        {addr.isDefault && (
+                          <View
+                            style={[
+                              styles.defaultBadge,
+                              { backgroundColor: `${palette.primary}1F` },
+                            ]}
+                          >
+                            <Text
+                              style={[
+                                styles.defaultBadgeText,
+                                { color: palette.primary },
+                              ]}
+                            >
+                              {language === "en" ? "Default" : "Utama"}
+                            </Text>
+                          </View>
+                        )}
+                      </View>
+                      <Text
+                        numberOfLines={2}
                         style={[
-                          styles.defaultBadge,
-                          { backgroundColor: palette.primarySoft, borderColor: palette.primary },
+                          styles.streetText,
+                          { color: palette.text, fontSize: scaleFont(font.body) },
                         ]}
                       >
-                        <Text style={[styles.defaultBadgeText, { color: palette.primary }]}>
-                          {language === "en" ? "DEFAULT" : "UTAMA"}
+                        {addr.streetAddress}
+                      </Text>
+                      <Text
+                        numberOfLines={1}
+                        style={[
+                          styles.areaText,
+                          { color: palette.textMuted, fontSize: scaleFont(font.caption) },
+                        ]}
+                      >
+                        {localizeArea(addr.area, language)}
+                        {addr.notes ? ` · ${addr.notes}` : ""}
+                      </Text>
+                    </View>
+                  </View>
+
+                  <View style={styles.savedAddressActions}>
+                    {returnTo ? (
+                      <Pressable
+                        accessibilityRole="button"
+                        onPress={() => {
+                          void onSetDefaultAddress(addr.id);
+                          router.replace(returnTo as any);
+                        }}
+                        style={[styles.useForBookingBtn, { backgroundColor: palette.primary }]}
+                      >
+                        <Check size={14} color="#FFFFFF" strokeWidth={ICON_STROKE} />
+                        <Text style={styles.useForBookingBtnText}>
+                          {language === "en" ? "Use for booking" : "Pakai untuk pesanan"}
                         </Text>
+                      </Pressable>
+                    ) : (
+                      <View style={styles.cardActionsRow}>
+                        {!addr.isDefault && (
+                          <Pressable
+                            accessibilityRole="button"
+                            onPress={() => void onSetDefaultAddress(addr.id)}
+                            style={styles.smallBtn}
+                            testID={`set-default-address-${addr.id}`}
+                          >
+                            <Text
+                              style={[
+                                styles.smallBtnText,
+                                { color: palette.primary, fontSize: scaleFont(font.caption) },
+                              ]}
+                            >
+                              {language === "en" ? "Set as default" : "Jadikan utama"}
+                            </Text>
+                          </Pressable>
+                        )}
+                        <Pressable
+                          accessibilityRole="button"
+                          onPress={() => void onDeleteAddress(addr.id)}
+                          accessibilityLabel={
+                            language === "en" ? "Delete address" : "Hapus alamat"
+                          }
+                          style={styles.iconDangerBtn}
+                          testID={`delete-address-${addr.id}`}
+                        >
+                          <Trash2
+                            size={17}
+                            strokeWidth={ICON_STROKE}
+                            color={palette.danger}
+                          />
+                        </Pressable>
                       </View>
                     )}
                   </View>
-
-                  <View style={styles.cardActionsRow}>
-                    {!addr.isDefault && (
-                      <Pressable
-                        accessibilityRole="button"
-                        onPress={() => void onSetDefaultAddress(addr.id)}
-                        style={[styles.smallBtn, { borderColor: palette.border }]}
-                        testID={`set-default-address-${addr.id}`}
-                      >
-                        <Text style={[styles.smallBtnText, { color: palette.text, fontSize: scaleFont(font.caption) }]}>
-                          {language === "en" ? "Set default" : "Jadikan utama"}
-                        </Text>
-                      </Pressable>
-                    )}
-                    <Pressable
-                      accessibilityRole="button"
-                      onPress={() => void onDeleteAddress(addr.id)}
-                      style={styles.smallDangerBtn}
-                      testID={`delete-address-${addr.id}`}
-                    >
-                      <Trash2 size={ICON_SIZE} strokeWidth={ICON_STROKE} color={palette.danger} />
-                    </Pressable>
-                  </View>
                 </View>
-
-                <Text style={[styles.streetText, { color: palette.text, fontSize: scaleFont(font.label) }]}>
-                  {addr.streetAddress}
-                </Text>
-
-                <Text style={[styles.areaText, { color: palette.textMuted, fontSize: scaleFont(font.caption) }]}>
-                  {localizeArea(addr.area, language)}
-                  {addr.notes ? ` · ${addr.notes}` : ""}
-                </Text>
-
-                {returnTo && (
-                  <Pressable
-                    accessibilityRole="button"
-                    onPress={() => {
-                      void onSetDefaultAddress(addr.id);
-                      router.replace(returnTo as any);
-                    }}
-                    style={[styles.useForBookingBtn, { backgroundColor: palette.primary }]}
-                  >
-                    <Check size={ICON_SIZE} color="#FFFFFF" strokeWidth={ICON_STROKE} />
-                    <Text style={styles.useForBookingBtnText}>
-                      {language === "en" ? "Use this address for booking" : "Gunakan alamat ini"}
-                    </Text>
-                  </Pressable>
-                )}
-              </View>
-            ))}
+              );
+            })}
           </View>
         )}
       </View>
 
-      {/* Add New Address Form */}
-      <View
-        style={styles.addAddressBox}
-      >
-        <View style={styles.formHeader}>
-          <Plus size={ICON_SIZE} strokeWidth={ICON_STROKE} color={palette.primary} />
-          <Text style={[styles.formTitle, { color: palette.text, fontSize: scaleFont(font.subtitle) }]}>
-            {language === "en" ? "Add New Service Address" : "Tambah Alamat Layanan Baru"}
-          </Text>
-        </View>
-
-        {/* Preset Label Pills */}
-        <Text style={[styles.inputLabel, { color: palette.text, fontSize: scaleFont(font.body) }]}>
-          {language === "en" ? "Address Label" : "Label Alamat"}
+      <View style={styles.addAddressBox}>
+        <Text
+          style={[
+            styles.inputLabel,
+            { color: palette.textMuted, fontSize: scaleFont(font.caption) },
+          ]}
+        >
+          {language === "en" ? "LABEL" : "LABEL"}
         </Text>
-        <View style={styles.pillRow}>
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.pillScrollRow}
+        >
           {PRESET_LABELS.map((p) => {
             const pLabel = language === "en" ? p.en : p.id;
             const isSelected = label === pLabel;
@@ -291,8 +390,9 @@ export function SettingAddress({
                 style={[
                   styles.presetPill,
                   {
-                    backgroundColor: isSelected ? palette.primary : palette.surfaceElevated,
-                    borderColor: isSelected ? palette.primary : palette.border,
+                    backgroundColor: isSelected
+                      ? palette.primary
+                      : palette.surfaceElevated,
                   },
                 ]}
               >
@@ -311,27 +411,30 @@ export function SettingAddress({
               </Pressable>
             );
           })}
-        </View>
+        </ScrollView>
 
-        {/* Complete Street Address Textarea */}
-        <Text style={[styles.inputLabel, { color: palette.text, fontSize: scaleFont(font.body) }]}>
-          {language === "en" ? "Complete Street Address" : "Alamat Lengkap"} *
+        <Text
+          style={[
+            styles.inputLabel,
+            { color: palette.textMuted, fontSize: scaleFont(font.caption) },
+          ]}
+        >
+          {language === "en" ? "STREET ADDRESS" : "ALAMAT LENGKAP"} *
         </Text>
         <TextInput
           multiline
-          numberOfLines={3}
+          numberOfLines={2}
           onChangeText={setStreetAddress}
           placeholder={
             language === "en"
-              ? "Street name, house/building number, floor/unit, neighborhood..."
-              : "Nama jalan, nomor rumah/gedung, lantai/unit, RT/RW, kelurahan..."
+              ? "Street name, house/building number, floor/unit..."
+              : "Nama jalan, nomor rumah/gedung, lantai/unit..."
           }
           placeholderTextColor={palette.textMuted}
           style={[
             styles.textarea,
             {
-              backgroundColor: palette.surfaceElevated,
-              borderColor: palette.border,
+              backgroundColor: palette.inputBg,
               color: palette.text,
               fontSize: scaleFont(font.label),
             },
@@ -340,11 +443,19 @@ export function SettingAddress({
           value={streetAddress}
         />
 
-        {/* Service Area Selector Chips */}
-        <Text style={[styles.inputLabel, { color: palette.text, fontSize: scaleFont(font.body) }]}>
-          {language === "en" ? "Service Area / City" : "Area Layanan / Kota"} *
+        <Text
+          style={[
+            styles.inputLabel,
+            { color: palette.textMuted, fontSize: scaleFont(font.caption) },
+          ]}
+        >
+          {language === "en" ? "SERVICE AREA" : "AREA LAYANAN"} *
         </Text>
-        <View style={styles.pillRow}>
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.pillScrollRow}
+        >
           {DEFAULT_AREAS.map((areaName) => {
             const isSelected = selectedArea === areaName;
             return (
@@ -355,8 +466,11 @@ export function SettingAddress({
                 style={[
                   styles.presetPill,
                   {
-                    backgroundColor: isSelected ? palette.primarySoft : palette.surfaceElevated,
-                    borderColor: isSelected ? palette.primary : palette.border,
+                    backgroundColor: isSelected
+                      ? palette.primarySoft
+                      : palette.surfaceElevated,
+                    borderColor: isSelected ? palette.primary : "transparent",
+                    borderWidth: isSelected ? 1 : 0,
                   },
                 ]}
               >
@@ -375,11 +489,17 @@ export function SettingAddress({
               </Pressable>
             );
           })}
-        </View>
+        </ScrollView>
 
-        {/* Optional Landmark or Notes */}
-        <Text style={[styles.inputLabel, { color: palette.text, fontSize: scaleFont(font.body) }]}>
-          {language === "en" ? "Landmark / Notes (Optional)" : "Patokan / Catatan (Opsional)"}
+        <Text
+          style={[
+            styles.inputLabel,
+            { color: palette.textMuted, fontSize: scaleFont(font.caption) },
+          ]}
+        >
+          {language === "en"
+            ? "LANDMARK / NOTES (OPTIONAL)"
+            : "PATOKAN / CATATAN (OPSIONAL)"}
         </Text>
         <TextInput
           onChangeText={setNotes}
@@ -392,8 +512,7 @@ export function SettingAddress({
           style={[
             styles.singleInput,
             {
-              backgroundColor: palette.surfaceElevated,
-              borderColor: palette.border,
+              backgroundColor: palette.inputBg,
               color: palette.text,
               fontSize: scaleFont(font.body),
             },
@@ -401,44 +520,52 @@ export function SettingAddress({
           value={notes}
         />
 
-        {/* Error message */}
         {localError ? (
-          <Text style={[styles.errorText, { color: palette.danger, fontSize: scaleFont(font.body) }]}>
+          <Text
+            style={[
+              styles.errorText,
+              { color: palette.danger, fontSize: scaleFont(font.body) },
+            ]}
+          >
             {localError}
           </Text>
         ) : null}
 
-        {/* Save Action Button Aligned on the LEFT */}
-        <View style={styles.actionRowWithNotice}>
-          <Pressable
-            accessibilityRole="button"
-            disabled={saving || !streetAddress.trim()}
-            onPress={() => void handleSave()}
-            style={[
-              styles.saveBtn,
-              { backgroundColor: palette.primary },
-              (!streetAddress.trim() || saving) && styles.saveBtnDisabled,
-            ]}
-            testID="add-saved-address-button"
-          >
-            {saving ? (
-              <ActivityIndicator size="small" color="#FFFFFF" />
-            ) : (
-              <Text style={styles.saveBtnText}>
-                {language === "en" ? "Save" : "Simpan"}
-              </Text>
-            )}
-          </Pressable>
+        <Pressable
+          accessibilityRole="button"
+          disabled={!canSave}
+          onPress={() => void handleSave()}
+          style={({ pressed }) => [
+            styles.saveBtn,
+            {
+              backgroundColor: palette.primary,
+              opacity: pressed ? 0.9 : 1,
+            },
+            !canSave && styles.saveBtnDisabled,
+          ]}
+          testID="add-saved-address-button"
+        >
+          {saving ? (
+            <ActivityIndicator size="small" color="#FFFFFF" />
+          ) : (
+            <Text style={styles.saveBtnText}>
+              {language === "en" ? "Save" : "Simpan"}
+            </Text>
+          )}
+        </Pressable>
 
-          {addressFeedback ? (
-            <View style={styles.feedbackRow}>
-              <CheckCircle2 size={ICON_SIZE} strokeWidth={ICON_STROKE} color="#16A34A" />
-              <Text style={[styles.feedbackText, { fontSize: scaleFont(font.body) }]}>
-                {addressFeedback}
-              </Text>
-            </View>
-          ) : null}
-        </View>
+        {addressFeedback ? (
+          <View style={styles.feedbackRow}>
+            <CheckCircle2
+              size={18}
+              strokeWidth={ICON_STROKE}
+              color="#16A34A"
+            />
+            <Text style={[styles.feedbackText, { fontSize: scaleFont(font.body) }]}>
+              {addressFeedback}
+            </Text>
+          </View>
+        ) : null}
       </View>
     </SettingSection>
   );
@@ -447,63 +574,113 @@ export function SettingAddress({
 const styles = StyleSheet.create({
   returnToBanner: {
     alignItems: "center",
-    borderRadius: radii.md,
-    borderWidth: 1,
+    borderRadius: radii.sm,
     flexDirection: "row",
     gap: spacing.sm,
     marginBottom: spacing.md,
-    padding: spacing.sm,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: spacing.sm,
+  },
+  returnToIcon: {
+    alignItems: "center",
+    borderRadius: radii.sm,
+    height: 36,
+    justifyContent: "center",
+    width: 36,
+  },
+  returnToCopy: {
+    flex: 1,
+    minWidth: 0,
   },
   returnToTitle: {
     fontWeight: "700",
+    letterSpacing: -0.2,
   },
   returnToSub: {
+    lineHeight: 16,
     marginTop: 2,
   },
   returnBtn: {
     alignItems: "center",
-    borderRadius: radii.sm,
-    flexDirection: "row",
-    gap: 6,
-    paddingHorizontal: 10,
-    paddingVertical: 7,
-  },
-  returnBtnText: {
-    color: "#FFFFFF",
-    fontSize: font.caption,
-    fontWeight: "700",
+    height: 36,
+    justifyContent: "center",
+    width: 36,
   },
   sectionBlock: {
     marginBottom: spacing.md,
   },
+  sectionHeaderRow: {
+    alignItems: "center",
+    flexDirection: "row",
+    justifyContent: "space-between",
+    marginBottom: spacing.xs,
+  },
   subSectionTitle: {
     fontWeight: "700",
-    marginBottom: spacing.xs,
+    letterSpacing: -0.2,
+  },
+  countPill: {
+    alignItems: "center",
+    borderRadius: radii.sm,
+    height: 24,
+    justifyContent: "center",
+    minWidth: 28,
+    paddingHorizontal: 8,
+  },
+  countPillText: {
+    fontSize: font.caption,
+    fontWeight: "700",
   },
   emptyAddressCard: {
     alignItems: "center",
     borderRadius: radii.sm,
     borderWidth: 1,
-    gap: spacing.xs,
+    gap: spacing.sm,
     justifyContent: "center",
-    padding: spacing.md,
+    padding: spacing.lg,
+  },
+  emptyIconTile: {
+    alignItems: "center",
+    borderRadius: radii.sm,
+    height: 52,
+    justifyContent: "center",
+    width: 52,
   },
   emptyAddressText: {
     textAlign: "center",
   },
   addressList: {
+    borderRadius: radii.sm,
+    borderWidth: StyleSheet.hairlineWidth,
+    overflow: "hidden",
+  },
+  savedAddressRow: {
+    gap: 6,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: spacing.sm,
+  },
+  savedAddressMain: {
+    alignItems: "flex-start",
+    flexDirection: "row",
     gap: spacing.sm,
   },
-  savedAddressCard: {
-    borderRadius: radii.md,
-    borderWidth: 1,
-    padding: spacing.sm,
-  },
-  cardHeaderRow: {
+  savedAddressActions: {
     alignItems: "center",
     flexDirection: "row",
-    justifyContent: "space-between",
-    marginBottom: 4,
+    justifyContent: "flex-end",
+    gap: 4,
+    marginTop: 2,
+  },
+  addressIconTile: {
+    alignItems: "center",
+    borderRadius: radii.sm,
+    height: 36,
+    justifyContent: "center",
+    width: 36,
+  },
+  addressCopy: {
+    flex: 1,
+    minWidth: 0,
   },
   labelRow: {
     alignItems: "center",
@@ -511,41 +688,23 @@ const styles = StyleSheet.create({
     gap: 6,
   },
   addressLabel: {
-    fontWeight: "700",
+    fontWeight: "600",
+    letterSpacing: -0.2,
+    maxWidth: 160,
   },
   defaultBadge: {
-    borderRadius: radii.pill,
-    borderWidth: 1,
-    paddingHorizontal: 6,
-    paddingVertical: 1,
+    borderRadius: radii.sm,
+    paddingHorizontal: 8,
+    paddingVertical: 2,
   },
   defaultBadgeText: {
     fontSize: font.caption,
-    fontWeight: "800",
-    letterSpacing: 0.5,
-  },
-  cardActionsRow: {
-    alignItems: "center",
-    flexDirection: "row",
-    gap: 6,
-  },
-  smallBtn: {
-    borderRadius: radii.xs,
-    borderWidth: 1,
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-  },
-  smallBtnText: {
-    fontWeight: "600",
-  },
-  smallDangerBtn: {
-    alignItems: "center",
-    justifyContent: "center",
-    padding: 4,
+    fontWeight: "700",
+    letterSpacing: 0.4,
   },
   streetText: {
-    lineHeight: 18,
-    marginVertical: 2,
+    lineHeight: 17,
+    marginTop: 2,
   },
   areaText: {
     marginTop: 2,
@@ -554,9 +713,9 @@ const styles = StyleSheet.create({
     alignItems: "center",
     borderRadius: radii.sm,
     flexDirection: "row",
-    gap: 6,
+    gap: 5,
     justifyContent: "center",
-    marginTop: spacing.xs,
+    paddingHorizontal: 10,
     paddingVertical: 6,
   },
   useForBookingBtnText: {
@@ -564,54 +723,84 @@ const styles = StyleSheet.create({
     fontSize: font.body,
     fontWeight: "700",
   },
-  addAddressBox: {
-    marginTop: spacing.sm,
-    paddingVertical: spacing.xs,
-  },
-  formHeader: {
+  cardActionsRow: {
     alignItems: "center",
     flexDirection: "row",
-    gap: 6,
-    marginBottom: spacing.xs,
+    justifyContent: "flex-end",
+    gap: 4,
   },
-  formTitle: {
+  smallBtn: {
+    borderRadius: radii.sm,
+    paddingHorizontal: 8,
+    paddingVertical: 6,
+  },
+  smallBtnText: {
     fontWeight: "700",
   },
+  iconDangerBtn: {
+    alignItems: "center",
+    borderRadius: radii.sm,
+    height: 32,
+    justifyContent: "center",
+    width: 32,
+  },
+  addAddressBox: {
+    marginTop: spacing.xs,
+    paddingBottom: spacing.xs,
+  },
   inputLabel: {
-    fontWeight: "600",
-    marginBottom: 4,
+    fontWeight: "700",
+    letterSpacing: 0.8,
+    marginBottom: 6,
     marginTop: spacing.xs,
   },
-  pillRow: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: 6,
-    marginBottom: spacing.xs,
+  pillScrollRow: {
+    gap: 8,
+    paddingBottom: 4,
+    paddingRight: spacing.sm,
   },
   presetPill: {
-    borderRadius: radii.pill,
-    borderWidth: 1,
-    paddingHorizontal: 12,
-    paddingVertical: 6,
+    borderRadius: radii.sm,
+    borderWidth: 0,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
   },
   presetPillText: {
     letterSpacing: 0.2,
   },
   textarea: {
     borderRadius: radii.sm,
-    borderWidth: 1,
-    minHeight: 68,
-    padding: spacing.sm,
+    borderWidth: 0,
+    minHeight: 60,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: spacing.sm,
     textAlignVertical: "top",
   },
   singleInput: {
     borderRadius: radii.sm,
-    borderWidth: 1,
-    height: 38,
+    borderWidth: 0,
+    height: 40,
     paddingHorizontal: spacing.sm,
   },
   errorText: {
     marginTop: spacing.xs,
+  },
+  saveBtn: {
+    alignItems: "center",
+    borderRadius: radii.sm,
+    height: 44,
+    justifyContent: "center",
+    marginTop: spacing.md,
+    width: "100%",
+  },
+  saveBtnDisabled: {
+    opacity: 0.45,
+  },
+  saveBtnText: {
+    color: "#FFFFFF",
+    fontSize: font.label,
+    fontWeight: "800",
+    letterSpacing: 0.2,
   },
   feedbackRow: {
     alignItems: "center",
@@ -622,26 +811,5 @@ const styles = StyleSheet.create({
   feedbackText: {
     color: "#16A34A",
     fontWeight: "600",
-  },
-  actionRowWithNotice: {
-    alignItems: "center",
-    flexDirection: "row",
-    gap: 12,
-    marginTop: spacing.md,
-  },
-  saveBtn: {
-    alignItems: "center",
-    borderRadius: radii.sm,
-    height: 38,
-    justifyContent: "center",
-    paddingHorizontal: spacing.lg,
-  },
-  saveBtnDisabled: {
-    opacity: 0.5,
-  },
-  saveBtnText: {
-    color: "#FFFFFF",
-    fontSize: font.body,
-    fontWeight: "800",
   },
 });

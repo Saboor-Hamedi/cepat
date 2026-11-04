@@ -33,22 +33,12 @@ export function SettingSecurity({
   onSaveProfileIdentity,
   onNavigateToDeleteAccount,
 }: SettingSecurityProps) {
-  const { language, t } = useLanguage();
+  const { language } = useLanguage();
   const { palette, scaleFont } = useAppearance();
 
   return (
-    <SettingSection
-      eyebrow={language === "en" ? "SECURITY & PRIVACY" : "KEAMANAN & PRIVASI"}
-      title={t("settings.securityPrivacyTitle")}
-      description={
-        language === "en"
-          ? "Manage your public profile identity and private contact credentials."
-          : "Kelola identitas profil publik dan kontak privat terlindungi Anda."
-      }
-      testID="setting-section-security"
-    >
+    <SettingSection testID="setting-section-security">
       <View style={{ gap: 12 }}>
-        {/* 1. Public Display Name & Username Editor */}
         <ProfileNameEditor
           initialDisplayName={displayName}
           initialUsername={username}
@@ -56,7 +46,6 @@ export function SettingSecurity({
           onSaveProfileIdentity={onSaveProfileIdentity}
         />
 
-        {/* 2. Private Contact Credentials (Email & Phone) */}
         <PrivateContactEditor
           email={email}
           phoneNumber={phoneNumber}
@@ -64,7 +53,6 @@ export function SettingSecurity({
           onSavePrivateContact={onSavePrivateContact}
         />
 
-        {/* 3. Dedicated shortcut to Delete Account if available */}
         {onNavigateToDeleteAccount && (
           <Pressable
             accessibilityRole="button"
@@ -73,7 +61,7 @@ export function SettingSecurity({
               styles.deleteShortcutCard,
               {
                 backgroundColor: `${palette.danger}10`,
-                borderColor: `${palette.danger}40`,
+                borderWidth: 0,
               },
             ]}
             testID="security-to-delete-account-btn"
@@ -103,7 +91,7 @@ const styles = StyleSheet.create({
   deleteShortcutCard: {
     alignItems: "center",
     borderRadius: radii.sm,
-    borderWidth: 1,
+    borderWidth: 0,
     flexDirection: "row",
     justifyContent: "space-between",
     marginTop: spacing.xs,

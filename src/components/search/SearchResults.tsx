@@ -1,4 +1,4 @@
-import { router, useLocalSearchParams } from 'expo-router';
+import { Link, router, useLocalSearchParams } from 'expo-router';
 import { ChevronLeft } from 'lucide-react-native';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Animated, Pressable, StyleSheet, Text, View } from 'react-native';
@@ -236,16 +236,18 @@ export default function SearchResults() {
             strokeWidth={ICON_STROKE}
           />
         </Pressable>
-        <SearchField
-          accessibilityLabel={t('home.search')}
-          autoFocus
-          clearAccessibilityLabel={t('home.clearSearch')}
-          onChangeText={setQuery}
-          onClear={() => setQuery('')}
-          placeholder={t('home.search')}
-          testID="search-input"
-          value={query}
-        />
+        <Link.AppleZoomTarget>
+          <SearchField
+            accessibilityLabel={t('home.search')}
+            autoFocus
+            clearAccessibilityLabel={t('home.clearSearch')}
+            onChangeText={setQuery}
+            onClear={() => setQuery('')}
+            placeholder={t('home.search')}
+            testID="search-input"
+            value={query}
+          />
+        </Link.AppleZoomTarget>
       </Animated.View>
 
       <CategoryTabs

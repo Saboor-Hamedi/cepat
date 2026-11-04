@@ -18,6 +18,7 @@ import { ICON_SIZE, ICON_STROKE } from "../../theme/icons";
 import { colors, radii, spacing } from "../../theme/tokens";
 import { font } from "../../theme/typography";
 import type { TechnicianPost } from "../../types/post";
+import { CORE_CATEGORY_FILTERS } from "../search/CategoryTabs";
 import { ImageSourceSheet } from "../ImageSourceSheet";
 import { Avatar } from "../marketplace-ui";
 import { PostDropdown } from "./PostDropdown";
@@ -36,6 +37,21 @@ export interface TechnicianPostCardProps {
   showAuthorHeader?: boolean;
   authorName?: string;
   authorAvatarUri?: string;
+}
+
+function categoryChipLabel(
+  slug: string | undefined,
+  language: "id" | "en",
+): string {
+  if (!slug) return "";
+  const core = CORE_CATEGORY_FILTERS[slug];
+  if (core) {
+    return language === "en" ? core.en : core.id;
+  }
+  return slug
+    .split("-")
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(" ");
 }
 
 function cleanTechnicianTypo(text?: string): string {
@@ -213,9 +229,7 @@ export function Post({
                         { color: palette.primary },
                       ]}
                     >
-                      {language === "en"
-                        ? "Bookable Service"
-                        : "Layanan Dapat Dipesan"}
+                      {categoryChipLabel(post.categorySlug, language)}
                     </Text>
                   </View>
                 ) : null}
@@ -550,17 +564,17 @@ export function Post({
             style={[
               styles.postBookBtn,
               {
-                backgroundColor: palette.primarySoft,
+                backgroundColor: palette.primary,
                 borderColor: palette.primary,
               },
             ]}
             testID={`post-book-btn-${post.id}`}
           >
-            <Text style={[styles.postBookBtnText, { color: palette.primary }]}>
+            <Text style={[styles.postBookBtnText, { color: "#0B1120" }]}>
               {language === "en" ? "Book Service" : "Pesan Layanan"}
             </Text>
             <ArrowRight
-              color={palette.primary}
+              color="#0B1120"
               size={ICON_SIZE}
               strokeWidth={ICON_STROKE}
             />
@@ -628,8 +642,8 @@ export function Post({
 
 const styles = StyleSheet.create({
   card: {
-    borderColor: "#E2E8F0",
-    borderRadius: 5,
+    borderColor: "#232F46",
+    borderRadius: 16,
     borderWidth: 1,
     marginBottom: 12,
     padding: 16,
@@ -796,7 +810,7 @@ const styles = StyleSheet.create({
   singleImageFrame: {
     aspectRatio: 16 / 9,
     backgroundColor: colors.paper,
-    borderRadius: 5,
+    borderRadius: 12,
     overflow: "hidden",
     width: "100%",
   },
@@ -808,7 +822,7 @@ const styles = StyleSheet.create({
   gridImageFrame: {
     aspectRatio: 16 / 9,
     backgroundColor: colors.paper,
-    borderRadius: 5,
+    borderRadius: 12,
     overflow: "hidden",
     width: "48%",
   },
@@ -893,7 +907,7 @@ const styles = StyleSheet.create({
     marginTop: spacing.xs,
   },
   editImageContainer: {
-    borderRadius: 5,
+    borderRadius: 12,
     marginTop: spacing.sm,
     overflow: "hidden",
     position: "relative",
@@ -901,7 +915,7 @@ const styles = StyleSheet.create({
   },
   editImagePreview: {
     aspectRatio: 16 / 9,
-    borderRadius: 5,
+    borderRadius: 12,
     height: 200,
     width: "100%",
   },

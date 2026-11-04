@@ -80,21 +80,11 @@ export function SettingPassword() {
   };
 
   return (
-    <SettingSection
-      eyebrow={language === "en" ? "SECURITY" : "KEAMANAN"}
-      title={t("settings.passwordTitle")}
-      description={
-        language === "en"
-          ? "Update your password to keep your account safe."
-          : "Perbarui kata sandi Anda untuk menjaga keamanan akun."
-      }
-      testID="setting-section-password"
-    >
+    <SettingSection testID="setting-section-password">
       <View
         style={styles.card}
         testID="password-update-form"
       >
-        {/* 1. Current Password */}
         <Text style={[styles.fieldLabel, { color: palette.text }]}>
           {language === "en" ? "Current Password" : "Kata Sandi Saat Ini"}
         </Text>
@@ -102,8 +92,8 @@ export function SettingPassword() {
           style={[
             styles.inputRow,
             {
-              backgroundColor: palette.surface,
-              borderColor: palette.border,
+              backgroundColor: palette.inputBg,
+              borderWidth: 0,
             },
           ]}
         >
@@ -135,7 +125,6 @@ export function SettingPassword() {
           </Pressable>
         </View>
 
-        {/* 2. New Password */}
         <Text style={[styles.fieldLabel, { color: palette.text }]}>
           {t("auth.newPassword")}
         </Text>
@@ -143,8 +132,8 @@ export function SettingPassword() {
           style={[
             styles.inputRow,
             {
-              backgroundColor: palette.surface,
-              borderColor: palette.border,
+              backgroundColor: palette.inputBg,
+              borderWidth: 0,
             },
           ]}
         >
@@ -176,7 +165,6 @@ export function SettingPassword() {
           </Pressable>
         </View>
 
-        {/* 3. Confirm Password */}
         <Text style={[styles.fieldLabel, { color: palette.text }]}>
           {t("auth.confirmPassword")}
         </Text>
@@ -184,8 +172,8 @@ export function SettingPassword() {
           style={[
             styles.inputRow,
             {
-              backgroundColor: palette.surface,
-              borderColor: palette.border,
+              backgroundColor: palette.inputBg,
+              borderWidth: 0,
             },
           ]}
         >
@@ -225,7 +213,6 @@ export function SettingPassword() {
           </Text>
         ) : null}
 
-        {/* Small "Save" Action Button Aligned on the LEFT */}
         <View style={styles.actionRowWithNotice}>
           <Pressable
             accessibilityRole="button"
@@ -276,15 +263,17 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.xs,
   },
   fieldLabel: {
-    fontSize: font.body,
+    fontSize: font.caption,
     fontWeight: "700",
-    marginBottom: 4,
+    letterSpacing: 0.8,
+    marginBottom: 6,
     marginTop: spacing.xs,
+    textTransform: "uppercase",
   },
   inputRow: {
     alignItems: "center",
     borderRadius: radii.sm,
-    borderWidth: 1,
+    borderWidth: 0,
     flexDirection: "row",
     marginBottom: spacing.xs,
     minHeight: 44,

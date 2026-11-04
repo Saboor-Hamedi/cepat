@@ -1,12 +1,11 @@
+import { LogOut } from 'lucide-react-native';
 import { useMemo } from 'react';
 import { Pressable, Text, View } from 'react-native';
 
 import { useAppearance } from '../../context/AppearanceContext';
 import type { Language } from '../../i18n/locale';
-import { colors } from '../../theme/tokens';
+import { ICON_STROKE } from '../../theme/icons';
 import { createSidebarFooterStyles } from './css/sidebarStyles';
-
-type SidebarFooterStyles = ReturnType<typeof createSidebarFooterStyles>;
 
 export interface SidebarFooterProps {
   language: Language;
@@ -14,16 +13,6 @@ export interface SidebarFooterProps {
   onLogout: () => void;
   onLogin: () => void;
   onRegister: () => void;
-}
-
-function LogoutIcon({ styles }: { styles: SidebarFooterStyles }) {
-  return (
-    <View style={styles.logoutCanvas}>
-      <View style={[styles.logoutFrame, { borderColor: colors.danger }]} />
-      <View style={[styles.logoutShaft, { backgroundColor: colors.danger }]} />
-      <View style={[styles.logoutHead, { borderColor: colors.danger }]} />
-    </View>
-  );
 }
 
 export function SidebarFooter({
@@ -36,19 +25,9 @@ export function SidebarFooter({
   const { palette } = useAppearance();
   const styles = useMemo(() => createSidebarFooterStyles(palette), [palette]);
 
-  return (
-    <View style={styles.container}>
-      {isAuthenticated ? (
-        <Pressable
-          accessibilityRole="button"
-          onPress={onLogout}
-          style={styles.logoutBtn}
-          testID="sidebar-logout"
-        >
-          <LogoutIcon styles={styles} />
-          <Text style={styles.logoutBtnText}>Log out</Text>
-        </Pressable>
-      ) : (
+  if (!isAuthenticated) {
+    return (
+      <View style={styles.container}>
         <View style={styles.guestAuthActions}>
           <Pressable
             accessibilityRole="button"
@@ -71,7 +50,30 @@ export function SidebarFooter({
             </Text>
           </Pressable>
         </View>
-      )}
+      </View>
+    );
+  }
+
+  return (
+    <View style={styles.container}>
+      <Pressable
+        accessibilityRole="button"
+        onPress={onLogout}
+        style={({ pressed }) => [
+          styles.logoutBtn,
+          { opacity: pressed ? 0.85 : 1 },
+        ]}
+        testID="sidebar-logout"
+      >
+        <LogOut
+          color="#F87171"
+          size={20}
+          strokeWidth={ICON_STROKE}
+        />
+        <Text style={styles.logoutBtnText}>
+          {language === 'en' ? 'Log out' : 'Keluar'}
+        </Text>
+      </Pressable>
     </View>
   );
 }

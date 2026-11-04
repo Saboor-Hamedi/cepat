@@ -20,9 +20,11 @@ import {
   loadSubmittedReports,
   loadSubmittedReviews,
   subscribeToBookings,
+  transitionBookingStatus,
 } from "../data/marketplaceStore";
 import { localizeArea, useLanguage } from "../i18n/locale";
 import { useAuth } from "../auth/AuthProvider";
+import { TaskContainer } from "../task";
 import type {
   BookingRecord,
   Technician,
@@ -38,8 +40,15 @@ type CustomerHubTab =
 export default function CustomerBookingsScreen() {
   const { language, t } = useLanguage();
   const { palette } = useAppearance();
-  const { user } = useAuth();
+  const { user, roles, effectiveRole } = useAuth();
+  const isTechnicianAccount = Boolean(
+    user &&
+      ((effectiveRole === "technician" || roles.includes("technician")) ||
+        (effectiveRole === "admin" || roles.includes("admin"))),
+  );
+  const [hub, setHub] = useState<"bookings" | "tasks">("bookings");
   const [tab, setTab] = useState<CustomerHubTab>("current");
+  const [allBookings, setAllBookings] = useState<BookingRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [bookingsError, setBookingsError] = useState<string | null>(null);
   const [reloadBookingsKey, setReloadBookingsKey] = useState(0);
@@ -50,9 +59,10 @@ export default function CustomerBookingsScreen() {
 
   useEffect(() => {
     let active = true;
-    const applyBookings = (allBookings: BookingRecord[]) => {
+    const applyBookings = (raw: BookingRecord[]) => {
+      setAllBookings(raw);
       const userBookings = user?.id
-        ? allBookings.filter((booking) => booking.customerUserId === user.id)
+        ? raw.filter((booking) => booking.customerUserId === user.id)
         : [];
       setBookings(userBookings);
     };
@@ -161,6 +171,27 @@ export default function CustomerBookingsScreen() {
     });
   }, [reports]);
 
+  const handleTechBookingAction = async (
+    bookingId: string,
+    nextStatus: BookingRecord["status"],
+    proposedStartAt?: string,
+  ) => {
+    const updated = await transitionBookingStatus(
+      bookingId,
+      nextStatus,
+      "technician",
+      { proposedStartAt },
+    );
+    setAllBookings((current) =>
+      current.map((b) => (b.id === bookingId ? updated : b)),
+    );
+    setBookings((current) =>
+      current.map((b) => (b.id === bookingId ? updated : b)),
+    );
+  };
+
+  const showTasks = isTechnicianAccount && hub === "tasks";
+
   return (
     <SafeAreaView
       style={[styles.safeArea, { backgroundColor: palette.background }]}
@@ -183,6 +214,34 @@ export default function CustomerBookingsScreen() {
             {t("dashboard.customerTitle")}
           </Text>
 
+          {isTechnicianAccount && (
+            <SegmentedTabs<"bookings" | "tasks">
+              activeTab={hub}
+              onSelectTab={setHub}
+              testIDPrefix="bookings-hub"
+              tabs={[
+                {
+                  key: "bookings",
+                  label: language === "en" ? "Bookings" : "Pesanan",
+                },
+                {
+                  key: "tasks",
+                  label: language === "en" ? "Tasks" : "Tugas",
+                },
+              ]}
+            />
+          )}
+
+          {showTasks ? (
+            <TaskContainer
+              bookings={allBookings}
+              loading={loading}
+              onBookingAction={handleTechBookingAction}
+              showHeader={false}
+            />
+          ) : null}
+
+          {!showTasks && (<>
           <SegmentedTabs<CustomerHubTab>
             activeTab={tab}
             onSelectTab={setTab}
@@ -448,6 +507,7 @@ export default function CustomerBookingsScreen() {
               )}
             </View>
           )}
+          </>)}
         </View>
       </ScrollView>
       <AppNavigationBar activeTab="bookings" />

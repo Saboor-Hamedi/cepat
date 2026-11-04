@@ -42,19 +42,8 @@ export function SettingVersion() {
   const appName = getAppName();
 
   return (
-    <SettingSection
-      eyebrow={language === "en" ? "ABOUT APPLICATION" : "TENTANG APLIKASI"}
-      title={language === "en" ? "Current Version" : "Versi Saat Ini"}
-      description={
-        language === "en"
-          ? "Official release and build system information."
-          : "Informasi rilis resmi dan sistem build aplikasi."
-      }
-      testID="setting-section-version"
-    >
-      {/* Flat, minimalist presentation with zero nested cards */}
+    <SettingSection testID="setting-section-version">
       <View style={styles.cleanContainer}>
-        {/* App Identity Row */}
         <View style={styles.identityRow}>
           <View style={styles.nameCluster}>
             <Text
@@ -90,7 +79,6 @@ export function SettingVersion() {
 
         <View style={[styles.hairline, { backgroundColor: palette.border }]} />
 
-        {/* Flat metadata list with hairline dividers */}
         <View style={styles.metaList}>
           <View style={styles.metaRow}>
             <Text
@@ -233,7 +221,7 @@ const styles = StyleSheet.create({
     fontWeight: "600",
   },
   hairline: {
-    height: 1,
+    height: StyleSheet.hairlineWidth,
     width: "100%",
   },
 });

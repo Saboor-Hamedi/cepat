@@ -71,8 +71,7 @@ export function PrivateContactEditor({
       style={[
         styles.card,
         {
-          backgroundColor: palette.surfaceElevated,
-          borderColor: palette.border,
+          backgroundColor: "transparent",
         },
       ]}
       testID="security-contact-card"
@@ -88,8 +87,7 @@ export function PrivateContactEditor({
           : "Email dan nomor telepon Anda bersifat privat dan tidak pernah ditampilkan di profil publik."}
       </Text>
 
-      {/* 1. Disabled Email */}
-      <Text style={[styles.fieldLabel, { color: palette.text }]}>
+      <Text style={[styles.fieldLabel, { color: palette.textMuted }]}>
         {language === "en" ? "Email Address" : "Alamat Email"}
       </Text>
       <TextInput
@@ -107,8 +105,7 @@ export function PrivateContactEditor({
         value={email}
       />
 
-      {/* 2. Editable Phone Number */}
-      <Text style={[styles.fieldLabel, { color: palette.text }]}>
+      <Text style={[styles.fieldLabel, { color: palette.textMuted }]}>
         {language === "en" ? "Phone Number" : "Nomor Telepon"}
       </Text>
       <TextInput
@@ -122,7 +119,7 @@ export function PrivateContactEditor({
           styles.input,
           {
             backgroundColor: palette.surface,
-            borderColor: palette.border,
+            borderWidth: 0,
             color: palette.text,
           },
         ]}
@@ -174,9 +171,7 @@ export function PrivateContactEditor({
 
 const styles = StyleSheet.create({
   card: {
-    borderRadius: radii.sm,
-    borderWidth: 1,
-    padding: spacing.md,
+    paddingVertical: spacing.xs,
   },
   cardTitle: {
     fontSize: font.subtitle,
@@ -189,14 +184,16 @@ const styles = StyleSheet.create({
     marginTop: 2,
   },
   fieldLabel: {
-    fontSize: font.body,
+    fontSize: font.caption,
     fontWeight: "700",
-    marginBottom: spacing.xs,
+    letterSpacing: 0.8,
+    marginBottom: 6,
     marginTop: spacing.xs,
+    textTransform: "uppercase",
   },
   input: {
-    borderRadius: 5,
-    borderWidth: 1,
+    borderRadius: radii.sm,
+    borderWidth: 0,
     fontSize: font.label,
     marginBottom: spacing.sm,
     minHeight: 42,

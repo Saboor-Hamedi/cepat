@@ -14,6 +14,7 @@ export interface SettingItemProps {
   rightElement?: ReactNode;
   testID?: string;
   accessibilityRole?: "button" | "switch" | "radio";
+  showDivider?: boolean;
 }
 
 export function SettingItem({
@@ -24,6 +25,7 @@ export function SettingItem({
   rightElement,
   testID,
   accessibilityRole = "button",
+  showDivider = true,
 }: SettingItemProps) {
   const { palette, scaleFont } = useAppearance();
   return (
@@ -77,7 +79,9 @@ export function SettingItem({
           />
         )}
       </Pressable>
-      <View style={[styles.hairline, { backgroundColor: palette.border }]} />
+      {showDivider ? (
+        <View style={[styles.hairline, { backgroundColor: palette.border }]} />
+      ) : null}
     </View>
   );
 }
@@ -92,6 +96,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "space-between",
     minHeight: 52,
+    paddingHorizontal: 12,
     paddingVertical: 12,
   },
   copy: {

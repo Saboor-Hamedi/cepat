@@ -13,7 +13,7 @@ import {
 import { useAppearance } from '../context/AppearanceContext';
 import { useLanguage } from '../i18n/locale';
 import { ICON_SIZE, ICON_STROKE } from '../theme/icons';
-import { radii, spacing } from '../theme/tokens';
+import { spacing } from '../theme/tokens';
 import { font } from '../theme/typography';
 
 export interface BackHeaderProps {
@@ -61,30 +61,30 @@ export function BackHeader({
   };
 
   const resolvedBackLabel = backLabel ?? (language === 'en' ? 'Back' : 'Kembali');
-  const tintColor = color ?? palette.primary;
+  const tintColor = color ?? palette.text;
+  const softButtonBg = `${palette.text}08`;
 
   return (
     <View
       style={[
         styles.headerBar,
         {
-          backgroundColor: `${palette.surface}88`,
-          borderColor: `${palette.border}60`,
+          backgroundColor: 'transparent',
         },
         style,
       ]}
       testID={testID}
     >
-      {/* Universal Go Back Button (NO background on the button itself) */}
       <Pressable
         accessibilityLabel={resolvedBackLabel}
         accessibilityRole="button"
         onPress={handleBack}
         style={({ pressed }) => [
           styles.backBtn,
+          showBackLabel ? styles.backBtnPill : styles.backBtnIconOnly,
           {
-            opacity: pressed ? 0.6 : 1,
-            backgroundColor: 'transparent',
+            backgroundColor: softButtonBg,
+            opacity: pressed ? 0.72 : 1,
           },
         ]}
         testID={backBtnTestID}
@@ -97,7 +97,6 @@ export function BackHeader({
         )}
       </Pressable>
 
-      {/* Dynamic Title (Centered) */}
       <View style={styles.titleWrap}>
         {titleComponent ? (
           titleComponent
@@ -112,7 +111,6 @@ export function BackHeader({
         ) : null}
       </View>
 
-      {/* Right Element or Symmetrical Spacer to keep title centered */}
       <View style={styles.rightWrap}>
         {rightElement || null}
       </View>
@@ -123,31 +121,36 @@ export function BackHeader({
 const styles = StyleSheet.create({
   headerBar: {
     alignItems: 'center',
-    borderRadius: radii.sm,
-    borderWidth: 1,
+    borderWidth: 0,
     flexDirection: 'row',
     justifyContent: 'space-between',
     marginBottom: spacing.sm,
-    marginTop: 2,
     minHeight: 46,
-    paddingHorizontal: 8,
-    paddingVertical: 3,
+    paddingHorizontal: 2,
+    paddingVertical: 0,
     width: '100%',
   },
   backBtn: {
     alignItems: 'center',
-    backgroundColor: 'transparent',
-    borderRadius: radii.sm,
+    borderRadius: 999,
     flexDirection: 'row',
     gap: 4,
-    minHeight: 38,
-    minWidth: 70,
-    paddingHorizontal: 4,
-    paddingVertical: 4,
+    justifyContent: 'center',
+    minHeight: 40,
+    minWidth: 40,
+    paddingVertical: 2,
+  },
+  backBtnPill: {
+    paddingHorizontal: 12,
+  },
+  backBtnIconOnly: {
+    paddingHorizontal: 0,
+    width: 40,
   },
   backLabel: {
-    fontSize: font.subtitle,
-    fontWeight: '700',
+    fontSize: font.label,
+    fontWeight: '600',
+    letterSpacing: -0.2,
   },
   titleWrap: {
     alignItems: 'center',
@@ -157,14 +160,15 @@ const styles = StyleSheet.create({
   },
   titleText: {
     fontSize: font.heading,
-    fontWeight: '700',
+    fontWeight: '600',
+    letterSpacing: -0.3,
     textAlign: 'center',
   },
   rightWrap: {
     alignItems: 'center',
     flexDirection: 'row',
     justifyContent: 'flex-end',
-    minHeight: 38,
-    minWidth: 70,
+    minHeight: 40,
+    minWidth: 40,
   },
 });

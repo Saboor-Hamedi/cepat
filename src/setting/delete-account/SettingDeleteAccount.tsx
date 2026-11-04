@@ -353,18 +353,8 @@ export function SettingDeleteAccount({
   };
 
   return (
-    <SettingSection
-      eyebrow={language === "en" ? "DANGER ZONE" : "ZONA BERBAHAYA"}
-      title={language === "en" ? "Delete Account" : "Hapus Akun"}
-      description={
-        language === "en"
-          ? "Permanently remove your account and all associated data from Cepat."
-          : "Hapus akun dan semua data terkait Anda dari Cepat secara permanen."
-      }
-      testID="setting-section-delete-account"
-    >
+    <SettingSection testID="setting-section-delete-account">
       <View style={{ gap: spacing.md }}>
-        {/* Prominent Irreversible Warning Box */}
         <View
           style={[
             styles.warningBox,
@@ -403,7 +393,6 @@ export function SettingDeleteAccount({
           </View>
         </View>
 
-        {/* Step 1: Select Deletion Reason */}
         <View
           style={[
             styles.card,
@@ -453,7 +442,6 @@ export function SettingDeleteAccount({
             })}
           </View>
 
-          {/* Show custom textarea if "other" is selected */}
           {selectedReason === "other" && (
             <View style={styles.otherInputWrap}>
               <Text style={[styles.fieldLabel, { color: palette.text, fontSize: scaleFont(font.label) }]}>
@@ -472,8 +460,7 @@ export function SettingDeleteAccount({
                 style={[
                   styles.textarea,
                   {
-                    backgroundColor: palette.background,
-                    borderColor: palette.border,
+                    backgroundColor: palette.inputBg,
                     color: palette.text,
                     fontSize: scaleFont(font.label),
                   },
@@ -485,7 +472,6 @@ export function SettingDeleteAccount({
           )}
         </View>
 
-        {/* Step 2: Confirm Email Address */}
         <View
           style={[
             styles.card,
@@ -540,7 +526,6 @@ export function SettingDeleteAccount({
           </View>
         </View>
 
-        {/* Step 3: Enter Account Password */}
         <View
           style={[
             styles.card,
@@ -590,7 +575,6 @@ export function SettingDeleteAccount({
           </View>
         </View>
 
-        {/* Step 4: Checkmark to accept permanent deletion */}
         <Pressable
           accessibilityRole="checkbox"
           accessibilityState={{ checked: acceptedTerms }}
@@ -635,7 +619,6 @@ export function SettingDeleteAccount({
           </View>
         ) : null}
 
-        {/* Action Buttons */}
         <View style={styles.actionsRow}>
           {onCancel && (
             <Pressable
@@ -688,7 +671,7 @@ export function SettingDeleteAccount({
 
 const styles = StyleSheet.create({
   warningBox: {
-    borderRadius: radii.md,
+    borderRadius: radii.sm,
     borderWidth: 0,
     padding: spacing.md,
   },
@@ -713,8 +696,8 @@ const styles = StyleSheet.create({
     lineHeight: 18,
   },
   card: {
-    borderRadius: radii.md,
-    borderWidth: 1,
+    borderRadius: radii.sm,
+    borderWidth: StyleSheet.hairlineWidth,
     padding: spacing.md,
   },
   stepTitle: {
@@ -758,15 +741,15 @@ const styles = StyleSheet.create({
   },
   textarea: {
     borderRadius: radii.sm,
-    borderWidth: 1,
-    minHeight: 72,
+    borderWidth: 0,
+    minHeight: 64,
     padding: 10,
     textAlignVertical: "top",
   },
   inputContainer: {
     alignItems: "center",
     borderRadius: radii.sm,
-    borderWidth: 1,
+    borderWidth: 0,
     flexDirection: "row",
     minHeight: 46,
     paddingHorizontal: 12,
@@ -784,15 +767,15 @@ const styles = StyleSheet.create({
   },
   checkboxRow: {
     alignItems: "flex-start",
-    borderRadius: radii.md,
-    borderWidth: 1,
+    borderRadius: radii.sm,
+    borderWidth: 0,
     flexDirection: "row",
     gap: 12,
     padding: spacing.md,
   },
   customCheckbox: {
     alignItems: "center",
-    borderRadius: 6,
+    borderRadius: radii.sm,
     borderWidth: 2,
     height: 24,
     justifyContent: "center",
@@ -805,7 +788,7 @@ const styles = StyleSheet.create({
   },
   errorCard: {
     borderRadius: radii.sm,
-    borderWidth: 1,
+    borderWidth: 0,
     padding: 12,
   },
   errorText: {
@@ -821,7 +804,7 @@ const styles = StyleSheet.create({
   cancelBtn: {
     alignItems: "center",
     borderRadius: radii.sm,
-    borderWidth: 1,
+    borderWidth: StyleSheet.hairlineWidth,
     justifyContent: "center",
     paddingHorizontal: 16,
     paddingVertical: 14,

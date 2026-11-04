@@ -109,26 +109,11 @@ export function ChatHeader({
                 {partnerName}
               </Text>
               {isVerifiedPartner && (
-                <View
-                  style={[
-                    styles.verifiedPill,
-                    { backgroundColor: palette.primarySoft },
-                  ]}
-                >
-                  <BadgeCheck
-                    color={palette.primary}
-                    size={ICON_SIZE}
-                    strokeWidth={ICON_STROKE}
-                  />
-                  <Text
-                    style={[
-                      styles.verifiedPillText,
-                      { color: palette.primary },
-                    ]}
-                  >
-                    {language === 'en' ? 'Verified' : 'Terverifikasi'}
-                  </Text>
-                </View>
+                <BadgeCheck
+                  color={palette.primary}
+                  size={ICON_SIZE + 2}
+                  strokeWidth={ICON_STROKE}
+                />
               )}
             </View>
             <View style={styles.statusRow}>

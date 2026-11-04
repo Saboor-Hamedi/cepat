@@ -25,7 +25,7 @@ import {
 } from '../data/marketplaceStore';
 import { useLanguage } from '../i18n/locale';
 import { TaskContainer } from '../task';
-import { colors, radii, spacing } from '../theme/tokens';
+import { colors, spacing } from '../theme/tokens';
 import type { BookingRecord } from '../types/marketplace';
 import { font } from '../theme/typography';
 
@@ -214,7 +214,7 @@ export default function TechnicianDashboardScreen() {
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
-      <AppNavigationBar activeTab="workspace" />
+      <AppNavigationBar activeTab="bookings" />
     </SafeAreaView>
   );
 }

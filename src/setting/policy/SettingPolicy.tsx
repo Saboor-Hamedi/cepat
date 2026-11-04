@@ -11,17 +11,7 @@ export function SettingPolicy() {
   const { palette, scaleFont } = useAppearance();
 
   return (
-    <SettingSection
-      eyebrow={language === "en" ? "LEGAL & POLICY" : "HUKUM & KEBIJAKAN"}
-      title={language === "en" ? "Terms & Privacy Policy" : "Syarat & Kebijakan Privasi"}
-      description={
-        language === "en"
-          ? "Read our terms of service, platform rules, and how your privacy is protected."
-          : "Pelajari syarat layanan kami, aturan platform, dan perlindungan privasi Anda."
-      }
-      testID="setting-section-policy"
-    >
-      {/* Single clean card with no background */}
+    <SettingSection testID="setting-section-policy">
       <View style={styles.singleContainer} testID="policy-container">
         {/* 1. Terms of Service */}
         <View style={styles.sectionBlock} testID="policy-terms-card">
@@ -134,7 +124,7 @@ const styles = StyleSheet.create({
     marginBottom: spacing.xs,
   },
   divider: {
-    height: 1,
+    height: StyleSheet.hairlineWidth,
     marginVertical: spacing.sm,
   },
 });

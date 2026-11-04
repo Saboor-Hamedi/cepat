@@ -129,8 +129,7 @@ export function ProfileNameEditor({
       style={[
         styles.card,
         {
-          backgroundColor: palette.surfaceElevated,
-          borderColor: palette.border,
+          backgroundColor: "transparent",
         },
       ]}
       testID="profile-identity-editor-card"
@@ -148,8 +147,7 @@ export function ProfileNameEditor({
           : "Ini adalah nama publik yang terlihat di kartu teknisi, pesanan, dan chat."}
       </Text>
 
-      {/* 1. Public Display Name */}
-      <Text style={[styles.inputLabel, { color: palette.text }]}>
+      <Text style={[styles.inputLabel, { color: palette.textMuted }]}>
         {language === "en" ? "Full / Display Name" : "Nama Lengkap / Tampilan"}
       </Text>
       <View
@@ -178,8 +176,7 @@ export function ProfileNameEditor({
         />
       </View>
 
-      {/* 2. Username Handle */}
-      <Text style={[styles.inputLabel, { color: palette.text, marginTop: spacing.sm }]}>
+      <Text style={[styles.inputLabel, styles.inputLabelSpaced, { color: palette.textMuted }]}>
         {language === "en" ? "Public Handle (@username)" : "Handle Publik (@username)"}
       </Text>
       <View
@@ -207,14 +204,12 @@ export function ProfileNameEditor({
         />
       </View>
 
-      {/* Feedback Messages */}
       {errorFeedback ? (
         <Text style={styles.errorText} testID="profile-name-error">
           {errorFeedback}
         </Text>
       ) : null}
 
-      {/* Save Action Button Aligned on the LEFT */}
       <View style={styles.actionRowWithNotice}>
         <Pressable
           accessibilityRole="button"
@@ -251,9 +246,7 @@ export function ProfileNameEditor({
 
 const styles = StyleSheet.create({
   card: {
-    borderRadius: radii.sm,
-    borderWidth: 1,
-    padding: spacing.md,
+    paddingVertical: spacing.xs,
   },
   headerRow: {
     alignItems: "center",
@@ -271,14 +264,19 @@ const styles = StyleSheet.create({
     marginTop: 4,
   },
   inputLabel: {
-    fontSize: font.body,
+    fontSize: font.caption,
     fontWeight: "700",
-    marginBottom: 4,
+    letterSpacing: 0.8,
+    marginBottom: 6,
+    textTransform: "uppercase",
+  },
+  inputLabelSpaced: {
+    marginTop: spacing.sm,
   },
   inputContainer: {
     alignItems: "center",
     borderRadius: radii.sm,
-    borderWidth: 1,
+    borderWidth: 0,
     flexDirection: "row",
     minHeight: 42,
     paddingHorizontal: spacing.sm,

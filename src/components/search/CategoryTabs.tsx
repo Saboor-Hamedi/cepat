@@ -81,9 +81,11 @@ export function CategoryTabs({
             style={({ pressed }) => [
               styles.tab,
               {
-                backgroundColor: isSelected ? palette.primary : 'transparent',
-                borderColor: isSelected ? palette.primary : palette.border,
-                transform: [{ scale: pressed ? 0.96 : 1 }],
+                backgroundColor: isSelected
+                  ? palette.primary
+                  : `${palette.text}08`,
+                borderColor: 'transparent',
+                opacity: pressed ? 0.85 : 1,
               },
             ]}
             testID={`category-${category.slug}`}
@@ -92,8 +94,8 @@ export function CategoryTabs({
               style={[
                 styles.tabText,
                 {
-                  color: isSelected ? '#FFFFFF' : palette.textMuted,
-                  fontWeight: isSelected ? '800' : '600',
+                  color: isSelected ? '#FFFFFF' : palette.text,
+                  fontWeight: isSelected ? '700' : '600',
                 },
               ]}
             >
@@ -113,18 +115,18 @@ const styles = StyleSheet.create({
   },
   container: {
     flexDirection: 'row',
-    gap: 8,
-    paddingBottom: spacing.xs,
+    gap: 6,
+    paddingBottom: spacing.xs + 2,
     paddingRight: spacing.md,
     paddingTop: spacing.sm,
   },
   tab: {
     alignItems: 'center',
-    borderRadius: 20,
-    borderWidth: 1,
+    borderRadius: 18,
+    borderWidth: 0,
+    height: 36,
     justifyContent: 'center',
-    paddingHorizontal: 14,
-    paddingVertical: 7,
+    paddingHorizontal: 16,
   },
   tabText: {
     fontSize: font.label,

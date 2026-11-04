@@ -1,6 +1,6 @@
-import { router } from 'expo-router';
+import { Link, router } from 'expo-router';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Animated, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Animated, Pressable, RefreshControl, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { useAuth } from '../auth/AuthProvider';
@@ -20,7 +20,7 @@ import {
   CategoryTabs,
 } from '../components/search/CategoryTabs';
 import { MarketplaceMapSearchModal } from '../components/marketplace/MarketplaceSearch';
-import { SearchField } from '../components/search/SearchField';
+import { SearchFieldTrigger } from '../components/search/SearchField';
 import {
   TechnicianPostCard,
 } from '../components/TechnicianPostCard';
@@ -68,7 +68,6 @@ interface PopularTaskItem {
 }
 
 type MarketplaceListItem =
-  | { key: string; kind: 'posts-heading' }
   | { key: string; kind: 'recommendations-heading' }
   | { key: string; kind: 'technicians-heading' }
   | { key: string; kind: 'post'; post: TechnicianPost }
@@ -261,9 +260,7 @@ export default function MarketplaceScreen() {
     const recommendations = prioritized.slice(0, 3);
     const recommendationIds = new Set(recommendations.map((technician) => technician.id));
 
-    // 1. Recent Work Posts from Technicians (Section 1)
     if (postFeed.items.length > 0) {
-      items.push({ key: 'posts-heading', kind: 'posts-heading' });
       for (const post of postFeed.items) {
         items.push({ key: `post-${post.id}`, kind: 'post', post });
       }
@@ -568,23 +565,6 @@ export default function MarketplaceScreen() {
           )
         }
         renderItem={({ item }) => {
-          if (item.kind === 'posts-heading') {
-            return (
-              <View style={styles.feedSectionTitle} testID="marketplace-posts-section">
-                <SectionTitle
-                  title={
-                    language === 'en'
-                      ? 'Recent Work Posts'
-                      : 'Postingan Pekerjaan Terbaru'
-                  }
-                  trailing={language === 'en' ? 'View all →' : 'Lihat semua →'}
-                  onTrailingPress={() => {
-                    setSelectedCategory('all');
-                  }}
-                />
-              </View>
-            );
-          }
           if (item.kind === 'recommendations-heading') {
             return (
               <View style={styles.feedSectionTitle} testID="marketplace-recommendations-section">
@@ -682,10 +662,17 @@ export default function MarketplaceScreen() {
             <View style={styles.bottomSpace} />
           </>
         }
-        refreshing={isRefreshing || postFeed.refreshing}
-        onRefresh={() => {
-          void handlePullToRefresh();
-        }}
+        refreshControl={
+          <RefreshControl
+            refreshing={isRefreshing || postFeed.refreshing}
+            onRefresh={() => {
+              void handlePullToRefresh();
+            }}
+            progressViewOffset={SEARCH_HEADER_HEIGHT}
+            tintColor={palette.primary}
+            colors={[palette.primary]}
+          />
+        }
         testID="technician-list"
       />
 
@@ -707,20 +694,29 @@ export default function MarketplaceScreen() {
         >
           <View style={[styles.contentWidth, styles.searchHeaderInner]}>
             <View style={styles.searchRow}>
-              <SearchField
-                accessibilityLabel={t('home.search')}
-                onPress={() =>
-                  router.push({
+              <Link
+                asChild
+                href={
+                  {
                     pathname: '/search',
                     params: {
                       area,
                       category: selectedCategory,
                     },
-                  } as never)
+                  } as never
                 }
-                placeholder={t('home.search')}
-                testID="marketplace-search"
-              />
+              >
+                <Pressable
+                  accessibilityLabel={t('home.search')}
+                  accessibilityRole="button"
+                  style={styles.marketplaceSearchTrigger}
+                  testID="marketplace-search"
+                >
+                  <Link.AppleZoom>
+                    <SearchFieldTrigger placeholder={t('home.search')} />
+                  </Link.AppleZoom>
+                </Pressable>
+              </Link>
 
               <Pressable
                 accessibilityRole="button"
@@ -802,11 +798,15 @@ const styles = StyleSheet.create({
     top: 0,
     zIndex: 20,
   },
+  marketplaceSearchTrigger: {
+    flex: 1,
+    height: 40,
+  },
   searchHeaderInner: {
     paddingBottom: 6,
   },
   listContent: {
-    paddingBottom: 5,
+    paddingBottom: 100,
   },
   contentWidth: {
     alignSelf: 'center',

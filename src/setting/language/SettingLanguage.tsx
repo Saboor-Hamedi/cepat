@@ -37,17 +37,14 @@ export function SettingLanguage() {
   ];
 
   return (
-    <SettingSection
-      eyebrow={language === "en" ? "LANGUAGE & REGION" : "BAHASA & WILAYAH"}
-      title={t("settings.languageTitle")}
-      description={
-        language === "en"
-          ? "Choose your interface language. Currencies and dates adapt automatically."
-          : "Pilih bahasa tampilan antarmuka. Format mata uang dan tanggal menyesuaikan otomatis."
-      }
-      testID="setting-section-language"
-    >
-      <View style={styles.optionsWrap} testID="account-language-section">
+    <SettingSection testID="setting-section-language">
+      <View
+        style={[
+          styles.optionsWrap,
+          { backgroundColor: palette.border },
+        ]}
+        testID="account-language-section"
+      >
         {options.map((opt) => {
           const selected = language === opt.code;
           return (
@@ -61,9 +58,11 @@ export function SettingLanguage() {
               style={({ pressed }) => [
                 styles.languageOption,
                 {
-                  backgroundColor: palette.surfaceElevated,
-                  borderColor: selected ? palette.primary : palette.border,
-                  opacity: pressed ? 0.75 : 1,
+                  backgroundColor: selected
+                    ? `${palette.primary}0D`
+                    : pressed
+                      ? `${palette.text}06`
+                      : palette.surface,
                 },
               ]}
               testID={opt.testID}
@@ -129,13 +128,14 @@ export function SettingLanguage() {
 
 const styles = StyleSheet.create({
   optionsWrap: {
-    gap: 6,
+    borderRadius: radii.sm,
+    gap: 1,
+    overflow: "hidden",
     width: "100%",
   },
   languageOption: {
     alignItems: "center",
-    borderRadius: radii.sm,
-    borderWidth: 1,
+    borderWidth: 0,
     flexDirection: "row",
     gap: spacing.md,
     minHeight: 56,

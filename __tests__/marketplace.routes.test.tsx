@@ -93,7 +93,9 @@ describe("marketplace, auth-gated booking, social technician profile, and sideba
     expect(await screen.findByTestId("marketplace-search")).toBeTruthy();
     expect(screen.getByText("Teknisi rekomendasi")).toBeTruthy();
     // Technician posts feed is visible on marketplace discovery
-    expect(await screen.findByTestId("marketplace-posts-section")).toBeTruthy();
+    expect(
+      await screen.findByTestId("technician-post-card-post-seed-1"),
+    ).toBeTruthy();
 
     await fireEvent.press(screen.getByTestId("technician-card-demo-rizky"));
     await fireEvent.press(screen.getByTestId("profile-tab-about"));
