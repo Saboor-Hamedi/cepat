@@ -563,10 +563,6 @@ export function TechnicianPostComposer({
 
   return (
     <View style={styles.inlineRoot} testID="technician-post-composer">
-      <View style={styles.inlineHeader}>
-        <View style={styles.inlineHeaderSpacer} />
-        {postPill('submit-new-post-btn')}
-      </View>
       <View style={styles.threadRow}>
         <View style={styles.avatarColumn}>
           <Avatar uri={avatarUri} name={displayName} size={40} />
@@ -578,6 +574,7 @@ export function TechnicianPostComposer({
           {imagesBlock}
           <View style={styles.inlineFooter}>
             {renderIconRow()}
+            {postPill('submit-new-post-btn')}
           </View>
         </View>
       </View>
@@ -589,6 +586,7 @@ export function TechnicianPostComposer({
           {error}
         </Text>
       ) : null}
+      <View style={[styles.inlineDivider, { backgroundColor: palette.border }]} />
       {pickerModal}
     </View>
   );
@@ -776,15 +774,10 @@ const styles = StyleSheet.create({
   inlineRoot: {
     width: '100%',
   },
-  inlineHeader: {
-    alignItems: 'center',
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    paddingBottom: spacing.xs,
-    paddingTop: 2,
-  },
-  inlineHeaderSpacer: {
-    flex: 1,
+  inlineDivider: {
+    height: StyleSheet.hairlineWidth,
+    marginTop: spacing.sm,
+    width: '100%',
   },
   inlineBody: {
     flex: 1,

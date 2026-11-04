@@ -1,29 +1,18 @@
-Refactor and polish the Profile screen UI according to the following specifications:
+DESIGN SYSTEM CONTRACT & COMPONENT GUIDELINES
 
-1. Safe Area & Header Fix:
-   - Ensure the screen content respects device notch/status bar insets (using SafeAreaView or react-native-safe-area-context with paddingTop: insets.top).
-   - Display the user's name ("Saboor Hamedi") and handle ("@saboorhamedi") clearly below the system status bar with clean vertical breathing room (12px–16px).
+All newly generated screens and components must strictly adhere to the following architecture:
 
-2. Profile Stats Row:
-   - Replace the 4 chunky separate rectangular stat boxes with a single unified, sleek horizontal stats strip (or inline metrics separated by subtle vertical pipes "|"):
-     - Rating: "★ 5.0 (0 rev)"
-     - Tasks: "0 tasks"
-     - Posts: "6 posts"
-     - Area: "All areas"
-   - Reduce visual bulk and save vertical screen space.
+1. Import from Design System Primitives:
+   - Always wrap full screens with <ScreenWrapper> to automatically account for safe area insets and midnight dark background (#000000).
+   - Never use bare <Text> components. Use <AppText variant="title|body|caption" color="primary|secondary|muted"> to ensure consistent font weights and colors.
+   - Use <AppButton> for actions (variant="primary" for mint green pills, "outline" or "secondary" for neutral actions).
 
-3. Sub-Navigation Tabs:
-   - Ensure the horizontal tabs ("Posts", "Services", "Portfolio", "Reviews", "About") have smooth horizontal scrolling if needed, with the active tab ("Posts") highlighted in vibrant mint green (#10B981) and an active underline indicator.
+2. Visual Identity & Theme Tokens:
+   - Palette: Pure dark background (#000000), surface tiles (#0B0F17 / #131B26), subtle hairline dividers (#1E293B), and primary mint green accent (#10B981).
+   - Feed & Post Items: Must be borderless rows separated only by hairline bottom dividers (1px #1E293B). Do NOT wrap feed items in heavy card boxes unless explicitly instructed.
+   - Navigation: Bottom bar must maintain the 5-slot structure with the elevated central mint-green (+) Floating Action Button protruding 50% above the bar.
 
-4. Inline Composer Refinement (Threads-Style):
-   - Left: Circular user avatar with a faint vertical connector thread line running downward to the icon bar.
-   - Right: Borderless multiline TextInput with placeholder "What's new with your work?" (#64748B).
-   - Bottom Action Row:
-     - Left side: Subtle utility icons (briefcase/service, location pin, camera) in muted gray (#94A3B8).
-     - Right side: Compact rounded pill button "Post" aligned cleanly on the right of the same toolbar row (mint green when active, muted when text is empty).
-   - Add a subtle 1px bottom border (#1E293B) to demarcate the composer from the feed below.
-
-5. Profile Feed List:
-   - Refactor posts to look native and borderless: remove heavy rounded boxed cards.
-   - Separate individual posts with clean, subtle 1px divider lines (#1E293B) with 16px horizontal and vertical padding.
-   - Maintain the avatar, author name, timestamp, and post text typography hierarchy.
+3. Spacing & Rhythm:
+   - Use standardized 4px/8px/12px/16px/24px spacing increments.
+   - Default screen horizontal gutter is strictly 16px.
+   - Interactive touch targets must be at least 48px in height.

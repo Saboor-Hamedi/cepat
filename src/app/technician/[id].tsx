@@ -3,10 +3,7 @@ import { router, useLocalSearchParams } from "expo-router";
 import {
   BadgeCheck,
   Camera,
-  CheckCircle,
   ChevronLeft,
-  FileText,
-  MapPin,
   Pencil,
   Settings,
   ShieldCheck,
@@ -809,82 +806,53 @@ export default function TechnicianProfileScreen() {
               </View>
             ) : null}
 
-            {/* 4 Badges in a single horizontal line, radius 5px - ONLY for Technicians */}
             {isTechnicianProfile && (
-              <View style={styles.singleLineBadgesRow} testID="technician-stats-bar">
-                {/* 1. Rating Badge */}
-                <View
-                  style={[
-                    styles.singleBadgeItem,
-                    { backgroundColor: palette.surface, borderColor: palette.border },
-                  ]}
-                  testID="technician-rating-badge"
-                >
-                  <View style={styles.badgeTopRow}>
-                    <Text style={styles.badgeGoldStar}>★</Text>
-                    <Text style={[styles.badgeValueText, { color: palette.text }]}>
-                      {technician.reviewCount ? technician.averageRating.toFixed(1) : (technician.averageRating > 0 ? technician.averageRating.toFixed(1) : '5.0')}
+              <View style={styles.statsStrip} testID="technician-stats-bar">
+                <View style={styles.statsItem} testID="technician-rating-badge">
+                  <Text style={[styles.statsValue, { color: palette.text }]}>
+                    <Text style={styles.statsStar}>★ </Text>
+                    {technician.averageRating > 0
+                      ? technician.averageRating.toFixed(1)
+                      : '5.0'}
+                    {" "}
+                    <Text style={[styles.statsMuted, { color: palette.textMuted }]}>
+                      ({formatCompactNumber(technician.reviewCount)} {language === "en" ? "rev" : "ul"})
                     </Text>
-                  </View>
-                  <Text numberOfLines={1} style={[styles.badgeLabelText, { color: palette.textMuted }]}>
-                    {formatCompactNumber(technician.reviewCount)} {language === "en" ? "rev" : "ul"}
                   </Text>
                 </View>
-
-                {/* 2. Tasks Completed Badge */}
-                <View
-                  style={[
-                    styles.singleBadgeItem,
-                    { backgroundColor: palette.surface, borderColor: palette.border },
-                  ]}
-                  testID="technician-tasks-badge"
-                >
-                  <View style={styles.badgeTopRow}>
-                    <CheckCircle size={ICON_SIZE} color={palette.primary} strokeWidth={ICON_STROKE} />
-                    <Text style={[styles.badgeValueText, { color: palette.text }]}>
-                      {formatCompactNumber(technician.completedJobsCount)}
+                <View style={[styles.statsPipe, { backgroundColor: palette.border }]} />
+                <View style={styles.statsItem} testID="technician-tasks-badge">
+                  <Text style={[styles.statsValue, { color: palette.text }]}>
+                    {formatCompactNumber(technician.completedJobsCount)}
+                    {" "}
+                    <Text style={[styles.statsMuted, { color: palette.textMuted }]}>
+                      {language === "en" ? "tasks" : "tugas"}
                     </Text>
-                  </View>
-                  <Text numberOfLines={1} style={[styles.badgeLabelText, { color: palette.textMuted }]}>
-                    {language === "en" ? "tasks" : "tugas"}
                   </Text>
                 </View>
-
-                {/* 3. Posts Created Badge */}
-                <View
-                  style={[
-                    styles.singleBadgeItem,
-                    { backgroundColor: palette.surface, borderColor: palette.border },
-                  ]}
-                  testID="technician-posts-badge"
-                >
-                  <View style={styles.badgeTopRow}>
-                    <FileText size={ICON_SIZE} color={palette.primary} strokeWidth={ICON_STROKE} />
-                    <Text style={[styles.badgeValueText, { color: palette.text }]}>
-                      {formatCompactNumber(posts.length)}
+                <View style={[styles.statsPipe, { backgroundColor: palette.border }]} />
+                <View style={styles.statsItem} testID="technician-posts-badge">
+                  <Text style={[styles.statsValue, { color: palette.text }]}>
+                    {formatCompactNumber(posts.length)}
+                    {" "}
+                    <Text style={[styles.statsMuted, { color: palette.textMuted }]}>
+                      {language === "en" ? "posts" : "post"}
                     </Text>
-                  </View>
-                  <Text numberOfLines={1} style={[styles.badgeLabelText, { color: palette.textMuted }]}>
-                    {language === "en" ? "posts" : "post"}
                   </Text>
                 </View>
-
-                {/* 4. Service Area Badge */}
-                <View
-                  style={[
-                    styles.singleBadgeItem,
-                    { backgroundColor: palette.surface, borderColor: palette.border },
-                  ]}
-                  testID="technician-area-badge"
-                >
-                  <View style={styles.badgeTopRow}>
-                    <MapPin size={ICON_SIZE} color={palette.primary} strokeWidth={ICON_STROKE} />
-                    <Text numberOfLines={1} style={[styles.badgeValueArea, { color: palette.text }]}>
-                      {technician.serviceAreas[0] ? localizeArea(technician.serviceAreas[0], language).split(' ')[0] : (language === "en" ? "Area" : "Area")}
-                    </Text>
-                  </View>
-                  <Text numberOfLines={1} style={[styles.badgeLabelText, { color: palette.textMuted }]}>
-                    {technician.serviceAreas[0] ? localizeArea(technician.serviceAreas[0], language) : (language === "en" ? "All areas" : "Semua")}
+                <View style={[styles.statsPipe, { backgroundColor: palette.border }]} />
+                <View style={styles.statsItem} testID="technician-area-badge">
+                  <Text
+                    numberOfLines={1}
+                    style={[styles.statsValue, styles.statsAreaValue, { color: palette.text }]}
+                  >
+                    {technician.serviceAreas.length > 1
+                      ? `${localizeArea(technician.serviceAreas[0], language)} +${technician.serviceAreas.length - 1}`
+                      : technician.serviceAreas[0]
+                        ? localizeArea(technician.serviceAreas[0], language)
+                        : language === "en"
+                          ? "All areas"
+                          : "Semua area"}
                   </Text>
                 </View>
               </View>
@@ -946,18 +914,15 @@ export default function TechnicianProfileScreen() {
           style={[
             styles.profileTabBarWrap,
             {
-              backgroundColor: palette.surface,
+              backgroundColor: palette.background,
               borderBottomColor: palette.border,
             },
           ]}
         >
-          <View
-            style={[
-              styles.profileTabBar,
-              {
-                backgroundColor: palette.surface,
-              },
-            ]}
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.profileTabBarContent}
             testID="profile-tab-bar"
           >
             {(
@@ -981,7 +946,7 @@ export default function TechnicianProfileScreen() {
                   accessibilityRole="tab"
                   accessibilityState={{ selected }}
                   onPress={() => setActiveProfileTab(key)}
-                  style={styles.profileTab}
+                  style={styles.profileTabScroll}
                   testID={`profile-tab-${key}`}
                 >
                   <Text
@@ -1004,7 +969,7 @@ export default function TechnicianProfileScreen() {
                 </Pressable>
               );
             })}
-          </View>
+          </ScrollView>
         </View>
 
         <View style={styles.contentWidth}>
@@ -1029,6 +994,7 @@ export default function TechnicianProfileScreen() {
                   {posts.map((item) => (
                     <View key={item.id} style={styles.postCardWrap}>
                       <TechnicianPostCard
+                        flat
                         post={item}
                         isOwner={isProfileOwner}
                         isAdmin={isAdminUser}
@@ -2475,37 +2441,32 @@ const styles = StyleSheet.create({
     gap: spacing.xs,
   },
   profileTabBarWrap: {
-    borderBottomWidth: 1,
+    borderBottomWidth: StyleSheet.hairlineWidth,
     width: "100%",
   },
-  profileTabBar: {
-    alignItems: "stretch",
-    alignSelf: "center",
-    flexDirection: "row",
-    justifyContent: "space-around",
-    maxWidth: 820,
-    minHeight: 48,
-    paddingHorizontal: 5,
-    width: "100%",
-    zIndex: 1,
-  },
-  profileTab: {
+  profileTabBarContent: {
     alignItems: "center",
-    flex: 1,
+    flexDirection: "row",
+    gap: 22,
+    height: 48,
+    paddingHorizontal: 16,
+  },
+  profileTabScroll: {
+    alignItems: "center",
     justifyContent: "center",
-    minHeight: 48,
+    minHeight: 44,
+    paddingHorizontal: 2,
     position: "relative",
   },
-  profileTabText: { fontSize: font.body, fontWeight: "600" },
+  profileTabText: { fontSize: font.subtitle, fontWeight: "600" },
   profileTabTextSelected: { fontWeight: "800" },
   profileTabIndicator: {
-    borderTopLeftRadius: 3,
-    borderTopRightRadius: 3,
-    bottom: 0,
-    height: 3,
-    left: "18%",
+    borderRadius: 2,
+    bottom: 6,
+    height: 2.5,
+    left: 0,
     position: "absolute",
-    right: "18%",
+    right: 0,
   },
   profileIdentity: {
     alignItems: "center",
@@ -2902,49 +2863,40 @@ const styles = StyleSheet.create({
   reportSubmitBtnText: { color: "#FFFFFF", fontSize: font.label, fontWeight: "800" },
 
 
-  singleLineBadgesRow: {
+  statsStrip: {
+    alignItems: 'center',
     flexDirection: 'row',
-    alignItems: 'stretch',
-    justifyContent: 'space-between',
+    flexWrap: 'wrap',
     gap: 8,
-    marginTop: 20,
-    marginBottom: 8,
+    justifyContent: 'center',
+    marginBottom: 4,
+    marginTop: spacing.md,
     width: '100%',
   },
-  singleBadgeItem: {
-    flex: 1,
-    minWidth: 0,
-    borderRadius: 5,
-    borderWidth: 1,
-    paddingVertical: 12,
-    paddingHorizontal: 6,
+  statsItem: {
     alignItems: 'center',
     justifyContent: 'center',
+    minHeight: 24,
   },
-  badgeTopRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
+  statsPipe: {
+    borderRadius: 999,
+    height: 14,
+    width: 1,
   },
-  badgeGoldStar: {
-    color: '#F59E0B',
-    fontSize: font.subtitle,
-    fontWeight: '800',
-  },
-  badgeValueText: {
-    fontSize: font.heading,
-    fontWeight: '800',
-    letterSpacing: -0.2,
-  },
-  badgeValueArea: {
+  statsValue: {
     fontSize: font.label,
-    fontWeight: '700',
-  },
-  badgeLabelText: {
-    fontSize: font.caption,
     fontWeight: '600',
-    marginTop: 3,
-    textTransform: 'lowercase',
+    letterSpacing: -0.1,
+  },
+  statsMuted: {
+    fontWeight: '500',
+  },
+  statsStar: {
+    color: '#F59E0B',
+    fontWeight: '800',
+  },
+  statsAreaValue: {
+    maxWidth: 180,
   },
   sleekBackBtn: {
     alignItems: 'center',

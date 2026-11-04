@@ -37,6 +37,7 @@ export interface TechnicianPostCardProps {
   showAuthorHeader?: boolean;
   authorName?: string;
   authorAvatarUri?: string;
+  flat?: boolean;
 }
 
 function categoryChipLabel(
@@ -102,6 +103,7 @@ export function Post({
   showAuthorHeader = true,
   authorName,
   authorAvatarUri,
+  flat = false,
 }: TechnicianPostCardProps) {
   const { language } = useLanguage();
   const { user, roles, effectiveRole } = useAuth();
@@ -185,8 +187,10 @@ export function Post({
   return (
     <View
       style={[
-        styles.card,
-        { backgroundColor: palette.surface, borderColor: palette.border },
+        flat ? styles.cardFlat : styles.card,
+        flat
+          ? { borderBottomColor: palette.border }
+          : { backgroundColor: palette.surface, borderColor: palette.border },
       ]}
       testID={`technician-post-card-${post.id}`}
     >
@@ -647,6 +651,15 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     marginBottom: 12,
     padding: 16,
+    width: "100%",
+  },
+  cardFlat: {
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderRadius: 0,
+    borderWidth: 0,
+    marginBottom: 0,
+    paddingHorizontal: 16,
+    paddingVertical: 16,
     width: "100%",
   },
   headerRow: {
