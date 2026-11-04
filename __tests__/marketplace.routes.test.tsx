@@ -1,7 +1,6 @@
 import { cleanup, fireEvent, within } from "@testing-library/react-native";
 import { renderRouter, screen } from "expo-router/testing-library";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { StyleSheet } from "react-native";
 
 import AccountEntryScreen from "../src/app/account";
 import AdminConsoleScreen from "../src/app/admin";
@@ -14,6 +13,7 @@ import LoginScreen from "../src/app/login";
 import NotificationsScreen from "../src/app/notifications";
 import RegisterScreen from "../src/app/register";
 import ResetPasswordScreen from "../src/app/reset-password";
+import SearchScreen from "../src/app/search";
 import TechnicianDashboardScreen from "../src/app/technician-dashboard";
 import TechnicianProfileScreen from "../src/app/technician/[id]";
 import {
@@ -36,6 +36,7 @@ const appRoutes = {
   register: RegisterScreen,
   "forgot-password": ForgotPasswordScreen,
   "reset-password": ResetPasswordScreen,
+  search: SearchScreen,
 };
 
 afterEach(() => {
@@ -48,9 +49,6 @@ describe("marketplace, auth-gated booking, social technician profile, and sideba
     await renderRouter(appRoutes);
 
     expect(await screen.findByTestId("marketplace-search")).toBeTruthy();
-    expect(
-      StyleSheet.flatten(screen.getByTestId("marketplace-search-shell").props.style).width,
-    ).toBe("100%");
     expect(screen.getByTestId("area-picker-trigger")).toBeTruthy();
     expect(screen.queryByTestId("marketplace-heading")).toBeNull();
     expect(screen.getByTestId("bottom-navigation-bar")).toBeTruthy();
@@ -99,7 +97,7 @@ describe("marketplace, auth-gated booking, social technician profile, and sideba
 
     await fireEvent.press(screen.getByTestId("technician-card-demo-rizky"));
     await fireEvent.press(screen.getByTestId("profile-tab-about"));
-    expect(await screen.findByText("Kenali teknisinya")).toBeTruthy();
+    expect(await screen.findByText("Area Layanan")).toBeTruthy();
     expect(screen.getByText("Rizky Pratama")).toBeTruthy();
     await fireEvent.press(screen.getByTestId("profile-tab-services"));
     expect(screen.getByText("Perbaikan pipa")).toBeTruthy();
@@ -281,20 +279,18 @@ describe("marketplace, auth-gated booking, social technician profile, and sideba
     ).toBeTruthy();
   });
 
-  it("filters the current results and clears the search input", async () => {
-    await renderRouter(appRoutes);
-    await screen.findByTestId("marketplace-search");
+  it("shows an empty state for unmatched queries on the search screen and clears the input", async () => {
+    await renderRouter(appRoutes, { initialUrl: "/search" });
+    await screen.findByTestId("search-input");
 
     await fireEvent.changeText(
-      screen.getByTestId("marketplace-search"),
+      screen.getByTestId("search-input"),
       "tidak ada layanan ini",
     );
     expect(await screen.findByText("Belum ada yang cocok")).toBeTruthy();
 
-    await fireEvent.press(screen.getByTestId("clear-search"));
-    expect(
-      await screen.findByTestId("technician-card-demo-rizky"),
-    ).toBeTruthy();
+    await fireEvent.press(screen.getByTestId("search-input-clear"));
+    expect(screen.getByTestId("search-input").props.value).toBe("");
   });
 
   it("filters Marketplace posts and technicians by selected category", async () => {

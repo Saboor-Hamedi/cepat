@@ -1,40 +1,40 @@
 import { router, useLocalSearchParams } from 'expo-router';
 import { ChevronLeft } from 'lucide-react-native';
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Animated, Pressable, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import {
   buildCategoryFilters,
   CategoryTabs,
-} from '../components/CategoryTabs';
-import { InfiniteFlatList } from '../components/InfiniteFlatList';
+} from './CategoryTabs';
+import { InfiniteFlatList } from '../InfiniteFlatList';
 import {
   EmptyState,
   LoadingState,
   SectionTitle,
   TechnicianCard,
-} from '../components/marketplace-ui';
-import { SearchField } from '../components/SearchField';
-import { TechnicianPostCard } from '../components/TechnicianPostCard';
-import { useAppearance } from '../context/AppearanceContext';
+} from '../marketplace-ui';
+import { SearchField } from './SearchField';
+import { TechnicianPostCard } from '../TechnicianPostCard';
+import { useAppearance } from '../../context/AppearanceContext';
 import {
   filterTechnicians,
   loadCategories,
   loadTechnicians,
-} from '../data/marketplaceRepository';
-import { loadMarketplacePublishedPostsPage } from '../data/postsStore';
-import { useInfiniteList } from '../hooks/useInfiniteList';
-import { useLanguage } from '../i18n/locale';
-import { ICON_SIZE, ICON_STROKE } from '../theme/icons';
-import { colors, spacing } from '../theme/tokens';
-import { font } from '../theme/typography';
+} from '../../data/marketplaceRepository';
+import { loadMarketplacePublishedPostsPage } from '../../data/postsStore';
+import { useInfiniteList } from '../../hooks/useInfiniteList';
+import { useLanguage } from '../../i18n/locale';
+import { ICON_SIZE, ICON_STROKE } from '../../theme/icons';
+import { colors, spacing } from '../../theme/tokens';
+import { font } from '../../theme/typography';
 import type {
   DataSource,
   ServiceCategory,
   Technician,
   TechnicianPost,
-} from '../types/marketplace';
+} from '../../types/marketplace';
 
 type SearchParams = {
   area?: string;
@@ -48,13 +48,36 @@ type SearchListItem =
   | { key: string; kind: 'post'; post: TechnicianPost };
 
 const SEARCH_DEBOUNCE_MS = 300;
+const TOP_BAR_HEIGHT = 56;
 
-export default function SearchScreen() {
+export default function SearchResults() {
   const { language, t } = useLanguage();
   const { palette } = useAppearance();
   const params = useLocalSearchParams<SearchParams>();
 
   const area = params.area || 'Semua area';
+
+  const [scrollY] = useState(() => new Animated.Value(0));
+  const topBarHeight = scrollY.interpolate({
+    inputRange: [0, 88],
+    outputRange: [TOP_BAR_HEIGHT, 0],
+    extrapolate: 'clamp',
+  });
+  const topBarOpacity = scrollY.interpolate({
+    inputRange: [0, 52],
+    outputRange: [1, 0],
+    extrapolate: 'clamp',
+  });
+  const topBarScale = scrollY.interpolate({
+    inputRange: [0, 88],
+    outputRange: [1, 0.92],
+    extrapolate: 'clamp',
+  });
+  const topBarTranslateY = scrollY.interpolate({
+    inputRange: [0, 88],
+    outputRange: [0, -8],
+    extrapolate: 'clamp',
+  });
 
   const [query, setQuery] = useState('');
   const [debouncedQuery, setDebouncedQuery] = useState('');
@@ -186,7 +209,20 @@ export default function SearchScreen() {
       edges={['top', 'bottom']}
       testID="search-screen"
     >
-      <View style={styles.topBar}>
+      <Animated.View
+        style={[
+          styles.topBar,
+          {
+            backgroundColor: palette.background,
+            height: topBarHeight,
+            opacity: topBarOpacity,
+            transform: [
+              { translateY: topBarTranslateY },
+              { scale: topBarScale },
+            ],
+          },
+        ]}
+      >
         <Pressable
           accessibilityRole="button"
           accessibilityLabel={language === 'en' ? 'Back' : 'Kembali'}
@@ -210,7 +246,7 @@ export default function SearchScreen() {
           testID="search-input"
           value={query}
         />
-      </View>
+      </Animated.View>
 
       <CategoryTabs
         categories={categoryFilters}
@@ -222,6 +258,11 @@ export default function SearchScreen() {
       <InfiniteFlatList
         style={styles.list}
         contentContainerStyle={styles.listContent}
+        onScroll={Animated.event(
+          [{ nativeEvent: { contentOffset: { y: scrollY } } }],
+          { useNativeDriver: false },
+        )}
+        scrollEventThrottle={16}
         data={searchItems}
         hasMore={postResults.hasMore}
         loadingMore={postResults.loadingMore}
@@ -321,6 +362,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     flexDirection: 'row',
     gap: spacing.sm,
+    overflow: 'hidden',
     paddingHorizontal: spacing.sm,
     paddingVertical: spacing.sm,
   },

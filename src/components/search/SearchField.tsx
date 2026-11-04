@@ -1,10 +1,10 @@
 import { X } from 'lucide-react-native';
 import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 
-import { useAppearance } from '../context/AppearanceContext';
-import { ICON_SIZE, ICON_STROKE } from '../theme/icons';
-import { radii, spacing } from '../theme/tokens';
-import { font } from '../theme/typography';
+import { useAppearance } from '../../context/AppearanceContext';
+import { ICON_SIZE, ICON_STROKE } from '../../theme/icons';
+import { radii, spacing } from '../../theme/tokens';
+import { font } from '../../theme/typography';
 
 export interface SearchFieldProps {
   placeholder: string;
@@ -104,7 +104,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     flex: 1,
     flexDirection: 'row',
-    height: 48,
+    height: 40,
     paddingHorizontal: spacing.sm,
     width: '100%',
   },

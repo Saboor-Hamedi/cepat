@@ -1,5 +1,7 @@
-import { useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
+  Animated,
+  Easing,
   Modal,
   Pressable,
   ScrollView,
@@ -10,11 +12,11 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { useAppearance } from '../context/AppearanceContext';
-import { localizeArea, useLanguage } from '../i18n/locale';
-import { colors, radii, spacing } from '../theme/tokens';
-import type { IndonesianRegion, SavedAddress, Technician } from '../types/marketplace';
-import { font } from '../theme/typography';
+import { useAppearance } from '../../context/AppearanceContext';
+import { localizeArea, useLanguage } from '../../i18n/locale';
+import { colors, radii, spacing } from '../../theme/tokens';
+import type { IndonesianRegion, SavedAddress, Technician } from '../../types/marketplace';
+import { font } from '../../theme/typography';
 
 export { InlineMarketplaceMapCard } from './InlineMarketplaceMapCard';
 
@@ -61,6 +63,50 @@ export function MarketplaceMapSearchModal({
   const [pinLatitude, setPinLatitude] = useState('-6.2615');
   const [pinLongitude, setPinLongitude] = useState('106.8106');
   const [zoomLevel, setZoomLevel] = useState(2);
+  const [sheetTranslateY] = useState(() => new Animated.Value(120));
+  const [scrimOpacity] = useState(() => new Animated.Value(0));
+
+  useEffect(() => {
+    if (!visible) return;
+    sheetTranslateY.setValue(120);
+    scrimOpacity.setValue(0);
+    const frame = requestAnimationFrame(() => {
+      Animated.parallel([
+        Animated.timing(scrimOpacity, {
+          toValue: 1,
+          duration: 200,
+          useNativeDriver: true,
+        }),
+        Animated.timing(sheetTranslateY, {
+          toValue: 0,
+          duration: 260,
+          easing: Easing.out(Easing.cubic),
+          useNativeDriver: true,
+        }),
+      ]).start();
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [visible, scrimOpacity, sheetTranslateY]);
+
+  const closeSheet = useCallback(() => {
+    Animated.parallel([
+      Animated.timing(scrimOpacity, {
+        toValue: 0,
+        duration: 180,
+        useNativeDriver: true,
+      }),
+      Animated.timing(sheetTranslateY, {
+        toValue: 120,
+        duration: 220,
+        easing: Easing.in(Easing.cubic),
+        useNativeDriver: true,
+      }),
+    ]).start(({ finished }) => {
+      if (finished) {
+        onClose();
+      }
+    });
+  }, [onClose, scrimOpacity, sheetTranslateY]);
 
   const filteredRegions = useMemo(() => {
     const q = areaQuery.trim().toLocaleLowerCase('id-ID');
@@ -152,7 +198,7 @@ export function MarketplaceMapSearchModal({
         lng: targetRegion.longitude.toFixed(4),
       }),
     );
-    onClose();
+    closeSheet();
   };
 
   const handleApplyPinCoordinates = () => {
@@ -171,24 +217,29 @@ export function MarketplaceMapSearchModal({
         lng: lng.toFixed(4),
       }),
     );
-    onClose();
+    closeSheet();
   };
 
   return (
     <Modal
-      animationType="slide"
-      onRequestClose={onClose}
+      animationType="none"
+      onRequestClose={closeSheet}
       transparent
       visible={visible}
     >
-      <Pressable style={styles.modalScrim} onPress={onClose}>
-        <Pressable
+      <View style={styles.modalRoot}>
+        <Animated.View
+          style={[styles.modalScrim, { opacity: scrimOpacity }]}
+        >
+          <Pressable style={StyleSheet.absoluteFill} onPress={closeSheet} />
+        </Animated.View>
+        <Animated.View
           style={[
             styles.areaSheet,
             { backgroundColor: palette.surface },
             { paddingBottom: Math.max(insets.bottom + spacing.md, spacing.xxl) },
+            { transform: [{ translateY: sheetTranslateY }] },
           ]}
-          onPress={(event) => event.stopPropagation()}
           testID="location-picker-modal"
         >
           <View style={styles.sheetHandle} />
@@ -203,7 +254,7 @@ export function MarketplaceMapSearchModal({
             </View>
             <Pressable
               accessibilityRole="button"
-              onPress={onClose}
+              onPress={closeSheet}
               style={[
                 styles.closeBtn,
                 { backgroundColor: palette.surfaceElevated, borderColor: palette.border },
@@ -501,7 +552,7 @@ export function MarketplaceMapSearchModal({
               accessibilityState={{ selected: selectedArea === 'Semua area' }}
               onPress={() => {
                 onSelectArea('Semua area');
-                onClose();
+                closeSheet();
               }}
               style={[
                 styles.areaOption,
@@ -578,7 +629,7 @@ export function MarketplaceMapSearchModal({
                           addr.area,
                           `${addr.label}: ${addr.streetAddress} (${localizeArea(addr.area, language)})`,
                         );
-                        onClose();
+                        closeSheet();
                       }}
                       style={[
                         styles.areaOption,
@@ -667,7 +718,7 @@ export function MarketplaceMapSearchModal({
                   accessibilityRole="button"
                   onPress={() => {
                     onSelectArea(areaName);
-                    onClose();
+                    closeSheet();
                   }}
                   style={[
                     styles.areaOption,
@@ -690,17 +741,24 @@ export function MarketplaceMapSearchModal({
               );
             })}
           </ScrollView>
-        </Pressable>
-      </Pressable>
+        </Animated.View>
+      </View>
     </Modal>
   );
 }
 
 const styles = StyleSheet.create({
-  modalScrim: {
-    backgroundColor: 'rgba(22, 39, 34, 0.45)',
+  modalRoot: {
     flex: 1,
     justifyContent: 'flex-end',
+  },
+  modalScrim: {
+    backgroundColor: 'rgba(22, 39, 34, 0.45)',
+    bottom: 0,
+    left: 0,
+    position: 'absolute',
+    right: 0,
+    top: 0,
   },
   areaSheet: {
     backgroundColor: colors.paper,

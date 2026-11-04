@@ -1,6 +1,6 @@
 import { router } from 'expo-router';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Animated, Pressable, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { useAuth } from '../auth/AuthProvider';
@@ -18,9 +18,9 @@ import { InfiniteFlatList } from '../components/InfiniteFlatList';
 import {
   buildCategoryFilters,
   CategoryTabs,
-} from '../components/CategoryTabs';
-import { MarketplaceMapSearchModal } from '../components/MarketplaceMapSearch';
-import { SearchField } from '../components/SearchField';
+} from '../components/search/CategoryTabs';
+import { MarketplaceMapSearchModal } from '../components/marketplace/MarketplaceSearch';
+import { SearchField } from '../components/search/SearchField';
 import {
   TechnicianPostCard,
 } from '../components/TechnicianPostCard';
@@ -80,6 +80,8 @@ let cachedTechnicians: Technician[] = [];
 let cachedServiceAreas: string[] = [];
 let cachedSource: DataSource = 'fixtures';
 let hasInitialLoaded = false;
+
+const SEARCH_HEADER_HEIGHT = 52;
 
 export default function MarketplaceScreen() {
   const { language, t } = useLanguage();
@@ -329,6 +331,28 @@ export default function MarketplaceScreen() {
 
   const previewReason = getMarketplacePreviewReason();
 
+  const [scrollY] = useState(() => new Animated.Value(0));
+  const searchHeaderHeight = scrollY.interpolate({
+    inputRange: [0, 88],
+    outputRange: [SEARCH_HEADER_HEIGHT, 0],
+    extrapolate: 'clamp',
+  });
+  const searchHeaderOpacity = scrollY.interpolate({
+    inputRange: [0, 52],
+    outputRange: [1, 0],
+    extrapolate: 'clamp',
+  });
+  const searchHeaderScale = scrollY.interpolate({
+    inputRange: [0, 88],
+    outputRange: [1, 0.92],
+    extrapolate: 'clamp',
+  });
+  const searchHeaderTranslateY = scrollY.interpolate({
+    inputRange: [0, 88],
+    outputRange: [0, -10],
+    extrapolate: 'clamp',
+  });
+
   const handleEditPost = async (
     post: TechnicianPost,
     newCaption: string,
@@ -363,64 +387,6 @@ export default function MarketplaceScreen() {
 
   const Header = (
     <View style={styles.contentWidth}>
-      {/* Search Bar + Location Button (Split layout) */}
-      <View style={styles.searchRow}>
-        <SearchField
-          accessibilityLabel={t('home.search')}
-          onPress={() =>
-            router.push({
-              pathname: '/search',
-              params: {
-                area,
-                category: selectedCategory,
-              },
-            })
-          }
-          placeholder={t('home.search')}
-          testID="marketplace-search"
-        />
-
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel={`${t('home.areaLabel')}: ${
-            area === 'Semua area'
-              ? t('home.allAreasOption')
-              : localizeArea(area, language)
-          }`}
-          onPress={() => setAreaModalVisible(true)}
-          style={[
-            styles.searchLocationButton,
-            {
-              backgroundColor: palette.surfaceElevated,
-              borderColor: palette.border,
-            },
-          ]}
-          testID="area-picker-trigger"
-        >
-          <View
-            style={[
-              styles.locationPinBox,
-              { backgroundColor: palette.primarySoft },
-            ]}
-          >
-            <View
-              style={[
-                styles.locationPinDot,
-                { backgroundColor: palette.primary },
-              ]}
-            />
-          </View>
-          <Text
-            numberOfLines={1}
-            style={[styles.searchLocationValue, { color: palette.text }]}
-          >
-            {area === 'Semua area'
-              ? t('home.allAreasOption')
-              : localizeArea(area, language)}
-          </Text>
-        </Pressable>
-      </View>
-
       <CategoryTabs
         categories={categoryFilters}
         selected={selectedCategory}
@@ -535,9 +501,15 @@ export default function MarketplaceScreen() {
 
   return (
     <SafeAreaView style={[styles.safeArea, { backgroundColor: palette.background }]} edges={['top', 'bottom']}>
+      <View style={styles.feedRoot}>
       <InfiniteFlatList
         style={styles.feedList}
-        contentContainerStyle={styles.listContent}
+        contentContainerStyle={[styles.listContent, { paddingTop: SEARCH_HEADER_HEIGHT }]}
+        onScroll={Animated.event(
+          [{ nativeEvent: { contentOffset: { y: scrollY } } }],
+          { useNativeDriver: false },
+        )}
+        scrollEventThrottle={16}
         data={marketplaceItems}
         hasMore={postFeed.hasMore || hasMore}
         loadingMore={postFeed.loadingMore || isLoadingMore}
@@ -717,6 +689,83 @@ export default function MarketplaceScreen() {
         testID="technician-list"
       />
 
+        <Animated.View
+          pointerEvents="box-none"
+          style={[
+            styles.stickySearchHeader,
+            {
+              backgroundColor: palette.background,
+              borderBottomColor: palette.border,
+              height: searchHeaderHeight,
+              opacity: searchHeaderOpacity,
+              transform: [
+                { translateY: searchHeaderTranslateY },
+                { scale: searchHeaderScale },
+              ],
+            },
+          ]}
+        >
+          <View style={[styles.contentWidth, styles.searchHeaderInner]}>
+            <View style={styles.searchRow}>
+              <SearchField
+                accessibilityLabel={t('home.search')}
+                onPress={() =>
+                  router.push({
+                    pathname: '/search',
+                    params: {
+                      area,
+                      category: selectedCategory,
+                    },
+                  } as never)
+                }
+                placeholder={t('home.search')}
+                testID="marketplace-search"
+              />
+
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel={`${t('home.areaLabel')}: ${
+                  area === 'Semua area'
+                    ? t('home.allAreasOption')
+                    : localizeArea(area, language)
+                }`}
+                onPress={() => setAreaModalVisible(true)}
+                style={[
+                  styles.searchLocationButton,
+                  {
+                    backgroundColor: palette.surfaceElevated,
+                    borderColor: palette.border,
+                  },
+                ]}
+                testID="area-picker-trigger"
+              >
+                <View
+                  style={[
+                    styles.locationPinBox,
+                    { backgroundColor: palette.primarySoft },
+                  ]}
+                >
+                  <View
+                    style={[
+                      styles.locationPinDot,
+                      { backgroundColor: palette.primary },
+                    ]}
+                  />
+                </View>
+                <Text
+                  numberOfLines={1}
+                  style={[styles.searchLocationValue, { color: palette.text }]}
+                >
+                  {area === 'Semua area'
+                    ? t('home.allAreasOption')
+                    : localizeArea(area, language)}
+                </Text>
+              </Pressable>
+            </View>
+          </View>
+        </Animated.View>
+      </View>
+
       <MarketplaceMapSearchModal
         visible={areaModalVisible}
         onClose={() => setAreaModalVisible(false)}
@@ -737,8 +786,24 @@ const styles = StyleSheet.create({
     backgroundColor: colors.paper,
     flex: 1,
   },
+  feedRoot: {
+    flex: 1,
+    position: 'relative',
+  },
   feedList: {
     flex: 1,
+  },
+  stickySearchHeader: {
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    left: 0,
+    overflow: 'hidden',
+    position: 'absolute',
+    right: 0,
+    top: 0,
+    zIndex: 20,
+  },
+  searchHeaderInner: {
+    paddingBottom: 6,
   },
   listContent: {
     paddingBottom: 5,
@@ -758,13 +823,13 @@ const styles = StyleSheet.create({
   },
   searchLocationButton: {
     alignItems: 'center',
-    borderRadius: 12,
+    borderRadius: 10,
     borderWidth: 1,
     flexDirection: 'row',
-    gap: 6,
-    height: 48,
-    maxWidth: 160,
-    paddingHorizontal: spacing.sm,
+    gap: 5,
+    height: 40,
+    maxWidth: 132,
+    paddingHorizontal: 8,
   },
   locationPinBox: {
     alignItems: 'center',

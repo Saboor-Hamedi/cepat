@@ -37,10 +37,26 @@ export function Sidebar({ visible, onClose, avatarUri }: SidebarProps) {
   const [profileUsername, setProfileUsername] = useState<string>('');
   const [profileDisplayName, setProfileDisplayName] = useState<string>('');
 
+  const userId = user?.id;
+  const userEmail = user?.email ?? '';
+  const metadataDisplayName =
+    typeof user?.user_metadata?.display_name === 'string'
+      ? user.user_metadata.display_name
+      : '';
+  const metadataUsername =
+    typeof user?.user_metadata?.username === 'string'
+      ? user.user_metadata.username
+      : '';
+
   useEffect(() => {
     let active = true;
-    if (user?.id) {
-      void loadAccountProfileDetails(user.id).then((details) => {
+    if (userId) {
+      void loadAccountProfileDetails(
+        userId,
+        userEmail,
+        metadataDisplayName,
+        metadataUsername,
+      ).then((details) => {
         if (!active) {
           return;
         }
@@ -55,7 +71,7 @@ export function Sidebar({ visible, onClose, avatarUri }: SidebarProps) {
     return () => {
       active = false;
     };
-  }, [user?.id]);
+  }, [userId, userEmail, metadataDisplayName, metadataUsername]);
 
   const identity = useMemo(
     () =>

@@ -13,7 +13,7 @@ import {
   Rating,
   TechnicianCard,
 } from "../src/components/marketplace-ui";
-import { InlineMarketplaceMapCard } from "../src/components/MarketplaceMapSearch";
+import { InlineMarketplaceMapCard } from "../src/components/marketplace/MarketplaceSearch";
 import { StrictImagePicker } from "../src/components/StrictImagePicker";
 import { fixtureTechnicians, indonesianRegions } from "../src/data/fixtures";
 import { LanguageProvider } from "../src/i18n/locale";

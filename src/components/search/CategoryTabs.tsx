@@ -1,10 +1,10 @@
 import { Pressable, ScrollView, StyleSheet, Text } from 'react-native';
 
-import { useAppearance } from '../context/AppearanceContext';
-import { categoryName, type Language } from '../i18n/locale';
-import { spacing } from '../theme/tokens';
-import { font } from '../theme/typography';
-import type { ServiceCategory } from '../types/marketplace';
+import { useAppearance } from '../../context/AppearanceContext';
+import { categoryName, type Language } from '../../i18n/locale';
+import { spacing } from '../../theme/tokens';
+import { font } from '../../theme/typography';
+import type { ServiceCategory } from '../../types/marketplace';
 
 export interface CategoryFilter {
   slug: string;
