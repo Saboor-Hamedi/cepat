@@ -2,7 +2,6 @@ import { Briefcase, Camera, Globe, MapPin, X } from 'lucide-react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useState } from 'react';
 import {
-  ActivityIndicator,
   KeyboardAvoidingView,
   Modal,
   Platform,
@@ -10,7 +9,6 @@ import {
   ScrollView,
   StyleSheet,
   Text,
-  TextInput,
   View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -24,9 +22,24 @@ import { radii, spacing } from '../../theme/tokens';
 import { font } from '../../theme/typography';
 import { Avatar } from '../Avatar';
 import { StrictImagePicker } from '../StrictImagePicker';
-import { TechnicianPostImagePreview } from './TechnicianPostImagePreview';
+import {
+  MAX_POST_CHARS,
+  MAX_POST_IMAGES,
+  MODAL_BG,
+  MODAL_DANGER,
+  MODAL_MUTED,
+  MODAL_SHEET_BORDER,
+  MODAL_SURFACE,
+  MODAL_SURFACE_BORDER,
+  MODAL_HANDLE,
+  MODAL_TEXT,
+  MINT,
+} from './constants';
+import { PostComposer } from './PostComposer';
+import { PostFooter } from './PostFooter';
+import { PostHeader, PostPill } from './PostHeader';
 
-export interface TechnicianPostComposerProps {
+export interface PostContainerProps {
   onCreatePost: (input: {
     caption: string;
     imageUri?: string;
@@ -40,25 +53,16 @@ export interface TechnicianPostComposerProps {
     avatarUri?: string;
   };
   customImageLauncher?: () => Promise<string | null>;
-  variant?: 'inline' | 'modal';
+  showTitle?: boolean;
 }
 
-const MAX_POST_CHARS = 200;
-const MAX_POST_IMAGES = 4;
-
-const MODAL_BG = '#0B0E14';
-const MODAL_TEXT = '#F1F5F9';
-const MODAL_MUTED = '#64748B';
-const MINT = '#10B981';
-const DISABLED_PILL = '#27334B';
-
-export function TechnicianPostComposer({
+export function PostContainer({
   onCreatePost,
   technicianProfile,
   customImageLauncher,
-  variant = 'inline',
-}: TechnicianPostComposerProps) {
-  const isModal = variant === 'modal';
+  showTitle = false,
+}: PostContainerProps) {
+  const isModal = showTitle;
   const params = useLocalSearchParams<{ area?: string }>();
   const { language } = useLanguage();
   const { user, roles } = useAuth();
@@ -238,7 +242,7 @@ export function TechnicianPostComposer({
           {
             color: isOverCharLimit
               ? isModal
-                ? '#F87171'
+                ? MODAL_DANGER
                 : palette.danger
               : caption.length > 160
                 ? '#F59E0B'
@@ -346,78 +350,6 @@ export function TechnicianPostComposer({
     </View>
   );
 
-  const inputBlock = (
-    <TextInput
-      autoFocus={isModal}
-      multiline
-      maxLength={MAX_POST_CHARS}
-      onChangeText={handleTextChange}
-      placeholder={
-        language === 'en'
-          ? "What's new with your work?"
-          : 'Ada kabar terbaru dari kerjaanmu?'
-      }
-      placeholderTextColor={mutedColor}
-      style={[
-        styles.inputField,
-        {
-          color: textColor,
-          fontSize: isModal ? scaleFont(19) : scaleFont(font.heading),
-          lineHeight: isModal ? scaleFont(26) : scaleFont(22),
-        },
-      ]}
-      testID="create-post-caption-input"
-      value={caption}
-    />
-  );
-
-  const imagesBlock =
-    images.length > 0 ? (
-      <View style={styles.previewsInline}>
-        <TechnicianPostImagePreview
-          images={images}
-          onRemoveImage={handleRemoveImage}
-        />
-      </View>
-    ) : null;
-
-  const postPill = (testID: string, fullWidth = false) => (
-    <Pressable
-      accessibilityRole="button"
-      accessibilityLabel={language === 'en' ? 'Post' : 'Posting'}
-      disabled={!canSubmit}
-      onPress={() => {
-        void handlePublish();
-      }}
-      style={[
-        styles.postPill,
-        fullWidth && styles.postPillFullWidth,
-        {
-          backgroundColor: canSubmit ? MINT : DISABLED_PILL,
-          borderColor: canSubmit ? MINT : 'rgba(148, 163, 184, 0.28)',
-          borderWidth: 1,
-        },
-      ]}
-      testID={testID}
-    >
-      {busy ? (
-        <ActivityIndicator
-          color={canSubmit ? '#0B0E14' : MODAL_MUTED}
-          size="small"
-        />
-      ) : (
-        <Text
-          style={[
-            styles.postPillText,
-            { color: canSubmit ? '#0B0E14' : '#94A3B8' },
-          ]}
-        >
-          {language === 'en' ? 'Post' : 'Posting'}
-        </Text>
-      )}
-    </Pressable>
-  );
-
   const pickerModal = (
     <Modal
       animationType={reduceMotion ? 'none' : 'slide'}
@@ -437,8 +369,8 @@ export function TechnicianPostComposer({
           style={[
             styles.pickerSheet,
             {
-              backgroundColor: isModal ? '#131A26' : palette.surface,
-              borderColor: isModal ? 'rgba(148,163,184,0.16)' : palette.border,
+              backgroundColor: isModal ? MODAL_SURFACE : palette.surface,
+              borderColor: isModal ? MODAL_SURFACE_BORDER : palette.border,
             },
           ]}
           testID="composer-image-picker-wrap"
@@ -446,7 +378,7 @@ export function TechnicianPostComposer({
           <View
             style={[
               styles.pickerHandle,
-              { backgroundColor: isModal ? '#2A3444' : palette.border },
+              { backgroundColor: isModal ? MODAL_HANDLE : palette.border },
             ]}
           />
           <Text
@@ -471,7 +403,7 @@ export function TechnicianPostComposer({
             style={[
               styles.cancelPickerBtn,
               {
-                borderColor: isModal ? 'rgba(148,163,184,0.2)' : palette.border,
+                borderColor: isModal ? MODAL_SHEET_BORDER : palette.border,
               },
             ]}
           >
@@ -489,34 +421,31 @@ export function TechnicianPostComposer({
     </Modal>
   );
 
+  const composerBody = (
+    <>
+      <PostComposer
+        autoFocus={isModal}
+        modal={isModal}
+        onChangeText={handleTextChange}
+        value={caption}
+      />
+      {renderAreaChip()}
+      <PostFooter images={images} onRemoveImage={handleRemoveImage} />
+      {renderIconRow()}
+    </>
+  );
+
   if (isModal) {
     return (
-      <View style={[styles.screenRoot, { backgroundColor: MODAL_BG }]} testID="technician-post-composer">
-        <View style={[styles.modalHeader, { paddingTop: insets.top + 6 }]}>
-          <View style={styles.headerSide}>
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel={language === 'en' ? 'Cancel' : 'Batal'}
-              hitSlop={10}
-              onPress={handleClose}
-              style={({ pressed }) => [
-                styles.cancelBtn,
-                { opacity: pressed ? 0.6 : 1 },
-              ]}
-              testID="compose-cancel-btn"
-            >
-              <Text style={styles.cancelText}>
-                {language === 'en' ? 'Cancel' : 'Batal'}
-              </Text>
-            </Pressable>
-          </View>
-          <Text style={styles.modalTitle} numberOfLines={1}>
-            {language === 'en' ? 'New post' : 'Posting baru'}
-          </Text>
-          <View style={[styles.headerSide, styles.headerSideRight]}>
-            {postPill('submit-new-post-btn')}
-          </View>
-        </View>
+      <View style={[styles.screenRoot, { backgroundColor: MODAL_BG }]} testID="post-composer">
+        <PostHeader
+          busy={busy}
+          canSubmit={canSubmit}
+          onCancel={handleClose}
+          onPublish={() => {
+            void handlePublish();
+          }}
+        />
 
         <KeyboardAvoidingView
           behavior={Platform.OS === 'ios' ? 'padding' : undefined}
@@ -529,18 +458,15 @@ export function TechnicianPostComposer({
           >
             <View style={styles.threadRow}>
               <View style={styles.avatarColumn}>
-                <Avatar uri={avatarUri} name={displayName} size={40} />
+                <Avatar uri={avatarUri} name={displayName} size={36} />
                 <View style={styles.connectorLine} />
               </View>
               <View style={styles.inputColumn}>
-                {inputBlock}
-                {renderAreaChip()}
-                {imagesBlock}
-                {renderIconRow()}
+                {composerBody}
               </View>
             </View>
             {error ? (
-              <Text style={[styles.errorText, { color: '#F87171' }]} testID="create-post-error">
+              <Text style={[styles.errorText, { color: MODAL_DANGER }]} testID="create-post-error">
                 {error}
               </Text>
             ) : null}
@@ -562,19 +488,26 @@ export function TechnicianPostComposer({
   }
 
   return (
-    <View style={styles.inlineRoot} testID="technician-post-composer">
+    <View style={styles.inlineRoot} testID="post-composer">
       <View style={styles.threadRow}>
         <View style={styles.avatarColumn}>
-          <Avatar uri={avatarUri} name={displayName} size={40} />
+          <Avatar uri={avatarUri} name={displayName} size={36} />
           <View style={styles.connectorLine} />
         </View>
         <View style={styles.inlineBody}>
-          {inputBlock}
+          <PostComposer onChangeText={handleTextChange} value={caption} />
           {renderAreaChip()}
-          {imagesBlock}
+          <PostFooter images={images} onRemoveImage={handleRemoveImage} />
           <View style={styles.inlineFooter}>
             {renderIconRow()}
-            {postPill('submit-new-post-btn')}
+            <PostPill
+              busy={busy}
+              canSubmit={canSubmit}
+              onPress={() => {
+                void handlePublish();
+              }}
+              testID="submit-new-post-btn"
+            />
           </View>
         </View>
       </View>
@@ -596,57 +529,6 @@ const styles = StyleSheet.create({
   screenRoot: {
     flex: 1,
   },
-  modalHeader: {
-    alignItems: 'center',
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    minHeight: 52,
-    paddingBottom: 4,
-    paddingHorizontal: spacing.lg,
-    width: '100%',
-  },
-  headerSide: {
-    flex: 1,
-    justifyContent: 'center',
-  },
-  headerSideRight: {
-    alignItems: 'flex-end',
-  },
-  cancelBtn: {
-    alignSelf: 'flex-start',
-    paddingVertical: 4,
-  },
-  cancelText: {
-    color: MODAL_TEXT,
-    fontSize: font.subtitle,
-    fontWeight: '600',
-    letterSpacing: -0.2,
-  },
-  modalTitle: {
-    color: MODAL_TEXT,
-    fontSize: font.heading,
-    fontWeight: '600',
-    letterSpacing: -0.2,
-    maxWidth: '42%',
-    textAlign: 'center',
-  },
-  postPill: {
-    alignItems: 'center',
-    borderRadius: 999,
-    height: 32,
-    justifyContent: 'center',
-    minWidth: 64,
-    paddingHorizontal: 16,
-  },
-  postPillFullWidth: {
-    minWidth: 0,
-    width: '100%',
-  },
-  postPillText: {
-    fontSize: font.label,
-    fontWeight: '800',
-    letterSpacing: -0.1,
-  },
   modalKeyboard: {
     flex: 1,
   },
@@ -661,30 +543,24 @@ const styles = StyleSheet.create({
   threadRow: {
     alignItems: 'stretch',
     flexDirection: 'row',
-    gap: 12,
   },
   avatarColumn: {
     alignItems: 'center',
     justifyContent: 'flex-start',
+    width: 40,
   },
   connectorLine: {
     backgroundColor: 'rgba(148, 163, 184, 0.18)',
     borderRadius: 1,
     flex: 1,
-    marginTop: 10,
-    minHeight: 90,
-    width: 2,
+    marginTop: 0,
+    minHeight: 64,
+    width: 1.5,
   },
   inputColumn: {
     flex: 1,
     minWidth: 0,
-  },
-  inputField: {
-    fontWeight: '500',
-    minHeight: 120,
-    padding: 0,
-    paddingTop: 2,
-    textAlignVertical: 'top',
+    paddingLeft: 14,
   },
   areaChip: {
     alignItems: 'center',
@@ -710,11 +586,9 @@ const styles = StyleSheet.create({
     marginLeft: 2,
     width: 18,
   },
-  previewsInline: {
-    marginTop: spacing.xs,
-  },
   iconRow: {
     alignItems: 'center',
+    flex: 1,
     flexDirection: 'row',
     gap: 18,
     marginTop: spacing.sm,
@@ -772,6 +646,8 @@ const styles = StyleSheet.create({
     letterSpacing: 0.1,
   },
   inlineRoot: {
+    paddingHorizontal: 12,
+    paddingTop: 4,
     width: '100%',
   },
   inlineDivider: {
@@ -782,6 +658,7 @@ const styles = StyleSheet.create({
   inlineBody: {
     flex: 1,
     minWidth: 0,
+    paddingLeft: 14,
   },
   inlineFooter: {
     alignItems: 'center',

@@ -4,16 +4,15 @@ import { useMemo, useState } from "react";
 import { Modal, Pressable, StyleSheet, Text, View } from "react-native";
 
 import { Avatar, EmptyState, LoadingState } from "../components/marketplace-ui";
-import {
-  TechnicianPostCard,
-  TechnicianPostComposer,
-} from "../components/TechnicianPostCard";
+import { Post } from "../components/posts/Post";
+import { PostContainer } from "../components/posts/PostContainer";
 import { useAppearance } from "../context/AppearanceContext";
-import { createTechnicianPost, loadTechnicianPosts } from "../data/postsStore";
+import { createPost, loadPosts } from "../data/postsStore";
 import { localizeArea, useLanguage } from "../i18n/locale";
 import { BOOKING_TIME_SLOTS, toIndonesiaDateTime } from "./schedule";
 import { spacing } from "../theme/tokens";
-import type { BookingRecord, TechnicianPost } from "../types/marketplace";
+import type { BookingRecord } from "../types/marketplace";
+import type { Post as PostType } from "../types/post";
 import { TaskActiveCard } from "./components/TaskActiveCard";
 import { TaskHistoryCard } from "./components/TaskHistoryCard";
 import { TaskRequestCard } from "./components/TaskRequestCard";
@@ -47,7 +46,7 @@ export function TaskContainer({
   const [proposedScheduleMap, setProposedScheduleMap] = useState<
     Record<string, { date: string; time: string }>
   >({});
-  const [localPosts, setLocalPosts] = useState<TechnicianPost[]>([]);
+  const [localPosts, setLocalPosts] = useState<PostType[]>([]);
   const [actionError, setActionError] = useState<string | null>(null);
 
   const runBookingAction = async (
@@ -275,10 +274,10 @@ export function TaskContainer({
         )
       ) : (
         <View style={{ gap: spacing.md }}>
-          <TechnicianPostComposer
+          <PostContainer
             onCreatePost={async (input) => {
               const techId = "demo-rizky";
-              await createTechnicianPost({
+              await createPost({
                 actorUserId: techId,
                 technicianId: techId,
                 technicianName: "Rizky Pratama",
@@ -290,12 +289,12 @@ export function TaskContainer({
                 categorySlug: "plumbing",
                 published: true,
               });
-              const nextPosts = await loadTechnicianPosts(techId, true);
+              const nextPosts = await loadPosts(techId, true);
               setLocalPosts(nextPosts);
             }}
           />
           {localPosts.map((post) => (
-            <TechnicianPostCard key={post.id} post={post} />
+            <Post key={post.id} post={post} />
           ))}
         </View>
       )}

@@ -36,10 +36,8 @@ import {
   ProfileAvatar,
   SectionHeader,
 } from "../../profile";
-import {
-  TechnicianPostCard,
-  TechnicianPostComposer,
-} from "../../components/TechnicianPostCard";
+import { Post } from "../../components/posts/Post";
+import { PostContainer } from "../../components/posts/PostContainer";
 import { formatRupiah, loadTechnician, supabase } from "../../data/marketplaceRepository";
 import {
   loadAccountProfileDetails,
@@ -50,11 +48,11 @@ import {
   updateTechnicianPortfolio,
 } from "../../data/marketplaceStore";
 import {
-  createTechnicianPost,
-  deleteTechnicianPost,
-  loadTechnicianPostsPage,
-  suspendTechnicianPost,
-  updateTechnicianPost,
+  createPost,
+  deletePost,
+  loadPostsPage,
+  suspendPost,
+  updatePost,
 } from "../../data/postsStore";
 import { useInfiniteList } from "../../hooks/useInfiniteList";
 import { categoryName, localizeArea, useLanguage } from "../../i18n/locale";
@@ -64,10 +62,10 @@ import type {
   DataSource,
   PortfolioItem,
   Technician,
-  TechnicianPost,
   TechnicianReport,
   TechnicianReview,
 } from "../../types/marketplace";
+import type { Post as PostType } from "../../types/post";
 import { colors, radii, spacing } from "../../theme/tokens";
 import { ICON_SIZE, ICON_STROKE } from "../../theme/icons";
 import { font } from "../../theme/typography";
@@ -167,15 +165,15 @@ export default function TechnicianProfileScreen() {
   const fetchPostPage = useCallback(
     (cursor: string | null, pageSize: number) =>
       id
-        ? loadTechnicianPostsPage(id, feedIsOwner, cursor, pageSize)
+        ? loadPostsPage(id, feedIsOwner, cursor, pageSize)
         : Promise.resolve({ items: [], nextCursor: null, hasMore: false }),
     [feedIsOwner, id],
   );
-  const postFeed = useInfiniteList<TechnicianPost>({
-    cacheKey: `technician-posts:${id}:${feedIsOwner ? "owner" : "public"}`,
+  const postFeed = useInfiniteList<PostType>({
+    cacheKey: `posts:${id}:${feedIsOwner ? "owner" : "public"}`,
     enabled: Boolean(id),
     fetchPage: fetchPostPage,
-    keyExtractor: (post: TechnicianPost) => post.id,
+    keyExtractor: (post: PostType) => post.id,
     pageSize: 10,
   });
   const posts = postFeed.items;
@@ -422,7 +420,7 @@ export default function TechnicianProfileScreen() {
     ),
   );
 
-  const hasTechnicianPosts = Boolean(
+  const hasPosts = Boolean(
     posts.some(
       (p) =>
         p.technicianId === id ||
@@ -434,7 +432,7 @@ export default function TechnicianProfileScreen() {
     loadedTechnician?.verified ||
     rawTechnician?.verified ||
     hasVerifiedPost ||
-    hasTechnicianPosts ||
+    hasPosts ||
     isTargetAdmin ||
     targetUserRoles.includes("technician") ||
     targetUserRoles.includes("admin") ||
@@ -564,7 +562,7 @@ export default function TechnicianProfileScreen() {
   }) => {
     try {
       const ownerId = user?.id || technician.id;
-      await createTechnicianPost({
+      await createPost({
         actorUserId: ownerId,
         technicianId: ownerId,
         technicianName: technician.displayName,
@@ -588,7 +586,7 @@ export default function TechnicianProfileScreen() {
   const handleDeletePost = async (postId: string) => {
     const ownerId = user?.id || technician.id;
     try {
-      await deleteTechnicianPost({ actorUserId: ownerId, postId });
+      await deletePost({ actorUserId: ownerId, postId });
       await postFeed.refresh();
     } catch (err) {
       console.warn('[handleDeletePost] Failed to delete post:', err);
@@ -596,12 +594,12 @@ export default function TechnicianProfileScreen() {
   };
 
   const handleEditPost = async (
-    post: TechnicianPost,
+    post: PostType,
     newCaption: string,
     newImageUri?: string,
   ) => {
     const ownerId = user?.id || technician.id;
-    await updateTechnicianPost({
+    await updatePost({
       actorUserId: ownerId,
       postId: post.id,
       caption: newCaption,
@@ -613,7 +611,7 @@ export default function TechnicianProfileScreen() {
 
   const handleSuspendPost = async (postId: string, suspended: boolean) => {
     const actorId = user?.id || "admin";
-    await suspendTechnicianPost({
+    await suspendPost({
       actorUserId: actorId,
       postId,
       suspended,
@@ -806,8 +804,7 @@ export default function TechnicianProfileScreen() {
               </View>
             ) : null}
 
-            {isTechnicianProfile && (
-              <View style={styles.statsStrip} testID="technician-stats-bar">
+            <View style={styles.statsStrip} testID="technician-stats-bar">
                 <View style={styles.statsItem} testID="technician-rating-badge">
                   <Text style={[styles.statsValue, { color: palette.text }]}>
                     <Text style={styles.statsStar}>★ </Text>
@@ -831,7 +828,7 @@ export default function TechnicianProfileScreen() {
                   </Text>
                 </View>
                 <View style={[styles.statsPipe, { backgroundColor: palette.border }]} />
-                <View style={styles.statsItem} testID="technician-posts-badge">
+                <View style={styles.statsItem} testID="posts-badge">
                   <Text style={[styles.statsValue, { color: palette.text }]}>
                     {formatCompactNumber(posts.length)}
                     {" "}
@@ -855,8 +852,7 @@ export default function TechnicianProfileScreen() {
                           : "Semua area"}
                   </Text>
                 </View>
-              </View>
-            )}
+            </View>
 
             {/* Review quick action - other actions live in the tabs below */}
             {!isProfileOwner && isTechnicianProfile && canAddReview && (
@@ -972,13 +968,18 @@ export default function TechnicianProfileScreen() {
           </ScrollView>
         </View>
 
-        <View style={styles.contentWidth}>
+        <View
+          style={[
+            styles.contentWidth,
+            currentTab === "posts" && { paddingHorizontal: 0 },
+          ]}
+        >
           {currentTab === "posts" && (
-            <View testID="technician-public-posts">
+            <View testID="public-posts">
               {/* Inline Twitter / X style Composer: visible to owner when technician or admin */}
               {canPost && (
                 <View style={styles.postComposerWrap}>
-                  <TechnicianPostComposer
+                  <PostContainer
                     onCreatePost={handleCreatePost}
                     technicianProfile={{
                       id: technician.id,
@@ -991,20 +992,20 @@ export default function TechnicianProfileScreen() {
 
               {posts.length > 0 ? (
                 <>
-                  {posts.map((item) => (
-                    <View key={item.id} style={styles.postCardWrap}>
-                      <TechnicianPostCard
-                        flat
-                        post={item}
-                        isOwner={isProfileOwner}
-                        isAdmin={isAdminUser}
-                        authorName={technician.displayName}
-                        authorAvatarUri={technician.avatarUri}
-                        onEdit={handleEditPost}
-                        onDelete={handleDeletePost}
-                        onSuspend={handleSuspendPost}
-                      />
-                    </View>
+                  {posts.map((item, index) => (
+                    <Post
+                      key={item.id}
+                      flat
+                      isLastInThread={index === posts.length - 1}
+                      post={item}
+                      isOwner={isProfileOwner}
+                      isAdmin={isAdminUser}
+                      authorName={technician.displayName}
+                      authorAvatarUri={technician.avatarUri}
+                      onEdit={handleEditPost}
+                      onDelete={handleDeletePost}
+                      onSuspend={handleSuspendPost}
+                    />
                   ))}
                   {postFeed.hasMore && (
                     <Pressable
@@ -2701,12 +2702,6 @@ const styles = StyleSheet.create({
   },
   reportButtonText: { color: colors.muted, fontSize: font.body, fontWeight: "600" },
   profileFooterSpace: { height: 16 },
-  postCardWrap: {
-    alignSelf: "center",
-    maxWidth: 820,
-    paddingHorizontal: 0,
-    width: "100%",
-  },
   feedErrorText: {
     color: colors.danger,
     fontSize: font.body,

@@ -53,22 +53,22 @@ const LIGHT_PALETTE: ThemePalette = {
 };
 
 const DARK_PALETTE: ThemePalette = {
-  background: '#0B1120',
-  surface: '#161F30',
-  surfaceSecondary: '#1E293B',
-  surfaceElevated: '#1E293B',
-  text: '#F1F5F9',
+  background: '#000000',
+  surface: '#0B0F17',
+  surfaceSecondary: '#131B26',
+  surfaceElevated: '#131B26',
+  text: '#F8FAFC',
   textSecondary: '#94A3B8',
-  textMuted: '#94A3B8',
-  border: '#232F46',
-  pillBg: '#1E293B',
-  pillText: '#F1F5F9',
+  textMuted: '#64748B',
+  border: '#1E293B',
+  pillBg: '#131B26',
+  pillText: '#F8FAFC',
   primary: '#10B981',
   primaryLight: 'rgba(16, 185, 129, 0.15)',
   primarySoft: 'rgba(16, 185, 129, 0.15)',
   danger: '#EF4444',
-  inputBg: '#161F30',
-  chipBg: '#1E293B',
+  inputBg: '#131B26',
+  chipBg: '#131B26',
 };
 
 const APPEARANCE_STORAGE_KEY = '@cepat/appearance-context-v1';

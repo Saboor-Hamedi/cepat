@@ -1,26 +1,20 @@
 import { router } from 'expo-router';
-import { LogIn, PenSquare } from 'lucide-react-native';
-import { StyleSheet, Text, View, Pressable } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { PenSquare } from 'lucide-react-native';
+import { StyleSheet, View, Pressable } from 'react-native';
 
 import { useAuth } from '../auth/AuthProvider';
-import { TechnicianPostComposer } from '../components/TechnicianPostCard';
-import { createTechnicianPost } from '../data/postsStore';
+import { PostContainer } from '../components/posts/PostContainer';
+import { createPost } from '../data/postsStore';
 import { useLanguage } from '../i18n/locale';
+import { AppButton, AppText, ScreenWrapper } from '../ui';
 import { ICON_SIZE, ICON_STROKE } from '../theme/icons';
-import { spacing } from '../theme/tokens';
-import { font } from '../theme/typography';
-import { radii } from '../theme/tokens';
+import { radii, spacing } from '../theme/tokens';
 
-const MODAL_BG = '#0B0E14';
-const MODAL_TEXT = '#F1F5F9';
-const MODAL_MUTED = '#64748B';
 const MINT = '#10B981';
 
 export default function ComposeScreen() {
   const { user } = useAuth();
   const { language } = useLanguage();
-  const insets = useSafeAreaInsets();
 
   const displayName =
     (typeof user?.user_metadata?.display_name === 'string' &&
@@ -42,7 +36,7 @@ export default function ComposeScreen() {
   }) => {
     if (!user) return;
     try {
-      await createTechnicianPost({
+      await createPost({
         actorUserId: user.id,
         technicianId: user.id,
         technicianName: displayName,
@@ -68,25 +62,22 @@ export default function ComposeScreen() {
 
   if (!user) {
     return (
-      <View
-        style={[styles.screen, { backgroundColor: MODAL_BG }]}
-        testID="compose-screen"
-      >
-        <View style={[styles.guestHeader, { paddingTop: insets.top + 6 }]}>
+      <ScreenWrapper padded={false} testID="compose-screen">
+        <View style={styles.guestHeader}>
           <Pressable
             accessibilityRole="button"
-            accessibilityLabel={language === 'en' ? 'Cancel' : 'Batal'}
+            accessibilityLabel={language === 'en' ? 'Close' : 'Tutup'}
             hitSlop={10}
             onPress={() => router.replace('/')}
             style={({ pressed }) => [
-              styles.cancelBtn,
+              styles.guestCancel,
               { opacity: pressed ? 0.6 : 1 },
             ]}
             testID="compose-guest-cancel"
           >
-            <Text style={styles.cancelText}>
+            <AppText variant="body" color="primary">
               {language === 'en' ? 'Cancel' : 'Batal'}
-            </Text>
+            </AppText>
           </Pressable>
         </View>
         <View style={styles.guestBody}>
@@ -97,38 +88,33 @@ export default function ComposeScreen() {
               strokeWidth={ICON_STROKE}
             />
           </View>
-          <Text style={styles.guestTitle}>
+          <AppText variant="title" color="primary" align="center">
             {language === 'en' ? 'Sign in to post' : 'Masuk untuk posting'}
-          </Text>
-          <Text style={styles.guestSub}>
+          </AppText>
+          <AppText variant="body" color="secondary" align="center">
             {language === 'en'
               ? 'Share your latest work, offer services, and connect with customers.'
               : 'Bagikan hasil kerja terbaru, tawarkan layanan, dan terhubung dengan pelanggan.'}
-          </Text>
-          <Pressable
-            accessibilityRole="button"
-            onPress={() => router.push('/login')}
-            style={styles.guestBtn}
-            testID="compose-login-btn"
-          >
-            <LogIn
-              color="#0B0E14"
-              size={ICON_SIZE}
-              strokeWidth={ICON_STROKE}
-            />
-            <Text style={styles.guestBtnText}>
+          </AppText>
+          <View style={styles.guestActions}>
+            <AppButton
+              variant="primary"
+              onPress={() => router.push('/login')}
+              fullWidth={false}
+              testID="compose-login-btn"
+            >
               {language === 'en' ? 'Sign in' : 'Masuk'}
-            </Text>
-          </Pressable>
+            </AppButton>
+          </View>
         </View>
-      </View>
+      </ScreenWrapper>
     );
   }
 
   return (
-    <View style={[styles.screen, { backgroundColor: MODAL_BG }]} testID="compose-screen">
-      <TechnicianPostComposer
-        variant="modal"
+    <ScreenWrapper padded={false} testID="compose-screen">
+      <PostContainer
+        showTitle
         technicianProfile={{
           id: user.id,
           displayName,
@@ -136,38 +122,29 @@ export default function ComposeScreen() {
         }}
         onCreatePost={handleCreatePost}
       />
-    </View>
+    </ScreenWrapper>
   );
 }
 
 const styles = StyleSheet.create({
-  screen: {
-    flex: 1,
-  },
   guestHeader: {
     alignItems: 'center',
     flexDirection: 'row',
-    minHeight: 52,
-    paddingBottom: 4,
-    paddingHorizontal: spacing.lg,
+    height: 52,
+    paddingHorizontal: 16,
     width: '100%',
   },
-  cancelBtn: {
+  guestCancel: {
+    alignSelf: 'flex-start',
     paddingVertical: 4,
-  },
-  cancelText: {
-    color: MODAL_TEXT,
-    fontSize: font.subtitle,
-    fontWeight: '600',
-    letterSpacing: -0.2,
   },
   guestBody: {
     alignItems: 'center',
     flex: 1,
     gap: spacing.sm,
     justifyContent: 'center',
-    paddingHorizontal: spacing.xl,
     paddingBottom: spacing.xxl,
+    paddingHorizontal: spacing.xl,
   },
   guestIcon: {
     alignItems: 'center',
@@ -178,32 +155,7 @@ const styles = StyleSheet.create({
     marginBottom: spacing.sm,
     width: 72,
   },
-  guestTitle: {
-    color: MODAL_TEXT,
-    fontSize: font.heading,
-    fontWeight: '800',
-    letterSpacing: -0.3,
-  },
-  guestSub: {
-    color: MODAL_MUTED,
-    fontSize: font.body,
-    lineHeight: 18,
-    maxWidth: 280,
-    textAlign: 'center',
-  },
-  guestBtn: {
-    alignItems: 'center',
-    backgroundColor: MINT,
-    borderRadius: radii.sm,
-    flexDirection: 'row',
-    gap: spacing.sm,
-    marginTop: spacing.sm,
-    paddingHorizontal: spacing.xl,
-    paddingVertical: spacing.sm + 2,
-  },
-  guestBtnText: {
-    color: '#0B0E14',
-    fontSize: font.label,
-    fontWeight: '800',
+  guestActions: {
+    marginTop: spacing.md,
   },
 });

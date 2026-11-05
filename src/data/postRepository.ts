@@ -1,15 +1,15 @@
 import { supabase } from './marketplaceRepository';
 import {
-  createTechnicianPost as createStorePost,
-  deleteTechnicianPost as deleteStorePost,
-  loadTechnicianPosts as loadStorePosts,
-  updateTechnicianPost as updateStorePost,
+  createPost as createStorePost,
+  deletePost as deleteStorePost,
+  loadPosts as loadStorePosts,
+  updatePost as updateStorePost,
 } from './postsStore';
 import type {
   CreatePostInput,
   FetchPostsOptions,
   PaginatedPostsResult,
-  TechnicianPost,
+  Post,
   UpdatePostInput,
 } from '../types/post';
 import {
@@ -103,7 +103,7 @@ export async function uploadPostMedia(
 /**
  * Retrieves technician posts ordered by created_at DESC with pagination.
  */
-export async function fetchTechnicianPosts(
+export async function fetchPosts(
   options: FetchPostsOptions = {},
 ): Promise<PaginatedPostsResult> {
   const {
@@ -113,7 +113,7 @@ export async function fetchTechnicianPosts(
     includeUnpublished = true,
   } = options;
 
-  let allPosts: TechnicianPost[] = [];
+  let allPosts: Post[] = [];
 
   if (supabase && technicianId) {
     try {
@@ -192,9 +192,9 @@ export async function fetchTechnicianPosts(
 /**
  * Creates a technician post, validating content and uploading media attachments if necessary.
  */
-export async function createTechnicianPost(
+export async function createPost(
   input: CreatePostInput,
-): Promise<TechnicianPost> {
+): Promise<Post> {
   return createStorePost({
     actorUserId: input.actorUserId,
     technicianId: input.technicianId,
@@ -216,9 +216,9 @@ export async function createTechnicianPost(
 /**
  * Updates an existing technician post.
  */
-export async function updateTechnicianPost(
+export async function updatePost(
   input: UpdatePostInput,
-): Promise<TechnicianPost> {
+): Promise<Post> {
   return updateStorePost({
     actorUserId: input.actorUserId,
     postId: input.postId,
@@ -233,9 +233,9 @@ export async function updateTechnicianPost(
 /**
  * Deletes a technician post.
  */
-export async function deleteTechnicianPost(input: {
+export async function deletePost(input: {
   actorUserId: string;
   postId: string;
-}): Promise<TechnicianPost[]> {
+}): Promise<Post[]> {
   return deleteStorePost(input);
 }

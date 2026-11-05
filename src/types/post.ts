@@ -6,7 +6,7 @@ export interface PostMediaAttachment {
   mimeType?: string;
 }
 
-export interface TechnicianPost {
+export interface Post {
   id: string;
   technicianId: string;
   technicianName: string;
@@ -65,7 +65,7 @@ export interface FetchPostsOptions {
 }
 
 export interface PaginatedPostsResult {
-  items: TechnicianPost[];
+  items: Post[];
   page: number;
   pageSize: number;
   hasMore: boolean;

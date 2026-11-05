@@ -11,11 +11,11 @@ import {
   updateAdminReportStatus,
 } from '../src/data/adminStore';
 import {
-  createTechnicianPost,
-  deleteTechnicianPost,
+  createPost,
+  deletePost,
   loadMarketplacePublishedPosts,
-  loadTechnicianPosts,
-  updateTechnicianPost,
+  loadPosts,
+  updatePost,
 } from '../src/data/postsStore';
 import { fixtureCategories, fixtureTechnicians, indonesianRegions } from '../src/data/fixtures';
 import {
@@ -502,7 +502,7 @@ describe('strict image validation, schema permission fallback, and admin moderat
   });
 
   it('creates, edits, deletes technician posts with strict ownership checks and filters blocked/unpublished posts from marketplace feed', async () => {
-    const created = await createTechnicianPost({
+    const created = await createPost({
       actorUserId: 'demo-rizky',
       technicianId: 'demo-rizky',
       technicianName: fixtureTechnicians[0].displayName,
@@ -520,7 +520,7 @@ describe('strict image validation, schema permission fallback, and admin moderat
 
     // Another user cannot edit or delete Rizky's post
     await expect(
-      updateTechnicianPost({
+      updatePost({
         actorUserId: 'intruder-user',
         postId: created.id,
         caption: 'Hacked caption',
@@ -528,11 +528,11 @@ describe('strict image validation, schema permission fallback, and admin moderat
     ).rejects.toThrow('unauthorized_post_owner');
 
     await expect(
-      deleteTechnicianPost({ actorUserId: 'intruder-user', postId: created.id }),
+      deletePost({ actorUserId: 'intruder-user', postId: created.id }),
     ).rejects.toThrow('unauthorized_post_owner');
 
     // Owner can edit and delete their own post
-    const updated = await updateTechnicianPost({
+    const updated = await updatePost({
       actorUserId: 'demo-rizky',
       postId: created.id,
       caption: 'Update: Pemasangan water heater dan uji tekanan pipa selesai.',
@@ -545,8 +545,8 @@ describe('strict image validation, schema permission fallback, and admin moderat
     expect(feedWhileBlocked.some((p) => p.technicianId === 'demo-rizky')).toBe(false);
     await updateAdminAccountModeration('demo-rizky', 'active');
 
-    await deleteTechnicianPost({ actorUserId: 'demo-rizky', postId: created.id });
-    const remaining = await loadTechnicianPosts('demo-rizky', true);
+    await deletePost({ actorUserId: 'demo-rizky', postId: created.id });
+    const remaining = await loadPosts('demo-rizky', true);
     expect(remaining.some((p) => p.id === created.id)).toBe(false);
   });
 });

@@ -54,9 +54,9 @@ import type {
   DataSource,
   SavedAddress,
   Technician,
-  TechnicianPost,
   TechnicianService,
 } from "../../types/marketplace";
+import type { Post } from "../../types/post";
 import { ICON_SIZE, ICON_STROKE } from '../../theme/icons';
 import { font } from '../../theme/typography';
 
@@ -100,7 +100,7 @@ export default function BookingEntryScreen() {
     null,
   );
   const [messages, setMessages] = useState<BookingMessage[]>([]);
-  const [loadedPost, setLoadedPost] = useState<TechnicianPost | null>(null);
+  const [loadedPost, setLoadedPost] = useState<Post | null>(null);
   const [customerDisplayName, setCustomerDisplayName] = useState<string>("");
   const [customerAvatarUri, setCustomerAvatarUri] = useState<string>("");
 

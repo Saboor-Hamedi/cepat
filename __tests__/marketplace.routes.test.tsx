@@ -67,7 +67,7 @@ describe("marketplace, auth-gated booking, social technician profile, and sideba
 
     await screen.findByTestId("marketplace-search");
     expect(screen.queryByTestId("marketplace-composer-section")).toBeNull();
-    expect(screen.queryByTestId("technician-post-composer")).toBeNull();
+    expect(screen.queryByTestId("post-composer")).toBeNull();
     expect(screen.getByTestId("category-all")).toBeTruthy();
     expect(screen.getByTestId("category-ac-repair")).toBeTruthy();
     expect(screen.getByTestId("category-renovation")).toBeTruthy();
@@ -94,7 +94,7 @@ describe("marketplace, auth-gated booking, social technician profile, and sideba
     expect(screen.getByText("Teknisi rekomendasi")).toBeTruthy();
     // Technician posts feed is visible on marketplace discovery
     expect(
-      await screen.findByTestId("technician-post-card-post-seed-1"),
+      await screen.findByTestId("post-card-post-seed-1"),
     ).toBeTruthy();
 
     await fireEvent.press(screen.getByTestId("technician-card-demo-rizky"));
@@ -268,7 +268,7 @@ describe("marketplace, auth-gated booking, social technician profile, and sideba
 
     // Switch to Posts tab and publish a new work post
     await fireEvent.press(screen.getByTestId("tech-tab-posts"));
-    expect(await screen.findByTestId("technician-post-composer")).toBeTruthy();
+    expect(await screen.findByTestId("post-composer")).toBeTruthy();
     await fireEvent.changeText(
       screen.getByTestId("create-post-caption-input"),
       "Selesai perbaikan pompa booster rumah 2 lantai di Kemang.",

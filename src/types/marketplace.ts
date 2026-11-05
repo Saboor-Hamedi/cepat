@@ -188,28 +188,6 @@ export interface UserPreferences {
   };
 }
 
-export interface TechnicianPost {
-  id: string;
-  technicianId: string;
-  technicianName: string;
-  technicianUsername?: string;
-  technicianBusinessName?: string;
-  technicianAvatarUri?: string;
-  technicianVerified: boolean;
-  categorySlug: string;
-  serviceArea: string;
-  caption: string;
-  content?: string;
-  imageUri?: string;
-  mediaUrls?: string[];
-  isServicePost?: boolean;
-  published: boolean;
-  suspended?: boolean;
-  suspendedAt?: string;
-  accountStatus?: 'active' | 'restricted' | 'suspended' | 'blocked';
-  createdAt: string;
-  updatedAt?: string;
-}
 
 export interface Page<T> {
   items: T[];

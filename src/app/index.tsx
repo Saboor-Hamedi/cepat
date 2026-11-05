@@ -21,9 +21,7 @@ import {
 } from '../components/search/CategoryTabs';
 import { MarketplaceMapSearchModal } from '../components/marketplace/MarketplaceSearch';
 import { SearchFieldTrigger } from '../components/search/SearchField';
-import {
-  TechnicianPostCard,
-} from '../components/TechnicianPostCard';
+import { Post } from '../components/posts/Post';
 import {
   filterTechnicians,
   formatRupiah,
@@ -40,10 +38,10 @@ import {
   saveSelectedArea,
 } from '../data/marketplaceStore';
 import {
-  deleteTechnicianPost,
+  deletePost,
   loadMarketplacePublishedPostsPage,
-  suspendTechnicianPost,
-  updateTechnicianPost,
+  suspendPost,
+  updatePost,
 } from '../data/postsStore';
 import { useInfiniteList } from '../hooks/useInfiniteList';
 import { localizeArea, useLanguage } from '../i18n/locale';
@@ -53,8 +51,8 @@ import type {
   SavedAddress,
   ServiceCategory,
   Technician,
-  TechnicianPost,
 } from '../types/marketplace';
+import type { Post as PostType } from '../types/post';
 import { font } from '../theme/typography';
 
 interface PopularTaskItem {
@@ -70,7 +68,7 @@ interface PopularTaskItem {
 type MarketplaceListItem =
   | { key: string; kind: 'recommendations-heading' }
   | { key: string; kind: 'technicians-heading' }
-  | { key: string; kind: 'post'; post: TechnicianPost }
+  | { key: string; kind: 'post'; post: PostType }
   | { key: string; kind: 'recommended-technician'; technician: Technician }
   | { key: string; kind: 'technician'; technician: Technician };
 
@@ -124,7 +122,7 @@ export default function MarketplaceScreen() {
   const postFeed = useInfiniteList({
     cacheKey: `marketplace-posts:${area}:${selectedCategory}`,
     fetchPage: fetchPostPage,
-    keyExtractor: (post: TechnicianPost) => post.id,
+    keyExtractor: (post: PostType) => post.id,
     pageSize: 10,
   });
   const refreshPostFeed = postFeed.refresh;
@@ -351,12 +349,12 @@ export default function MarketplaceScreen() {
   });
 
   const handleEditPost = async (
-    post: TechnicianPost,
+    post: PostType,
     newCaption: string,
     newImageUri?: string,
   ) => {
     if (!user) return;
-    await updateTechnicianPost({
+    await updatePost({
       actorUserId: user.id,
       postId: post.id,
       caption: newCaption,
@@ -369,7 +367,7 @@ export default function MarketplaceScreen() {
   const handleDeletePost = async (postId: string) => {
     if (!user) return;
     try {
-      await deleteTechnicianPost({ actorUserId: user.id, postId });
+      await deletePost({ actorUserId: user.id, postId });
       await postFeed.refresh();
     } catch (err) {
       console.warn('[handleDeletePost] Failed to delete post:', err);
@@ -378,7 +376,7 @@ export default function MarketplaceScreen() {
 
   const handleSuspendPost = async (postId: string, suspended: boolean) => {
     if (!user) return;
-    await suspendTechnicianPost({ actorUserId: user.id, postId, suspended });
+    await suspendPost({ actorUserId: user.id, postId, suspended });
     await postFeed.refresh();
   };
 
@@ -564,7 +562,7 @@ export default function MarketplaceScreen() {
             />
           )
         }
-        renderItem={({ item }) => {
+        renderItem={({ item, index }) => {
           if (item.kind === 'recommendations-heading') {
             return (
               <View style={styles.feedSectionTitle} testID="marketplace-recommendations-section">
@@ -597,16 +595,16 @@ export default function MarketplaceScreen() {
           }
           if (item.kind === 'post') {
             return (
-              <View style={styles.postCardWrap}>
-                <TechnicianPostCard
-                  post={item.post}
-                  isOwner={Boolean(user?.id && user.id === item.post.technicianId)}
-                  isAdmin={roles.includes('admin') || effectiveRole === 'admin'}
-                  onEdit={handleEditPost}
-                  onDelete={handleDeletePost}
-                  onSuspend={handleSuspendPost}
-                />
-              </View>
+              <Post
+                flat
+                isLastInThread={index === marketplaceItems.length - 1}
+                post={item.post}
+                isOwner={Boolean(user?.id && user.id === item.post.technicianId)}
+                isAdmin={roles.includes('admin') || effectiveRole === 'admin'}
+                onEdit={handleEditPost}
+                onDelete={handleDeletePost}
+                onSuspend={handleSuspendPost}
+              />
             );
           }
           if (item.kind === 'recommended-technician') {
@@ -969,7 +967,6 @@ const styles = StyleSheet.create({
   postCardWrap: {
     alignSelf: 'center',
     maxWidth: 820,
-    paddingHorizontal: 5,
     width: '100%',
   },
   feedErrorText: {

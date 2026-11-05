@@ -1,40 +1,37 @@
-import { Link, router, useLocalSearchParams } from 'expo-router';
-import { ChevronLeft } from 'lucide-react-native';
-import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Animated, Pressable, StyleSheet, Text, View } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { Link, router, useLocalSearchParams } from "expo-router";
+import { ChevronLeft } from "lucide-react-native";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { Animated, Pressable, StyleSheet, Text, View } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 
-import {
-  buildCategoryFilters,
-  CategoryTabs,
-} from './CategoryTabs';
-import { InfiniteFlatList } from '../InfiniteFlatList';
+import { buildCategoryFilters, CategoryTabs } from "./CategoryTabs";
+import { InfiniteFlatList } from "../InfiniteFlatList";
 import {
   EmptyState,
   LoadingState,
   SectionTitle,
   TechnicianCard,
-} from '../marketplace-ui';
-import { SearchField } from './SearchField';
-import { TechnicianPostCard } from '../TechnicianPostCard';
-import { useAppearance } from '../../context/AppearanceContext';
+} from "../marketplace-ui";
+import { SearchField } from "./SearchField";
+import { Post } from "../posts/Post";
+import { useAppearance } from "../../context/AppearanceContext";
 import {
   filterTechnicians,
   loadCategories,
   loadTechnicians,
-} from '../../data/marketplaceRepository';
-import { loadMarketplacePublishedPostsPage } from '../../data/postsStore';
-import { useInfiniteList } from '../../hooks/useInfiniteList';
-import { useLanguage } from '../../i18n/locale';
-import { ICON_SIZE, ICON_STROKE } from '../../theme/icons';
-import { colors, spacing } from '../../theme/tokens';
-import { font } from '../../theme/typography';
+} from "../../data/marketplaceRepository";
+import { loadMarketplacePublishedPostsPage } from "../../data/postsStore";
+import { useInfiniteList } from "../../hooks/useInfiniteList";
+import { useLanguage } from "../../i18n/locale";
+import { ICON_SIZE, ICON_STROKE } from "../../theme/icons";
+import { colors, spacing } from "../../theme/tokens";
+import { font } from "../../theme/typography";
 import type {
   DataSource,
   ServiceCategory,
   Technician,
-  TechnicianPost,
-} from '../../types/marketplace';
+} from "../../types/marketplace";
+import type { Post as PostType } from "../../types/post";
 
 type SearchParams = {
   area?: string;
@@ -42,10 +39,10 @@ type SearchParams = {
 };
 
 type SearchListItem =
-  | { key: string; kind: 'technicians-heading' }
-  | { key: string; kind: 'technician'; technician: Technician }
-  | { key: string; kind: 'posts-heading' }
-  | { key: string; kind: 'post'; post: TechnicianPost };
+  | { key: string; kind: "technicians-heading" }
+  | { key: string; kind: "technician"; technician: Technician }
+  | { key: string; kind: "posts-heading" }
+  | { key: string; kind: "post"; post: PostType };
 
 const SEARCH_DEBOUNCE_MS = 300;
 const TOP_BAR_HEIGHT = 56;
@@ -55,38 +52,38 @@ export default function SearchResults() {
   const { palette } = useAppearance();
   const params = useLocalSearchParams<SearchParams>();
 
-  const area = params.area || 'Semua area';
+  const area = params.area || "Semua area";
 
   const [scrollY] = useState(() => new Animated.Value(0));
   const topBarHeight = scrollY.interpolate({
     inputRange: [0, 88],
     outputRange: [TOP_BAR_HEIGHT, 0],
-    extrapolate: 'clamp',
+    extrapolate: "clamp",
   });
   const topBarOpacity = scrollY.interpolate({
     inputRange: [0, 52],
     outputRange: [1, 0],
-    extrapolate: 'clamp',
+    extrapolate: "clamp",
   });
   const topBarScale = scrollY.interpolate({
     inputRange: [0, 88],
     outputRange: [1, 0.92],
-    extrapolate: 'clamp',
+    extrapolate: "clamp",
   });
   const topBarTranslateY = scrollY.interpolate({
     inputRange: [0, 88],
     outputRange: [0, -8],
-    extrapolate: 'clamp',
+    extrapolate: "clamp",
   });
 
-  const [query, setQuery] = useState('');
-  const [debouncedQuery, setDebouncedQuery] = useState('');
+  const [query, setQuery] = useState("");
+  const [debouncedQuery, setDebouncedQuery] = useState("");
   const [selectedCategory, setSelectedCategory] = useState(
-    params.category || 'all',
+    params.category || "all",
   );
   const [categories, setCategories] = useState<ServiceCategory[]>([]);
   const [technicians, setTechnicians] = useState<Technician[]>([]);
-  const [source, setSource] = useState<DataSource>('fixtures');
+  const [source, setSource] = useState<DataSource>("fixtures");
   const [techniciansLoading, setTechniciansLoading] = useState(true);
 
   useEffect(() => {
@@ -125,17 +122,13 @@ export default function SearchResults() {
   );
 
   const categorySlug =
-    selectedCategory === 'all' ? undefined : selectedCategory;
+    selectedCategory === "all" ? undefined : selectedCategory;
 
   const matchingTechnicians = useMemo(() => {
     if (!debouncedQuery) return [];
-    return filterTechnicians(
-      technicians,
-      debouncedQuery,
-      area,
-      categorySlug,
-      { prioritizeArea: true },
-    ).slice(0, 8);
+    return filterTechnicians(technicians, debouncedQuery, area, categorySlug, {
+      prioritizeArea: true,
+    }).slice(0, 8);
   }, [area, categorySlug, debouncedQuery, technicians]);
 
   const fetchPostPage = useCallback(
@@ -156,7 +149,7 @@ export default function SearchResults() {
     cacheKey: `search-posts:${area}:${selectedCategory}:${debouncedQuery.toLowerCase()}`,
     enabled: debouncedQuery.length >= 2,
     fetchPage: fetchPostPage,
-    keyExtractor: (post: TechnicianPost) => post.id,
+    keyExtractor: (post: PostType) => post.id,
     pageSize: 10,
   });
 
@@ -166,22 +159,25 @@ export default function SearchResults() {
     const items: SearchListItem[] = [];
 
     if (matchingTechnicians.length > 0) {
-      items.push({ key: 'search-technicians-heading', kind: 'technicians-heading' });
+      items.push({
+        key: "search-technicians-heading",
+        kind: "technicians-heading",
+      });
       for (const technician of matchingTechnicians) {
         items.push({
           key: `search-technician-${technician.id}`,
-          kind: 'technician',
+          kind: "technician",
           technician,
         });
       }
     }
 
     if (postResults.items.length > 0) {
-      items.push({ key: 'search-posts-heading', kind: 'posts-heading' });
+      items.push({ key: "search-posts-heading", kind: "posts-heading" });
       for (const post of postResults.items) {
         items.push({
           key: `search-post-${post.id}`,
-          kind: 'post',
+          kind: "post",
           post,
         });
       }
@@ -194,7 +190,7 @@ export default function SearchResults() {
     if (router.canGoBack()) {
       router.back();
     } else {
-      router.replace('/');
+      router.replace("/");
     }
   };
 
@@ -206,7 +202,7 @@ export default function SearchResults() {
   return (
     <SafeAreaView
       style={[styles.safeArea, { backgroundColor: palette.background }]}
-      edges={['top', 'bottom']}
+      edges={["top", "bottom"]}
       testID="search-screen"
     >
       <Animated.View
@@ -225,7 +221,7 @@ export default function SearchResults() {
       >
         <Pressable
           accessibilityRole="button"
-          accessibilityLabel={language === 'en' ? 'Back' : 'Kembali'}
+          accessibilityLabel={language === "en" ? "Back" : "Kembali"}
           onPress={handleBack}
           style={styles.backBtn}
           testID="search-back"
@@ -238,12 +234,12 @@ export default function SearchResults() {
         </Pressable>
         <Link.AppleZoomTarget>
           <SearchField
-            accessibilityLabel={t('home.search')}
+            accessibilityLabel={t("home.search")}
             autoFocus
-            clearAccessibilityLabel={t('home.clearSearch')}
+            clearAccessibilityLabel={t("home.clearSearch")}
             onChangeText={setQuery}
-            onClear={() => setQuery('')}
-            placeholder={t('home.search')}
+            onClear={() => setQuery("")}
+            placeholder={t("home.search")}
             testID="search-input"
             value={query}
           />
@@ -275,35 +271,37 @@ export default function SearchResults() {
         keyboardShouldPersistTaps="handled"
         ListEmptyComponent={
           isSearching ? (
-            <LoadingState label={t('home.loading')} />
+            <LoadingState label={t("home.loading")} />
           ) : showEmpty ? (
             <EmptyState
-              title={t('home.noSearchTitle')}
-              description={t('home.noSearchDescription')}
+              title={t("home.noSearchTitle")}
+              description={t("home.noSearchDescription")}
             />
           ) : undefined
         }
-        renderItem={({ item }) => {
-          if (item.kind === 'technicians-heading') {
+        renderItem={({ item, index }) => {
+          if (item.kind === "technicians-heading") {
             return (
               <View style={styles.sectionTitle}>
                 <SectionTitle
-                  title={language === 'en' ? 'Technicians' : 'Teknisi'}
+                  title={language === "en" ? "Technicians" : "Teknisi"}
                   trailing={`${matchingTechnicians.length}`}
                 />
               </View>
             );
           }
-          if (item.kind === 'posts-heading') {
+          if (item.kind === "posts-heading") {
             return (
               <View style={styles.sectionTitle}>
                 <SectionTitle
-                  title={language === 'en' ? 'Work posts' : 'Postingan pekerjaan'}
+                  title={
+                    language === "en" ? "Work posts" : "Postingan pekerjaan"
+                  }
                 />
               </View>
             );
           }
-          if (item.kind === 'technician') {
+          if (item.kind === "technician") {
             return (
               <View style={styles.cardWrap}>
                 <TechnicianCard
@@ -311,7 +309,7 @@ export default function SearchResults() {
                   source={source}
                   onPress={() =>
                     router.push({
-                      pathname: '/technician/[id]',
+                      pathname: "/technician/[id]",
                       params: { id: item.technician.id },
                     })
                   }
@@ -320,9 +318,11 @@ export default function SearchResults() {
             );
           }
           return (
-            <View style={styles.cardWrap}>
-              <TechnicianPostCard post={item.post} />
-            </View>
+            <Post
+              flat
+              isLastInThread={index === searchItems.length - 1}
+              post={item.post}
+            />
           );
         }}
         listFooter={
@@ -339,7 +339,7 @@ export default function SearchResults() {
                 testID="search-retry"
               >
                 <Text style={[styles.retryText, { color: palette.primary }]}>
-                  {t('home.retry')}
+                  {t("home.retry")}
                 </Text>
               </Pressable>
             </View>
@@ -361,17 +361,17 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   topBar: {
-    alignItems: 'center',
-    flexDirection: 'row',
+    alignItems: "center",
+    flexDirection: "row",
     gap: spacing.sm,
-    overflow: 'hidden',
+    overflow: "hidden",
     paddingHorizontal: spacing.sm,
     paddingVertical: spacing.sm,
   },
   backBtn: {
-    alignItems: 'center',
+    alignItems: "center",
     height: 40,
-    justifyContent: 'center',
+    justifyContent: "center",
     width: 40,
   },
   list: {
@@ -388,17 +388,17 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.xs,
   },
   errorWrap: {
-    alignItems: 'center',
+    alignItems: "center",
     gap: spacing.sm,
     paddingHorizontal: spacing.lg,
     paddingVertical: spacing.lg,
   },
   errorText: {
     fontSize: font.body,
-    textAlign: 'center',
+    textAlign: "center",
   },
   retryText: {
     fontSize: font.subtitle,
-    fontWeight: '800',
+    fontWeight: "800",
   },
 });

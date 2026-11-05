@@ -1,14 +1,14 @@
 import {
-  createTechnicianPost,
-  deleteTechnicianPost,
-  fetchTechnicianPosts,
+  createPost,
+  deletePost,
+  fetchPosts,
   uploadPostMedia,
 } from '../src/data/postRepository';
 
 describe('posts repository & storage integration (quick.md)', () => {
-  it('createTechnicianPost calls insert with proper technician UUID and media URLs', async () => {
+  it('createPost calls insert with proper technician UUID and media URLs', async () => {
     const techId = 'a0000000-0000-0000-0000-000000000001';
-    const post = await createTechnicianPost({
+    const post = await createPost({
       actorUserId: techId,
       technicianId: techId,
       technicianName: 'Budi Santoso',
@@ -53,11 +53,11 @@ describe('posts repository & storage integration (quick.md)', () => {
     ).rejects.toThrow();
   });
 
-  it('fetchTechnicianPosts retrieves posts ordered by created_at DESC with pagination', async () => {
+  it('fetchPosts retrieves posts ordered by created_at DESC with pagination', async () => {
     const techId = 'a0000000-0000-0000-0000-000000000002';
 
     // Seed multiple posts
-    await createTechnicianPost({
+    await createPost({
       actorUserId: techId,
       technicianId: techId,
       technicianName: 'Joko AC',
@@ -66,7 +66,7 @@ describe('posts repository & storage integration (quick.md)', () => {
       caption: 'Post number 1',
     });
 
-    await createTechnicianPost({
+    await createPost({
       actorUserId: techId,
       technicianId: techId,
       technicianName: 'Joko AC',
@@ -75,7 +75,7 @@ describe('posts repository & storage integration (quick.md)', () => {
       caption: 'Post number 2',
     });
 
-    const page1 = await fetchTechnicianPosts({
+    const page1 = await fetchPosts({
       technicianId: techId,
       page: 1,
       pageSize: 1,
@@ -86,7 +86,7 @@ describe('posts repository & storage integration (quick.md)', () => {
     expect(page1.pageSize).toBe(1);
     expect(page1.hasMore).toBe(true);
 
-    const page2 = await fetchTechnicianPosts({
+    const page2 = await fetchPosts({
       technicianId: techId,
       page: 2,
       pageSize: 1,
@@ -100,7 +100,7 @@ describe('posts repository & storage integration (quick.md)', () => {
     const ownerId = 'a0000000-0000-0000-0000-000000000003';
     const intruderId = 'a0000000-0000-0000-0000-000000000099';
 
-    const post = await createTechnicianPost({
+    const post = await createPost({
       actorUserId: ownerId,
       technicianId: ownerId,
       technicianName: 'Ahmad Teknik',
@@ -111,14 +111,14 @@ describe('posts repository & storage integration (quick.md)', () => {
 
     // Intruder attempts to delete post
     await expect(
-      deleteTechnicianPost({
+      deletePost({
         actorUserId: intruderId,
         postId: post.id,
       }),
     ).rejects.toThrow('unauthorized_post_owner');
 
     // Owner can delete post
-    const remaining = await deleteTechnicianPost({
+    const remaining = await deletePost({
       actorUserId: ownerId,
       postId: post.id,
     });

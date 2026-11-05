@@ -5,20 +5,20 @@ import { useAppearance } from '../../context/AppearanceContext';
 import { ICON_SIZE, ICON_STROKE } from '../../theme/icons';
 import { radii, spacing } from '../../theme/tokens';
 
-export interface TechnicianPostImagePreviewProps {
+export interface PostFooterProps {
   images: string[];
   onRemoveImage: (index: number) => void;
   testIDPrefix?: string;
 }
 
-export function TechnicianPostImagePreview({
+export function PostFooter({
   images,
   onRemoveImage,
   testIDPrefix = 'post-preview',
-}: TechnicianPostImagePreviewProps) {
+}: PostFooterProps) {
   const { palette } = useAppearance();
 
-  if (!images || images.length === 0) {
+  if (images.length === 0) {
     return null;
   }
 
@@ -66,7 +66,7 @@ export function TechnicianPostImagePreview({
 
 const styles = StyleSheet.create({
   container: {
-    marginVertical: spacing.sm,
+    marginTop: spacing.xs,
     width: '100%',
   },
   scrollContent: {

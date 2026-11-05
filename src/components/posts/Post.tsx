@@ -17,18 +17,18 @@ import { localizeArea, useLanguage } from "../../i18n/locale";
 import { ICON_SIZE, ICON_STROKE } from "../../theme/icons";
 import { colors, radii, spacing } from "../../theme/tokens";
 import { font } from "../../theme/typography";
-import type { TechnicianPost } from "../../types/post";
+import type { Post as PostType } from "../../types/post";
 import { CORE_CATEGORY_FILTERS } from "../search/CategoryTabs";
 import { ImageSourceSheet } from "../ImageSourceSheet";
 import { Avatar } from "../marketplace-ui";
 import { PostDropdown } from "./PostDropdown";
 
-export interface TechnicianPostCardProps {
-  post: TechnicianPost;
+export interface PostProps {
+  post: PostType;
   isOwner?: boolean;
   isAdmin?: boolean;
   onEdit?: (
-    post: TechnicianPost,
+    post: PostType,
     newCaption: string,
     newImageUri?: string,
   ) => Promise<void>;
@@ -38,6 +38,7 @@ export interface TechnicianPostCardProps {
   authorName?: string;
   authorAvatarUri?: string;
   flat?: boolean;
+  isLastInThread?: boolean;
 }
 
 function categoryChipLabel(
@@ -55,7 +56,7 @@ function categoryChipLabel(
     .join(" ");
 }
 
-function cleanTechnicianTypo(text?: string): string {
+function fixAuthorTypo(text?: string): string {
   if (!text) return "";
   return text
     .replace(/Techinician/g, "Technician")
@@ -104,7 +105,8 @@ export function Post({
   authorName,
   authorAvatarUri,
   flat = false,
-}: TechnicianPostCardProps) {
+  isLastInThread = false,
+}: PostProps) {
   const { language } = useLanguage();
   const { user, roles, effectiveRole } = useAuth();
   const { palette } = useAppearance();
@@ -146,7 +148,7 @@ export function Post({
       : post.imageUri
         ? [post.imageUri]
         : [];
-  const displayName = cleanTechnicianTypo(authorName || post.technicianName);
+  const displayName = fixAuthorTypo(authorName || post.technicianName);
   const rawAuthorHandle =
     post.technicianUsername ||
     (isActualOwner && typeof user?.user_metadata?.username === "string" && user.user_metadata.username.trim()) ||
@@ -154,7 +156,7 @@ export function Post({
     "technician";
   const authorHandle = `@${rawAuthorHandle.replace(/^@/, "")}`;
   const displayAvatar = authorAvatarUri || post.technicianAvatarUri;
-  const displayContent = cleanTechnicianTypo(
+  const displayContent = fixAuthorTypo(
     post.content || post.caption || "",
   );
 
@@ -187,13 +189,34 @@ export function Post({
   return (
     <View
       style={[
-        flat ? styles.cardFlat : styles.card,
+        flat ? styles.flatRoot : styles.card,
         flat
           ? { borderBottomColor: palette.border }
           : { backgroundColor: palette.surface, borderColor: palette.border },
       ]}
-      testID={`technician-post-card-${post.id}`}
+      testID={`post-card-${post.id}`}
     >
+      {flat ? (
+        <View style={styles.threadLeft}>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={`Lihat profil ${displayName}`}
+            hitSlop={6}
+            onPress={() => router.push(`/technician/${post.technicianId}`)}
+            style={styles.threadAvatarBtn}
+            testID={`post-avatar-link-${post.id}`}
+          >
+            {!flat && <Avatar uri={displayAvatar} name={displayName} size={36} />}
+          </Pressable>
+          {!isLastInThread ? (
+            <View
+              style={[styles.threadLine, { backgroundColor: palette.border }]}
+              testID={`post-thread-line-${post.id}`}
+            />
+          ) : null}
+        </View>
+      ) : null}
+      <View style={flat ? styles.threadRight : styles.threadRightFill}>
       {/* Post Header */}
       {showAuthorHeader && (
         <View style={styles.headerRow}>
@@ -204,7 +227,7 @@ export function Post({
             style={styles.authorTouchArea}
             testID={`post-author-link-${post.id}`}
           >
-            <Avatar uri={displayAvatar} name={displayName} size={40} />
+            <Avatar uri={displayAvatar} name={displayName} size={36} />
             <View style={styles.authorMeta}>
               <View style={styles.nameRow}>
                 <Text
@@ -545,7 +568,7 @@ export function Post({
         </View>
       )}
 
-      {/* Direct Booking Shortcut for other users (Never show for self-technician post) */}
+      {/* Direct Booking Shortcut for other users (never shown for the author's own post) */}
       {showAuthorHeader && canBook && (
         <View
           style={[
@@ -586,6 +609,7 @@ export function Post({
         </View>
       )}
 
+      </View>
       {/* Confirmation Modal for Post Deletion */}
       <Modal
         animationType="fade"
@@ -653,13 +677,39 @@ const styles = StyleSheet.create({
     padding: 16,
     width: "100%",
   },
-  cardFlat: {
-    borderBottomWidth: StyleSheet.hairlineWidth,
+  flatRoot: {
+    backgroundColor: "transparent",
     borderRadius: 0,
     borderWidth: 0,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    flexDirection: "row",
     marginBottom: 0,
-    paddingHorizontal: 16,
+    paddingHorizontal: 12,
     paddingVertical: 16,
+    width: "100%",
+  },
+  threadLeft: {
+    alignItems: "center",
+    justifyContent: "flex-start",
+    width: 40,
+  },
+  threadAvatarBtn: {
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  threadLine: {
+    borderRadius: 1,
+    flex: 1,
+    marginTop: 0,
+    minHeight: 24,
+    width: 1.5,
+  },
+  threadRight: {
+    flex: 1,
+    minWidth: 0,
+    paddingLeft: 14,
+  },
+  threadRightFill: {
     width: "100%",
   },
   headerRow: {

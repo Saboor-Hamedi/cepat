@@ -2,12 +2,11 @@ import { loadAdminAccounts } from './adminStore';
 import { containsBlockedContactOrUrl } from './marketplaceStore';
 import { resolveServiceAreaName, shouldUseFixtures, supabase } from './marketplaceRepository';
 import { getStoredJson, setStoredJson } from '../storage/kvStorage';
-import type { TechnicianPost } from '../types/marketplace';
-import type { CursorPage } from '../types/post';
+import type { CursorPage, Post } from '../types/post';
 
 const POSTS_STORAGE_KEY = '@cepat/technician-posts';
 
-const DEFAULT_POSTS: TechnicianPost[] = [
+const DEFAULT_POSTS: Post[] = [
   {
     id: 'post-seed-1',
     technicianId: 'demo-rizky',
@@ -38,8 +37,8 @@ const DEFAULT_POSTS: TechnicianPost[] = [
   },
 ];
 
-async function loadAllStoredPosts(): Promise<TechnicianPost[]> {
-  const stored = await getStoredJson<TechnicianPost[]>(POSTS_STORAGE_KEY, []);
+async function loadAllStoredPosts(): Promise<Post[]> {
+  const stored = await getStoredJson<Post[]>(POSTS_STORAGE_KEY, []);
   if (stored.length === 0) {
     if (shouldUseFixtures()) {
       await setStoredJson(POSTS_STORAGE_KEY, DEFAULT_POSTS);
@@ -54,7 +53,7 @@ async function loadAllStoredPosts(): Promise<TechnicianPost[]> {
   return [...stored, ...DEFAULT_POSTS.filter((seed) => !existingIds.has(seed.id))];
 }
 
-function mapSupabasePost(row: Record<string, unknown>): TechnicianPost {
+function mapSupabasePost(row: Record<string, unknown>): Post {
   const rawImage = row.image_uri ? String(row.image_uri) : undefined;
   const rawMedia = Array.isArray(row.media_urls) && row.media_urls.length > 0
     ? row.media_urls.map(String)
@@ -99,7 +98,7 @@ function postTableErrorMessage(error: { code?: string; message: string }): strin
   return error.message;
 }
 
-function encodePostCursor(post: TechnicianPost): string {
+function encodePostCursor(post: Post): string {
   return encodeURIComponent(JSON.stringify({ createdAt: post.createdAt, id: post.id }));
 }
 
@@ -125,10 +124,10 @@ function decodePostCursor(cursor: string): { createdAt: string; id: string } | n
 }
 
 function paginateLocalPosts(
-  posts: TechnicianPost[],
+  posts: Post[],
   cursor: string | null,
   pageSize: number,
-): CursorPage<TechnicianPost> {
+): CursorPage<Post> {
   const start = cursor?.startsWith('local:')
     ? Math.max(0, Number.parseInt(cursor.slice(6), 10) || 0)
     : 0;
@@ -144,7 +143,7 @@ function paginateLocalPosts(
 /**
  * Loads all posts authored by a specific technician (including drafts/unpublished for the owner).
  */
-export async function loadPostById(postId: string): Promise<TechnicianPost | null> {
+export async function loadPostById(postId: string): Promise<Post | null> {
   if (!postId) return null;
   if (supabase && !shouldUseFixtures()) {
     try {
@@ -164,10 +163,10 @@ export async function loadPostById(postId: string): Promise<TechnicianPost | nul
   return all.find((p) => p.id === postId) || null;
 }
 
-export async function loadTechnicianPosts(
+export async function loadPosts(
   technicianId: string,
   includeUnpublished = true,
-): Promise<TechnicianPost[]> {
+): Promise<Post[]> {
   if (supabase && technicianId) {
     try {
       let query = supabase
@@ -200,12 +199,12 @@ export async function loadTechnicianPosts(
   );
 }
 
-export async function loadTechnicianPostsPage(
+export async function loadPostsPage(
   technicianId: string,
   includeUnpublished: boolean,
   cursor: string | null,
   pageSize: number,
-): Promise<CursorPage<TechnicianPost>> {
+): Promise<CursorPage<Post>> {
   if (supabase && technicianId && !cursor?.startsWith('local:')) {
     let query = supabase
       .from('technician_posts')
@@ -259,7 +258,7 @@ export async function loadMarketplacePublishedPosts(filters?: {
   area?: string;
   query?: string;
   categorySlug?: string;
-}): Promise<TechnicianPost[]> {
+}): Promise<Post[]> {
   const [allPosts, accounts] = await Promise.all([
     loadAllStoredPosts(),
     loadAdminAccounts(),
@@ -313,7 +312,7 @@ export async function loadMarketplacePublishedPostsPage(
   filters: { area?: string; query?: string; categorySlug?: string } | undefined,
   cursor: string | null,
   pageSize: number,
-): Promise<CursorPage<TechnicianPost>> {
+): Promise<CursorPage<Post>> {
   const canonicalArea =
     filters?.area && filters.area !== 'Semua area'
       ? resolveServiceAreaName(filters.area)
@@ -397,7 +396,7 @@ export async function loadMarketplacePublishedPostsPage(
 /**
  * Creates a new technician post. Enforces ownership and non-empty caption.
  */
-export async function createTechnicianPost(input: {
+export async function createPost(input: {
   actorUserId: string;
   technicianId: string;
   technicianName?: string;
@@ -412,7 +411,7 @@ export async function createTechnicianPost(input: {
   mediaUrls?: string[];
   isServicePost?: boolean;
   published?: boolean;
-}): Promise<TechnicianPost> {
+}): Promise<Post> {
   if (!input.actorUserId || input.actorUserId !== input.technicianId) {
     throw new Error('unauthorized_post_author');
   }
@@ -434,7 +433,7 @@ export async function createTechnicianPost(input: {
     throw new Error('private_contact_in_post');
   }
 
-  const newPost: TechnicianPost = {
+  const newPost: Post = {
     id: `post-${Date.now()}`,
     technicianId: input.technicianId,
     technicianName: input.technicianName?.trim() || 'Teknisi Cepat',
@@ -479,7 +478,7 @@ export async function createTechnicianPost(input: {
           error.code === '42501' ||
           msg.includes('schema cache')
         ) {
-          console.warn('[createTechnicianPost] Supabase insert warning (falling back to local cache):', msg);
+          console.warn('[createPost] Supabase insert warning (falling back to local cache):', msg);
         } else {
           throw new Error(postTableErrorMessage(error));
         }
@@ -491,7 +490,7 @@ export async function createTechnicianPost(input: {
         msg.includes('permission denied') ||
         msg.includes('schema cache')
       ) {
-        console.warn('[createTechnicianPost] Storing locally after Supabase insert warning:', msg);
+        console.warn('[createPost] Storing locally after Supabase insert warning:', msg);
       } else {
         throw error instanceof Error ? error : new Error(String(error));
       }
@@ -506,7 +505,7 @@ export async function createTechnicianPost(input: {
 /**
  * Updates an existing technician post. Enforces ownership or admin role.
  */
-export async function updateTechnicianPost(input: {
+export async function updatePost(input: {
   actorUserId: string;
   postId: string;
   caption?: string;
@@ -514,7 +513,7 @@ export async function updateTechnicianPost(input: {
   imageUri?: string;
   mediaUrls?: string[];
   isServicePost?: boolean;
-}): Promise<TechnicianPost> {
+}): Promise<Post> {
   const current = await loadAllStoredPosts();
   let existing = current.find((p) => p.id === input.postId);
   if (!existing && supabase) {
@@ -553,7 +552,7 @@ export async function updateTechnicianPost(input: {
         : finalImage ? [finalImage] : [])
     : (existing.mediaUrls ?? (existing.imageUri ? [existing.imageUri] : []));
 
-  const updatedPost: TechnicianPost = {
+  const updatedPost: Post = {
     ...existing,
     caption: input.caption !== undefined ? input.caption.trim().slice(0, 1200) : existing.caption,
     content: input.caption !== undefined ? input.caption.trim().slice(0, 1200) : existing.caption,
@@ -591,11 +590,11 @@ export async function updateTechnicianPost(input: {
 /**
  * Suspends or returns (unsuspends) a post. Designed for admin security moderation.
  */
-export async function suspendTechnicianPost(input: {
+export async function suspendPost(input: {
   actorUserId: string;
   postId: string;
   suspended: boolean;
-}): Promise<TechnicianPost> {
+}): Promise<Post> {
   const current = await loadAllStoredPosts();
   let existing = current.find((p) => p.id === input.postId);
   if (!existing && supabase) {
@@ -614,7 +613,7 @@ export async function suspendTechnicianPost(input: {
     throw new Error('post_not_found');
   }
 
-  const updatedPost: TechnicianPost = {
+  const updatedPost: Post = {
     ...existing,
     suspended: input.suspended,
     suspendedAt: input.suspended ? new Date().toISOString() : undefined,
@@ -644,7 +643,7 @@ export async function suspendTechnicianPost(input: {
 /**
  * Propagates author profile changes (display name, avatar) to all their existing posts.
  */
-export async function updateTechnicianProfileOnPosts(input: {
+export async function updateProfileOnPosts(input: {
   technicianId: string;
   technicianName?: string;
   technicianAvatarUri?: string;
@@ -686,10 +685,10 @@ export async function updateTechnicianProfileOnPosts(input: {
 /**
  * Deletes a technician post. Strictly enforces post ownership.
  */
-export async function deleteTechnicianPost(input: {
+export async function deletePost(input: {
   actorUserId: string;
   postId: string;
-}): Promise<TechnicianPost[]> {
+}): Promise<Post[]> {
   const current = await loadAllStoredPosts();
   let existing = current.find((p) => p.id === input.postId);
 

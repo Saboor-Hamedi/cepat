@@ -2,7 +2,7 @@ import { fireEvent, render, screen } from '@testing-library/react-native';
 import type { PropsWithChildren } from 'react';
 
 import { clearTestAuthSession } from '../src/auth/AuthProvider';
-import { TechnicianPostComposer } from '../src/components/posts/TechnicianPostComposer';
+import { PostContainer } from '../src/components/posts/PostContainer';
 import { LanguageProvider } from '../src/i18n/locale';
 
 function Wrapper({ children }: PropsWithChildren) {
@@ -13,10 +13,10 @@ afterEach(() => {
   clearTestAuthSession();
 });
 
-describe('TechnicianPostComposer (X/Twitter style)', () => {
+describe('PostContainer (X/Twitter style)', () => {
   it('Post button is disabled when input is empty and no images are selected', async () => {
     const handleCreate = jest.fn();
-    await render(<TechnicianPostComposer onCreatePost={handleCreate} />, {
+    await render(<PostContainer onCreatePost={handleCreate} />, {
       wrapper: Wrapper,
     });
 
@@ -28,7 +28,7 @@ describe('TechnicianPostComposer (X/Twitter style)', () => {
 
   it('Typing valid text enables the Post button', async () => {
     const handleCreate = jest.fn();
-    await render(<TechnicianPostComposer onCreatePost={handleCreate} />, {
+    await render(<PostContainer onCreatePost={handleCreate} />, {
       wrapper: Wrapper,
     });
 
@@ -52,7 +52,7 @@ describe('TechnicianPostComposer (X/Twitter style)', () => {
 
   it('Only marks a post bookable when the author opts in', async () => {
     const handleCreate = jest.fn();
-    await render(<TechnicianPostComposer onCreatePost={handleCreate} />, {
+    await render(<PostContainer onCreatePost={handleCreate} />, {
       wrapper: Wrapper,
     });
 
@@ -76,7 +76,7 @@ describe('TechnicianPostComposer (X/Twitter style)', () => {
     const mockImageLauncher = jest.fn().mockResolvedValue('file:///test-ac-repair.jpg');
 
     await render(
-      <TechnicianPostComposer
+      <PostContainer
         onCreatePost={handleCreate}
         customImageLauncher={mockImageLauncher}
       />,
@@ -105,7 +105,7 @@ describe('TechnicianPostComposer (X/Twitter style)', () => {
   });
 
   it('opens the compact themed photo action sheet without a profile-photo control', async () => {
-    await render(<TechnicianPostComposer onCreatePost={jest.fn()} />, {
+    await render(<PostContainer onCreatePost={jest.fn()} />, {
       wrapper: Wrapper,
     });
 
@@ -121,7 +121,7 @@ describe('TechnicianPostComposer (X/Twitter style)', () => {
     const mockImageLauncher = jest.fn().mockResolvedValue('file:///sample-water-pump.jpg');
 
     await render(
-      <TechnicianPostComposer
+      <PostContainer
         onCreatePost={handleCreate}
         customImageLauncher={mockImageLauncher}
       />,
@@ -144,7 +144,7 @@ describe('TechnicianPostComposer (X/Twitter style)', () => {
 
   it('Link-blocking validator triggers an error message if a URL is pasted', async () => {
     const handleCreate = jest.fn();
-    await render(<TechnicianPostComposer onCreatePost={handleCreate} />, {
+    await render(<PostContainer onCreatePost={handleCreate} />, {
       wrapper: Wrapper,
     });
 
@@ -163,7 +163,7 @@ describe('TechnicianPostComposer (X/Twitter style)', () => {
 
   it('Character limit displays a warning when exceeded', async () => {
     const handleCreate = jest.fn();
-    await render(<TechnicianPostComposer onCreatePost={handleCreate} />, {
+    await render(<PostContainer onCreatePost={handleCreate} />, {
       wrapper: Wrapper,
     });
 
