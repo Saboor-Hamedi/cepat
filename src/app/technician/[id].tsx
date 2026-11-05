@@ -1,5 +1,5 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { router, useLocalSearchParams } from "expo-router";
+import { Redirect, router, useLocalSearchParams } from "expo-router";
 import {
   BadgeCheck,
   Camera,
@@ -500,6 +500,10 @@ export default function TechnicianProfileScreen() {
       }
     }
   };
+
+  if (!isTechnicianProfile) {
+    return <Redirect href={"/profile" as never} />;
+  }
 
   const handleCoverSelected = async (newUri: string) => {
     setCoverMenuVisible(false);

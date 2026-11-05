@@ -10,9 +10,13 @@ import {
   TechnicianCard,
 } from "../components/marketplace-ui";
 import { BackHeader } from "../components/BackHeader";
-import { SegmentedTabs } from "../components/SegmentedTabs";
+import {
+  BookingCard,
+  HubSwitcher,
+  StatusFilterPills,
+} from "../bookings";
 import { useAppearance } from "../context/AppearanceContext";
-import { formatRupiah, loadTechnicians } from "../data/marketplaceRepository";
+import { loadTechnicians } from "../data/marketplaceRepository";
 import {
   isChatEnabledForStatus,
   loadBookings,
@@ -54,6 +58,7 @@ export default function CustomerBookingsScreen() {
   const [reloadBookingsKey, setReloadBookingsKey] = useState(0);
   const [bookings, setBookings] = useState<BookingRecord[]>([]);
   const [savedTechnicians, setSavedTechnicians] = useState<Technician[]>([]);
+  const [technicians, setTechnicians] = useState<Technician[]>([]);
   const [reviews, setReviews] = useState<TechnicianReview[]>([]);
   const [reports, setReports] = useState<TechnicianReport[]>([]);
 
@@ -78,6 +83,7 @@ export default function CustomerBookingsScreen() {
           ]);
         if (!active) return;
         applyBookings(allBookings);
+        setTechnicians(techPage.items);
         setSavedTechnicians(
           techPage.items.filter((item) => savedIds.includes(item.id)),
         );
@@ -190,6 +196,11 @@ export default function CustomerBookingsScreen() {
     );
   };
 
+  const technicianById = useMemo(
+    () => new Map(technicians.map((tech) => [tech.id, tech])),
+    [technicians],
+  );
+
   const showTasks = isTechnicianAccount && hub === "tasks";
 
   return (
@@ -202,7 +213,7 @@ export default function CustomerBookingsScreen() {
         contentContainerStyle={styles.scrollContent}
       >
         <View style={styles.container}>
-          {/* Header with Back button, Title, and Booking Notification */}
+          {/* Top app header: back chevron + screen title */}
           <BackHeader
             title={t("dashboard.customerTitle")}
             backBtnTestID="customer-bookings-back-btn"
@@ -215,7 +226,7 @@ export default function CustomerBookingsScreen() {
           </Text>
 
           {isTechnicianAccount && (
-            <SegmentedTabs<"bookings" | "tasks">
+            <HubSwitcher<"bookings" | "tasks">
               activeTab={hub}
               onSelectTab={setHub}
               testIDPrefix="bookings-hub"
@@ -242,38 +253,30 @@ export default function CustomerBookingsScreen() {
           ) : null}
 
           {!showTasks && (<>
-          <SegmentedTabs<CustomerHubTab>
+          <StatusFilterPills<CustomerHubTab>
             activeTab={tab}
             onSelectTab={setTab}
             testIDPrefix="customer-tab"
             tabs={[
               {
                 key: "current",
-                label:
-                  language === "en"
-                    ? `Current (${currentBookings.length})`
-                    : `Aktif (${currentBookings.length})`,
+                label: language === "en" ? "Current" : "Aktif",
+                count: currentBookings.length,
               },
               {
                 key: "history",
-                label:
-                  language === "en"
-                    ? `History (${historyBookings.length})`
-                    : `Riwayat (${historyBookings.length})`,
+                label: language === "en" ? "History" : "Riwayat",
+                count: historyBookings.length,
               },
               {
                 key: "messages",
-                label:
-                  language === "en"
-                    ? `Messages (${activeChatBookings.length})`
-                    : `Pesan (${activeChatBookings.length})`,
+                label: language === "en" ? "Messages" : "Pesan",
+                count: activeChatBookings.length,
               },
               {
                 key: "saved",
-                label:
-                  language === "en"
-                    ? `Saved (${savedTechnicians.length})`
-                    : `Tersimpan (${savedTechnicians.length})`,
+                label: language === "en" ? "Saved" : "Tersimpan",
+                count: savedTechnicians.length,
               },
               {
                 key: "reviews_reports",
@@ -303,11 +306,15 @@ export default function CustomerBookingsScreen() {
           ) : tab === "current" ? (
             currentBookings.length > 0 ? (
               currentBookings.map((booking) => (
-                <BookingListItem
+                <BookingCard
                   key={booking.id}
                   booking={booking}
-                  language={language}
-                  t={t}
+                  technicianAvatarUri={
+                    technicianById.get(booking.technicianUserId)?.avatarUri
+                  }
+                  technicianVerified={
+                    technicianById.get(booking.technicianUserId)?.verified
+                  }
                 />
               ))
             ) : (
@@ -329,11 +336,15 @@ export default function CustomerBookingsScreen() {
           ) : tab === "history" ? (
             historyBookings.length > 0 ? (
               historyBookings.map((booking) => (
-                <BookingListItem
+                <BookingCard
                   key={booking.id}
                   booking={booking}
-                  language={language}
-                  t={t}
+                  technicianAvatarUri={
+                    technicianById.get(booking.technicianUserId)?.avatarUri
+                  }
+                  technicianVerified={
+                    technicianById.get(booking.technicianUserId)?.verified
+                  }
                 />
               ))
             ) : (
@@ -441,7 +452,7 @@ export default function CustomerBookingsScreen() {
             <View style={styles.sectionList}>
               {uniqueReviews.length > 0 && (
                 <>
-                  <Text style={styles.sectionSubheading}>
+                  <Text style={[styles.sectionSubheading, { color: palette.text }]}>
                     {language === "en"
                       ? "Your Submitted Reviews"
                       : "Ulasan yang Kamu Kirim"}{" "}
@@ -473,7 +484,7 @@ export default function CustomerBookingsScreen() {
 
               {uniqueReports.length > 0 && (
                 <>
-                  <Text style={styles.sectionSubheading}>
+                  <Text style={[styles.sectionSubheading, { color: palette.text }]}>
                     {language === "en"
                       ? "Your Submitted Reports"
                       : "Laporan Kendala"}{" "}
@@ -515,119 +526,23 @@ export default function CustomerBookingsScreen() {
   );
 }
 
-function BookingListItem({
-  booking,
-  language,
-  t,
-}: {
-  booking: BookingRecord;
-  language: "id" | "en";
-  t: (key: string) => string;
-}) {
-  const isCompleted = booking.status === "completed";
-  const isWorkCompleted = isCompleted || Boolean(booking.workCompletedAt);
-  const { palette } = useAppearance();
-
-  return (
-    <Pressable
-      accessibilityRole="button"
-      onPress={() =>
-        router.push({ pathname: "/booking/[id]" as any, params: { id: booking.id } })
-      }
-      style={[
-        styles.card,
-        { backgroundColor: palette.surface, borderColor: palette.border },
-      ]}
-      testID={`customer-booking-card-${booking.id}`}
-    >
-      <View style={styles.cardTop}>
-        <Text style={[styles.cardTitle, { color: palette.text }]}>
-          {booking.serviceNameSnapshot}
-        </Text>
-        <View
-          style={[styles.statusChip, isWorkCompleted && styles.statusChipCompleted]}
-        >
-          <Text
-            style={[
-              styles.statusChipText,
-              isWorkCompleted && styles.statusChipCompletedText,
-            ]}
-          >
-            {isWorkCompleted ? "✓ " : ""}
-            {isCompleted
-              ? (language === "en" ? "Work Completed" : "Pekerjaan Selesai")
-              : booking.workCompletedAt
-                ? (language === "en" ? "Work Completed" : "Pekerjaan Selesai")
-                : t(`booking.status.${booking.status}`)}
-          </Text>
-        </View>
-      </View>
-      <Text style={[styles.cardProvider, { color: palette.text }]}>
-        {booking.technicianBusinessName || booking.technicianName}
-      </Text>
-      <Text style={[styles.cardSub, { color: palette.textMuted }]}>
-        {booking.customerAddress} ·{" "}
-        {localizeArea(booking.serviceArea, language)}
-      </Text>
-      <View style={styles.cardFooter}>
-        <Text style={[styles.cardDate, { color: palette.textMuted }]}>
-          {booking.requestedStartAt.slice(0, 16).replace("T", " ")} WIB
-        </Text>
-        {booking.agreedPrice !== undefined && (
-          <Text style={styles.cardPrice}>
-            {formatRupiah(booking.agreedPrice, language)}
-          </Text>
-        )}
-      </View>
-    </Pressable>
-  );
-}
-
 const styles = StyleSheet.create({
   screenContent: { flex: 1 },
-  safeArea: { backgroundColor: colors.paper, flex: 1 },
+  safeArea: { flex: 1 },
   srOnly: { height: 0, opacity: 0, position: "absolute", width: 0 },
   scrollContent: { paddingBottom: spacing.xxxl },
   container: {
     alignSelf: "center",
     maxWidth: 820,
-    paddingHorizontal: 5,
+    paddingHorizontal: 16,
     paddingTop: spacing.sm,
     width: "100%",
   },
-  headerRow: {
-    alignItems: "flex-start",
-    flexDirection: "row",
-    justifyContent: "space-between",
-    marginBottom: spacing.lg,
-  },
-  eyebrow: {
-    color: colors.orange,
-    fontSize: font.caption,
-    fontWeight: "800",
-    letterSpacing: 1.2,
-  },
-  title: {
-    color: colors.ink,
-    fontSize: font.display,
-    fontWeight: "800",
-    letterSpacing: -0.7,
-    marginTop: 4,
-  },
-  subtitle: {
-    color: colors.muted,
-    fontSize: font.label,
-    lineHeight: 19,
-    marginTop: 4,
-    maxWidth: 520,
-  },
   card: {
-    backgroundColor: colors.surface,
-    borderColor: colors.line,
-    borderRadius: 5,
+    borderRadius: 14,
     borderWidth: 1,
     marginBottom: spacing.md,
-    padding: spacing.lg,
+    padding: 14,
   },
   cardTop: {
     alignItems: "center",
@@ -635,41 +550,8 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     gap: spacing.sm,
   },
-  cardTitle: { color: colors.ink, flex: 1, fontSize: font.heading, fontWeight: "800" },
-  statusChip: {
-    backgroundColor: colors.greenSoft,
-    borderRadius: 5,
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-  },
-  statusChipCompleted: {
-    backgroundColor: "#E6F4EA",
-    borderColor: "#34A853",
-    borderWidth: 1,
-  },
-  statusChipText: { color: colors.greenDark, fontSize: font.caption, fontWeight: "800" },
-  statusChipCompletedText: {
-    color: "#137333",
-    fontWeight: "800",
-  },
-  cardProvider: {
-    color: colors.greenDark,
-    fontSize: font.label,
-    fontWeight: "700",
-    marginTop: 4,
-  },
-  cardSub: { color: colors.muted, fontSize: font.body, marginTop: 4 },
-  cardFooter: {
-    alignItems: "center",
-    borderTopColor: colors.line,
-    borderTopWidth: 1,
-    flexDirection: "row",
-    justifyContent: "space-between",
-    marginTop: spacing.md,
-    paddingTop: spacing.sm,
-  },
-  cardDate: { color: colors.muted, fontSize: font.caption, fontWeight: "600" },
-  cardPrice: { color: colors.greenDark, fontSize: font.label, fontWeight: "800" },
+  cardTitle: { flex: 1, fontSize: font.heading, fontWeight: "800" },
+  cardSub: { fontSize: font.body, marginTop: 4 },
   chatOpenBadge: {
     backgroundColor: colors.greenDark,
     borderRadius: 5,
@@ -679,68 +561,17 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10,
     paddingVertical: 4,
   },
-  headerBar: {
-    alignItems: "center",
-    flexDirection: "row",
-    justifyContent: "space-between",
-    marginBottom: spacing.md,
-    paddingHorizontal: 4,
-    width: "100%",
-  },
-  headerBackBtn: {
-    alignItems: "center",
-    borderRadius: 18,
-    borderWidth: 1,
-    height: 36,
-    justifyContent: "center",
-    width: 36,
-  },
-  headerTitleWrap: {
-    alignItems: "center",
-    flex: 1,
-    justifyContent: "center",
-  },
-  headerTitle: {
-    fontSize: font.heading,
-    fontWeight: "700",
-  },
-  headerNotifBtn: {
-    alignItems: "center",
-    borderRadius: 18,
-    borderWidth: 1,
-    height: 36,
-    justifyContent: "center",
-    position: "relative",
-    width: 36,
-  },
-  notifBadge: {
-    alignItems: "center",
-    borderRadius: 7,
-    height: 14,
-    justifyContent: "center",
-    minWidth: 14,
-    paddingHorizontal: 3,
-    position: "absolute",
-    right: -2,
-    top: -2,
-  },
-  notifBadgeText: {
-    color: "#FFFFFF",
-    fontSize: font.caption,
-    fontWeight: "800",
-  },
   sectionList: { gap: spacing.sm },
   sectionSubheading: {
-    color: colors.ink,
     fontSize: font.title,
     fontWeight: "800",
     marginTop: spacing.md,
   },
   reportStatusBadge: {
     alignSelf: "flex-start",
-    backgroundColor: colors.orangeSoft,
+    backgroundColor: "rgba(245, 158, 11, 0.15)",
     borderRadius: radii.sm,
-    color: colors.orange,
+    color: "#F59E0B",
     fontSize: font.caption,
     fontWeight: "800",
     marginTop: 6,

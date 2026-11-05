@@ -1,37 +1,31 @@
-Refactor and redesign the "Bookings & Messages" screen layout and card components according to the following specifications:
+Refactor the Notifications, Bookings Empty State, and Tasks Request screens according to the design system rules:
 
-1. Top App Header:
-   - Header row with standard safe area padding:
-     - Left: Clean chevron back button (< Back).
-     - Center: Screen title "Bookings & Messages" in semi-bold white text (16px).
-   - Background: Pure dark surface (#000000 or #0B0F17).
+1. Notifications Screen:
+   - Header: Back arrow (< Back) and centered title "Notifications" with safe area insets.
+   - Filter Tabs: Horizontal pills for "All (22)", "Unread (2)", "Bookings", and "Messages".
+   - Feed Layout: Remove individual heavy card boxes. Use borderless rows separated by 1px hairline dividers (#1E293B).
+   - Item Elements:
+     - Left: 40px circular container with semantic icon (mint-green wrench for bookings, cyan/blue bubble for messages).
+     - Middle: Bold notification title (15px white), message body preview (13px #94A3B8), and relative timestamp ("2h ago").
+     - Right: Small mint-green unread dot indicator (#10B981) instead of an "x" dismiss button.
 
-2. Primary View Switcher (Segmented Control):
-   - Replace separate loose buttons with a full-width segmented control container (background: #161F2E, border-radius: 12px, padding: 4px, marginHorizontal: 16px).
-   - Two equal-width tabs: "Bookings" and "Tasks".
-   - Active state ("Bookings"): Solid mint green (#10B981) background with bold dark text (#000000).
-   - Inactive state ("Tasks"): Transparent background with muted gray text (#94A3B8).
+2. Bookings Empty State:
+   - Center container vertically within the active tab view.
+   - Graphic: Minimalist stylized dark icon/illustration with subtle mint-green accents.
+   - Title: "No active bookings" in bold white (18px).
+   - Subtitle: "Explore the marketplace to book a technician." in muted gray (#94A3B8, 14px).
+   - CTA: Prominent rounded pill button (<AppButton>) labeled "Explore Marketplace" in solid mint green (#10B981) with black text, navigating to Marketplace.
 
-3. Status Filter Pills (Horizontal Scroll):
-   - Horizontal scroll row: "Current (3)", "History (0)", "Messages (3)", "Saved (0)".
-   - Active filter ("Current (3)"): Rounded pill with solid mint green fill or distinct active border.
-   - Inactive filters: Dark surface fill (#161F2E) with muted white/gray text and count tags.
+3. Tasks Screen (Provider Incoming Requests):
+   - Segmented Control: "Bookings" | "Tasks" (Tasks active in solid mint green).
+   - Filter Row: "Requests (3)" active, "Active Tasks (1)", "History (7)".
+   - Request Card Architecture (#111827 surface, 1px #1E293B border, 14px radius):
+     - Header: Customer avatar, name, location, and requested booking timestamp. Right side: Subtle "Customer Profile" outline badge.
+     - Body: Job title ("AC Service Repair") and service address enclosed in an inner dark container (#0B0F17).
+     - Action Row: Side-by-side buttons: "Accept request" (flex: 1, solid mint green) and "Decline" (flex: 1, outline or dark gray).
+     - Reschedule Section: Clean horizontal date chips and time slots (e.g., 09:00, 11:00, 14:00) with a muted "Propose another time" text button.
 
-4. Booking / Job Card Component:
-   - Container: Rounded elevated card (border-radius: 14px, background: #111827, 1px subtle border: #1E293B, padding: 14px, marginHorizontal: 16px, marginBottom: 12px).
-   - Top Row (Header & Status):
-     - Left: Service title in bold white (16px, e.g., "AC Service", "Plumbing Repair").
-     - Right: Semantic status badge pill:
-       - "Work Completed": Soft green tint (bg: rgba(16, 185, 129, 0.15), text: #10B981).
-       - "Service in Progress": Soft amber tint (bg: rgba(245, 158, 11, 0.15), text: #F59E0B).
-       - "Awaiting response": Subtle slate tint (bg: rgba(148, 163, 184, 0.15), text: #94A3B8).
-   - Middle Row (Technician & Address):
-     - Technician row with small circular avatar (24px), name, and verified badge.
-     - Location row with a mini pin icon and formatted address ("Ciputat jl legos depan UIN JKT • South Jakarta") in muted gray (#94A3B8, 12px).
-   - Bottom Row (Date & Navigation):
-     - Separated by a subtle 1px divider (#1E293B).
-     - Left: Calendar icon alongside formatted schedule date/time ("Nov 6, 2026 • 02:00 WIB") in #94A3B8.
-     - Right: Subtle right chevron arrow (>) indicating tappable card detail view.
-
-5. Bottom Navigation Bar:
-   - Retain the standard 5-slot bottom bar with the elevated central mint-green (+) Floating Action Button, active green highlight on "Bookings", and badge indicator on "Notifications".
+4. Global Layout Consistency:
+   - Pure black background (#000000).
+   - Remove any floating blue settings gears across all views.
+   - Maintain the standard 5-slot bottom navigation bar with elevated center mint-green (+) FAB.

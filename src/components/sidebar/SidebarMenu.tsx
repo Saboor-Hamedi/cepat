@@ -80,9 +80,7 @@ export function SidebarMenu({
         Icon: User,
         onPress: () =>
           navigate(
-            !isAuthenticated
-              ? '/login'
-              : `/technician/${profileId || (isTechnician ? 'demo-rizky' : 'demo-customer')}`,
+            !isAuthenticated ? '/login' : isTechnician ? `/technician/${profileId || 'demo-rizky'}` : '/profile',
           ),
       })}
 
