@@ -11,7 +11,6 @@ export type SidebarRoute =
   | '/admin'
   | '/login'
   | '/register'
-  | '/profile'
   | `/technician/${string}`
   | { pathname: '/account'; params: { tab: string } };
 

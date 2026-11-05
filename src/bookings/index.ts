@@ -1,3 +1,4 @@
+export { BookingsEmptyState } from './BookingsEmptyState';
 export { BookingCard, type BookingCardProps } from './BookingCard';
 export { BookingStatusBadge, type BookingStatusBadgeProps } from './BookingStatusBadge';
 export { HubSwitcher, type HubSwitcherProps, type HubSwitcherTab } from './HubSwitcher';

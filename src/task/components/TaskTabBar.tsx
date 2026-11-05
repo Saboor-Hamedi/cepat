@@ -1,6 +1,6 @@
 import { Pressable, Text, View } from 'react-native';
 
-import { SegmentedTabs } from '../../components/SegmentedTabs';
+import { StatusFilterPills } from '../../bookings';
 import { useLanguage } from '../../i18n/locale';
 
 export type TaskTabKey = 'requests' | 'active' | 'history' | 'posts';
@@ -21,21 +21,21 @@ export type JobsTabBarProps = TaskTabBarProps;
 export function TaskTabBar({ activeTab, onSelectTab, counts }: TaskTabBarProps) {
   const { language } = useLanguage();
 
-  const tabs: { key: TaskTabKey; label: string; count?: number; testID?: string }[] = [
+  const tabs = [
     {
-      key: 'requests',
+      key: 'requests' as const,
       label: language === 'en' ? 'Requests' : 'Permintaan',
       count: counts?.requests,
       testID: 'tech-tab-pending',
     },
     {
-      key: 'active',
+      key: 'active' as const,
       label: language === 'en' ? 'Active Tasks' : 'Tugas Aktif',
       count: counts?.active,
       testID: 'tech-tab-upcoming',
     },
     {
-      key: 'history',
+      key: 'history' as const,
       label: language === 'en' ? 'History' : 'Riwayat',
       count: counts?.history,
       testID: 'tech-tab-history',
@@ -44,7 +44,7 @@ export function TaskTabBar({ activeTab, onSelectTab, counts }: TaskTabBarProps) 
 
   return (
     <View>
-      <SegmentedTabs
+      <StatusFilterPills
         activeTab={activeTab}
         onSelectTab={onSelectTab}
         tabs={tabs}

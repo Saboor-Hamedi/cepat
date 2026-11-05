@@ -41,13 +41,12 @@ import {
   MessageSquare,
   Trash2,
   Wrench,
-  X,
 } from 'lucide-react-native';
 import { ICON_SIZE, ICON_STROKE } from '../theme/icons';
 import { useAuth } from '../auth/AuthProvider';
 import { AppNavigationBar, EmptyState, LoadingState } from '../components/marketplace-ui';
 import { BackHeader } from "../components/BackHeader";
-import { SegmentedTabs } from '../components/SegmentedTabs';
+import { StatusFilterPills } from '../bookings';
 import { useAppearance, type ThemePalette } from '../context/AppearanceContext';
 import {
   deleteNotification,
@@ -60,17 +59,32 @@ import {
   type CepatNotification,
 } from '../data/notifications';
 import { useLanguage } from '../i18n/locale';
-import { radii, spacing } from '../theme/tokens';
+import { spacing } from '../theme/tokens';
 
-export type NotificationTabKey = 'all' | 'recent' | 'old';
+export type NotificationTabKey = 'all' | 'unread' | 'bookings' | 'messages';
 export type NotificationFilterTab = NotificationTabKey;
+
+function isMessageNotification(item: CepatNotification): boolean {
+  const event = item.data.event;
+  return item.type === 'message' || event === 'chat_message';
+}
+
+function isBookingNotification(item: CepatNotification): boolean {
+  const event = item.data.event;
+  return typeof event === 'string' && event.startsWith('booking_');
+}
+
+function isMutedTheme(palette: ThemePalette): boolean {
+  return palette.background === '#000000';
+}
 
 export default function NotificationsScreen() {
   const { user } = useAuth();
   const userId = user?.id;
   const { language } = useLanguage();
   const { palette } = useAppearance();
-  const styles = useMemo(() => createStyles(palette), [palette]);
+  const isDark = isMutedTheme(palette);
+  const styles = useMemo(() => createStyles(palette, isDark), [isDark, palette]);
   const [notifications, setNotifications] = useState<CepatNotification[]>([]);
   const [loadedForUserId, setLoadedForUserId] = useState<string | null>(null);
   const [loading, setLoading] = useState(Boolean(userId));
@@ -188,46 +202,24 @@ export default function NotificationsScreen() {
     }
   };
 
-  const [now] = useState(() => Date.now());
-
   const visibleNotifications = useMemo(
     () => (loadedForUserId === userId ? notifications : []),
     [loadedForUserId, notifications, userId],
   );
   const unreadCount = visibleNotifications.filter((item) => !item.readAt).length;
 
-  const recentCount = useMemo(() => {
-    const oneDayAgo = now - 24 * 60 * 60 * 1000;
-    return visibleNotifications.filter((item) => {
-      const isRecent = new Date(item.createdAt).getTime() >= oneDayAgo;
-      return !item.readAt || isRecent;
-    }).length;
-  }, [now, visibleNotifications]);
-
-  const oldCount = useMemo(() => {
-    const oneDayAgo = now - 24 * 60 * 60 * 1000;
-    return visibleNotifications.filter((item) => {
-      const isOld = new Date(item.createdAt).getTime() < oneDayAgo;
-      return Boolean(item.readAt) && isOld;
-    }).length;
-  }, [now, visibleNotifications]);
-
   const filteredNotifications = useMemo(() => {
-    const oneDayAgo = now - 24 * 60 * 60 * 1000;
-    if (filterTab === 'recent') {
-      return visibleNotifications.filter((item) => {
-        const isRecent = new Date(item.createdAt).getTime() >= oneDayAgo;
-        return !item.readAt || isRecent;
-      });
+    if (filterTab === 'unread') {
+      return visibleNotifications.filter((item) => !item.readAt);
     }
-    if (filterTab === 'old') {
-      return visibleNotifications.filter((item) => {
-        const isOld = new Date(item.createdAt).getTime() < oneDayAgo;
-        return Boolean(item.readAt) && isOld;
-      });
+    if (filterTab === 'bookings') {
+      return visibleNotifications.filter(isBookingNotification);
+    }
+    if (filterTab === 'messages') {
+      return visibleNotifications.filter(isMessageNotification);
     }
     return visibleNotifications;
-  }, [filterTab, now, visibleNotifications]);
+  }, [filterTab, visibleNotifications]);
 
   const tabs: { key: NotificationFilterTab; label: string; count?: number; testID?: string }[] = [
     {
@@ -237,16 +229,20 @@ export default function NotificationsScreen() {
       testID: 'notification-tab-all',
     },
     {
-      key: 'recent',
-      label: language === 'en' ? 'Recent' : 'Terbaru',
-      count: recentCount,
-      testID: 'notification-tab-recent',
+      key: 'unread',
+      label: language === 'en' ? 'Unread' : 'Belum Dibaca',
+      count: unreadCount,
+      testID: 'notification-tab-unread',
     },
     {
-      key: 'old',
-      label: language === 'en' ? 'Old' : 'Lama',
-      count: oldCount,
-      testID: 'notification-tab-old',
+      key: 'bookings',
+      label: language === 'en' ? 'Bookings' : 'Pesanan',
+      testID: 'notification-tab-bookings',
+    },
+    {
+      key: 'messages',
+      label: language === 'en' ? 'Messages' : 'Pesan',
+      testID: 'notification-tab-messages',
     },
   ];
 
@@ -288,14 +284,12 @@ export default function NotificationsScreen() {
 
         {/* Facebook-style Category Filter Tabs */}
         {visibleNotifications.length > 0 && (
-          <View style={styles.tabsWrap}>
-            <SegmentedTabs
-              activeTab={filterTab}
-              onSelectTab={(tab) => setFilterTab(tab as NotificationFilterTab)}
-              tabs={tabs}
-              testIDPrefix="notifications-tab"
-            />
-          </View>
+          <StatusFilterPills
+            activeTab={filterTab}
+            onSelectTab={(tab) => setFilterTab(tab as NotificationFilterTab)}
+            tabs={tabs}
+            testIDPrefix="notifications-tab"
+          />
         )}
 
         {error ? (
@@ -331,9 +325,11 @@ export default function NotificationsScreen() {
         ) : filteredNotifications.length === 0 ? (
           <EmptyState
             title={
-              filterTab === 'recent'
-                ? (language === 'en' ? 'No recent notifications' : 'Tidak ada notifikasi baru')
-                : (language === 'en' ? 'No older notifications' : 'Tidak ada notifikasi lama')
+              filterTab === 'unread'
+                ? (language === 'en' ? 'All caught up' : 'Semua sudah dibaca')
+                : filterTab === 'bookings'
+                  ? (language === 'en' ? 'No booking notifications' : 'Belum ada notifikasi pesanan')
+                  : (language === 'en' ? 'No messages yet' : 'Belum ada pesan')
             }
             description={
               language === 'en'
@@ -363,6 +359,19 @@ export default function NotificationsScreen() {
     </SafeAreaView>
   );
 }
+
+type NotificationTone = 'booking' | 'message' | 'generic';
+
+function notificationTone(item: CepatNotification): NotificationTone {
+  if (isMessageNotification(item)) return 'message';
+  if (isBookingNotification(item)) return 'booking';
+  return 'generic';
+}
+
+const TONE_STYLES: Record<'booking' | 'message', { backgroundColor: string; color: string }> = {
+  booking: { backgroundColor: 'rgba(16, 185, 129, 0.15)', color: '#10B981' },
+  message: { backgroundColor: 'rgba(56, 189, 248, 0.15)', color: '#38BDF8' },
+};
 
 function SwipeableNotificationCard({
   item,
@@ -407,8 +416,11 @@ function SwipeableNotificationCard({
     [pan, swipedOpen],
   );
 
+  const tone = notificationTone(item);
+  const toneStyle = tone === 'generic' ? null : TONE_STYLES[tone];
+
   return (
-    <View style={styles.swipeContainer}>
+    <View style={styles.rowWrap}>
       <View style={styles.deleteBackground}>
         <Pressable
           accessibilityLabel="Delete notification"
@@ -425,9 +437,7 @@ function SwipeableNotificationCard({
       </View>
       <Animated.View
         style={[
-          styles.notificationCard,
-          styles.swipeForeground,
-          !item.readAt && styles.unreadCard,
+          styles.row,
           { transform: [{ translateX: pan }] },
         ]}
         {...panResponder.panHandlers}
@@ -446,35 +456,31 @@ function SwipeableNotificationCard({
           style={styles.cardPressArea}
           testID={`notification-${item.id}`}
         >
-          {/* Facebook-style Left Circular Avatar/Icon */}
           <View
             style={[
-              styles.notificationAvatar,
-              !item.readAt && styles.unreadAvatar,
+              styles.iconWrap,
+              toneStyle && { backgroundColor: toneStyle.backgroundColor },
             ]}
           >
-            <NotificationIcon color={palette.primary} item={item} />
+            <NotificationIcon
+              color={toneStyle ? toneStyle.color : palette.textMuted}
+              item={item}
+            />
           </View>
 
-          {/* Content body */}
           <View style={styles.notificationContent}>
-            <View style={styles.notificationTopRow}>
-              <Text
-                numberOfLines={1}
-                style={[
-                  styles.notificationTitle,
-                  !item.readAt && styles.unreadTitle,
-                ]}
-              >
-                {localizedTitle(item, language)}
-              </Text>
-            </View>
             <Text
-              numberOfLines={3}
+              numberOfLines={1}
               style={[
-                styles.notificationBody,
-                !item.readAt && styles.unreadNotificationBody,
+                styles.notificationTitle,
+                !item.readAt && styles.unreadTitle,
               ]}
+            >
+              {localizedTitle(item, language)}
+            </Text>
+            <Text
+              numberOfLines={2}
+              style={styles.notificationBody}
             >
               {localizedBody(item, language)}
             </Text>
@@ -484,20 +490,7 @@ function SwipeableNotificationCard({
           </View>
         </Pressable>
 
-        {/* Right section: unread dot + quick delete button */}
-        <View style={styles.rightSection}>
-          {!item.readAt && <View style={styles.unreadDot} />}
-          <Pressable
-            accessibilityLabel="Delete notification"
-            accessibilityRole="button"
-            hitSlop={10}
-            onPress={onDelete}
-            style={styles.inlineDeleteBtn}
-            testID={`quick-delete-notification-${item.id}`}
-          >
-            <X color={palette.textMuted} size={ICON_SIZE} strokeWidth={ICON_STROKE} />
-          </Pressable>
-        </View>
+        {!item.readAt && <View style={styles.unreadDot} />}
       </Animated.View>
     </View>
   );
@@ -629,178 +622,82 @@ function formatNotificationRelativeTime(dateString: string, language: 'id' | 'en
   }
 }
 
-function createStyles(palette: ThemePalette) {
+function createStyles(palette: ThemePalette, isDark: boolean) {
+  const muted = isDark ? '#94A3B8' : palette.textMuted;
+
   return StyleSheet.create({
     safeArea: { flex: 1 },
     content: {
       alignSelf: 'center',
-      gap: spacing.md,
+      gap: spacing.sm,
       maxWidth: 820,
-      paddingHorizontal: 5,
+      paddingHorizontal: 16,
       paddingTop: spacing.sm,
       paddingBottom: spacing.xl,
       width: '100%',
     },
-    headerBar: {
-      alignItems: 'center',
-      flexDirection: 'row',
-      justifyContent: 'space-between',
-      marginBottom: spacing.xs,
-      paddingHorizontal: 4,
-      width: '100%',
-    },
-    headerBackBtn: {
-      alignItems: 'center',
-      borderRadius: 18,
-      borderWidth: 1,
-      height: 36,
-      justifyContent: 'center',
-      width: 36,
-    },
-    headerTitleWrap: {
-      alignItems: 'center',
-      flex: 1,
-      justifyContent: 'center',
-    },
-    headerTitle: {
-      fontSize: font.heading,
-      fontWeight: '700',
-    },
-    headingRow: {
-      alignItems: 'center',
-      flexDirection: 'row',
-      justifyContent: 'space-between',
-      minHeight: 44,
-      marginBottom: spacing.xs,
-    },
-    headingCopy: { flex: 1 },
-    eyebrow: {
-      color: palette.primary,
-      fontSize: font.caption,
-      fontWeight: '800',
-      letterSpacing: 1,
-    },
-    heading: {
-      color: palette.text,
-      fontSize: font.display,
-      fontWeight: '800',
-      marginTop: 3,
-    },
-    subheading: {
-      color: palette.textMuted,
-      fontSize: font.body,
-      marginTop: 2,
-    },
     markAllButton: {
       backgroundColor: palette.primarySoft,
-      borderRadius: 5,
-      paddingHorizontal: spacing.md,
-      paddingVertical: spacing.sm,
+      borderRadius: 8,
+      paddingHorizontal: 10,
+      paddingVertical: 6,
     },
     markAllText: { color: palette.primary, fontSize: font.body, fontWeight: '800' },
-    tabsWrap: {
-      marginBottom: spacing.xs,
-    },
     errorCard: {
       backgroundColor: palette.surface,
       borderColor: palette.danger,
-      borderRadius: 5,
+      borderRadius: 12,
       borderWidth: 1,
       gap: spacing.xs,
       padding: spacing.md,
     },
-    errorText: { color: palette.danger, fontSize: font.body},
+    errorText: { color: palette.danger, fontSize: font.body },
     retryText: { color: palette.primary, fontSize: font.label, fontWeight: '800' },
-    notificationList: { gap: spacing.sm },
+    notificationList: { width: '100%' },
+    rowWrap: {},
+    row: {
+      alignItems: 'center',
+      backgroundColor: palette.background,
+      borderBottomColor: palette.border,
+      borderBottomWidth: StyleSheet.hairlineWidth,
+      flexDirection: 'row',
+      gap: 12,
+      paddingVertical: 12,
+    },
+    iconWrap: {
+      alignItems: 'center',
+      backgroundColor: palette.surfaceElevated,
+      borderRadius: 20,
+      height: 40,
+      justifyContent: 'center',
+      width: 40,
+    },
     cardPressArea: {
       alignItems: 'center',
       flex: 1,
       flexDirection: 'row',
-      gap: spacing.md,
+      gap: 12,
     },
-    notificationCard: {
-      alignItems: 'center',
-      backgroundColor: palette.surface,
-      borderColor: palette.border,
-      borderRadius: 5,
-      borderWidth: 1,
-      flexDirection: 'row',
-      gap: spacing.md,
-      padding: spacing.md,
-    },
-    unreadCard: {
-      backgroundColor: palette.surfaceElevated,
-      borderColor: palette.primary,
-    },
-    notificationAvatar: {
-      alignItems: 'center',
-      backgroundColor: palette.surfaceElevated,
-      borderRadius: 24,
-      height: 48,
-      justifyContent: 'center',
-      width: 48,
-    },
-    unreadAvatar: {
-      backgroundColor: palette.primarySoft,
-    },
-    notificationContent: {
-      flex: 1,
-      gap: 3,
-    },
-    notificationTopRow: {
-      alignItems: 'center',
-      flexDirection: 'row',
-      gap: spacing.sm,
-      justifyContent: 'space-between',
-    },
+    notificationContent: { flex: 1, gap: 2, minWidth: 0 },
     notificationTitle: {
       color: palette.text,
-      fontSize: font.title,
+      fontSize: 15,
       fontWeight: '700',
+      letterSpacing: -0.1,
     },
-    unreadTitle: {
-      fontWeight: '800',
-    },
+    unreadTitle: { fontWeight: '800' },
+    notificationBody: { color: muted, fontSize: 13, lineHeight: 17 },
+    notificationTime: { color: muted, fontSize: font.caption, marginTop: 2 },
     unreadDot: {
-      backgroundColor: palette.primary,
+      backgroundColor: '#10B981',
       borderRadius: 5,
       height: 10,
+      marginLeft: 4,
       width: 10,
-    },
-    notificationBody: {
-      color: palette.textMuted,
-      fontSize: font.label,
-      lineHeight: 18,
-    },
-    unreadNotificationBody: {
-      color: palette.text,
-    },
-    notificationTime: {
-      color: palette.textMuted,
-      fontSize: font.caption,
-      marginTop: 2,
-    },
-    rightSection: {
-      alignItems: 'center',
-      flexDirection: 'row',
-      gap: spacing.sm,
-    },
-    inlineDeleteBtn: {
-      alignItems: 'center',
-      borderRadius: radii.pill,
-      height: 24,
-      justifyContent: 'center',
-      width: 24,
-    },
-    swipeContainer: {
-      borderRadius: radii.lg,
-      overflow: 'hidden',
-      position: 'relative',
     },
     deleteBackground: {
       alignItems: 'center',
       backgroundColor: '#EF4444',
-      borderRadius: radii.lg,
       bottom: 0,
       justifyContent: 'center',
       position: 'absolute',
@@ -819,9 +716,6 @@ function createStyles(palette: ThemePalette) {
       color: '#FFFFFF',
       fontSize: font.caption,
       fontWeight: '800',
-    },
-    swipeForeground: {
-      width: '100%',
     },
   });
 }

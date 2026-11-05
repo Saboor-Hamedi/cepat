@@ -12,6 +12,7 @@ import {
 import { BackHeader } from "../components/BackHeader";
 import {
   BookingCard,
+  BookingsEmptyState,
   HubSwitcher,
   StatusFilterPills,
 } from "../bookings";
@@ -318,20 +319,7 @@ export default function CustomerBookingsScreen() {
                 />
               ))
             ) : (
-              <EmptyState
-                title={
-                  language === "en"
-                    ? "No active bookings"
-                    : "Belum ada pesanan aktif"
-                }
-                description={
-                  language === "en"
-                    ? "Explore the marketplace to book a technician."
-                    : "Jelajahi marketplace untuk memesan jadwal teknisi."
-                }
-                actionLabel={t("nav.marketplace")}
-                onAction={() => router.push("/")}
-              />
+              <BookingsEmptyState />
             )
           ) : tab === "history" ? (
             historyBookings.length > 0 ? (
@@ -530,7 +518,7 @@ const styles = StyleSheet.create({
   screenContent: { flex: 1 },
   safeArea: { flex: 1 },
   srOnly: { height: 0, opacity: 0, position: "absolute", width: 0 },
-  scrollContent: { paddingBottom: spacing.xxxl },
+  scrollContent: { flexGrow: 1, paddingBottom: spacing.xxxl },
   container: {
     alignSelf: "center",
     maxWidth: 820,

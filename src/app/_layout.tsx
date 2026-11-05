@@ -87,7 +87,6 @@ function ThemedStack() {
         <Stack.Screen name="technician-dashboard" options={{ animation: stackAnim }} />
         <Stack.Screen name="admin" options={{ animation: stackAnim }} />
         <Stack.Screen name="account" options={{ animation: stackAnim }} />
-        <Stack.Screen name="profile" options={{ animation: stackAnim }} />
         <Stack.Screen name="login" options={{ animation: stackAnim }} />
         <Stack.Screen name="register" options={{ animation: stackAnim }} />
         <Stack.Screen name="forgot-password" options={{ animation: stackAnim }} />

@@ -1,5 +1,5 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { Redirect, router, useLocalSearchParams } from "expo-router";
+import { router, useLocalSearchParams } from "expo-router";
 import {
   BadgeCheck,
   Camera,
@@ -106,6 +106,8 @@ function cleanTechnicianTypo(text?: string | null): string {
     .replace(/Techinician/g, "Technician")
     .replace(/techinician/g, "technician");
 }
+
+const COVER_DOTS = Array.from({ length: 12 }, (_, i) => i);
 
 export default function TechnicianProfileScreen() {
   const { language, t } = useLanguage();
@@ -501,10 +503,6 @@ export default function TechnicianProfileScreen() {
     }
   };
 
-  if (!isTechnicianProfile) {
-    return <Redirect href={"/profile" as never} />;
-  }
-
   const handleCoverSelected = async (newUri: string) => {
     setCoverMenuVisible(false);
     setCoverUri(newUri);
@@ -666,7 +664,16 @@ export default function TechnicianProfileScreen() {
               />
             ) : (
               <View style={styles.coverFallback}>
-                <View style={styles.coverGradientEnd} />
+                <View style={styles.coverGlowMint} />
+                <View style={styles.coverGlowMintInner} />
+                <View style={styles.coverGlowSlate} />
+                <View style={styles.coverArcOuter} />
+                <View style={styles.coverArcInner} />
+                <View style={styles.coverDotsRow}>
+                  {COVER_DOTS.map((dot) => (
+                    <View key={dot} style={styles.coverDot} />
+                  ))}
+                </View>
               </View>
             )}
             <Header onBack={goBack} overlay />
@@ -2393,15 +2400,67 @@ const styles = StyleSheet.create({
     overflow: "hidden",
     width: "100%",
   },
-  coverGradientEnd: {
-    backgroundColor: "#334155",
-    height: 260,
-    opacity: 0.72,
+  coverGlowMint: {
+    borderColor: "rgba(16, 185, 129, 0.32)",
+    borderRadius: 999,
+    borderWidth: 1.5,
+    height: 240,
+    left: -90,
     position: "absolute",
-    right: -80,
-    top: -50,
-    transform: [{ rotate: "25deg" }],
-    width: "75%",
+    top: -70,
+    width: 240,
+  },
+  coverGlowMintInner: {
+    borderColor: "rgba(16, 185, 129, 0.18)",
+    borderRadius: 999,
+    borderWidth: 1,
+    height: 140,
+    left: -40,
+    position: "absolute",
+    top: -20,
+    width: 140,
+  },
+  coverGlowSlate: {
+    backgroundColor: "rgba(148, 163, 184, 0.09)",
+    borderRadius: 999,
+    height: 300,
+    position: "absolute",
+    right: -120,
+    top: -150,
+    width: 300,
+  },
+  coverArcOuter: {
+    borderColor: "rgba(16, 185, 129, 0.16)",
+    borderRadius: 999,
+    borderWidth: 1.25,
+    height: 340,
+    position: "absolute",
+    right: -140,
+    bottom: -200,
+    width: 340,
+  },
+  coverArcInner: {
+    borderColor: "rgba(148, 163, 184, 0.14)",
+    borderRadius: 999,
+    borderWidth: 1,
+    height: 190,
+    position: "absolute",
+    right: -75,
+    bottom: -120,
+    width: 190,
+  },
+  coverDotsRow: {
+    bottom: 20,
+    flexDirection: "row",
+    gap: 10,
+    left: 20,
+    position: "absolute",
+  },
+  coverDot: {
+    backgroundColor: "rgba(16, 185, 129, 0.45)",
+    borderRadius: 2,
+    height: 4,
+    width: 4,
   },
   coverTopRightRow: {
     alignItems: "center",
