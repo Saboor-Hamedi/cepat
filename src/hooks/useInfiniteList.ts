@@ -9,6 +9,7 @@ export interface UseInfiniteListOptions<T> {
   enabled?: boolean;
   pageSize?: number;
   staleTimeMs?: number;
+  initialData?: () => CursorPage<T> | null;
   fetchPage: (cursor: string | null, pageSize: number) => Promise<CursorPage<T>>;
   keyExtractor: (item: T) => string;
 }
@@ -18,7 +19,16 @@ interface CacheEntry<T> extends CursorPage<T> {
 }
 
 const PAGE_CACHE = new Map<string, CacheEntry<unknown>>();
-const MAX_CACHED_FEEDS = 12;
+const MAX_CACHED_FEEDS = 24;
+
+type CacheListener = (cacheKey: string, action: 'sync' | 'revalidate') => void;
+const CACHE_LISTENERS = new Set<CacheListener>();
+
+function notifyCacheListeners(cacheKey: string, action: 'sync' | 'revalidate') {
+  for (const listener of CACHE_LISTENERS) {
+    listener(cacheKey, action);
+  }
+}
 
 function saveFirstPage<T>(key: string, page: CursorPage<T>) {
   PAGE_CACHE.delete(key);
@@ -26,6 +36,103 @@ function saveFirstPage<T>(key: string, page: CursorPage<T>) {
   if (PAGE_CACHE.size > MAX_CACHED_FEEDS) {
     const oldestKey = PAGE_CACHE.keys().next().value;
     if (oldestKey) PAGE_CACHE.delete(oldestKey);
+  }
+}
+
+/**
+ * Prepends an item to all cached feeds whose key satisfies `predicate`,
+ * immediately updating any mounted `useInfiniteList` instances without a reload spinner.
+ */
+export function prependCachedFeedItem<T>(
+  predicate: (cacheKey: string) => boolean,
+  item: T,
+  keyExtractor: (item: T) => string,
+): void {
+  const targetId = keyExtractor(item);
+  for (const [key, rawEntry] of PAGE_CACHE.entries()) {
+    if (!predicate(key)) continue;
+    const entry = rawEntry as CacheEntry<T>;
+    const filtered = entry.items.filter((existing) => keyExtractor(existing) !== targetId);
+    const updated: CacheEntry<T> = {
+      ...entry,
+      items: [item, ...filtered],
+      cachedAt: Date.now(),
+    };
+    PAGE_CACHE.set(key, updated);
+    notifyCacheListeners(key, 'sync');
+  }
+}
+
+/**
+ * Updates matching items in-place across all cached feeds whose key satisfies `predicate`.
+ * When `options.silent` is true, mutates the in-memory cache for future mounts without
+ * triggering a full parent list re-render.
+ */
+export function updateCachedFeedItem<T>(
+  predicate: (cacheKey: string) => boolean,
+  matcher: (item: T) => boolean,
+  updater: (item: T) => T,
+  options?: { silent?: boolean },
+): void {
+  for (const [key, rawEntry] of PAGE_CACHE.entries()) {
+    if (!predicate(key)) continue;
+    const entry = rawEntry as CacheEntry<T>;
+    let changed = false;
+    const nextItems = entry.items.map((item) => {
+      if (matcher(item)) {
+        changed = true;
+        return updater(item);
+      }
+      return item;
+    });
+    if (changed) {
+      PAGE_CACHE.set(key, {
+        ...entry,
+        items: nextItems,
+        cachedAt: Date.now(),
+      });
+      if (!options?.silent) {
+        notifyCacheListeners(key, 'sync');
+      }
+    }
+  }
+}
+
+/**
+ * Removes matching items from all cached feeds whose key satisfies `predicate`.
+ */
+export function removeCachedFeedItem<T>(
+  predicate: (cacheKey: string) => boolean,
+  matcher: (item: T) => boolean,
+): void {
+  for (const [key, rawEntry] of PAGE_CACHE.entries()) {
+    if (!predicate(key)) continue;
+    const entry = rawEntry as CacheEntry<T>;
+    const nextItems = entry.items.filter((item) => !matcher(item));
+    if (nextItems.length !== entry.items.length) {
+      PAGE_CACHE.set(key, {
+        ...entry,
+        items: nextItems,
+        cachedAt: Date.now(),
+      });
+      notifyCacheListeners(key, 'sync');
+    }
+  }
+}
+
+/**
+ * Marks matching cached feeds as stale and triggers silent revalidation on active hooks.
+ */
+export function invalidateCachedFeeds(
+  predicate: (cacheKey: string) => boolean = () => true,
+): void {
+  for (const [key, rawEntry] of PAGE_CACHE.entries()) {
+    if (!predicate(key)) continue;
+    PAGE_CACHE.set(key, {
+      ...rawEntry,
+      cachedAt: 0,
+    });
+    notifyCacheListeners(key, 'revalidate');
   }
 }
 
@@ -50,38 +157,88 @@ export function useInfiniteList<T>({
   cacheKey,
   enabled = true,
   pageSize = 20,
-  staleTimeMs = 30_000,
+  staleTimeMs = 300_000,
+  initialData,
   fetchPage,
   keyExtractor,
 }: UseInfiniteListOptions<T>) {
-  const [items, setItems] = useState<T[]>(() => {
-    if (!enabled) return [];
+  const initialDataRef = useRef(initialData);
+  useEffect(() => {
+    initialDataRef.current = initialData;
+  }, [initialData]);
+
+  const [seedState] = useState<{
+    items: T[];
+    nextCursor: string | null;
+    hasMore: boolean;
+    loading: boolean;
+  }>(() => {
+    if (!enabled) {
+      return { items: [], nextCursor: null, hasMore: false, loading: false };
+    }
     const cached = PAGE_CACHE.get(cacheKey) as CacheEntry<T> | undefined;
-    return cached ? (cached.items as T[]) : [];
+    if (cached) {
+      return {
+        items: cached.items as T[],
+        nextCursor: cached.nextCursor,
+        hasMore: cached.hasMore,
+        loading: false,
+      };
+    }
+    const syncSeed = initialData?.() ?? null;
+    if (syncSeed && syncSeed.items.length > 0) {
+      return {
+        items: syncSeed.items,
+        nextCursor: syncSeed.nextCursor,
+        hasMore: syncSeed.hasMore,
+        loading: false,
+      };
+    }
+    return { items: [], nextCursor: null, hasMore: false, loading: true };
   });
-  const [nextCursor, setNextCursor] = useState<string | null>(() => {
-    if (!enabled) return null;
-    const cached = PAGE_CACHE.get(cacheKey) as CacheEntry<T> | undefined;
-    return cached ? cached.nextCursor : null;
-  });
-  const [hasMore, setHasMore] = useState(() => {
-    if (!enabled) return false;
-    const cached = PAGE_CACHE.get(cacheKey) as CacheEntry<T> | undefined;
-    return cached ? cached.hasMore : false;
-  });
-  const [loading, setLoading] = useState(() => {
-    if (!enabled) return false;
-    const cached = PAGE_CACHE.get(cacheKey) as CacheEntry<T> | undefined;
-    const cacheIsFresh = Boolean(
-      cached && Date.now() - cached.cachedAt < staleTimeMs,
-    );
-    return !cacheIsFresh;
-  });
+
+  const [items, setItems] = useState<T[]>(seedState.items);
+  const [nextCursor, setNextCursor] = useState<string | null>(seedState.nextCursor);
+  const [hasMore, setHasMore] = useState<boolean>(seedState.hasMore);
+  const [loading, setLoading] = useState<boolean>(seedState.loading);
   const [loadingMore, setLoadingMore] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const activeRequest = useRef(0);
   const loadingMoreRef = useRef(false);
+
+  // Subscribe to in-memory cache updates (e.g., new post created on profile/compose, like toggled, post edited/deleted)
+  useEffect(() => {
+    if (!enabled) return;
+    const listener: CacheListener = (updatedKey, action) => {
+      if (updatedKey !== cacheKey) return;
+      const cached = PAGE_CACHE.get(cacheKey) as CacheEntry<T> | undefined;
+      if (cached && action === 'sync') {
+        setItems(cached.items);
+        setNextCursor(cached.nextCursor);
+        setHasMore(cached.hasMore);
+        setLoading(false);
+      } else if (action === 'revalidate') {
+        const requestId = ++activeRequest.current;
+        void fetchPage(null, pageSize)
+          .then((page) => {
+            if (activeRequest.current !== requestId) return;
+            saveFirstPage(cacheKey, page);
+            setItems(page.items);
+            setNextCursor(page.nextCursor);
+            setHasMore(page.hasMore);
+            setError(null);
+          })
+          .catch(() => {
+            // Preserve existing items on silent revalidation error
+          });
+      }
+    };
+    CACHE_LISTENERS.add(listener);
+    return () => {
+      CACHE_LISTENERS.delete(listener);
+    };
+  }, [cacheKey, enabled, fetchPage, pageSize]);
 
   useEffect(() => {
     const requestId = ++activeRequest.current;
@@ -104,24 +261,31 @@ export function useInfiniteList<T>({
         const cacheIsFresh = Boolean(
           cached && Date.now() - cached.cachedAt < staleTimeMs,
         );
+        const syncSeed = !cached ? (initialDataRef.current?.() ?? null) : null;
         if (cached) {
           setItems(cached.items);
           setNextCursor(cached.nextCursor);
           setHasMore(cached.hasMore);
+          setLoading(false);
+          setRefreshing(false);
+        } else if (syncSeed && syncSeed.items.length > 0) {
+          setItems(syncSeed.items);
+          setNextCursor(syncSeed.nextCursor);
+          setHasMore(syncSeed.hasMore);
+          setLoading(false);
+          setRefreshing(false);
         } else {
-          // Keep current items visible while new feed loads, rather than flashing blank screen
           setNextCursor(null);
           setHasMore(false);
         }
 
         if (cacheIsFresh) {
-          setLoading(false);
-          setRefreshing(false);
           return;
         }
 
-        setLoading(!cached);
-        setRefreshing(Boolean(cached));
+        if (!cached && (!syncSeed || syncSeed.items.length === 0)) {
+          setLoading(true);
+        }
         return fetchPage(null, pageSize)
           .then((page) => {
             if (activeRequest.current !== requestId) return;
@@ -133,9 +297,11 @@ export function useInfiniteList<T>({
           })
           .catch((cause: unknown) => {
             if (activeRequest.current !== requestId) return;
-            setError(
-              cause instanceof Error ? cause.message : 'Unable to load items.',
-            );
+            if (!cached && (!syncSeed || syncSeed.items.length === 0)) {
+              setError(
+                cause instanceof Error ? cause.message : 'Unable to load items.',
+              );
+            }
           })
           .finally(() => {
             if (activeRequest.current === requestId) {
@@ -166,7 +332,19 @@ export function useInfiniteList<T>({
     try {
       const page = await fetchPage(nextCursor, pageSize);
       if (activeRequest.current !== requestId) return;
-      setItems((current) => uniqueItems(current, page.items, keyExtractor));
+      setItems((current) => {
+        const merged = uniqueItems(current, page.items, keyExtractor);
+        const existingCache = PAGE_CACHE.get(cacheKey) as CacheEntry<T> | undefined;
+        if (existingCache) {
+          PAGE_CACHE.set(cacheKey, {
+            items: merged,
+            nextCursor: page.nextCursor,
+            hasMore: page.hasMore,
+            cachedAt: existingCache.cachedAt,
+          });
+        }
+        return merged;
+      });
       setNextCursor(page.nextCursor);
       setHasMore(page.hasMore);
     } catch (cause: unknown) {
@@ -179,7 +357,7 @@ export function useInfiniteList<T>({
         setLoadingMore(false);
       }
     }
-  }, [enabled, fetchPage, hasMore, keyExtractor, nextCursor, pageSize]);
+  }, [cacheKey, enabled, fetchPage, hasMore, keyExtractor, nextCursor, pageSize]);
 
   const refresh = useCallback(async () => {
     if (!enabled) return;

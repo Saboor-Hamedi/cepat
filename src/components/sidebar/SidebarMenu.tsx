@@ -112,7 +112,7 @@ export function SidebarMenu({
               ? 'Professional Profile & Requests'
               : 'Profil & Permintaan',
           Icon: BriefcaseBusiness,
-          onPress: () => navigate('/technician-dashboard'),
+          onPress: () => navigate({ pathname: '/bookings', params: { hub: 'tasks' } }),
         })
       ) : (
         renderItem({

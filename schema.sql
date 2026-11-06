@@ -508,6 +508,8 @@ create table public.bookings (
   accepted_at timestamptz,
   started_at timestamptz,
   completed_at timestamptz,
+  review_rating smallint check (review_rating is null or review_rating between 1 and 5),
+  review_comment text check (review_comment is null or char_length(review_comment) <= 3000),
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
   check (customer_user_id <> technician_user_id)
@@ -857,6 +859,138 @@ revoke all on function public.submit_booking_work_for_acceptance(uuid)
   from public, anon;
 grant execute on function public.submit_booking_work_for_acceptance(uuid)
   to authenticated;
+
+-- Strict Booking Review Validation & Customer-Only Review Edit
+create or replace function public.validate_booking_review_submission()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_actor uuid := auth.uid();
+begin
+  if new.review_rating is distinct from old.review_rating
+     or new.review_comment is distinct from old.review_comment then
+
+    if new.status <> 'completed'::public.booking_status then
+      raise exception 'Feedback can only be submitted or edited after the booking is completed';
+    end if;
+
+    if v_actor is not null then
+      if v_actor <> old.customer_user_id or v_actor = old.technician_user_id then
+        raise exception 'Only the customer who completed this task with the technician can submit or edit feedback';
+      end if;
+    end if;
+  end if;
+
+  return new;
+end;
+$$;
+
+drop trigger if exists trg_validate_booking_review on public.bookings;
+create trigger trg_validate_booking_review
+before update on public.bookings
+for each row execute procedure public.validate_booking_review_submission();
+
+create or replace function public.submit_or_update_booking_review(
+  p_booking_id uuid,
+  p_rating smallint,
+  p_comment text default ''
+)
+returns jsonb
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_uid uuid := auth.uid();
+  v_booking public.bookings%rowtype;
+  v_clean_comment text := left(trim(coalesce(p_comment, '')), 1200);
+  v_avg numeric(3,2);
+  v_cnt integer;
+begin
+  if v_uid is null then
+    raise exception 'Authentication required';
+  end if;
+
+  if p_rating < 1 or p_rating > 5 then
+    raise exception 'Rating must be between 1 and 5';
+  end if;
+
+  select *
+  into v_booking
+  from public.bookings
+  where id = p_booking_id
+  for update;
+
+  if not found then
+    raise exception 'Booking not found';
+  end if;
+
+  if v_booking.status <> 'completed'::public.booking_status then
+    raise exception 'Feedback is only allowed once the task is completed';
+  end if;
+
+  if v_booking.customer_user_id <> v_uid or v_booking.technician_user_id = v_uid then
+    raise exception 'Only the customer who completed this booking can give or edit feedback';
+  end if;
+
+  update public.bookings
+  set review_rating = p_rating,
+      review_comment = v_clean_comment,
+      updated_at = now()
+  where id = p_booking_id;
+
+  insert into public.reviews (
+    booking_id,
+    customer_user_id,
+    technician_user_id,
+    rating,
+    comment,
+    is_published
+  )
+  values (
+    p_booking_id,
+    v_uid,
+    v_booking.technician_user_id,
+    p_rating,
+    v_clean_comment,
+    true
+  )
+  on conflict (booking_id) do update
+    set rating = excluded.rating,
+        comment = excluded.comment,
+        updated_at = now()
+  where public.reviews.customer_user_id = v_uid;
+
+  select
+    coalesce(round(avg(r.rating)::numeric, 2), 0.00),
+    count(*)::integer
+  into v_avg, v_cnt
+  from public.bookings r
+  where r.technician_user_id = v_booking.technician_user_id
+    and r.status = 'completed'::public.booking_status
+    and r.review_rating is not null;
+
+  update public.technician_profiles
+  set average_rating = coalesce(v_avg, average_rating),
+      review_count = greatest(coalesce(v_cnt, 0), review_count),
+      updated_at = now()
+  where user_id = v_booking.technician_user_id;
+
+  return jsonb_build_object(
+    'booking_id', p_booking_id,
+    'technician_user_id', v_booking.technician_user_id,
+    'customer_user_id', v_uid,
+    'rating', p_rating,
+    'comment', v_clean_comment
+  );
+end;
+$$;
+
+revoke all on function public.submit_or_update_booking_review(uuid, smallint, text) from public, anon;
+grant execute on function public.submit_or_update_booking_review(uuid, smallint, text) to authenticated;
 
 do $$
 begin
@@ -1212,6 +1346,8 @@ for select to authenticated using (user_id = auth.uid() or public.is_admin());
 create policy "notifications_update_owner_admin" on public.notifications
 for update to authenticated using (user_id = auth.uid() or public.is_admin())
 with check (user_id = auth.uid() or public.is_admin());
+create policy "notifications_delete_owner_admin" on public.notifications
+for delete to authenticated using (user_id = auth.uid() or public.is_admin());
 
 create or replace function public.send_booking_message(
   p_booking_id uuid,
@@ -1414,6 +1550,9 @@ create table if not exists public.technician_posts (
   image_uri text,
   media_urls text[] not null default array[]::text[],
   is_service_post boolean not null default false,
+  like_count integer not null default 0 check (like_count >= 0),
+  view_count integer not null default 0 check (view_count >= 0),
+  share_count integer not null default 0 check (share_count >= 0),
   published boolean not null default true,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
@@ -1499,6 +1638,206 @@ create policy "technician_posts_owner_delete"
 
 grant select on public.technician_posts to anon, authenticated;
 grant insert, update, delete on public.technician_posts to authenticated;
+
+-- Post Likes (Any authenticated user can like/unlike a post)
+create table if not exists public.technician_post_likes (
+  post_id text not null references public.technician_posts(id) on delete cascade,
+  user_id uuid not null references auth.users(id) on delete cascade,
+  created_at timestamptz not null default now(),
+  primary key (post_id, user_id)
+);
+
+create index if not exists idx_technician_post_likes_post
+  on public.technician_post_likes (post_id);
+
+create index if not exists idx_technician_post_likes_user
+  on public.technician_post_likes (user_id, created_at desc);
+
+alter table public.technician_post_likes enable row level security;
+
+create policy "technician_post_likes_public_read"
+  on public.technician_post_likes
+  for select
+  to anon, authenticated
+  using (true);
+
+create policy "technician_post_likes_auth_insert"
+  on public.technician_post_likes
+  for insert
+  to authenticated
+  with check (auth.uid() = user_id);
+
+create policy "technician_post_likes_auth_delete"
+  on public.technician_post_likes
+  for delete
+  to authenticated
+  using (auth.uid() = user_id);
+
+grant select on public.technician_post_likes to anon, authenticated;
+grant insert, delete on public.technician_post_likes to authenticated;
+
+create or replace function public.sync_technician_post_like_count()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_post_id text;
+begin
+  v_post_id := coalesce(new.post_id, old.post_id);
+  update public.technician_posts
+  set like_count = (
+    select count(*)::integer
+    from public.technician_post_likes
+    where post_id = v_post_id
+  )
+  where id = v_post_id;
+  return coalesce(new, old);
+end;
+$$;
+
+drop trigger if exists trg_sync_technician_post_like_count on public.technician_post_likes;
+create trigger trg_sync_technician_post_like_count
+after insert or delete on public.technician_post_likes
+for each row execute procedure public.sync_technician_post_like_count();
+
+create or replace function public.toggle_post_like(p_post_id text)
+returns jsonb
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_uid uuid := auth.uid();
+  v_liked boolean;
+  v_count integer;
+begin
+  if v_uid is null then
+    raise exception 'Authentication required to like a post';
+  end if;
+
+  if exists (
+    select 1
+    from public.technician_post_likes
+    where post_id = p_post_id
+      and user_id = v_uid
+  ) then
+    delete from public.technician_post_likes
+    where post_id = p_post_id
+      and user_id = v_uid;
+    v_liked := false;
+  else
+    insert into public.technician_post_likes (post_id, user_id)
+    values (p_post_id, v_uid)
+    on conflict (post_id, user_id) do nothing;
+    v_liked := true;
+  end if;
+
+  select coalesce(like_count, 0)
+  into v_count
+  from public.technician_posts
+  where id = p_post_id;
+
+  return jsonb_build_object(
+    'liked', v_liked,
+    'like_count', coalesce(v_count, 0)
+  );
+end;
+$$;
+
+revoke all on function public.toggle_post_like(text) from public, anon;
+grant execute on function public.toggle_post_like(text) to authenticated;
+
+-- Post Views & Share Tracking
+create table if not exists public.technician_post_views (
+  post_id text not null references public.technician_posts(id) on delete cascade,
+  viewer_key text not null,
+  viewer_user_id uuid references auth.users(id) on delete set null,
+  created_at timestamptz not null default now(),
+  primary key (post_id, viewer_key)
+);
+
+create index if not exists idx_technician_post_views_post
+  on public.technician_post_views (post_id);
+
+alter table public.technician_post_views enable row level security;
+
+create policy "technician_post_views_public_read"
+  on public.technician_post_views
+  for select
+  to anon, authenticated
+  using (true);
+
+grant select on public.technician_post_views to anon, authenticated;
+
+create or replace function public.record_post_view(
+  p_post_id text,
+  p_viewer_key text default null
+)
+returns integer
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_uid uuid := auth.uid();
+  v_key text;
+  v_inserted integer := 0;
+  v_views integer := 0;
+begin
+  v_key := coalesce(
+    case when v_uid is not null then 'u:' || v_uid::text else null end,
+    nullif(trim(p_viewer_key), '')
+  );
+
+  if v_key is not null then
+    insert into public.technician_post_views (post_id, viewer_key, viewer_user_id)
+    values (p_post_id, v_key, v_uid)
+    on conflict (post_id, viewer_key) do nothing;
+    get diagnostics v_inserted = row_count;
+  else
+    v_inserted := 1;
+  end if;
+
+  if v_inserted > 0 then
+    update public.technician_posts
+    set view_count = coalesce(view_count, 0) + 1
+    where id = p_post_id
+    returning view_count into v_views;
+  else
+    select coalesce(view_count, 0)
+    into v_views
+    from public.technician_posts
+    where id = p_post_id;
+  end if;
+
+  return coalesce(v_views, 0);
+end;
+$$;
+
+grant execute on function public.record_post_view(text, text) to anon, authenticated;
+
+create or replace function public.increment_post_share_count(p_post_id text)
+returns integer
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_shares integer := 0;
+begin
+  update public.technician_posts
+  set share_count = coalesce(share_count, 0) + 1
+  where id = p_post_id
+  returning share_count into v_shares;
+
+  return coalesce(v_shares, 0);
+end;
+$$;
+
+grant execute on function public.increment_post_share_count(text) to anon, authenticated;
+
 grant usage on schema public to anon, authenticated, service_role;
 
 -- Table privileges required by PostgREST; row access remains constrained by RLS.
@@ -1528,7 +1867,7 @@ grant select, insert, update on public.conversations to authenticated;
 grant select, insert, update on public.messages to authenticated;
 grant select, insert, update on public.reviews to authenticated;
 grant select, insert, update on public.reports to authenticated;
-grant select, update on public.notifications to authenticated;
+grant select, update, delete on public.notifications to authenticated;
 grant execute on function public.send_booking_message(uuid, text, text) to authenticated;
 grant execute on function public.load_booking_messages(uuid) to authenticated;
 grant select, insert on public.admin_actions to authenticated;
@@ -1797,6 +2136,12 @@ begin
      or cancelled_by = v_uid;
 
   -- 7. Technician posts and feed content
+  delete from public.technician_post_likes
+  where user_id = v_uid;
+
+  delete from public.technician_post_views
+  where viewer_user_id = v_uid;
+
   delete from public.technician_posts
   where technician_id = v_uid;
 

@@ -63,9 +63,20 @@ export interface PostHeaderProps {
   canSubmit: boolean;
   busy: boolean;
   onPublish: () => void;
+  title?: string;
+  submitTestID?: string;
+  cancelTestID?: string;
 }
 
-export function PostHeader({ onCancel, canSubmit, busy, onPublish }: PostHeaderProps) {
+export function PostHeader({
+  onCancel,
+  canSubmit,
+  busy,
+  onPublish,
+  title,
+  submitTestID = 'submit-new-post-btn',
+  cancelTestID = 'compose-cancel-btn',
+}: PostHeaderProps) {
   const { language } = useLanguage();
   const insets = useSafeAreaInsets();
 
@@ -81,7 +92,7 @@ export function PostHeader({ onCancel, canSubmit, busy, onPublish }: PostHeaderP
             styles.cancelBtn,
             { opacity: pressed ? 0.6 : 1 },
           ]}
-          testID="compose-cancel-btn"
+          testID={cancelTestID}
         >
           <Text style={styles.cancelText}>
             {language === 'en' ? 'Cancel' : 'Batal'}
@@ -89,14 +100,14 @@ export function PostHeader({ onCancel, canSubmit, busy, onPublish }: PostHeaderP
         </Pressable>
       </View>
       <Text style={styles.modalTitle} numberOfLines={1}>
-        {language === 'en' ? 'New Post' : 'Posting baru'}
+        {title ?? (language === 'en' ? 'New Post' : 'Posting baru')}
       </Text>
       <View style={[styles.headerSide, styles.headerSideRight]}>
         <PostPill
           busy={busy}
           canSubmit={canSubmit}
           onPress={onPublish}
-          testID="submit-new-post-btn"
+          testID={submitTestID}
         />
       </View>
     </View>

@@ -1,5 +1,5 @@
 import { router } from "expo-router";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import { Plus, User } from "lucide-react-native";
 
@@ -16,6 +16,7 @@ import { colors, radii, spacing } from "../theme/tokens";
 import { Sidebar } from "./sidebar";
 import { ICON_STROKE } from '../theme/icons';
 import { font } from '../theme/typography';
+import { resolveProfileAccent } from '../theme/profileAccent';
 
 export type NavigationTabKey =
   | "marketplace"
@@ -135,9 +136,16 @@ function NavTabIcon({
 export function Header({ activeTab }: { activeTab: NavigationTabKey }) {
   const { user } = useAuth();
   const { language } = useLanguage();
-  const { palette, isDark } = useAppearance();
+  const { palette, isDark, profileAccentId } = useAppearance();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [unreadNotifCount, setUnreadNotifCount] = useState(0);
+
+  // The compose FAB borrows the selected profile ring accent so the two stay
+  // visually consistent. Falls back to the palette primary when "none".
+  const composerAccent = useMemo(
+    () => resolveProfileAccent(profileAccentId)?.color ?? null,
+    [profileAccentId],
+  );
 
   const displayName =
     (typeof user?.user_metadata?.display_name === "string" &&
@@ -297,6 +305,13 @@ export function Header({ activeTab }: { activeTab: NavigationTabKey }) {
       testID="bottom-navigation-bar"
     >
       <Text style={styles.srOnly}>cepat</Text>
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel="Workspace"
+        onPress={() => router.navigate("/technician-dashboard" as never)}
+        style={styles.srOnly}
+        testID="nav-workspace"
+      />
 
       <View style={styles.singleBar}>
         <View style={[styles.slotGroup, styles.slotGroupLeft]}>
@@ -311,10 +326,10 @@ export function Header({ activeTab }: { activeTab: NavigationTabKey }) {
           style={({ pressed }) => [
             styles.fab,
             {
-              backgroundColor: palette.primary,
+              backgroundColor: composerAccent ?? palette.primary,
               borderColor: palette.surface,
               opacity: pressed ? 0.88 : 1,
-              shadowColor: palette.primary,
+              shadowColor: composerAccent ?? palette.primary,
             },
           ]}
           testID="nav-compose-fab"

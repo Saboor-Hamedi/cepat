@@ -25,7 +25,7 @@ export function BookingCard({
   technicianVerified,
   onPress,
 }: BookingCardProps) {
-  const { language, t } = useLanguage();
+  const { language } = useLanguage();
   const { palette } = useAppearance();
   const theme = useScreenTheme();
 
@@ -106,6 +106,28 @@ export function BookingCard({
         </View>
       ) : null}
 
+      {booking.status === 'completed' && typeof booking.reviewRating === 'number' ? (
+        <View
+          style={[
+            styles.reviewBadgeRow,
+            { backgroundColor: palette.surfaceElevated, borderColor: theme.border },
+          ]}
+          testID={`booking-card-review-${booking.id}`}
+        >
+          <Text style={styles.reviewBadgeStars}>
+            ★ {booking.reviewRating.toFixed(1)}
+          </Text>
+          {booking.reviewComment ? (
+            <Text
+              numberOfLines={1}
+              style={[styles.reviewBadgeComment, { color: theme.muted }]}
+            >
+              &ldquo;{booking.reviewComment}&rdquo;
+            </Text>
+          ) : null}
+        </View>
+      ) : null}
+
       <View style={[styles.footerRow, { borderTopColor: theme.border }]}>
         <View style={styles.dateGroup}>
           <Calendar size={14} color={theme.muted} strokeWidth={ICON_STROKE} />
@@ -166,6 +188,26 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: font.body,
     fontWeight: '500',
+  },
+  reviewBadgeRow: {
+    alignItems: 'center',
+    borderRadius: 8,
+    borderWidth: 1,
+    flexDirection: 'row',
+    gap: 8,
+    marginTop: 10,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+  },
+  reviewBadgeStars: {
+    color: '#F59E0B',
+    fontSize: font.caption,
+    fontWeight: '800',
+  },
+  reviewBadgeComment: {
+    flex: 1,
+    fontSize: font.caption,
+    fontStyle: 'italic',
   },
   footerRow: {
     alignItems: 'center',

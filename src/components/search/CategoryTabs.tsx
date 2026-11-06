@@ -60,7 +60,9 @@ export function CategoryTabs({
   onSelect,
   testID = 'marketplace-category-filters',
 }: CategoryTabsProps) {
-  const { palette } = useAppearance();
+  const { palette, isDark } = useAppearance();
+  const inactiveFill = isDark ? '#161F2E' : palette.surfaceElevated;
+  const inactiveText = isDark ? '#94A3B8' : palette.textMuted;
 
   return (
     <ScrollView
@@ -83,7 +85,7 @@ export function CategoryTabs({
               {
                 backgroundColor: isSelected
                   ? palette.primary
-                  : `${palette.text}08`,
+                  : inactiveFill,
                 borderColor: 'transparent',
                 opacity: pressed ? 0.85 : 1,
               },
@@ -94,8 +96,8 @@ export function CategoryTabs({
               style={[
                 styles.tabText,
                 {
-                  color: isSelected ? '#FFFFFF' : palette.text,
-                  fontWeight: isSelected ? '700' : '600',
+                  color: isSelected ? '#000000' : inactiveText,
+                  fontWeight: isSelected ? '800' : '600',
                 },
               ]}
             >
@@ -115,7 +117,7 @@ const styles = StyleSheet.create({
   },
   container: {
     flexDirection: 'row',
-    gap: 6,
+    gap: 8,
     paddingBottom: spacing.xs + 2,
     paddingRight: spacing.md,
     paddingTop: spacing.sm,

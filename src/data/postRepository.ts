@@ -2,7 +2,11 @@ import { supabase } from './marketplaceRepository';
 import {
   createPost as createStorePost,
   deletePost as deleteStorePost,
+  hasUserLikedPost,
+  incrementPostShare,
   loadPosts as loadStorePosts,
+  recordPostView,
+  togglePostLike,
   updatePost as updateStorePost,
 } from './postsStore';
 import type {
@@ -16,6 +20,8 @@ import {
   MAX_IMAGE_FILE_BYTES,
   validateStrictImageAsset,
 } from '../utils/imageValidator';
+
+export { hasUserLikedPost, incrementPostShare, recordPostView, togglePostLike };
 
 const POSTS_STORAGE_BUCKET = 'technician-posts';
 
@@ -156,6 +162,9 @@ export async function fetchPosts(
               ? row.media_urls.map(String)
               : [],
           isServicePost: Boolean(row.is_service_post),
+          likeCount: typeof row.like_count === 'number' ? row.like_count : Number(row.like_count ?? 0) || 0,
+          viewCount: typeof row.view_count === 'number' ? row.view_count : Number(row.view_count ?? 0) || 0,
+          shareCount: typeof row.share_count === 'number' ? row.share_count : Number(row.share_count ?? 0) || 0,
           published: Boolean(row.published),
           accountStatus: 'active',
           createdAt: String(row.created_at ?? new Date().toISOString()),

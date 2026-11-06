@@ -5,7 +5,7 @@ import { Avatar } from '../../components/marketplace-ui';
 import { useAppearance } from '../../context/AppearanceContext';
 import { useUserAvatar } from '../../hooks/useUserAvatar';
 import { localizeArea, useLanguage } from '../../i18n/locale';
-import { radii, spacing } from '../../theme/tokens';
+import { spacing } from '../../theme/tokens';
 import type { BookingRecord } from '../../types/marketplace';
 import { ICON_SIZE, ICON_STROKE } from '../../theme/icons';
 import { font } from '../../theme/typography';
@@ -33,15 +33,13 @@ export function TaskActiveCard({
   onViewCustomer,
 }: TaskActiveCardProps) {
   const item = task ?? job;
-  if (!item) return null;
-
   const { language, t } = useLanguage();
   const { palette } = useAppearance();
+  const remoteCustomerAvatar = useUserAvatar(item?.customerUserId ?? '', item?.customerName ?? '');
 
-  const remoteCustomerAvatar = useUserAvatar(item.customerUserId, item.customerName);
-  const customerAvatarUri =
-    remoteCustomerAvatar ||
-    'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80';
+  const customerAvatarUri = remoteCustomerAvatar || undefined;
+
+  if (!item) return null;
 
   const handleStart = () => {
     if (onStartTask) onStartTask(item.id);
@@ -157,7 +155,7 @@ export const JobActiveCard = TaskActiveCard;
 
 const styles = StyleSheet.create({
   card: {
-    borderRadius: 5,
+    borderRadius: 14,
     borderWidth: 1,
     marginBottom: spacing.md,
     padding: spacing.lg,
@@ -178,7 +176,7 @@ const styles = StyleSheet.create({
     marginTop: 2,
   },
   customerProfileBtn: {
-    borderRadius: 5,
+    borderRadius: 14,
     borderWidth: 1,
     paddingHorizontal: 12,
     paddingVertical: 6,
@@ -215,7 +213,7 @@ const styles = StyleSheet.create({
   },
   chatActionBtn: {
     alignItems: 'center',
-    borderRadius: 5,
+    borderRadius: 14,
     flexDirection: 'row',
     gap: 6,
     justifyContent: 'center',
@@ -229,7 +227,7 @@ const styles = StyleSheet.create({
   secondaryBtn: {
     alignItems: 'center',
     backgroundColor: '#F59E0B',
-    borderRadius: 5,
+    borderRadius: 14,
     flexDirection: 'row',
     gap: 6,
     justifyContent: 'center',
@@ -243,7 +241,7 @@ const styles = StyleSheet.create({
   },
   acceptBtn: {
     alignItems: 'center',
-    borderRadius: 5,
+    borderRadius: 14,
     flex: 1,
     flexDirection: 'row',
     gap: 6,

@@ -1,13 +1,17 @@
 import { router } from "expo-router";
 import { ArrowLeft } from "lucide-react-native";
-import { useMemo, useState } from "react";
-import { Modal, Pressable, StyleSheet, Text, View } from "react-native";
+import { useEffect, useMemo, useState } from "react";
+import { Animated, Modal, Pressable, StyleSheet, Text, View } from "react-native";
 
-import { Avatar, EmptyState, LoadingState } from "../components/marketplace-ui";
+import { Avatar, LoadingState } from "../components/marketplace-ui";
 import { Post } from "../components/posts/Post";
 import { PostContainer } from "../components/posts/PostContainer";
 import { useAppearance } from "../context/AppearanceContext";
-import { createPost, loadPosts } from "../data/postsStore";
+import { createPost, deletePost, loadPosts, updatePost } from "../data/postsStore";
+import { archiveBookingForUser, loadArchivedBookingIds } from "../data/marketplaceStore";
+import { shouldUseFixtures } from "../data/marketplaceRepository";
+import { useAuth } from "../auth/AuthProvider";
+import { useFadeIn } from "../hooks/useFadeIn";
 import { localizeArea, useLanguage } from "../i18n/locale";
 import { BOOKING_TIME_SLOTS, toIndonesiaDateTime } from "./schedule";
 import { spacing } from "../theme/tokens";
@@ -16,8 +20,10 @@ import type { Post as PostType } from "../types/post";
 import { TaskActiveCard } from "./components/TaskActiveCard";
 import { TaskHistoryCard } from "./components/TaskHistoryCard";
 import { TaskRequestCard } from "./components/TaskRequestCard";
+import { TaskEmptyState } from "./components/TaskEmptyState";
 import { TaskTabBar, type TaskTabKey } from "./components/TaskTabBar";
 import { ICON_SIZE, ICON_STROKE } from '../theme/icons';
+import { SwipeableRow } from "../components/SwipeableRow";
 import { font } from '../theme/typography';
 
 export interface TaskContainerProps {
@@ -40,6 +46,9 @@ export function TaskContainer({
 }: TaskContainerProps) {
   const { language } = useLanguage();
   const { palette, reduceMotion } = useAppearance();
+  const { user } = useAuth();
+  const isPreview = shouldUseFixtures();
+  const [archivedIds, setArchivedIds] = useState<string[]>([]);
   const [tab, setTab] = useState<TaskTabKey>("requests");
   const [selectedCustomerBooking, setSelectedCustomerBooking] =
     useState<BookingRecord | null>(null);
@@ -48,6 +57,24 @@ export function TaskContainer({
   >({});
   const [localPosts, setLocalPosts] = useState<PostType[]>([]);
   const [actionError, setActionError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!user?.id) return;
+    let active = true;
+    void loadArchivedBookingIds(user.id)
+      .then((ids) => {
+        if (active) setArchivedIds(ids);
+      })
+      .catch(() => {});
+    return () => {
+      active = false;
+    };
+  }, [user?.id]);
+  const tabFade = useFadeIn(tab);
+  const handleArchiveBooking = (bookingId: string) => {
+    setArchivedIds((prev) => (prev.includes(bookingId) ? prev : [...prev, bookingId]));
+    void archiveBookingForUser(user?.id, bookingId).catch(() => {});
+  };
 
   const runBookingAction = async (
     bookingId: string,
@@ -64,28 +91,40 @@ export function TaskContainer({
     }
   };
 
+  const visibleBookings = useMemo(() => {
+    if (isPreview) return bookings;
+    const userId = user?.id;
+    if (!userId) return [];
+    return bookings.filter((b) => b.technicianUserId === userId);
+  }, [bookings, isPreview, user?.id]);
+
+  const activeVisibleBookings = useMemo(
+    () => visibleBookings.filter((b) => !archivedIds.includes(b.id)),
+    [visibleBookings, archivedIds],
+  );
+
   const incomingRequests = useMemo(
     () =>
-      bookings.filter(
+      activeVisibleBookings.filter(
         (b) => b.status === "requested" || b.status === "alternative_proposed",
       ),
-    [bookings],
+    [activeVisibleBookings],
   );
 
   const activeTasks = useMemo(
     () =>
-      bookings.filter(
+      activeVisibleBookings.filter(
         (b) => b.status === "confirmed" || b.status === "in_progress",
       ),
-    [bookings],
+    [activeVisibleBookings],
   );
 
   const historyTasks = useMemo(
     () =>
-      bookings.filter((b) =>
+      activeVisibleBookings.filter((b) =>
         ["completed", "cancelled", "declined"].includes(b.status),
       ),
-    [bookings],
+    [activeVisibleBookings],
   );
 
   const customerCompletedCount = useMemo(() => {
@@ -181,6 +220,13 @@ export function TaskContainer({
         </Text>
       ) : null}
 
+      <Animated.View
+        style={{
+          flexGrow: 1,
+          opacity: tabFade.opacity,
+          transform: [{ translateY: tabFade.translateY }],
+        }}
+      >
       {loading ? (
         <LoadingState
           label={language === "en" ? "Loading tasks..." : "Memuat tugas..."}
@@ -188,8 +234,13 @@ export function TaskContainer({
       ) : tab === "requests" ? (
         incomingRequests.length > 0 ? (
           incomingRequests.map((req) => (
-            <TaskRequestCard
+            <SwipeableRow
               key={req.id}
+              deleteAccessibilityLabel={language === 'en' ? 'Delete request' : 'Hapus permintaan'}
+              deleteTestID={`delete-request-${req.id}`}
+              onDelete={() => handleArchiveBooking(req.id)}
+            >
+            <TaskRequestCard
               request={req}
               onAccept={handleAccept}
               onDecline={handleDecline}
@@ -216,20 +267,10 @@ export function TaskContainer({
                 }))
               }
             />
+            </SwipeableRow>
           ))
         ) : (
-          <EmptyState
-            title={
-              language === "en"
-                ? "No pending booking requests"
-                : "Belum ada permintaan baru"
-            }
-            description={
-              language === "en"
-                ? "New customer requests will appear here."
-                : "Permintaan jadwal baru dari pelanggan akan muncul di sini."
-            }
-          />
+          <TaskEmptyState variant="requests" testID="requests-empty-state" />
         )
       ) : tab === "active" ? (
         activeTasks.length > 0 ? (
@@ -244,33 +285,22 @@ export function TaskContainer({
             />
           ))
         ) : (
-          <EmptyState
-            title={
-              language === "en"
-                ? "No active bookings"
-                : "Belum ada jadwal aktif"
-            }
-            description={
-              language === "en"
-                ? "Accepted requests will be listed here."
-                : "Pesanan yang telah diterima akan tampil di sini."
-            }
-          />
+          <TaskEmptyState variant="active" testID="active-empty-state" />
         )
       ) : tab === "history" ? (
         historyTasks.length > 0 ? (
-          historyTasks.map((task) => <TaskHistoryCard key={task.id} task={task} />)
+          historyTasks.map((task) => (
+          <SwipeableRow
+            key={task.id}
+            deleteAccessibilityLabel={language === 'en' ? 'Delete history' : 'Hapus riwayat'}
+            deleteTestID={`delete-history-${task.id}`}
+            onDelete={() => handleArchiveBooking(task.id)}
+          >
+            <TaskHistoryCard task={task} />
+          </SwipeableRow>
+        ))
         ) : (
-          <EmptyState
-            title={
-              language === "en" ? "No task history yet" : "Belum ada riwayat tugas"
-            }
-            description={
-              language === "en"
-                ? "Completed or cancelled tasks will appear here."
-                : "Tugas yang telah selesai atau dibatalkan akan tampil di sini."
-            }
-          />
+          <TaskEmptyState variant="history" testID="history-empty-state" />
         )
       ) : (
         <View style={{ gap: spacing.md }}>
@@ -294,10 +324,38 @@ export function TaskContainer({
             }}
           />
           {localPosts.map((post) => (
-            <Post key={post.id} post={post} />
+            <Post
+              key={post.id}
+              isOwner
+              post={post}
+              onEdit={async (targetPost, newCaption, newImageUri, updates) => {
+                const techId = user?.id || "demo-rizky";
+                const nextMediaUrls =
+                  updates?.mediaUrls ?? (newImageUri ? [newImageUri] : []);
+                await updatePost({
+                  actorUserId: techId,
+                  postId: targetPost.id,
+                  caption: newCaption,
+                  imageUri: nextMediaUrls[0],
+                  mediaUrls: nextMediaUrls,
+                  isServicePost:
+                    updates?.isServicePost ?? targetPost.isServicePost,
+                  serviceArea: updates?.serviceArea ?? targetPost.serviceArea,
+                });
+                const nextPosts = await loadPosts("demo-rizky", true);
+                setLocalPosts(nextPosts);
+              }}
+              onDelete={async (postId) => {
+                const techId = user?.id || "demo-rizky";
+                await deletePost({ actorUserId: techId, postId });
+                const nextPosts = await loadPosts("demo-rizky", true);
+                setLocalPosts(nextPosts);
+              }}
+            />
           ))}
         </View>
       )}
+      </Animated.View>
 
       {/* Customer Profile Detail Modal */}
       <Modal

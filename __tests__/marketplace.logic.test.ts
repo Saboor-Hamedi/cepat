@@ -13,8 +13,12 @@ import {
 import {
   createPost,
   deletePost,
+  hasUserLikedPost,
+  incrementPostShare,
   loadMarketplacePublishedPosts,
   loadPosts,
+  recordPostView,
+  togglePostLike,
   updatePost,
 } from '../src/data/postsStore';
 import { fixtureCategories, fixtureTechnicians, indonesianRegions } from '../src/data/fixtures';
@@ -46,8 +50,15 @@ import {
   submitTechnicianReport,
   toggleSavedTechnicianId,
   transitionBookingStatus,
+  updateBookingReview,
 } from '../src/data/marketplaceStore';
 import { getProfileTheme, normalizeProfileTheme } from '../src/theme/tokens';
+import {
+  buildPostSharePayload,
+  buildSecurePostShareUrl,
+  isSecureShareUrl,
+  sanitizeShareImageUrl,
+} from '../src/utils/postShare';
 import {
   inspectImageMagicBytes,
   validateStrictImageAsset,
@@ -341,12 +352,74 @@ describe('booking lifecycle, chat link blocking, and marketplace store', () => {
     const review = await submitBookingReview({
       bookingId: booking.id,
       technicianId: tech.id,
+      customerUserId: 'demo-customer',
       customerName: 'Budi Santoso',
       rating: 5,
       comment: 'Sangat rapi dan tepat waktu.',
     });
     expect(review.rating).toBe(5);
     expect(review.comment).toBe('Sangat rapi dan tepat waktu.');
+
+    // Duplicate review submission on the same completed booking is blocked
+    await expect(
+      submitBookingReview({
+        bookingId: booking.id,
+        technicianId: tech.id,
+        customerUserId: 'demo-customer',
+        customerName: 'Budi Santoso',
+        rating: 4,
+        comment: 'Mencoba kirim ulasan kedua kali.',
+      }),
+    ).rejects.toThrow('review_already_submitted');
+
+    // Admin or another user who did not complete this booking CANNOT edit the feedback
+    await expect(
+      updateBookingReview({
+        bookingId: booking.id,
+        reviewId: review.id,
+        customerUserId: 'verified-admin-1',
+        technicianId: tech.id,
+        rating: 1,
+        comment: 'Admin mencoba ubah ulasan pelanggan.',
+      }),
+    ).rejects.toThrow('unauthorized_review_actor');
+
+    await expect(
+      updateBookingReview({
+        bookingId: booking.id,
+        reviewId: review.id,
+        customerUserId: 'unrelated-user-99',
+        technicianId: tech.id,
+        rating: 2,
+        comment: 'Pengguna lain mencoba ubah ulasan.',
+      }),
+    ).rejects.toThrow('unauthorized_review_actor');
+
+    // Technician themselves CANNOT edit the customer feedback
+    await expect(
+      updateBookingReview({
+        bookingId: booking.id,
+        reviewId: review.id,
+        customerUserId: tech.id,
+        technicianId: tech.id,
+        rating: 5,
+        comment: 'Teknisi mencoba ubah ulasan sendiri.',
+      }),
+    ).rejects.toThrow('cannot_review_self');
+
+    // ONLY the customer who completed the booking with that technician can edit their feedback
+    const editedReview = await updateBookingReview({
+      bookingId: booking.id,
+      reviewId: review.id,
+      customerUserId: 'demo-customer',
+      technicianId: tech.id,
+      rating: 4,
+      comment: 'Diperbarui oleh pelanggan: Pipa sangat rapi dan berfungsi baik.',
+    });
+    expect(editedReview.rating).toBe(4);
+    expect(editedReview.comment).toBe(
+      'Diperbarui oleh pelanggan: Pipa sangat rapi dan berfungsi baik.',
+    );
   });
 
   it('persists selected area, saved addresses, saved technicians, and technician reports', async () => {
@@ -548,5 +621,66 @@ describe('strict image validation, schema permission fallback, and admin moderat
     await deletePost({ actorUserId: 'demo-rizky', postId: created.id });
     const remaining = await loadPosts('demo-rizky', true);
     expect(remaining.some((p) => p.id === created.id)).toBe(false);
+  });
+
+  it('supports authenticated post likes, unique post view tracking, share counting, and clean secure social share links', async () => {
+    const post = await createPost({
+      actorUserId: 'demo-rizky',
+      technicianId: 'demo-rizky',
+      technicianName: 'Rizky Pratama',
+      technicianBusinessName: 'Rizky Plumbing',
+      caption: 'Instalasi pompa pendorong air selesai.',
+      imageUri: 'https://images.unsplash.com/photo-1581578731548-c64695cc6952?w=800&token=secret123&utm_source=tracker',
+      serviceArea: 'Jakarta Selatan',
+      categorySlug: 'plumbing',
+      published: true,
+    });
+
+    // Unauthenticated like is rejected
+    await expect(togglePostLike(post.id, '')).rejects.toThrow('auth_required_for_like');
+
+    // Any logged-in user can like and unlike a post
+    const like1 = await togglePostLike(post.id, 'user-customer-1');
+    expect(like1).toEqual({ liked: true, likeCount: 1 });
+    expect(await hasUserLikedPost(post.id, 'user-customer-1')).toBe(true);
+
+    const like2 = await togglePostLike(post.id, 'user-customer-2');
+    expect(like2).toEqual({ liked: true, likeCount: 2 });
+
+    const unlike1 = await togglePostLike(post.id, 'user-customer-1');
+    expect(unlike1).toEqual({ liked: false, likeCount: 1 });
+    expect(await hasUserLikedPost(post.id, 'user-customer-1')).toBe(false);
+
+    // Unique post views per viewer
+    const v1 = await recordPostView(post.id, 'user-customer-1');
+    const v1Duplicate = await recordPostView(post.id, 'user-customer-1');
+    const v2 = await recordPostView(post.id, 'user-customer-2');
+    expect(v1).toBe(1);
+    expect(v1Duplicate).toBe(1);
+    expect(v2).toBe(2);
+
+    // Share counter increments
+    const s1 = await incrementPostShare(post.id);
+    expect(s1).toBe(1);
+
+    // Clean & secure link generation strips tokens/tracking and blocks unsafe schemes
+    const cleanUrl = buildSecurePostShareUrl(`${post.id}?token=abc#frag`);
+    expect(cleanUrl).toBe(`https://cepat.id/post/${post.id}tokenabcfrag`);
+    expect(isSecureShareUrl(cleanUrl)).toBe(true);
+    expect(isSecureShareUrl('http://cepat.id/post/123')).toBe(false);
+    expect(isSecureShareUrl('https://cepat.id/post/123?access_token=leak')).toBe(false);
+    expect(sanitizeShareImageUrl('javascript:alert(1)')).toBeUndefined();
+
+    const payload = buildPostSharePayload(post, 'en', 'Rp 150.000');
+    expect(payload.cleanUrl).toBe(`https://cepat.id/post/${post.id}`);
+    expect(payload.cleanImageUrl).toBe(
+      'https://images.unsplash.com/photo-1581578731548-c64695cc6952?w=800',
+    );
+    expect(payload.cleanImageUrl).not.toContain('token=');
+    expect(payload.cleanImageUrl).not.toContain('utm_source=');
+    expect(payload.whatsappUrl).toContain('https://wa.me/?text=');
+    expect(payload.facebookUrl).toContain('https://www.facebook.com/sharer/sharer.php');
+
+    await deletePost({ actorUserId: 'demo-rizky', postId: post.id });
   });
 });

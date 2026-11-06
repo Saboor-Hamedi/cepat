@@ -12,7 +12,8 @@ export type SidebarRoute =
   | '/login'
   | '/register'
   | `/technician/${string}`
-  | { pathname: '/account'; params: { tab: string } };
+  | { pathname: '/account'; params: { tab: string } }
+  | { pathname: '/bookings'; params: { hub: 'bookings' | 'tasks' } };
 
 export type SidebarNavigate = (target: SidebarRoute) => void;
 

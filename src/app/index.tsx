@@ -11,7 +11,6 @@ import {
   LoadingState,
   SectionTitle,
   ServiceCategoryGlyph,
-  SourceBadge,
   TechnicianCard,
 } from '../components/marketplace-ui';
 import { InfiniteFlatList } from '../components/InfiniteFlatList';
@@ -26,11 +25,12 @@ import {
   filterTechnicians,
   formatRupiah,
   getIndonesianRegions,
-  getMarketplacePreviewReason,
   loadCategories,
   loadServiceAreas,
   loadTechnicians,
+  shouldUseFixtures,
 } from '../data/marketplaceRepository';
+import { fixtureTechnicians } from '../data/fixtures';
 import {
   loadSavedAddresses,
   loadSavedTechnicianIds,
@@ -39,6 +39,7 @@ import {
 } from '../data/marketplaceStore';
 import {
   deletePost,
+  getInitialMarketplacePostsPageSync,
   loadMarketplacePublishedPostsPage,
   suspendPost,
   updatePost,
@@ -75,7 +76,11 @@ type MarketplaceListItem =
 let cachedCategories: ServiceCategory[] = [];
 let cachedTechnicians: Technician[] = [];
 let cachedServiceAreas: string[] = [];
-let cachedSource: DataSource = 'fixtures';
+let cachedSavedAddresses: SavedAddress[] = [];
+let cachedSavedTechIds: string[] = [];
+let cachedSelectedArea = 'Semua area';
+let cachedHasMore = false;
+let cachedSource: DataSource = shouldUseFixtures() ? 'fixtures' : 'supabase';
 let hasInitialLoaded = false;
 
 const SEARCH_HEADER_HEIGHT = 52;
@@ -87,17 +92,17 @@ export default function MarketplaceScreen() {
   const [categories, setCategories] = useState<ServiceCategory[]>(cachedCategories);
   const [technicians, setTechnicians] = useState<Technician[]>(cachedTechnicians);
   const [serviceAreas, setServiceAreas] = useState<string[]>(cachedServiceAreas);
-  const [savedAddresses, setSavedAddresses] = useState<SavedAddress[]>([]);
-  const [savedTechIds, setSavedTechIds] = useState<string[]>([]);
+  const [savedAddresses, setSavedAddresses] = useState<SavedAddress[]>(cachedSavedAddresses);
+  const [savedTechIds, setSavedTechIds] = useState<string[]>(cachedSavedTechIds);
   const [source, setSource] = useState<DataSource>(cachedSource);
-  const [area, setArea] = useState('Semua area');
+  const [area, setArea] = useState(cachedSelectedArea);
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [areaModalVisible, setAreaModalVisible] = useState(false);
   const [pinNotice, setPinNotice] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(!hasInitialLoaded);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
-  const [hasMore, setHasMore] = useState(false);
+  const [hasMore, setHasMore] = useState(cachedHasMore);
   const [error, setError] = useState(false);
   const [reloadKey, setReloadKey] = useState(0);
   const refreshInFlightRef = useRef(false);
@@ -121,6 +126,14 @@ export default function MarketplaceScreen() {
   );
   const postFeed = useInfiniteList({
     cacheKey: `marketplace-posts:${area}:${selectedCategory}`,
+    initialData: () =>
+      getInitialMarketplacePostsPageSync(
+        {
+          area,
+          categorySlug: selectedCategory === 'all' ? undefined : selectedCategory,
+        },
+        10,
+      ),
     fetchPage: fetchPostPage,
     keyExtractor: (post: PostType) => post.id,
     pageSize: 10,
@@ -151,9 +164,14 @@ export default function MarketplaceScreen() {
           savedIds,
         ]) => {
           if (!active) return;
+          const nextArea = persistedArea || 'Semua area';
           cachedCategories = categoryResult.items;
           cachedTechnicians = technicianResult.items;
           cachedServiceAreas = areaResult.items;
+          cachedSavedAddresses = addresses;
+          cachedSavedTechIds = savedIds;
+          cachedSelectedArea = nextArea;
+          cachedHasMore = technicianResult.hasMore;
           cachedSource = technicianResult.source;
           hasInitialLoaded = true;
           setCategories(categoryResult.items);
@@ -161,13 +179,13 @@ export default function MarketplaceScreen() {
           setServiceAreas(areaResult.items);
           setSource(technicianResult.source);
           setHasMore(technicianResult.hasMore);
-          setArea(persistedArea || 'Semua area');
+          setArea((prev) => (prev === nextArea ? prev : nextArea));
           setSavedAddresses(addresses);
           setSavedTechIds(savedIds);
         },
       )
       .catch(() => {
-        if (active) setError(true);
+        if (active && !hasInitialLoaded) setError(true);
       })
       .finally(() => {
         if (active) setIsLoading(false);
@@ -178,10 +196,22 @@ export default function MarketplaceScreen() {
   }, [reloadKey, user?.id]);
 
   const handleSelectArea = useCallback((nextArea: string, customNotice?: string) => {
+    cachedSelectedArea = nextArea;
     setArea(nextArea);
     setPinNotice(customNotice ?? null);
     void saveSelectedArea(nextArea);
   }, []);
+
+  const technicianById = useMemo(() => {
+    const map = new Map<string, Technician>();
+    for (const tech of fixtureTechnicians) {
+      map.set(tech.id, tech);
+    }
+    for (const tech of technicians) {
+      map.set(tech.id, tech);
+    }
+    return map;
+  }, [technicians]);
 
   const visibleTechnicians = useMemo(() => {
     return filterTechnicians(
@@ -244,6 +274,9 @@ export default function MarketplaceScreen() {
   }, [hasMore, hasMorePosts, loadMorePosts, loadMoreTechnicians]);
 
   const marketplaceItems = useMemo<MarketplaceListItem[]>(() => {
+    if (postFeed.loading && postFeed.items.length === 0) {
+      return [];
+    }
     const items: MarketplaceListItem[] = [];
 
     // Pick top available or top-rated technicians from visibleTechnicians
@@ -290,7 +323,7 @@ export default function MarketplaceScreen() {
     }
 
     return items;
-  }, [postFeed.items, visibleTechnicians]);
+  }, [postFeed.items, postFeed.loading, visibleTechnicians]);
 
   const handlePullToRefresh = useCallback(async () => {
     if (refreshInFlightRef.current || isLoading) return;
@@ -324,8 +357,6 @@ export default function MarketplaceScreen() {
     setReloadKey((key) => key + 1);
   };
 
-  const previewReason = getMarketplacePreviewReason();
-
   const [scrollY] = useState(() => new Animated.Value(0));
   const searchHeaderHeight = scrollY.interpolate({
     inputRange: [0, 88],
@@ -352,23 +383,30 @@ export default function MarketplaceScreen() {
     post: PostType,
     newCaption: string,
     newImageUri?: string,
+    updates?: {
+      mediaUrls: string[];
+      isServicePost: boolean;
+      serviceArea?: string;
+    },
   ) => {
     if (!user) return;
+    const nextMediaUrls =
+      updates?.mediaUrls ?? (newImageUri ? [newImageUri] : []);
     await updatePost({
       actorUserId: user.id,
       postId: post.id,
       caption: newCaption,
-      imageUri: newImageUri,
-      mediaUrls: newImageUri ? [newImageUri] : [],
+      imageUri: nextMediaUrls[0],
+      mediaUrls: nextMediaUrls,
+      isServicePost: updates?.isServicePost ?? post.isServicePost,
+      serviceArea: updates?.serviceArea ?? post.serviceArea,
     });
-    await postFeed.refresh();
   };
 
   const handleDeletePost = async (postId: string) => {
     if (!user) return;
     try {
       await deletePost({ actorUserId: user.id, postId });
-      await postFeed.refresh();
     } catch (err) {
       console.warn('[handleDeletePost] Failed to delete post:', err);
     }
@@ -377,7 +415,6 @@ export default function MarketplaceScreen() {
   const handleSuspendPost = async (postId: string, suspended: boolean) => {
     if (!user) return;
     await suspendPost({ actorUserId: user.id, postId, suspended });
-    await postFeed.refresh();
   };
 
   const Header = (
@@ -388,29 +425,6 @@ export default function MarketplaceScreen() {
         onSelect={setSelectedCategory}
       />
       {pinNotice ? <Text style={styles.pinNoticeText}>{pinNotice}</Text> : null}
-
-      
-
-      {source === 'fixtures' && (
-        <View
-          style={[
-            styles.previewBanner,
-            {
-              backgroundColor: palette.surfaceElevated,
-              borderColor: palette.border,
-            },
-          ]}
-        >
-          <SourceBadge source={source} />
-          <Text style={[styles.fixtureNote, { color: palette.textMuted }]}>
-            {previewReason === 'invalid'
-              ? t('data.previewInvalid')
-              : previewReason === 'not_configured'
-                ? t('data.previewAbsent')
-                : t('home.previewNote')}
-          </Text>
-        </View>
-      )}
 
       {/* Popular Tasks Discovery */}
       {popularTasks.length > 0 && (
@@ -594,6 +608,10 @@ export default function MarketplaceScreen() {
             );
           }
           if (item.kind === 'post') {
+            const matchedTech = technicianById.get(item.post.technicianId);
+            const startingPrice = matchedTech?.services.find(
+              (srv) => typeof srv.startingPrice === 'number',
+            )?.startingPrice;
             return (
               <Post
                 flat
@@ -601,6 +619,11 @@ export default function MarketplaceScreen() {
                 post={item.post}
                 isOwner={Boolean(user?.id && user.id === item.post.technicianId)}
                 isAdmin={roles.includes('admin') || effectiveRole === 'admin'}
+                authorName={matchedTech?.displayName}
+                authorAvatarUri={matchedTech?.avatarUri}
+                authorRating={matchedTech?.averageRating}
+                authorReviewCount={matchedTech?.reviewCount}
+                serviceStartingPrice={item.post.isServicePost ? startingPrice : undefined}
                 onEdit={handleEditPost}
                 onDelete={handleDeletePost}
                 onSuspend={handleSuspendPost}
@@ -680,7 +703,6 @@ export default function MarketplaceScreen() {
             styles.stickySearchHeader,
             {
               backgroundColor: palette.background,
-              borderBottomColor: palette.border,
               height: searchHeaderHeight,
               opacity: searchHeaderOpacity,
               transform: [
@@ -692,68 +714,104 @@ export default function MarketplaceScreen() {
         >
           <View style={[styles.contentWidth, styles.searchHeaderInner]}>
             <View style={styles.searchRow}>
-              <Link
-                asChild
-                href={
-                  {
-                    pathname: '/search',
-                    params: {
-                      area,
-                      category: selectedCategory,
-                    },
-                  } as never
-                }
-              >
-                <Pressable
-                  accessibilityLabel={t('home.search')}
-                  accessibilityRole="button"
-                  style={styles.marketplaceSearchTrigger}
-                  testID="marketplace-search"
-                >
-                  <Link.AppleZoom>
-                    <SearchFieldTrigger placeholder={t('home.search')} />
-                  </Link.AppleZoom>
-                </Pressable>
-              </Link>
-
-              <Pressable
-                accessibilityRole="button"
-                accessibilityLabel={`${t('home.areaLabel')}: ${
-                  area === 'Semua area'
-                    ? t('home.allAreasOption')
-                    : localizeArea(area, language)
-                }`}
-                onPress={() => setAreaModalVisible(true)}
+              <View
                 style={[
-                  styles.searchLocationButton,
+                  styles.searchInputShell,
                   {
-                    backgroundColor: palette.surfaceElevated,
+                    backgroundColor: palette.inputBg,
                     borderColor: palette.border,
                   },
                 ]}
-                testID="area-picker-trigger"
               >
-                <View
-                  style={[
-                    styles.locationPinBox,
-                    { backgroundColor: palette.primarySoft },
-                  ]}
+                <Link
+                  asChild
+                  href={
+                    {
+                      pathname: '/search',
+                      params: {
+                        area,
+                        category: selectedCategory,
+                      },
+                    } as never
+                  }
                 >
+                  <Pressable
+                    accessibilityLabel={t('home.search')}
+                    accessibilityRole="button"
+                    style={styles.marketplaceSearchTrigger}
+                    testID="marketplace-search"
+                  >
+                    <SearchFieldTrigger borderless placeholder={t('home.search')} />
+                  </Pressable>
+                </Link>
+
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel={`${t('home.areaLabel')}: ${
+                    area === 'Semua area'
+                      ? t('home.allAreasOption')
+                      : localizeArea(area, language)
+                  }`}
+                  onPress={() => setAreaModalVisible(true)}
+                  style={styles.searchLocationInlineButton}
+                  testID="area-picker-trigger"
+                >
+                  <Text
+                    numberOfLines={1}
+                    style={[styles.searchLocationValue, { color: palette.textMuted }]}
+                  >
+                    {area === 'Semua area'
+                      ? t('home.allAreasOption')
+                      : localizeArea(area, language)}
+                  </Text>
+                </Pressable>
+              </View>
+
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel={language === 'en' ? 'Messages' : 'Pesan'}
+                onPress={() => router.push('/messages' as never)}
+                style={({ pressed }) => [
+                  styles.searchChatButton,
+                  {
+                    backgroundColor: palette.inputBg,
+                    borderColor: palette.border,
+                    opacity: pressed ? 0.75 : 1,
+                  },
+                ]}
+                testID="marketplace-messages-button"
+              >
+                <View style={styles.chatIconCanvas}>
                   <View
                     style={[
-                      styles.locationPinDot,
-                      { backgroundColor: palette.primary },
+                      styles.chatBubbleBody,
+                      { borderColor: palette.text },
+                    ]}
+                  >
+                    <View
+                      style={[
+                        styles.chatLineLong,
+                        { backgroundColor: palette.text },
+                      ]}
+                    />
+                    <View
+                      style={[
+                        styles.chatLineShort,
+                        { backgroundColor: palette.text },
+                      ]}
+                    />
+                  </View>
+                  <View
+                    style={[
+                      styles.chatBubbleTail,
+                      {
+                        backgroundColor: palette.inputBg,
+                        borderBottomColor: palette.text,
+                        borderLeftColor: palette.text,
+                      },
                     ]}
                   />
                 </View>
-                <Text
-                  numberOfLines={1}
-                  style={[styles.searchLocationValue, { color: palette.text }]}
-                >
-                  {area === 'Semua area'
-                    ? t('home.allAreasOption')
-                    : localizeArea(area, language)}
-                </Text>
               </Pressable>
             </View>
           </View>
@@ -788,13 +846,22 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   stickySearchHeader: {
-    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomWidth: 0,
     left: 0,
     overflow: 'hidden',
     position: 'absolute',
     right: 0,
     top: 0,
     zIndex: 20,
+  },
+  searchInputShell: {
+    alignItems: 'center',
+    borderRadius: 12,
+    borderWidth: 1,
+    flex: 1,
+    flexDirection: 'row',
+    height: 40,
+    overflow: 'hidden',
   },
   marketplaceSearchTrigger: {
     flex: 1,
@@ -816,37 +883,69 @@ const styles = StyleSheet.create({
   searchRow: {
     alignItems: 'center',
     flexDirection: 'row',
-    gap: 8,
+    gap: 6,
     width: '100%',
   },
-  searchLocationButton: {
+  searchLocationInlineButton: {
     alignItems: 'center',
-    borderRadius: 10,
-    borderWidth: 1,
+    backgroundColor: 'transparent',
+    borderWidth: 0,
     flexDirection: 'row',
-    gap: 5,
-    height: 40,
-    maxWidth: 132,
-    paddingHorizontal: 8,
-  },
-  locationPinBox: {
-    alignItems: 'center',
-    backgroundColor: colors.greenSoft,
-    borderRadius: 5,
-    height: 16,
+    height: '100%',
     justifyContent: 'center',
-    width: 16,
+    maxWidth: 124,
+    paddingHorizontal: 10,
   },
-  locationPinDot: {
-    backgroundColor: colors.greenDark,
-    borderRadius: 2,
-    height: 6,
+  searchChatButton: {
+    alignItems: 'center',
+    borderRadius: 12,
+    borderWidth: 1,
+    height: 40,
+    justifyContent: 'center',
+    width: 40,
+  },
+  chatIconCanvas: {
+    alignItems: 'center',
+    height: 22,
+    justifyContent: 'center',
+    position: 'relative',
+    width: 22,
+  },
+  chatBubbleBody: {
+    alignItems: 'flex-start',
+    borderRadius: 6,
+    borderWidth: 1.8,
+    gap: 2.5,
+    height: 15,
+    justifyContent: 'center',
+    paddingHorizontal: 3.5,
+    width: 19,
+  },
+  chatLineLong: {
+    borderRadius: 1,
+    height: 1.8,
+    width: 9,
+  },
+  chatLineShort: {
+    borderRadius: 1,
+    height: 1.8,
     width: 6,
+  },
+  chatBubbleTail: {
+    borderBottomLeftRadius: 2,
+    borderBottomWidth: 1.8,
+    borderLeftWidth: 1.8,
+    bottom: 2,
+    height: 5,
+    left: 5,
+    position: 'absolute',
+    transform: [{ rotate: '-35deg' }],
+    width: 5,
   },
   searchLocationValue: {
     flexShrink: 1,
     fontSize: font.body,
-    fontWeight: '700',
+    fontWeight: '600',
   },
   locationChevron: {
     fontSize: font.label,

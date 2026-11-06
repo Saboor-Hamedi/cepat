@@ -1,27 +1,61 @@
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { router } from "expo-router";
-import { ArrowRight, BadgeCheck, Camera, X } from "lucide-react-native";
-import { useState } from "react";
 import {
-  Image,
+  BadgeCheck,
+  Bookmark,
+  CalendarCheck,
+  Eye,
+  Heart,
+  Share2,
+} from "lucide-react-native";
+import { useEffect, useState } from "react";
+import {
   Modal,
   Pressable,
+  Share,
   StyleSheet,
   Text,
-  TextInput,
   View,
 } from "react-native";
 
 import { useAuth } from "../../auth/AuthProvider";
 import { useAppearance } from "../../context/AppearanceContext";
+import { formatRupiah, loadTechnician } from "../../data/marketplaceRepository";
+import {
+  getPostEngagementSync,
+  hasUserLikedPost,
+  incrementPostShare,
+  recordPostView,
+  togglePostLike,
+} from "../../data/postsStore";
 import { localizeArea, useLanguage } from "../../i18n/locale";
-import { ICON_SIZE, ICON_STROKE } from "../../theme/icons";
+import {
+  layoutTokens,
+  postRadii,
+  postSpacing,
+  postTypography,
+} from "../../theme/designSystem";
+import { ICON_STROKE } from "../../theme/icons";
 import { colors, radii, spacing } from "../../theme/tokens";
 import { font } from "../../theme/typography";
 import type { Post as PostType } from "../../types/post";
-import { CORE_CATEGORY_FILTERS } from "../search/CategoryTabs";
-import { ImageSourceSheet } from "../ImageSourceSheet";
+import { buildPostSharePayload, formatCompactCount } from "../../utils/postShare";
 import { Avatar } from "../marketplace-ui";
+import { CORE_CATEGORY_FILTERS } from "../search/CategoryTabs";
+import { PostContainer } from "./PostContainer";
 import { PostDropdown } from "./PostDropdown";
+import { PostMediaCarousel } from "./PostMediaCarousel";
+
+const sessionRecordedViews = new Set<string>();
+const authorAvatarMemoryCache: Record<string, string> = {};
+
+export interface PostEditUpdates {
+  caption: string;
+  imageUri?: string;
+  mediaUrls: string[];
+  isServicePost: boolean;
+  serviceArea?: string;
+}
 
 export interface PostProps {
   post: PostType;
@@ -31,14 +65,19 @@ export interface PostProps {
     post: PostType,
     newCaption: string,
     newImageUri?: string,
+    updates?: PostEditUpdates,
   ) => Promise<void>;
   onDelete?: (postId: string) => Promise<void>;
   onSuspend?: (postId: string, suspended: boolean) => Promise<void>;
-  showAuthorHeader?: boolean;
   authorName?: string;
   authorAvatarUri?: string;
   flat?: boolean;
   isLastInThread?: boolean;
+  authorRating?: number;
+  authorReviewCount?: number;
+  serviceStartingPrice?: number;
+  savedTechnician?: boolean;
+  onToggleSaveTechnician?: () => void;
 }
 
 function categoryChipLabel(
@@ -101,75 +140,218 @@ export function Post({
   onEdit,
   onDelete,
   onSuspend,
-  showAuthorHeader = true,
   authorName,
   authorAvatarUri,
-  flat = false,
-  isLastInThread = false,
+  flat = true,
+  authorRating,
+  authorReviewCount,
+  serviceStartingPrice,
+  savedTechnician,
+  onToggleSaveTechnician,
 }: PostProps) {
   const { language } = useLanguage();
   const { user, roles, effectiveRole } = useAuth();
-  const { palette } = useAppearance();
+  const { palette, reduceMotion, scaleFont } = useAppearance();
   const [isEditing, setIsEditing] = useState(false);
-  const [draftCaption, setDraftCaption] = useState(
-    post.content || post.caption || "",
-  );
-  const initialPostImage =
-    post.imageUri || (post.mediaUrls && post.mediaUrls[0]) || undefined;
-  const [draftImageUri, setDraftImageUri] = useState<string | undefined>(
-    initialPostImage,
-  );
-  const [busy, setBusy] = useState(false);
+  const [editedPostOverride, setEditedPostOverride] = useState<Partial<PostType> | null>(null);
   const [imageError, setImageError] = useState(false);
   const [confirmDeleteVisible, setConfirmDeleteVisible] = useState(false);
-  const [editImageMenuVisible, setEditImageMenuVisible] = useState(false);
+  const [likedOverride, setLikedOverride] = useState<boolean | null>(null);
+  const [likeCountOverride, setLikeCountOverride] = useState<number | null>(null);
+  const [viewCountOverride, setViewCountOverride] = useState<number | null>(null);
+  const [asyncTech, setAsyncTech] = useState<{ averageRating: number; reviewCount: number } | null>(null);
+  const [cachedAuthorAvatar, setCachedAuthorAvatar] = useState<string | undefined>(
+    () => authorAvatarMemoryCache[post.technicianId],
+  );
+
+  const effectivePost: PostType = editedPostOverride
+    ? { ...post, ...editedPostOverride }
+    : post;
+
+  const syncEngagement = getPostEngagementSync(effectivePost, user?.id);
+  const liked = Boolean(user?.id) && (likedOverride ?? syncEngagement.liked);
+  const likeCount = likeCountOverride ?? syncEngagement.likeCount;
+  const viewCount = Math.max(syncEngagement.viewCount, viewCountOverride ?? 0);
+
+  useEffect(() => {
+    let active = true;
+    const techId = effectivePost.technicianId;
+    if (!techId) return;
+    if (authorAvatarMemoryCache[techId]) {
+      return;
+    }
+    void AsyncStorage.getItem(`@cepat_avatar_${techId}`)
+      .then((savedUri) => {
+        if (active && savedUri) {
+          authorAvatarMemoryCache[techId] = savedUri;
+          setCachedAuthorAvatar(savedUri);
+        }
+      })
+      .catch(() => {});
+    return () => {
+      active = false;
+    };
+  }, [effectivePost.technicianId]);
+
+  useEffect(() => {
+    let active = true;
+    const uid = user?.id;
+    if (!uid) {
+      return () => {
+        active = false;
+      };
+    }
+    void hasUserLikedPost(post.id, uid).then((isLiked) => {
+      if (active) {
+        setLikedOverride((prev) => (prev === null ? isLiked : prev));
+      }
+    });
+    return () => {
+      active = false;
+    };
+  }, [post.id, user?.id]);
+
+  useEffect(() => {
+    const viewSessionKey = `${post.id}:${user?.id ?? "guest"}`;
+    if (sessionRecordedViews.has(viewSessionKey)) {
+      return;
+    }
+    sessionRecordedViews.add(viewSessionKey);
+    let active = true;
+    void recordPostView(post.id, user?.id).then((nextViews) => {
+      if (active && nextViews > 0) {
+        setViewCountOverride((prev) => Math.max(prev ?? 0, nextViews));
+      }
+    });
+    return () => {
+      active = false;
+    };
+  }, [post.id, user?.id]);
+
+  useEffect(() => {
+    if (typeof authorRating === "number" && authorRating > 0) return;
+    if (!effectivePost.technicianId) return;
+    let active = true;
+    void loadTechnician(effectivePost.technicianId).then((res) => {
+      if (active && res?.item) {
+        setAsyncTech({
+          averageRating: res.item.averageRating,
+          reviewCount: res.item.reviewCount,
+        });
+      }
+    });
+    return () => {
+      active = false;
+    };
+  }, [authorRating, effectivePost.technicianId]);
+
+  const handleToggleLike = () => {
+    if (!user?.id) {
+      router.push("/login");
+      return;
+    }
+    const previousLiked = liked;
+    const previousCount = likeCount;
+    const optimisticLiked = !previousLiked;
+    const optimisticCount = optimisticLiked
+      ? previousCount + 1
+      : Math.max(0, previousCount - 1);
+    setLikedOverride(optimisticLiked);
+    setLikeCountOverride(optimisticCount);
+    void togglePostLike(post.id, user.id)
+      .then((result) => {
+        setLikedOverride(result.liked);
+        setLikeCountOverride(result.likeCount);
+      })
+      .catch(() => {
+        setLikedOverride(previousLiked);
+        setLikeCountOverride(previousCount);
+      });
+  };
+
+  const handleNativeShare = async () => {
+    const priceLabel =
+      typeof serviceStartingPrice === "number"
+        ? formatRupiah(serviceStartingPrice, language)
+        : undefined;
+    const payload = buildPostSharePayload(effectivePost, language, priceLabel);
+    void incrementPostShare(post.id);
+    try {
+      await Share.share(
+        {
+          title: payload.title,
+          message: payload.fullShareMessage,
+          url: payload.cleanImageUrl || payload.cleanUrl,
+        },
+        {
+          dialogTitle: payload.title,
+          subject: payload.title,
+        },
+      );
+    } catch {
+      // User dismissed native bottom share sheet
+    }
+  };
 
   const isAdminUser = Boolean(
     isAdmin || roles.includes("admin") || effectiveRole === "admin",
   );
   const isSelfPost = Boolean(
     user?.id &&
-    (user.id === post.technicianId ||
-      (user.id === "demo-rizky" && post.technicianId === "demo-rizky") ||
-      (user.id === "demo-customer" && post.technicianId === "demo-customer")),
+    (user.id === effectivePost.technicianId ||
+      (user.id === "demo-rizky" && effectivePost.technicianId === "demo-rizky") ||
+      (user.id === "demo-customer" && effectivePost.technicianId === "demo-customer")),
   );
   const isActualOwner = Boolean(isOwner || isSelfPost);
-  const canBook = Boolean(post.isServicePost) && !isSelfPost && !isOwner;
+  const canBook = Boolean(effectivePost.isServicePost) && !isSelfPost && !isOwner;
   const isVerified = Boolean(
-    post.technicianVerified ||
-    post.technicianId === "demo-rizky" ||
-    post.technicianId === "demo-sari" ||
-    (isActualOwner && (roles.includes("technician") || roles.includes("admin"))),
+    effectivePost.technicianVerified ||
+    effectivePost.technicianId === "demo-rizky" ||
+    effectivePost.technicianId === "demo-sari" ||
+    (isActualOwner &&
+      (roles.includes("technician") || roles.includes("admin"))),
   );
 
   const images =
-    post.mediaUrls && post.mediaUrls.length > 0
-      ? post.mediaUrls
-      : post.imageUri
-        ? [post.imageUri]
+    effectivePost.mediaUrls && effectivePost.mediaUrls.length > 0
+      ? effectivePost.mediaUrls
+      : effectivePost.imageUri
+        ? [effectivePost.imageUri]
         : [];
-  const displayName = fixAuthorTypo(authorName || post.technicianName);
+  const displayName = fixAuthorTypo(
+    authorName ||
+      (isSelfPost &&
+        typeof user?.user_metadata?.display_name === "string" &&
+        user.user_metadata.display_name.trim()) ||
+      effectivePost.technicianName,
+  );
   const rawAuthorHandle =
-    post.technicianUsername ||
-    (isActualOwner && typeof user?.user_metadata?.username === "string" && user.user_metadata.username.trim()) ||
+    effectivePost.technicianUsername ||
+    (isActualOwner &&
+      typeof user?.user_metadata?.username === "string" &&
+      user.user_metadata.username.trim()) ||
     displayName.toLowerCase().replace(/[^a-z0-9_]/g, "") ||
     "technician";
   const authorHandle = `@${rawAuthorHandle.replace(/^@/, "")}`;
-  const displayAvatar = authorAvatarUri || post.technicianAvatarUri;
-  const displayContent = fixAuthorTypo(
-    post.content || post.caption || "",
-  );
+  const displayAvatar =
+    authorAvatarUri ||
+    (isSelfPost &&
+      typeof user?.user_metadata?.avatar_url === "string" &&
+      user.user_metadata.avatar_url) ||
+    effectivePost.technicianAvatarUri ||
+    cachedAuthorAvatar;
+  const displayContent = fixAuthorTypo(effectivePost.content || effectivePost.caption || "");
 
-  const handleSaveEdit = async () => {
-    if (!onEdit || !draftCaption.trim()) return;
-    setBusy(true);
-    try {
-      await onEdit(post, draftCaption.trim(), draftImageUri ?? "");
-      setIsEditing(false);
-    } finally {
-      setBusy(false);
-    }
-  };
+  const displayRating =
+    (typeof authorRating === "number" && authorRating > 0
+      ? authorRating
+      : asyncTech?.averageRating) ??
+    (isVerified ? 5.0 : undefined);
+
+  const displayReviewCount =
+    typeof authorReviewCount === "number" && authorReviewCount > 0
+      ? authorReviewCount
+      : asyncTech?.reviewCount;
 
   const handleConfirmDelete = async () => {
     if (!onDelete) return;
@@ -177,12 +359,11 @@ export function Post({
     try {
       await onDelete(post.id);
     } catch (err) {
-      console.warn('[Post] Delete post error:', err);
+      console.warn("[Post] Delete post error:", err);
     }
   };
 
   const handleDeletePress = () => {
-    // Show confirmation modal
     setConfirmDeleteVisible(true);
   };
 
@@ -201,38 +382,45 @@ export function Post({
           <Pressable
             accessibilityRole="button"
             accessibilityLabel={`Lihat profil ${displayName}`}
-            hitSlop={6}
-            onPress={() => router.push(`/technician/${post.technicianId}`)}
+            accessibilityHint={
+              language === "en" ? "Opens profile" : "Buka profil"
+            }
+            hitSlop={8}
+            onPress={() => router.push(`/technician/${effectivePost.technicianId}`)}
             style={styles.threadAvatarBtn}
             testID={`post-avatar-link-${post.id}`}
           >
-            {!flat && <Avatar uri={displayAvatar} name={displayName} size={36} />}
-          </Pressable>
-          {!isLastInThread ? (
-            <View
-              style={[styles.threadLine, { backgroundColor: palette.border }]}
-              testID={`post-thread-line-${post.id}`}
+            <Avatar
+              uri={displayAvatar}
+              name={displayName}
+              size={layoutTokens.postAvatarSize}
             />
-          ) : null}
+          </Pressable>
         </View>
       ) : null}
+
       <View style={flat ? styles.threadRight : styles.threadRightFill}>
-      {/* Post Header */}
-      {showAuthorHeader && (
-        <View style={styles.headerRow}>
+        {/* Unified Author Header */}
+        <View style={styles.compactHeaderRow}>
           <Pressable
             accessibilityRole="button"
             accessibilityLabel={`View profile of ${displayName}`}
-            onPress={() => router.push(`/technician/${post.technicianId}`)}
+            onPress={() => router.push(`/technician/${effectivePost.technicianId}`)}
             style={styles.authorTouchArea}
             testID={`post-author-link-${post.id}`}
           >
-            <Avatar uri={displayAvatar} name={displayName} size={36} />
             <View style={styles.authorMeta}>
               <View style={styles.nameRow}>
                 <Text
                   numberOfLines={1}
-                  style={[styles.authorName, { color: palette.text }]}
+                  style={[
+                    styles.authorNameCompact,
+                    {
+                      color: palette.text,
+                      fontSize: scaleFont(postTypography.authorName.fontSize),
+                      lineHeight: scaleFont(postTypography.authorName.lineHeight),
+                    },
+                  ]}
                 >
                   {displayName}
                 </Text>
@@ -242,40 +430,67 @@ export function Post({
                     testID={`post-verified-badge-${post.id}`}
                   >
                     <BadgeCheck
-                      size={ICON_SIZE}
+                      size={15}
                       color={palette.primary}
                       strokeWidth={ICON_STROKE}
                     />
                   </View>
                 )}
-                {post.isServicePost ? (
-                  <View style={styles.servicePostBadgeInline}>
+                {typeof displayRating === "number" && displayRating > 0 ? (
+                  <View
+                    style={styles.ratingChip}
+                    testID={`post-rating-chip-${post.id}`}
+                  >
+                    <Text style={styles.ratingChipStar}>★</Text>
                     <Text
                       style={[
-                        styles.servicePostBadgeTextInline,
-                        { color: palette.primary },
+                        styles.ratingChipText,
+                        {
+                          color: palette.text,
+                          fontSize: scaleFont(postTypography.authorSub.fontSize),
+                        },
                       ]}
                     >
-                      {categoryChipLabel(post.categorySlug, language)}
+                      {displayRating.toFixed(1)}
+                      {typeof displayReviewCount === "number" && displayReviewCount > 0 ? (
+                        <Text style={[styles.ratingChipCount, { color: palette.textMuted }]}>
+                          {` (${displayReviewCount} ${language === "en" ? "rev" : "ul"})`}
+                        </Text>
+                      ) : null}
                     </Text>
                   </View>
                 ) : null}
               </View>
               <Text
                 numberOfLines={1}
-                style={[styles.authorSub, { color: palette.textMuted }]}
+                style={[
+                  styles.authorSub,
+                  {
+                    color: palette.textMuted,
+                    fontSize: scaleFont(postTypography.authorSub.fontSize),
+                    lineHeight: scaleFont(postTypography.authorSub.lineHeight),
+                  },
+                ]}
               >
                 {authorHandle}
-                {post.serviceArea
-                  ? ` · ${localizeArea(post.serviceArea, language)}`
+                {effectivePost.serviceArea
+                  ? ` · ${localizeArea(effectivePost.serviceArea, language)}`
                   : ""}
               </Text>
             </View>
           </Pressable>
 
           <View style={styles.topRightRow}>
-            <Text style={[styles.timeAgoText, { color: palette.textMuted }]}>
-              {formatPostTime(post.createdAt, language)}
+            <Text
+              style={[
+                styles.timeAgoText,
+                {
+                  color: palette.textMuted,
+                  fontSize: scaleFont(postTypography.timeAgo.fontSize),
+                },
+              ]}
+            >
+              {formatPostTime(effectivePost.createdAt, language)}
             </Text>
             {(isActualOwner && (onEdit || onDelete)) ||
             (isAdminUser && onSuspend) ? (
@@ -289,12 +504,6 @@ export function Post({
                             language === "en" ? "Edit post" : "Edit postingan",
                           testID: `edit-post-btn-${post.id}`,
                           onPress: () => {
-                            setDraftCaption(post.content || post.caption || "");
-                            setDraftImageUri(
-                              images.length > 0
-                                ? images[0]
-                                : (post.imageUri || (post.mediaUrls && post.mediaUrls[0]) || undefined)
-                            );
                             setIsEditing(true);
                           },
                         },
@@ -316,18 +525,18 @@ export function Post({
                   ...(isAdminUser && !isActualOwner && onSuspend
                     ? [
                         {
-                          label: post.suspended
+                          label: effectivePost.suspended
                             ? language === "en"
                               ? "Restore post"
                               : "Pulihkan postingan"
                             : language === "en"
                               ? "Suspend post"
                               : "Tangguhkan postingan",
-                          testID: post.suspended
+                          testID: effectivePost.suspended
                             ? `unsuspend-post-btn-${post.id}`
                             : `suspend-post-btn-${post.id}`,
                           onPress: () =>
-                            void onSuspend(post.id, !post.suspended),
+                            void onSuspend(post.id, !effectivePost.suspended),
                         },
                       ]
                     : []),
@@ -338,7 +547,7 @@ export function Post({
                 style={[
                   styles.statusPill,
                   {
-                    backgroundColor: post.published
+                    backgroundColor: effectivePost.published
                       ? palette.primarySoft
                       : palette.surfaceElevated,
                   },
@@ -348,13 +557,13 @@ export function Post({
                   style={[
                     styles.statusPillText,
                     {
-                      color: post.published
+                      color: effectivePost.published
                         ? palette.primary
                         : palette.textMuted,
                     },
                   ]}
                 >
-                  {post.published
+                  {effectivePost.published
                     ? language === "en"
                       ? "Published"
                       : "Tayang"
@@ -366,250 +575,289 @@ export function Post({
             ) : null}
           </View>
         </View>
-      )}
 
-      {/* Editing State or Content Body */}
-      {isEditing ? (
-        <View
-          style={[
-            styles.editForm,
-            showAuthorHeader && styles.bodyContentIndented,
-          ]}
-          testID={`edit-post-form-${post.id}`}
-        >
-          <TextInput
-            multiline
-            maxLength={200}
-            onChangeText={(text) => setDraftCaption(text.slice(0, 200))}
-            placeholder={
-              language === "en"
-                ? "Update your post caption..."
-                : "Perbarui keterangan postingan..."
-            }
-            placeholderTextColor={palette.textMuted}
+        {effectivePost.isServicePost ? (
+          <Text
+            numberOfLines={2}
             style={[
-              styles.captionInput,
+              styles.serviceTitle,
               {
-                backgroundColor: palette.inputBg,
-                borderColor: palette.border,
                 color: palette.text,
+                fontSize: scaleFont(postTypography.serviceCategory.fontSize),
+                lineHeight: scaleFont(postTypography.serviceCategory.lineHeight),
               },
             ]}
-            testID={`edit-post-caption-input-${post.id}`}
-            value={draftCaption}
-          />
+            testID={`post-service-title-${post.id}`}
+          >
+            {categoryChipLabel(effectivePost.categorySlug, language)}
+          </Text>
+        ) : null}
 
-          {/* Edit Photo Preview & Controls */}
-          {draftImageUri ? (
-            <View style={styles.editImageContainer}>
-              <Image
-                source={{ uri: draftImageUri }}
-                style={styles.editImagePreview}
-                resizeMode="cover"
-              />
-              <Pressable
-                accessibilityRole="button"
-                accessibilityLabel={language === "en" ? "Remove photo" : "Hapus foto"}
-                onPress={() => setDraftImageUri(undefined)}
-                style={styles.editImageRemoveBtn}
-                testID={`remove-edit-image-btn-${post.id}`}
-              >
-                <X size={ICON_SIZE} color="#FFFFFF" strokeWidth={ICON_STROKE} />
-              </Pressable>
-              <Pressable
-                accessibilityRole="button"
-                accessibilityLabel={language === "en" ? "Change photo" : "Ganti foto"}
-                onPress={() => setEditImageMenuVisible(true)}
-                style={[
-                  styles.editImageChangeBtn,
-                  { backgroundColor: palette.surface, borderColor: palette.border },
-                ]}
-                testID={`change-edit-image-btn-${post.id}`}
-              >
-                <Camera size={ICON_SIZE} color={palette.primary} strokeWidth={ICON_STROKE} />
-                <Text style={[styles.editImageChangeText, { color: palette.primary }]}>
-                  {language === "en" ? "Change Photo" : "Ganti Foto"}
-                </Text>
-              </Pressable>
-            </View>
-          ) : (
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel={language === "en" ? "Add photo" : "Tambah foto"}
-              onPress={() => setEditImageMenuVisible(true)}
-              style={[
-                styles.editAddPhotoBtn,
-                { backgroundColor: palette.surface, borderColor: palette.border },
-              ]}
-              testID={`add-edit-image-btn-${post.id}`}
-            >
-              <Camera size={ICON_SIZE} color={palette.primary} strokeWidth={ICON_STROKE} />
-              <Text style={[styles.editImageChangeText, { color: palette.primary }]}>
-                {language === "en" ? "+ Add Photo" : "+ Tambah Foto"}
-              </Text>
-            </Pressable>
-          )}
-
-          <ImageSourceSheet
-            allowFallbackUri
-            backdropTestID={`edit-post-sheet-backdrop-${post.id}`}
-            onClose={() => setEditImageMenuVisible(false)}
-            onImageSelected={(nextUri) => {
-              setEditImageMenuVisible(false);
-              setDraftImageUri(nextUri);
-            }}
-            subtitle={
-              language === "en"
-                ? "Choose a photo to attach to your post."
-                : "Pilih foto untuk dilampirkan pada postingan Anda."
-            }
-            testIDPrefix={`edit-post-image-${post.id}`}
-            title={language === "en" ? "Select Photo" : "Pilih Foto"}
-            visible={editImageMenuVisible}
-          />
-          <View style={styles.editActions}>
-            <Pressable
-              accessibilityRole="button"
-              disabled={busy}
-              onPress={() => {
-                setDraftCaption(post.content || post.caption || "");
-                setDraftImageUri(post.imageUri);
-                setIsEditing(false);
-              }}
-              style={[
-                styles.actionBtn,
-                {
-                  backgroundColor: palette.surfaceElevated,
-                  borderColor: palette.border,
-                },
-              ]}
-              testID={`cancel-edit-post-btn-${post.id}`}
-            >
-              <Text style={[styles.actionBtnText, { color: palette.text }]}>
-                {language === "en" ? "Cancel" : "Batal"}
-              </Text>
-            </Pressable>
-
-            <Pressable
-              accessibilityRole="button"
-              disabled={busy || !draftCaption.trim()}
-              onPress={() => {
-                void handleSaveEdit();
-              }}
-              style={[
-                styles.actionBtn,
-                styles.actionPrimaryBtn,
-                {
-                  backgroundColor: palette.primary,
-                  borderColor: palette.primary,
-                },
-              ]}
-              testID={`save-edited-post-btn-${post.id}`}
-            >
-              <Text style={styles.actionPrimaryBtnText}>
-                {busy
-                  ? language === "en"
-                    ? "Saving..."
-                    : "Menyimpan..."
-                  : language === "en"
-                    ? "Save"
-                    : "Simpan"}
-              </Text>
-            </Pressable>
-          </View>
-        </View>
-      ) : (
+        {/* Post Content Body */}
         <View style={styles.bodyContent}>
           {Boolean(displayContent) && (
-            <Text style={[styles.caption, { color: palette.text }]}>
-              {displayContent}
+            <Text
+              style={[
+                styles.caption,
+                {
+                  color: palette.text,
+                  fontSize: scaleFont(postTypography.caption.fontSize),
+                  lineHeight: scaleFont(postTypography.caption.lineHeight),
+                },
+              ]}
+            >
+              {/#[a-zA-Z0-9_]+/.test(displayContent)
+                ? displayContent.split(/(#[a-zA-Z0-9_]+)/g).map((part, idx) =>
+                    /^#[a-zA-Z0-9_]+$/.test(part) ? (
+                      <Text
+                        key={`${post.id}-tag-${idx}`}
+                        onPress={() =>
+                          router.push({
+                            pathname: "/search",
+                            params: { q: part },
+                          } as never)
+                        }
+                        style={{ color: palette.primary, fontWeight: "700" }}
+                        testID={`post-hashtag-${post.id}-${part.slice(1).toLowerCase()}`}
+                      >
+                        {part}
+                      </Text>
+                    ) : (
+                      part
+                    ),
+                  )
+                : displayContent}
             </Text>
           )}
 
-          {/* Media Grid / Images */}
+          {/* Instagram-style Multi-Image Carousel with Finger Pinch-to-Zoom */}
           {images.length > 0 && !imageError ? (
-            <View style={styles.mediaContainer}>
-              {images.length === 1 ? (
-                <View
-                  style={[
-                    styles.singleImageFrame,
-                    { backgroundColor: palette.surfaceElevated },
-                  ]}
-                >
-                  <Image
-                    source={{ uri: images[0] }}
-                    style={styles.postImage}
-                    resizeMode="cover"
-                    onError={() => setImageError(true)}
-                  />
-                </View>
-              ) : (
-                <View style={styles.gridContainer}>
-                  {images.map((imgUri, idx) => (
-                    <View
-                      key={`${imgUri}-${idx}`}
-                      style={[
-                        styles.gridImageFrame,
-                        { backgroundColor: palette.surfaceElevated },
-                      ]}
-                    >
-                      <Image
-                        source={{ uri: imgUri }}
-                        style={styles.postImage}
-                        resizeMode="cover"
-                        onError={() => setImageError(true)}
-                      />
-                    </View>
-                  ))}
-                </View>
-              )}
-            </View>
+            <PostMediaCarousel
+              images={images}
+              onAllImagesError={() => setImageError(true)}
+              postId={post.id}
+            />
           ) : null}
         </View>
-      )}
 
-      {/* Direct Booking Shortcut for other users (never shown for the author's own post) */}
-      {showAuthorHeader && canBook && (
-        <View
-          style={[
-            styles.postBookingRow,
-            styles.bodyContentIndented,
-            { borderTopColor: palette.border },
-          ]}
-        >
-          <Pressable
-            accessibilityRole="button"
-            onPress={() =>
-              router.push({
-                pathname: "/booking/[id]" as any,
-                params: {
-                  id: post.technicianId,
-                  postId: post.id,
-                },
-              })
-            }
-            style={[
-              styles.postBookBtn,
-              {
-                backgroundColor: palette.primary,
-                borderColor: palette.primary,
-              },
-            ]}
-            testID={`post-book-btn-${post.id}`}
-          >
-            <Text style={[styles.postBookBtnText, { color: "#0B1120" }]}>
-              {language === "en" ? "Book Service" : "Pesan Layanan"}
-            </Text>
-            <ArrowRight
-              color="#0B1120"
-              size={ICON_SIZE}
-              strokeWidth={ICON_STROKE}
-            />
-          </Pressable>
+        {/* Unified Price & Action Footer */}
+        <View style={styles.footerRow} testID={`post-footer-${post.id}`}>
+          <View style={styles.footerLeft}>
+            {typeof serviceStartingPrice === "number" ? (
+              <Text
+                numberOfLines={1}
+                style={[
+                  styles.priceText,
+                  {
+                    color: palette.text,
+                    fontSize: scaleFont(postTypography.price.fontSize),
+                  },
+                ]}
+                testID={`post-price-${post.id}`}
+              >
+                {formatRupiah(serviceStartingPrice, language)}
+                <Text
+                  style={[
+                    styles.priceUnit,
+                    {
+                      color: palette.textMuted,
+                      fontSize: scaleFont(postTypography.priceUnit.fontSize),
+                    },
+                  ]}
+                >
+                  {" "}
+                  / {language === "en" ? "visit" : "kunjungan"}
+                </Text>
+              </Text>
+            ) : null}
+            <Pressable
+              accessibilityRole="button"
+              accessibilityState={{ selected: liked }}
+              accessibilityLabel={language === "en" ? "Like" : "Suka"}
+              hitSlop={8}
+              onPress={handleToggleLike}
+              style={styles.footerMetricBtn}
+              testID={`post-like-btn-${post.id}`}
+            >
+              <Heart
+                size={18}
+                color={liked ? "#EF4444" : palette.textMuted}
+                fill={liked ? "#EF4444" : "transparent"}
+                strokeWidth={ICON_STROKE}
+              />
+              <Text
+                numberOfLines={1}
+                style={[
+                  styles.footerMetricText,
+                  {
+                    color: liked ? "#EF4444" : palette.textMuted,
+                    fontSize: scaleFont(postTypography.metricCount.fontSize),
+                  },
+                ]}
+                testID={`post-like-count-${post.id}`}
+              >
+                {formatCompactCount(likeCount)}
+              </Text>
+            </Pressable>
+            <View
+              style={styles.footerMetricBtn}
+              testID={`post-view-count-${post.id}`}
+            >
+              <Eye
+                size={18}
+                color={palette.textMuted}
+                strokeWidth={ICON_STROKE}
+              />
+              <Text
+                numberOfLines={1}
+                style={[
+                  styles.footerMetricText,
+                  {
+                    color: palette.textMuted,
+                    fontSize: scaleFont(postTypography.metricCount.fontSize),
+                  },
+                ]}
+              >
+                {formatCompactCount(Math.max(1, viewCount))}
+              </Text>
+            </View>
+          </View>
+          <View style={styles.footerActions}>
+            {canBook ? (
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel={
+                  language === "en"
+                    ? "Book this service"
+                    : "Pesan layanan ini"
+                }
+                onPress={() =>
+                  router.push({
+                    pathname: "/booking/[id]" as never,
+                    params: { id: effectivePost.technicianId, postId: post.id },
+                  })
+                }
+                style={({ pressed }) => [
+                  styles.footerIconBtn,
+                  {
+                    backgroundColor: palette.primarySoft,
+                    opacity: pressed ? 0.7 : 1,
+                  },
+                ]}
+                testID={`post-book-btn-${post.id}`}
+              >
+                <CalendarCheck
+                  size={19}
+                  color={palette.primary}
+                  strokeWidth={ICON_STROKE}
+                />
+              </Pressable>
+            ) : null}
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel={language === "en" ? "Share" : "Bagikan"}
+              hitSlop={8}
+              onPress={() => {
+                void handleNativeShare();
+              }}
+              style={styles.footerIconBtn}
+              testID={`post-share-btn-${post.id}`}
+            >
+              <Share2
+                size={18}
+                color={palette.textMuted}
+                strokeWidth={ICON_STROKE}
+              />
+            </Pressable>
+            {typeof onToggleSaveTechnician === "function" ? (
+              <Pressable
+                accessibilityRole="button"
+                accessibilityState={{ selected: Boolean(savedTechnician) }}
+                accessibilityLabel={
+                  language === "en"
+                    ? savedTechnician
+                      ? "Remove from saved"
+                      : "Save technician"
+                    : savedTechnician
+                      ? "Hapus dari tersimpan"
+                      : "Simpan teknisi"
+                }
+                hitSlop={8}
+                onPress={onToggleSaveTechnician}
+                style={styles.footerIconBtn}
+                testID={`post-save-btn-${post.id}`}
+              >
+                <Bookmark
+                  size={19}
+                  color={savedTechnician ? palette.primary : palette.textMuted}
+                  fill={savedTechnician ? palette.primary : "transparent"}
+                  strokeWidth={ICON_STROKE}
+                />
+              </Pressable>
+            ) : null}
+          </View>
         </View>
-      )}
-
       </View>
+
+      {/* Full-Screen Composer Modal for Updating Post (Identical to /compose) */}
+      <Modal
+        animationType={reduceMotion ? "none" : "slide"}
+        onRequestClose={() => setIsEditing(false)}
+        presentationStyle="fullScreen"
+        visible={isEditing}
+      >
+        <PostContainer
+          cancelTestID={`cancel-edit-post-btn-${post.id}`}
+          headerTitle={language === "en" ? "Edit Post" : "Edit postingan"}
+          initialValues={{
+            caption: effectivePost.content || effectivePost.caption || "",
+            images,
+            isServicePost: Boolean(effectivePost.isServicePost),
+            serviceArea: effectivePost.serviceArea,
+          }}
+          inputTestID={`edit-post-caption-input-${post.id}`}
+          onCancel={() => setIsEditing(false)}
+          onCreatePost={async (input) => {
+            if (!onEdit) return;
+            const nextMediaUrls =
+              input.mediaUrls ?? (input.imageUri ? [input.imageUri] : []);
+            const nextImageUri = nextMediaUrls[0];
+            const updates: PostEditUpdates = {
+              caption: input.caption,
+              imageUri: nextImageUri,
+              mediaUrls: nextMediaUrls,
+              isServicePost: input.isServicePost,
+              serviceArea: input.serviceArea,
+            };
+            await onEdit(
+              effectivePost,
+              input.caption,
+              nextImageUri,
+              updates,
+            );
+            setEditedPostOverride({
+              caption: input.caption,
+              content: input.caption,
+              imageUri: nextImageUri,
+              mediaUrls: nextMediaUrls,
+              isServicePost: input.isServicePost,
+              serviceArea: input.serviceArea || effectivePost.serviceArea,
+            });
+            setImageError(false);
+            setIsEditing(false);
+          }}
+          resetOnSubmit={false}
+          rootTestID={`edit-post-form-${post.id}`}
+          showTitle
+          submitTestID={`save-edited-post-btn-${post.id}`}
+          technicianProfile={{
+            id: effectivePost.technicianId,
+            displayName,
+            avatarUri: displayAvatar,
+          }}
+        />
+      </Modal>
+
       {/* Confirmation Modal for Post Deletion */}
       <Modal
         animationType="fade"
@@ -671,10 +919,11 @@ export function Post({
 const styles = StyleSheet.create({
   card: {
     borderColor: "#232F46",
-    borderRadius: 16,
+    borderRadius: postRadii.card,
     borderWidth: 1,
-    marginBottom: 12,
-    padding: 16,
+    marginBottom: spacing.md,
+    paddingHorizontal: postSpacing.cardPaddingX,
+    paddingVertical: postSpacing.cardPaddingY,
     width: "100%",
   },
   flatRoot: {
@@ -684,46 +933,38 @@ const styles = StyleSheet.create({
     borderBottomWidth: StyleSheet.hairlineWidth,
     flexDirection: "row",
     marginBottom: 0,
-    paddingHorizontal: 12,
-    paddingVertical: 16,
+    paddingHorizontal: postSpacing.cardPaddingX,
+    paddingVertical: postSpacing.cardPaddingY,
     width: "100%",
   },
   threadLeft: {
     alignItems: "center",
     justifyContent: "flex-start",
-    width: 40,
-  },
-  threadAvatarBtn: {
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  threadLine: {
-    borderRadius: 1,
-    flex: 1,
-    marginTop: 0,
-    minHeight: 24,
-    width: 1.5,
+    width: postSpacing.avatarColumnWidth,
   },
   threadRight: {
     flex: 1,
     minWidth: 0,
-    paddingLeft: 14,
+    paddingLeft: postSpacing.avatarToBodyGap,
   },
   threadRightFill: {
     width: "100%",
   },
-  headerRow: {
+  threadAvatarBtn: {
+    alignItems: "center",
+    justifyContent: "center",
+    width: postSpacing.avatarColumnWidth,
+  },
+  compactHeaderRow: {
     alignItems: "center",
     flexDirection: "row",
     justifyContent: "space-between",
-    marginBottom: spacing.xs,
     position: "relative",
   },
   authorTouchArea: {
-    alignItems: "center",
+    alignItems: "flex-start",
     flex: 1,
-    flexDirection: "row",
-    gap: spacing.sm,
+    minWidth: 0,
   },
   authorMeta: {
     flex: 1,
@@ -734,103 +975,36 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     gap: 4,
   },
-  authorName: {
+  authorNameCompact: {
     color: colors.ink,
-    fontSize: font.subtitle,
-    fontWeight: "800",
-  },
-  menuAnchor: {
-    alignSelf: "flex-start",
-    marginLeft: spacing.xs,
-    position: "relative",
-    zIndex: 2,
-  },
-  menuTrigger: {
-    alignItems: "center",
-    borderRadius: radii.pill,
-    height: 36,
-    justifyContent: "center",
-    width: 40,
-  },
-  menuTriggerText: {
-    fontSize: font.section,
-    fontWeight: "800",
-    letterSpacing: 1,
-  },
-  postMenu: {
-    borderRadius: 5,
-    borderWidth: 1,
-    elevation: 8,
-    minWidth: 150,
-    overflow: "hidden",
-    position: "absolute",
-    right: 0,
-    shadowColor: "#000000",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.18,
-    shadowRadius: 8,
-    top: 36,
-    zIndex: 10,
-  },
-  postMenuItem: {
-    minHeight: 44,
-    justifyContent: "center",
-    paddingHorizontal: spacing.md,
-  },
-  postMenuText: {
-    fontSize: font.label,
-    fontWeight: "700",
-  },
-  verifiedBadge: {
-    alignItems: "center",
-    backgroundColor: "transparent",
-    justifyContent: "center",
+    fontWeight: postTypography.authorName.fontWeight,
+    letterSpacing: postTypography.authorName.letterSpacing,
   },
   verifiedBadgeTransparent: {
     alignItems: "center",
     backgroundColor: "transparent",
     justifyContent: "center",
   },
-  servicePostBadgeInline: {
-    backgroundColor: "transparent",
+  ratingChip: {
+    alignItems: "center",
+    flexDirection: "row",
+    gap: 3,
     marginLeft: 6,
-    paddingHorizontal: 0,
-    paddingVertical: 0,
   },
-  servicePostBadgeTextInline: {
+  ratingChipStar: {
+    color: "#F59E0B",
     fontSize: font.caption,
+  },
+  ratingChipText: {
     fontWeight: "700",
   },
-  verifiedBadgeText: {
-    color: colors.greenDark,
-    fontSize: font.caption,
-    fontWeight: "900",
+  ratingChipCount: {
+    fontWeight: "400",
   },
   authorSub: {
     color: colors.muted,
-    fontSize: font.caption,
+    fontWeight: postTypography.authorSub.fontWeight,
     marginTop: 2,
-  },
-  statusPill: {
-    borderRadius: radii.sm,
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-  },
-  statusPillPublished: {
-    backgroundColor: colors.greenSoft,
-  },
-  statusPillDraft: {
-    backgroundColor: colors.paper,
-  },
-  statusPillText: {
-    fontSize: font.caption,
-    fontWeight: "800",
-  },
-  statusPillTextPublished: {
-    color: colors.greenDark,
-  },
-  statusPillTextDraft: {
-    color: colors.muted,
   },
   topRightRow: {
     alignItems: "center",
@@ -838,228 +1012,70 @@ const styles = StyleSheet.create({
     gap: spacing.xs,
   },
   timeAgoText: {
-    fontSize: font.caption,
-    fontWeight: "500",
+    fontWeight: postTypography.timeAgo.fontWeight,
   },
-  bodyContent: {
-    marginTop: spacing.sm,
-  },
-  bodyContentIndented: {
-    paddingLeft: 0,
-  },
-  servicePostBadge: {
-    alignSelf: "flex-start",
-    borderRadius: 5,
-    marginBottom: spacing.xs,
+  statusPill: {
+    borderRadius: radii.sm,
     paddingHorizontal: 8,
     paddingVertical: 3,
   },
-  servicePostBadgeText: {
+  statusPillText: {
     fontSize: font.caption,
     fontWeight: "800",
-    letterSpacing: 0.3,
-    lineHeight: 15,
+  },
+  serviceTitle: {
+    fontWeight: postTypography.serviceCategory.fontWeight,
+    marginTop: 3,
+  },
+  bodyContent: {
+    marginTop: postSpacing.headerToBodyGap,
   },
   caption: {
     color: colors.ink,
-    fontSize: font.subtitle,
-    fontWeight: "400",
-    lineHeight: 21,
+    fontWeight: postTypography.caption.fontWeight,
   },
-  mediaContainer: {
-    marginTop: spacing.sm,
-    width: "100%",
-  },
-  singleImageFrame: {
-    aspectRatio: 16 / 9,
-    backgroundColor: colors.paper,
-    borderRadius: 12,
-    overflow: "hidden",
-    width: "100%",
-  },
-  gridContainer: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: 8,
-  },
-  gridImageFrame: {
-    aspectRatio: 16 / 9,
-    backgroundColor: colors.paper,
-    borderRadius: 12,
-    overflow: "hidden",
-    width: "48%",
-  },
-  postImage: {
-    height: "100%",
-    width: "100%",
-  },
-  ownerActionsRow: {
-    borderTopColor: "#F1F5F9",
-    borderTopWidth: 1,
-    flexDirection: "row",
-    gap: spacing.sm,
-    justifyContent: "flex-end",
-    marginTop: spacing.sm,
-    paddingTop: spacing.xs,
-  },
-  ownerActionBtn: {
-    backgroundColor: colors.paper,
-    borderColor: colors.line,
-    borderRadius: radii.sm,
-    borderWidth: 1,
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-  },
-  ownerActionBtnText: {
-    color: colors.ink,
-    fontSize: font.body,
-    fontWeight: "700",
-  },
-  postBookingRow: {
-    borderTopColor: "#F1F5F9",
-    borderTopWidth: 1,
-    flexDirection: "row",
-    justifyContent: "flex-end",
-    marginTop: spacing.sm,
-    paddingTop: spacing.xs,
-  },
-  postBookBtn: {
+  footerRow: {
     alignItems: "center",
-    backgroundColor: colors.greenSoft,
-    borderColor: colors.green,
-    borderRadius: radii.pill,
-    borderWidth: 1,
+    flexDirection: "row",
+    justifyContent: "space-between",
+    marginTop: postSpacing.bodyToFooterGap,
+  },
+  footerLeft: {
+    alignItems: "center",
+    flexDirection: "row",
+    gap: postSpacing.footerMetricGap,
+  },
+  footerActions: {
+    alignItems: "center",
+    flexDirection: "row",
+    gap: postSpacing.footerActionGap,
+  },
+  footerIconBtn: {
+    alignItems: "center",
+    borderRadius: postRadii.pill,
+    height: 32,
+    justifyContent: "center",
+    width: 32,
+  },
+  footerMetricBtn: {
+    alignItems: "center",
+    borderRadius: postRadii.pill,
     flexDirection: "row",
     gap: 4,
-    paddingHorizontal: 14,
-    paddingVertical: 6,
+    height: 32,
+    justifyContent: "flex-start",
+    paddingHorizontal: 2,
   },
-  postBookBtnText: {
-    color: colors.greenDark,
-    fontSize: font.body,
-    fontWeight: "800",
+  footerMetricText: {
+    fontVariant: ["tabular-nums"],
+    fontWeight: postTypography.metricCount.fontWeight,
+    minWidth: 10,
   },
-  ownerDeleteBtn: {
-    backgroundColor: "#FCE9E7",
-    borderColor: "#F5C4BE",
+  priceText: {
+    fontWeight: postTypography.price.fontWeight,
   },
-  ownerDeleteBtnText: {
-    color: colors.danger,
-    fontSize: font.body,
-    fontWeight: "800",
-  },
-  adminSuspendBtn: {
-    backgroundColor: "#FEF3C7",
-    borderColor: "#FDE68A",
-  },
-  adminSuspendBtnText: {
-    color: "#B45309",
-    fontSize: font.body,
-    fontWeight: "800",
-  },
-  adminUnsuspendBtn: {
-    backgroundColor: "#DEF7EC",
-    borderColor: "#BCF0DA",
-  },
-  adminUnsuspendBtnText: {
-    color: "#03543F",
-    fontSize: font.body,
-    fontWeight: "800",
-  },
-  editForm: {
-    marginTop: spacing.xs,
-  },
-  editImageContainer: {
-    borderRadius: 12,
-    marginTop: spacing.sm,
-    overflow: "hidden",
-    position: "relative",
-    width: "100%",
-  },
-  editImagePreview: {
-    aspectRatio: 16 / 9,
-    borderRadius: 12,
-    height: 200,
-    width: "100%",
-  },
-  editImageRemoveBtn: {
-    alignItems: "center",
-    backgroundColor: "rgba(0,0,0,0.65)",
-    borderRadius: 14,
-    height: 28,
-    justifyContent: "center",
-    position: "absolute",
-    right: 8,
-    top: 8,
-    width: 28,
-  },
-  editImageChangeBtn: {
-    alignItems: "center",
-    borderRadius: 5,
-    borderWidth: 1,
-    bottom: 8,
-    flexDirection: "row",
-    gap: 5,
-    left: 8,
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    position: "absolute",
-  },
-  editImageChangeText: {
-    fontSize: font.body,
-    fontWeight: "700",
-  },
-  editAddPhotoBtn: {
-    alignItems: "center",
-    borderRadius: 5,
-    borderWidth: 1,
-    flexDirection: "row",
-    gap: 6,
-    justifyContent: "center",
-    marginTop: spacing.sm,
-    paddingVertical: 9,
-    width: "100%",
-  },
-  captionInput: {
-    backgroundColor: colors.paper,
-    borderColor: colors.line,
-    borderRadius: radii.sm,
-    borderWidth: 1,
-    color: colors.ink,
-    fontSize: font.label,
-    minHeight: 78,
-    padding: spacing.md,
-    textAlignVertical: "top",
-  },
-  editActions: {
-    flexDirection: "row",
-    gap: spacing.sm,
-    justifyContent: "flex-end",
-    marginTop: spacing.sm,
-  },
-  actionBtn: {
-    alignItems: "center",
-    backgroundColor: colors.paper,
-    borderColor: colors.line,
-    borderRadius: radii.sm,
-    borderWidth: 1,
-    justifyContent: "center",
-    paddingHorizontal: 14,
-    paddingVertical: 6,
-  },
-  actionBtnText: {
-    color: colors.ink,
-    fontSize: font.body,
-    fontWeight: "700",
-  },
-  actionPrimaryBtn: {
-    backgroundColor: colors.greenDark,
-    borderColor: colors.greenDark,
-  },
-  actionPrimaryBtnText: {
-    color: "#FFFFFF",
-    fontSize: font.body,
-    fontWeight: "800",
+  priceUnit: {
+    fontWeight: postTypography.priceUnit.fontWeight,
   },
   modalOverlay: {
     alignItems: "center",

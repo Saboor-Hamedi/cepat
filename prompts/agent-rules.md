@@ -517,7 +517,64 @@ The agent must never:
 - Perform destructive operations against production data without explicit authorization.
 - Fabricate implementation status, test coverage, or performance measurements.
 
-## 19. Final Principle
+## 19. Appendix — Current Invariants and UI Conventions (November 2026)
+
+Read this before editing navigation, posts, reviews, notifications, or settings. These reflect deliberate product decisions, not accidents.
+
+### A. Social post card (`src/components/posts/Post.tsx`)
+
+- **Like** (Heart, `post-like-btn-<id>`) is wired to `togglePostLike(postId, userId)` (`src/data/postsStore.ts` + Supabase `public.technician_post_likes` / `public.toggle_post_like`). Unauthenticated users tapping Like are routed to `/login`.
+- **View counter** (`post-view-count-<id>`) automatically records unique post views via `recordPostView(postId, userId)` (`public.technician_post_views` / `public.record_post_view`) and displays the compact view count.
+- **Share** (Share2, `post-share-btn-<id>`) opens `PostShareModal` (`src/components/posts/PostShareModal.tsx`), providing direct sharing to WhatsApp, Facebook, X/Twitter, Telegram, native system share (including post image attachment when present), and Copy Clean Link (`https://cepat.id/post/<cleanId>` via `src/utils/postShare.ts` with all tokens/tracking stripped), while incrementing `share_count` via `incrementPostShare`.
+- **Comment** (MessageCircle) remains a UI icon button for future comment threads.
+- **Book** is a CalendarCheck icon button (background `palette.primarySoft`) pushing `/booking/[id]` with `{ id, postId }`.
+- **Bookmark** (save technician) renders only when `onToggleSaveTechnician` is provided and uses `accessibilityState.selected`.
+- **Price** shows `formatRupiah(startingPrice)` + `/ visit` (en) or `/ kunjungan` (id) when `serviceStartingPrice` is a number.
+- Header layout: name column (`authorMeta`, `minWidth: 0`) holds name + verified badge + rating chip, and the `@handle · service area` line sits **below** the name. Never put the handle beside the name; long handles previously shoved the timestamp and broke the layout.
+- The card/thread JSX is fragile (`<View>` balance + `styles` block). Typecheck after every edit; duplicate/misplaced closing tags caused the original Metro bundle failure.
+
+### B. Profile Ring (avatar accent)
+
+- The accent ring is a **personal, device-local** theme applied by `Avatar` via `useAppearance().profileAccentId` (`src/theme/profileAccent.ts` — the 10 colors + `PROFILE_ACCENT_RING_WIDTH = 3`). The ring is 3px with a 2px inner gap (1px for avatars ≤44px). `none` disables it.
+- Persisted in `@cepat/appearance-context-v1`; hydration tolerates missing keys (older payloads).
+- Do not hardcode ring colors in components; always go through the accent module. Do not give other users' avatars extra chrome.
+- The compose FAB (`nav-compose-fab` in `src/components/Header.tsx`) fills with the accent (fallback `palette.primary`). Keep tab layout, safe-area insets, and 4px surface-colored border intact.
+- Settings entry: PREFERENCES → Profile Ring (`profile-accent` section). The panel (`SettingProfileAccent`) applies instantly via `setProfileAccent` and shows a live preview; no save button by design (same as theme/accessibility prefs).
+- `Avatar` is intentionally memoized (with `useMemo` on accent/uri resolution and artwork). Preserve that when modifying it.
+
+### C. Reviews
+
+- **One review per completed booking, editable ONLY by the customer who completed that booking**:
+  - `BookingLifecyclePanel.hasAlreadyReviewed` → swaps the creation form for the submitted review view with an **"Edit Feedback"** button visible strictly when `user.id === activeBooking.customerUserId && user.id !== activeBooking.technicianUserId`.
+  - `submitBookingReview` throws `review_already_submitted` on duplicate creation attempts; `updateBookingReview` (`src/data/marketplaceStore.ts`) and `public.submit_or_update_booking_review` (`supabase/migrations/20261106020000_post_likes_views_shares_and_review_edit.sql`) allow ONLY the customer of that completed booking to edit their rating and comment across `/booking/[id]`, `/bookings` (History and Reviews & Reports tabs), and `/technician/[id]` (Reviews tab).
+  - Admins (who are not the customer of that completed booking), the technician themselves, and unrelated users cannot submit or edit feedback.
+- Clients must not directly INSERT into `public.reviews` outside the trusted `submit_or_update_booking_review` RPC; don't add a permissive client insert policy.
+- `mapSupabaseBooking` maps `review_rating`/`review_comment`; keep those lines and the `20261106000100_bookings_review_fields.sql` and `20261106020000_post_likes_views_shares_and_review_edit.sql` migrations in sync with the baseline schema.
+
+### D. Notifications
+
+- Client deletes write a tombstone (`@cepat/notifications-deleted:<userId>`, max 200) before touching local storage. `loadNotifications` (fixtures **and** Supabase) filters tombstoned ids. Deleting a notification must never resurrect it after a refresh; that was a live bug (missing DELETE policy + swallowed error).
+- The remote DELETE policy is `notifications_delete_owner_admin` (owner or admin); do not widen it.
+- `handleDeleteNotification` is optimistic; refresh only on error. Keep the swipe affordance (`SwipeableRow`).
+
+### E. Search
+
+- Both search surfaces render the shared `SearchField` (radius 12, height 40, `palette.inputBg`, custom view-drawn magnifier, `font.title`, clear button). Do not fork it per screen; contextual placeholders/testIDs differ, styling must not.
+- `/search` keeps `autoFocus` and `Link.AppleZoomTarget`; the location-picker area search must not autofocus.
+- Both top bars collapse on scroll (`Animated` interpolation on `scrollY`). Keep durations/clamps consistent.
+
+### F. Bottom navigation & shell
+
+- Single bar in `src/components/Header.tsx` via `AppNavigationBar`: three tabs + raised center FAB + profile entry. Do not add a fifth/sixth slot without re-checking the safe-area insets and FAB elevation; Xiaomi/Android gesture-nav clearance is a documented requirement.
+- Notifications badge count comes from `loadNotifications` unread count; keep updates cheap (memoized filter).
+
+### G. Testing posture (honest)
+
+- As of 2026-11-06: `npx tsc --noEmit` ✓, `npx eslint` on changed files ✓, `__tests__/profile.avatar.test.tsx` ✓ (3/3).
+- 5 stale tests fail due to the redesign (`nav-workspace` removed; id-locale `Keluar` vs expected `Log out`; `App language` removed from the language panel). Do not delete assertions or relax copy to make these pass — update the expectations to the redesigned UI deliberately.
+- The 1,000-line limit is currently violated by `Post.tsx` and `technician/[id].tsx`; treat as debt.
+
+## 20. Final Principle
 
 **Implement carefully. Test continuously. Verify honestly. Protect user data. Preserve working functionality. Document the real state of the project.**
 

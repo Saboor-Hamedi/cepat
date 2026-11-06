@@ -47,7 +47,7 @@ export function BookingStatusBadge({ booking, testID }: BookingStatusBadgeProps)
 
 const styles = StyleSheet.create({
   badge: {
-    borderRadius: 999,
+    borderRadius: 5,
     maxWidth: '52%',
     paddingHorizontal: 10,
     paddingVertical: 4,

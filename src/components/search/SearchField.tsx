@@ -17,16 +17,22 @@ function LeadingIcon({ mutedColor }: { mutedColor: string }) {
 
 export interface SearchFieldTriggerProps {
   placeholder: string;
+  borderless?: boolean;
 }
 
-export function SearchFieldTrigger({ placeholder }: SearchFieldTriggerProps) {
+export function SearchFieldTrigger({
+  placeholder,
+  borderless = false,
+}: SearchFieldTriggerProps) {
   const { palette } = useAppearance();
 
   return (
     <View
       style={[
         styles.shell,
-        { backgroundColor: palette.inputBg, borderColor: palette.border },
+        borderless
+          ? styles.shellBorderless
+          : { backgroundColor: palette.inputBg, borderColor: palette.border },
       ]}
     >
       <LeadingIcon mutedColor={palette.textMuted} />
@@ -46,6 +52,7 @@ export interface SearchFieldProps {
   testID?: string;
   value?: string;
   onChangeText?: (text: string) => void;
+  onSubmitEditing?: () => void;
   onPress?: () => void;
   onClear?: () => void;
   clearAccessibilityLabel?: string;
@@ -58,6 +65,7 @@ export function SearchField({
   testID,
   value,
   onChangeText,
+  onSubmitEditing,
   onPress,
   onClear,
   clearAccessibilityLabel,
@@ -113,6 +121,7 @@ export function SearchField({
         autoCorrect={false}
         autoFocus={autoFocus}
         onChangeText={onChangeText}
+        onSubmitEditing={onSubmitEditing}
         placeholder={placeholder}
         placeholderTextColor={palette.textMuted}
         returnKeyType="search"
@@ -135,6 +144,11 @@ const styles = StyleSheet.create({
     height: 40,
     paddingHorizontal: spacing.sm,
     width: '100%',
+  },
+  shellBorderless: {
+    backgroundColor: 'transparent',
+    borderColor: 'transparent',
+    borderWidth: 0,
   },
   iconBox: {
     alignItems: 'center',

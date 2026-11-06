@@ -39,11 +39,13 @@ export default function LoginScreen() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const submitting = useRef(false);
+  const hasRedirected = useRef(false);
 
   const safeRedirect = resolveSafeRedirect(params.redirect, params.technicianId);
 
   useEffect(() => {
-    if (!sessionLoading && user && params.registered !== '1') {
+    if (!sessionLoading && user && params.registered !== '1' && !hasRedirected.current) {
+      hasRedirected.current = true;
       if (safeRedirect) {
         router.replace(safeRedirect as never);
         return;
@@ -71,11 +73,14 @@ export default function LoginScreen() {
       if (!supabase) {
         const previewRole = params.role === 'technician' ? 'technician' : 'customer';
         signInPreviewAccount(cleanEmail, previewRole);
-        if (safeRedirect) {
-          router.replace(safeRedirect as never);
-          return;
+        if (!hasRedirected.current) {
+          hasRedirected.current = true;
+          if (safeRedirect) {
+            router.replace(safeRedirect as never);
+            return;
+          }
+          router.replace('/');
         }
-        router.replace('/');
         return;
       }
 
@@ -91,11 +96,14 @@ export default function LoginScreen() {
         return;
       }
 
-      if (safeRedirect) {
-        router.replace(safeRedirect as never);
-        return;
+      if (!hasRedirected.current) {
+        hasRedirected.current = true;
+        if (safeRedirect) {
+          router.replace(safeRedirect as never);
+          return;
+        }
+        router.replace('/');
       }
-      router.replace('/');
     } catch {
       setError(t('auth.serviceUnavailable'));
     } finally {

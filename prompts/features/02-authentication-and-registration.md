@@ -240,3 +240,16 @@ Report:
 Do not mark the feature completed if required security checks or tests remain unverified.
 
 **Final instruction:** Inspect first, preserve the existing UI, implement securely, test continuously, and report only verified results.
+
+## 13. Implementation Note — November 2026
+
+The authentication and registration flows were **not modified** during the recent UI-overhaul sessions; this file remains the authoritative spec for them. Verified state:
+
+- Registration, login, password recovery, session restore, and sign-out are implemented (`src/auth/AuthProvider.tsx`, `src/app/register.tsx`, `src/app/login.tsx`, `src/app/forgot-password.tsx`, `src/app/reset-password.tsx`).
+- Technician approval gating via `technician_applications` sync (`src/auth/technicianApplication.ts` + `supabase/migrations/20261030010000_ensure_technician_application_sync.sql`).
+- New settings entries added in the 2026-11 round that touch (but do not weaken) auth/session behavior:
+  - **Profile Ring** settings panel (`src/setting/profile/SettingProfileAccent.tsx`) is purely presentational and persists only `profileAccentId` in the appearance store (`@cepat/appearance-context-v1`); it does not alter sessions, roles, or profiles.
+  - Settings back navigation (`BackHeader`) and protected-section gating are unchanged; account-only sections still hide for signed-out users.
+- Live verification (remote Supabase migrations applied; signup/login/recovery/logout on non-production accounts) remains outstanding. Do not mark this feature `completed`.
+
+For anything auth-adjacent the agent must consult this file, `agent-rules.md`, and `project-status.md` before editing; report only actually executed test results.

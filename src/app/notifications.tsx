@@ -22,8 +22,6 @@ import { router } from 'expo-router';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { font } from '../theme/typography';
 import {
-  Animated,
-  PanResponder,
   Pressable,
   RefreshControl,
   ScrollView,
@@ -39,7 +37,6 @@ import {
   CheckCircle2,
   Handshake,
   MessageSquare,
-  Trash2,
   Wrench,
 } from 'lucide-react-native';
 import { ICON_SIZE, ICON_STROKE } from '../theme/icons';
@@ -47,6 +44,7 @@ import { useAuth } from '../auth/AuthProvider';
 import { AppNavigationBar, EmptyState, LoadingState } from '../components/marketplace-ui';
 import { BackHeader } from "../components/BackHeader";
 import { StatusFilterPills } from '../bookings';
+import { SwipeableRow } from '../components/SwipeableRow';
 import { useAppearance, type ThemePalette } from '../context/AppearanceContext';
 import {
   deleteNotification,
@@ -59,6 +57,7 @@ import {
   type CepatNotification,
 } from '../data/notifications';
 import { useLanguage } from '../i18n/locale';
+import { formatRelativeTime } from '../utils/relativeTime';
 import { spacing } from '../theme/tokens';
 
 export type NotificationTabKey = 'all' | 'unread' | 'bookings' | 'messages';
@@ -388,73 +387,22 @@ function SwipeableNotificationCard({
   onPress: () => void;
   onDelete: () => void;
 }) {
-  const [pan] = useState(() => new Animated.Value(0));
-  const [swipedOpen, setSwipedOpen] = useState(false);
-
-  const panResponder = useMemo(
-    () =>
-      PanResponder.create({
-        onMoveShouldSetPanResponder: (_, gestureState) =>
-          Math.abs(gestureState.dx) > 10 && Math.abs(gestureState.dy) < 10,
-        onPanResponderMove: (_, gestureState) => {
-          if (gestureState.dx < 0) {
-            pan.setValue(Math.max(-90, gestureState.dx));
-          } else if (swipedOpen && gestureState.dx > 0) {
-            pan.setValue(Math.min(0, -90 + gestureState.dx));
-          }
-        },
-        onPanResponderRelease: (_, gestureState) => {
-          if (gestureState.dx < -35) {
-            Animated.spring(pan, { toValue: -90, useNativeDriver: true }).start();
-            setSwipedOpen(true);
-          } else {
-            Animated.spring(pan, { toValue: 0, useNativeDriver: true }).start();
-            setSwipedOpen(false);
-          }
-        },
-      }),
-    [pan, swipedOpen],
-  );
-
   const tone = notificationTone(item);
   const toneStyle = tone === 'generic' ? null : TONE_STYLES[tone];
 
   return (
-    <View style={styles.rowWrap}>
-      <View style={styles.deleteBackground}>
-        <Pressable
-          accessibilityLabel="Delete notification"
-          accessibilityRole="button"
-          onPress={onDelete}
-          style={styles.deleteButton}
-          testID={`delete-notification-${item.id}`}
-        >
-          <Trash2 color="#FFFFFF" size={ICON_SIZE} strokeWidth={ICON_STROKE} />
-          <Text style={styles.deleteButtonText}>
-            {language === 'en' ? 'Delete' : 'Hapus'}
-          </Text>
-        </Pressable>
-      </View>
-      <Animated.View
-        style={[
-          styles.row,
-          { transform: [{ translateX: pan }] },
-        ]}
-        {...panResponder.panHandlers}
-      >
+    <SwipeableRow
+      deleteAccessibilityLabel="Delete notification"
+      deleteTestID={`delete-notification-${item.id}`}
+      onDelete={onDelete}
+      testID={`notification-${item.id}`}
+    >
+      <View style={styles.row}>
         <Pressable
           accessibilityRole="button"
           accessibilityState={{ selected: !item.readAt }}
-          onPress={() => {
-            if (swipedOpen) {
-              Animated.spring(pan, { toValue: 0, useNativeDriver: true }).start();
-              setSwipedOpen(false);
-            } else {
-              onPress();
-            }
-          }}
+          onPress={onPress}
           style={styles.cardPressArea}
-          testID={`notification-${item.id}`}
         >
           <View
             style={[
@@ -478,21 +426,18 @@ function SwipeableNotificationCard({
             >
               {localizedTitle(item, language)}
             </Text>
-            <Text
-              numberOfLines={2}
-              style={styles.notificationBody}
-            >
+            <Text numberOfLines={2} style={styles.notificationBody}>
               {localizedBody(item, language)}
             </Text>
             <Text style={styles.notificationTime}>
-              {formatNotificationRelativeTime(item.createdAt, language)}
+              {formatRelativeTime(item.createdAt, language)}
             </Text>
           </View>
         </Pressable>
 
         {!item.readAt && <View style={styles.unreadDot} />}
-      </Animated.View>
-    </View>
+      </View>
+    </SwipeableRow>
   );
 }
 
@@ -592,34 +537,6 @@ function localizedBody(item: CepatNotification, language: 'id' | 'en') {
       : `${nameWithRole} telah menyelesaikan pekerjaan. Silakan tinjau dan konfirmasi.`;
   }
   return item.body ?? '';
-}
-
-function formatNotificationRelativeTime(dateString: string, language: 'id' | 'en'): string {
-  const date = new Date(dateString);
-  const now = new Date();
-  const diffMs = now.getTime() - date.getTime();
-  if (Number.isNaN(diffMs)) return dateString;
-
-  const diffSec = Math.floor(diffMs / 1000);
-  const diffMin = Math.floor(diffSec / 60);
-  const diffHour = Math.floor(diffMin / 60);
-  const diffDay = Math.floor(diffHour / 24);
-
-  if (language === 'en') {
-    if (diffMin < 1) return 'Just now';
-    if (diffMin < 60) return `${diffMin}m ago`;
-    if (diffHour < 24) return `${diffHour}h ago`;
-    if (diffDay === 1) return 'Yesterday';
-    if (diffDay < 7) return `${diffDay}d ago`;
-    return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-  } else {
-    if (diffMin < 1) return 'Baru saja';
-    if (diffMin < 60) return `${diffMin}m lalu`;
-    if (diffHour < 24) return `${diffHour}j lalu`;
-    if (diffDay === 1) return 'Kemarin';
-    if (diffDay < 7) return `${diffDay}h lalu`;
-    return date.toLocaleDateString('id-ID', { month: 'short', day: 'numeric' });
-  }
 }
 
 function createStyles(palette: ThemePalette, isDark: boolean) {

@@ -1,10 +1,12 @@
-import { StyleSheet, Text, View } from 'react-native';
+import { router } from 'expo-router';
+import { CheckCircle2, ChevronRight, LayoutGrid, XCircle } from 'lucide-react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { useAppearance } from '../../context/AppearanceContext';
 import { localizeArea, useLanguage } from '../../i18n/locale';
-import { colors, radii, spacing } from '../../theme/tokens';
-import type { BookingRecord } from '../../types/marketplace';
 import { font } from '../../theme/typography';
+import type { BookingRecord } from '../../types/marketplace';
+import { formatRelativeTime } from '../../utils/relativeTime';
 
 export interface TaskHistoryCardProps {
   task?: BookingRecord;
@@ -12,61 +14,114 @@ export interface TaskHistoryCardProps {
 }
 export type JobHistoryCardProps = TaskHistoryCardProps;
 
+const CANCELLED_STATUSES: BookingRecord['status'][] = ['cancelled', 'declined'];
+
 export function TaskHistoryCard({ task, job }: TaskHistoryCardProps) {
   const item = task ?? job;
+  const { language } = useLanguage();
+  const { palette, isDark } = useAppearance();
+
   if (!item) return null;
 
-  const { language, t } = useLanguage();
-  const { palette } = useAppearance();
+  const cancelled = CANCELLED_STATUSES.includes(item.status);
+  const areaLabel = localizeArea(item.serviceArea, language);
 
   return (
-    <View
-      style={[
-        styles.card,
-        { backgroundColor: palette.surface, borderColor: palette.border },
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={`${item.serviceNameSnapshot} · ${item.customerName}`}
+      onPress={() =>
+        router.push({
+          pathname: '/booking/[id]' as never,
+          params: { id: item.id },
+        })
+      }
+      style={({ pressed }) => [
+        styles.row,
+        {
+          backgroundColor: palette.background,
+          borderBottomColor: palette.border,
+          opacity: pressed ? 0.7 : 1,
+        },
       ]}
       testID={`history-job-card-${item.id}`}
     >
-      <View style={styles.cardTop}>
-        <Text style={[styles.cardTitle, { color: palette.text }]}>
+      <View
+        style={[
+          styles.iconWrap,
+          {
+            backgroundColor: cancelled
+              ? 'rgba(148, 163, 184, 0.15)'
+              : 'rgba(16, 185, 129, 0.15)',
+          },
+        ]}
+      >
+        {item.status === 'completed' ? (
+          <CheckCircle2 size={20} color="#10B981" strokeWidth={1.8} />
+        ) : cancelled ? (
+          <XCircle size={20} color="#94A3B8" strokeWidth={1.8} />
+        ) : (
+          <LayoutGrid size={20} color="#94A3B8" strokeWidth={1.8} />
+        )}
+      </View>
+
+      <View style={styles.meta}>
+        <Text
+          numberOfLines={1}
+          style={[styles.title, { color: palette.text }]}
+        >
           {item.serviceNameSnapshot}
         </Text>
-        <Text style={styles.statusTag}>{t(`booking.status.${item.status}`)}</Text>
+        <Text
+          numberOfLines={1}
+          style={[styles.subtitle, { color: isDark ? '#94A3B8' : palette.textMuted }]}
+        >
+          {item.customerName} · {areaLabel}
+        </Text>
       </View>
-      <Text style={[styles.cardMeta, { color: palette.textMuted }]}>
-        {item.customerName} · {localizeArea(item.serviceArea, language)}
+
+      <Text style={[styles.time, { color: isDark ? '#94A3B8' : palette.textMuted }]}>
+        {formatRelativeTime(item.updatedAt || item.createdAt, language)}
       </Text>
-    </View>
+      <ChevronRight size={17} color={isDark ? '#94A3B8' : palette.textMuted} strokeWidth={1.8} />
+    </Pressable>
   );
 }
 
 export const JobHistoryCard = TaskHistoryCard;
 
 const styles = StyleSheet.create({
-  card: {
-    borderRadius: 5,
-    borderWidth: 1,
-    marginBottom: spacing.md,
-    padding: spacing.lg,
-  },
-  cardTop: {
+  row: {
     alignItems: 'center',
+    borderBottomWidth: StyleSheet.hairlineWidth,
     flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginBottom: spacing.xs,
+    gap: 12,
+    paddingHorizontal: 2,
+    paddingVertical: 12,
   },
-  cardTitle: {
+  iconWrap: {
+    alignItems: 'center',
+    borderRadius: 20,
+    height: 40,
+    justifyContent: 'center',
+    width: 40,
+  },
+  meta: {
     flex: 1,
-    fontSize: font.heading,
+    gap: 2,
+    minWidth: 0,
+  },
+  title: {
+    fontSize: 15,
     fontWeight: '800',
+    letterSpacing: -0.1,
   },
-  statusTag: {
-    color: colors.muted,
-    fontSize: font.body,
-    fontWeight: '700',
+  subtitle: {
+    fontSize: font.label,
+    fontWeight: '500',
   },
-  cardMeta: {
-    fontSize: font.body,
-    marginTop: 2,
+  time: {
+    fontSize: font.caption,
+    fontWeight: '600',
   },
 });

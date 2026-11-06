@@ -325,3 +325,62 @@ Report:
 - Updated project status.
 
 **Final objective:** Transform Cepat from its current basic prototype into the actual marketplace product described in the project documentation. Prioritize a complete, coherent user experience over superficial visual changes.
+
+## 14. Current Implementation Snapshot (November 2026)
+
+The redesign is built. This section tells the next agent what exists and how the pieces fit together.
+
+### Bottom navigation (`src/components/Header.tsx`, exported as `AppNavigationBar`)
+
+- Single 56px bar with hairline top border, max width 820 centered.
+- Slots: `nav-marketplace`, `nav-bookings` (left) … center elevated circular **compose FAB** (`nav-compose-fab`, 60px, elevated 30px above the bar, 4px surface-colored ring border, `/compose` route, fill = profile accent color or `palette.primary`) … `nav-notifications` (with unread badge via `loadNotifications`), `account-entry` ("Profile" label → opens `profile-sidebar-modal` sidebar).
+- Active tab shows a 3px top `activeBar` tinted `colors.greenDark` (or `#4EBA97` in dark mode); labels include badge counts capped at 99+.
+- Icons are view-drawn (no icon font dependency); consistent muted → green-dark active tinting.
+
+### Marketplace home (`src/app/index.tsx`)
+
+- Sticky, collapsing search header: `SearchFieldTrigger` (styled like the shared input) inside a `Link.AppleZoom`/`AppleZoomTarget` pair → pushes to `/search` carrying `{area, category}`; location pill button on the right opens `MarketplaceMapSearchModal` (`src/components/marketplace/MarketplaceSearch.tsx`) with pin-drop grid, region pills, saved addresses, and district index.
+- `CategoryTabs` under the header; horizontal pills, active pill solid `#10B981` with dark text, inactive `#161F2E`.
+- Feed: Threads-style technician posts (see `features/01` §14 for post-card anatomy; like/comment/share are UI-only icons, Book is functional).
+- Thread connector line (`threadLine`) links stacked posts of the same technician in the feed.
+
+### Post form / compose (`src/app/compose.tsx`, `src/components/posts/*`)
+
+- Inline auto-expanding caption composer with image attach (up to 4), preview strip, character counter, pill-shaped submit.
+- New posts appear in the marketplace feed and technician profile feed immediately (fixture/demo store).
+
+### Settings (`src/setting/*`)
+
+- Root: `BackHeader` + sections (ACCOUNT: Account/Address/Security/Password · PREFERENCES: Language/Notifications/Appearance/**Profile Ring** · ABOUT & LEGAL: Term Policy/Current Version · ACCOUNT ACTIONS: Delete Account when signed in).
+- Appearance panel: Light/Dark/System theme chips + large text + reduce motion (instant apply, persisted).
+- **Profile Ring** panel: 10 accent colors + None; live preview of the user's avatar with the 3px ring; persisted in appearance storage; also tints the compose FAB.
+
+### Technician profile (`src/app/technician/[id].tsx`)
+
+- Cover image with owner-only Camera ("Change cover photo") and **Settings** (`profile-settings-btn` → `/account`) buttons overlaid top-right.
+- Avatar with optional Profile Ring; stats strip (rating · tasks · posts · area); services/portfolio/reviews/about tabs; reviews tab shows the "verified task completion" notice and full ratings breakdown.
+- Owner post composer and post feed with edit/delete/suspend.
+
+### Notifications (`src/app/notifications.tsx` + `src/data/notifications.ts`)
+
+- Inbox with filter tabs (All/Unread/Bookings/Messages), swipe-to-delete (`SwipeableRow`). Delete is durable: local tombstone list + RLS DELETE policy (`notifications_delete_owner_admin`) added this round; deleted items no longer reappear on refresh.
+
+### Booking lifecycle & reviews (`src/components/BookingLifecyclePanel.tsx`)
+
+- Status machine with link/contact-blocked chat enforcement, optimistic sending with client message ids.
+- "One review per booking": form hidden after submit; store enforces booking-scoped duplication natively (`review_already_submitted`); remote persistence via `bookings.review_rating`/`review_comment` (migration `20261106000100_bookings_review_fields.sql`, applied to baseline `schema.sql`).
+
+### Search parity
+
+- `/search` and the location-picker area search both use the shared `SearchField` (`radius 12`, `height 40`, `palette.inputBg`, custom magnifier, clear button, `font.title`). No forked styling anywhere.
+
+### Intentional UI-only elements (do not wire blindly)
+
+- Like / Comment / Share icons on post cards — decorative until product decision lands.
+- Star rating rendering on the submitted-review box (read-only).
+
+### Verification status (this round)
+
+- `tsc --noEmit` ✓ · `eslint` changed files ✓ · `profile.avatar.test.tsx` 3/3 ✓.
+- `marketplace.components` / `marketplace.routes`: 5 pre-existing stale failures (redesign artifacts), documented in `project-status.md`; do not relax assertions to green.
+- Device and remote-Supabase verification outstanding; both new migrations must be applied before delete-tombstone semantics and remote review persistence are live.

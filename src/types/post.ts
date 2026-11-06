@@ -21,6 +21,10 @@ export interface Post {
   imageUri?: string;
   mediaUrls?: string[];
   isServicePost?: boolean;
+  likeCount?: number;
+  likedByMe?: boolean;
+  viewCount?: number;
+  shareCount?: number;
   published: boolean;
   suspended?: boolean;
   suspendedAt?: string;
@@ -43,6 +47,10 @@ export interface CreatePostInput {
   imageUri?: string;
   mediaUrls?: string[];
   isServicePost?: boolean;
+  likeCount?: number;
+  likedByMe?: boolean;
+  viewCount?: number;
+  shareCount?: number;
   published?: boolean;
 }
 
@@ -55,6 +63,10 @@ export interface UpdatePostInput {
   imageUri?: string;
   mediaUrls?: string[];
   isServicePost?: boolean;
+  likeCount?: number;
+  likedByMe?: boolean;
+  viewCount?: number;
+  shareCount?: number;
 }
 
 export interface FetchPostsOptions {

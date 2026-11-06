@@ -1,4 +1,4 @@
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { Avatar } from '../../components/marketplace-ui';
 import { useAppearance } from '../../context/AppearanceContext';
@@ -9,7 +9,7 @@ import {
   createUpcomingScheduleDates,
   formatSchedule,
 } from '../schedule';
-import { radii, spacing } from '../../theme/tokens';
+import { spacing } from '../../theme/tokens';
 import type { BookingRecord } from '../../types/marketplace';
 import { font } from '../../theme/typography';
 
@@ -38,7 +38,7 @@ export function TaskRequestCard({
   onChangeProposedTime,
 }: TaskRequestCardProps) {
   const { language, t } = useLanguage();
-  const { palette } = useAppearance();
+  const { palette, isDark } = useAppearance();
   const dateOptions = createUpcomingScheduleDates();
   const selectedDate = proposedDate || dateOptions[0].value;
   const selectedTime = proposedTime || BOOKING_TIME_SLOTS[0];
@@ -47,7 +47,7 @@ export function TaskRequestCard({
     <View
       style={[
         styles.card,
-        { backgroundColor: palette.surface, borderColor: palette.border },
+        { backgroundColor: isDark ? '#111827' : palette.surface, borderColor: palette.border },
       ]}
       testID={`incoming-request-card-${request.id}`}
     >
@@ -86,7 +86,7 @@ export function TaskRequestCard({
       <View
         style={[
           styles.addressBox,
-          { backgroundColor: palette.surfaceElevated, borderColor: palette.border },
+          { backgroundColor: isDark ? '#0B0F17' : palette.surfaceElevated, borderColor: palette.border },
         ]}
         testID={`customer-address-${request.id}`}
       >
@@ -134,13 +134,17 @@ export function TaskRequestCard({
           <View
             style={[
               styles.schedulePanel,
-              { backgroundColor: palette.surfaceElevated, borderColor: palette.border },
+              { backgroundColor: isDark ? '#0B0F17' : palette.surfaceElevated, borderColor: palette.border },
             ]}
           >
             <Text style={[styles.scheduleLabel, { color: palette.textMuted }]}>
               {language === 'en' ? 'SUGGEST A NEW TIME' : 'USULKAN JADWAL BARU'}
             </Text>
-            <View style={styles.scheduleRow}>
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.scheduleRow}
+            >
               {dateOptions.map((option) => (
                 <Pressable
                   key={option.value}
@@ -177,8 +181,12 @@ export function TaskRequestCard({
                   </Text>
                 </Pressable>
               ))}
-            </View>
-            <View style={styles.scheduleRow}>
+            </ScrollView>
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.scheduleRow}
+            >
               {BOOKING_TIME_SLOTS.map((time) => (
                 <Pressable
                   key={time}
@@ -214,7 +222,7 @@ export function TaskRequestCard({
                   </Text>
                 </Pressable>
               ))}
-            </View>
+            </ScrollView>
             <Pressable
               accessibilityRole="button"
               onPress={() =>
@@ -224,14 +232,11 @@ export function TaskRequestCard({
                   selectedTime,
                 )
               }
-              style={[
-                styles.proposeBtn,
-                { backgroundColor: palette.primarySoft },
-              ]}
+              style={styles.proposeBtn}
               testID={`dashboard-propose-btn-${request.id}`}
             >
               <Text
-                style={[styles.proposeBtnText, { color: palette.primary }]}
+                style={styles.proposeBtnText}
               >
                 {t('booking.proposeTime')}
               </Text>
@@ -251,10 +256,10 @@ export const JobRequestCard = TaskRequestCard;
 
 const styles = StyleSheet.create({
   card: {
-    borderRadius: 5,
+    borderRadius: 14,
     borderWidth: 1,
     marginBottom: spacing.md,
-    padding: spacing.lg,
+    padding: 14,
   },
   customerHeaderRow: {
     alignItems: 'center',
@@ -271,7 +276,7 @@ const styles = StyleSheet.create({
     marginTop: 2,
   },
   customerProfileBtn: {
-    borderRadius: 5,
+    borderRadius: 999,
     borderWidth: 1,
     paddingHorizontal: spacing.sm,
     paddingVertical: 5,
@@ -296,7 +301,7 @@ const styles = StyleSheet.create({
     fontWeight: '800',
   },
   addressBox: {
-    borderRadius: 5,
+    borderRadius: 12,
     borderWidth: 1,
     marginBottom: spacing.sm,
     paddingHorizontal: spacing.md,
@@ -330,20 +335,20 @@ const styles = StyleSheet.create({
   },
   acceptBtn: {
     alignItems: 'center',
-    borderRadius: 5,
+    borderRadius: 12,
     flex: 1,
     justifyContent: 'center',
     minHeight: 40,
     paddingHorizontal: spacing.sm,
   },
   acceptBtnText: {
-    color: '#FFFFFF',
+    color: '#000000',
     fontSize: font.body,
     fontWeight: '800',
   },
   declineBtn: {
     alignItems: 'center',
-    borderRadius: 5,
+    borderRadius: 12,
     borderWidth: 1,
     flex: 1,
     justifyContent: 'center',
@@ -355,7 +360,7 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
   schedulePanel: {
-    borderRadius: 5,
+    borderRadius: 12,
     borderWidth: 1,
     marginTop: spacing.sm,
     padding: spacing.sm,
@@ -367,32 +372,34 @@ const styles = StyleSheet.create({
     marginBottom: spacing.xs,
   },
   scheduleRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
     gap: spacing.xs,
     marginBottom: spacing.xs,
+    paddingVertical: 2,
   },
   scheduleChip: {
-    borderRadius: 5,
+    alignItems: 'center',
+    borderRadius: 999,
     borderWidth: 1,
-    minHeight: 34,
     justifyContent: 'center',
-    paddingHorizontal: spacing.sm,
-    paddingVertical: 6,
+    minHeight: 40,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
   },
   scheduleChipText: {
-    fontSize: font.caption,
+    fontSize: font.label,
     fontWeight: '700',
   },
   proposeBtn: {
     alignItems: 'center',
-    borderRadius: 5,
     justifyContent: 'center',
     paddingHorizontal: spacing.md,
+    paddingVertical: 8,
   },
   proposeBtnText: {
-    fontSize: font.body,
-    fontWeight: '800',
+    color: '#94A3B8',
+    fontSize: font.label,
+    fontWeight: '700',
+    letterSpacing: 0.1,
   },
   proposedBadge: {
     fontSize: font.body,

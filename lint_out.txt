@@ -1,0 +1,290 @@
+npm notice run cepat@1.0.2 npx
+npm notice run expo lint
+env: load .env
+env: export EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY EXPO_PUBLIC_SUPABASE_URL
+npm warn install-scripts .npmrc allow-scripts setting is being ignored because --allow-scripts was passed on the command line
+npm notice run cepat@1.0.2 npx
+npm notice run eslint B:\react-native\Cepat\src --fix=false --cache=true --cache-location=B:\react-native\Cepat\.expo\cache\eslint\
+
+B:\react-native\Cepat\src\app\booking\[id].tsx
+   22:3   warning  'Avatar' is defined but never used                                                                                                                @typescript-eslint/no-unused-vars
+   25:3   warning  'Rating' is defined but never used                                                                                                                @typescript-eslint/no-unused-vars
+   82:10  warning  'savedAddresses' is assigned a value but never used                                                                                               @typescript-eslint/no-unused-vars
+  243:6   warning  React Hook useEffect has missing dependencies: 'categorySlug', 'language', and 'serviceName'. Either include them or remove the dependency array  react-hooks/exhaustive-deps
+
+B:\react-native\Cepat\src\app\category\[slug].tsx
+  4:20  warning  'Pressable' is defined but never used  @typescript-eslint/no-unused-vars
+
+B:\react-native\Cepat\src\auth\AuthProvider.tsx
+  330:6  warning  React Hook useEffect has a missing dependency: 'user'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+
+B:\react-native\Cepat\src\components\Avatar.tsx
+  19:11  warning  'palette' is assigned a value but never used  @typescript-eslint/no-unused-vars
+
+B:\react-native\Cepat\src\components\BookingLifecyclePanel.tsx
+   10:3   warning  'KeyboardAvoidingView' is defined but never used                @typescript-eslint/no-unused-vars
+   12:3   warning  'Platform' is defined but never used                            @typescript-eslint/no-unused-vars
+   20:10  warning  'SafeAreaView' is defined but never used                        @typescript-eslint/no-unused-vars
+   22:10  warning  'Avatar' is defined but never used                              @typescript-eslint/no-unused-vars
+   46:3   warning  'formatSchedule' is defined but never used                      @typescript-eslint/no-unused-vars
+   54:10  warning  'formatMessageTime' is defined but never used                   @typescript-eslint/no-unused-vars
+   92:10  warning  'chatError' is assigned a value but never used                  @typescript-eslint/no-unused-vars
+   94:10  warning  'isChatMenuOpen' is assigned a value but never used             @typescript-eslint/no-unused-vars
+   94:26  warning  'setIsChatMenuOpen' is assigned a value but never used          @typescript-eslint/no-unused-vars
+   95:10  warning  'chatHistoryVisible' is assigned a value but never used         @typescript-eslint/no-unused-vars
+   96:10  warning  'historyCleared' is assigned a value but never used             @typescript-eslint/no-unused-vars
+   99:9   warning  'isChatClosed' is assigned a value but never used               @typescript-eslint/no-unused-vars
+  104:9   warning  'handleClearHistory' is assigned a value but never used         @typescript-eslint/no-unused-vars
+  121:9   warning  'handleSendPhotoAttachment' is assigned a value but never used  @typescript-eslint/no-unused-vars
+  262:9   warning  'handleSendMessage' is assigned a value but never used          @typescript-eslint/no-unused-vars
+
+B:\react-native\Cepat\src\components\InAppNotificationBanner.tsx
+  49:11  warning  'language' is assigned a value but never used                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      @typescript-eslint/no-unused-vars
+  52:21  error    Error: Cannot access refs during render
+
+React refs are values that are not needed for rendering. Refs should only be accessed outside of render, such as in event handlers or effects. Accessing a ref value (the `current` property) during render can cause your component not to update as expected (https://react.dev/reference/react/useRef).
+
+B:\react-native\Cepat\src\components\InAppNotificationBanner.tsx:52:21
+  50 |
+  51 |   const [activeNotification, setActiveNotification] = useState<CepatNotification | null>(null);
+> 52 |   const slideAnim = useRef(new Animated.Value(-120)).current;
+     |                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ Cannot access ref value during render
+  53 |   const hideTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  54 |
+  55 |   useEffect(() => {                                                                                                                                                                                                                                                                     react-hooks/refs
+  52:21  error    Error: Cannot access refs during render
+
+React refs are values that are not needed for rendering. Refs should only be accessed outside of render, such as in event handlers or effects. Accessing a ref value (the `current` property) during render can cause your component not to update as expected (https://react.dev/reference/react/useRef).
+
+B:\react-native\Cepat\src\components\InAppNotificationBanner.tsx:52:21
+  50 |
+  51 |   const [activeNotification, setActiveNotification] = useState<CepatNotification | null>(null);
+> 52 |   const slideAnim = useRef(new Animated.Value(-120)).current;
+     |                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ Cannot access ref value during render
+  53 |   const hideTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  54 |
+  55 |   useEffect(() => {                                                                                                                                                                                                                                                                     react-hooks/refs
+  52:21  error    Error: Cannot access refs during render
+
+React refs are values that are not needed for rendering. Refs should only be accessed outside of render, such as in event handlers or effects. Accessing a ref value (the `current` property) during render can cause your component not to update as expected (https://react.dev/reference/react/useRef).
+
+B:\react-native\Cepat\src\components\InAppNotificationBanner.tsx:52:21
+  50 |
+  51 |   const [activeNotification, setActiveNotification] = useState<CepatNotification | null>(null);
+> 52 |   const slideAnim = useRef(new Animated.Value(-120)).current;
+     |                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ Cannot access ref value during render
+  53 |   const hideTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  54 |
+  55 |   useEffect(() => {                                                                                                                                                                                                                                                                     react-hooks/refs
+  52:21  error    Error: Cannot access refs during render
+
+React refs are values that are not needed for rendering. Refs should only be accessed outside of render, such as in event handlers or effects. Accessing a ref value (the `current` property) during render can cause your component not to update as expected (https://react.dev/reference/react/useRef).
+
+B:\react-native\Cepat\src\components\InAppNotificationBanner.tsx:52:21
+  50 |
+  51 |   const [activeNotification, setActiveNotification] = useState<CepatNotification | null>(null);
+> 52 |   const slideAnim = useRef(new Animated.Value(-120)).current;
+     |                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ Cannot access ref value during render
+  53 |   const hideTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  54 |
+  55 |   useEffect(() => {                                                                                                                                                                                                                                                                     react-hooks/refs
+  52:21  error    Error: Cannot access refs during render
+
+React refs are values that are not needed for rendering. Refs should only be accessed outside of render, such as in event handlers or effects. Accessing a ref value (the `current` property) during render can cause your component not to update as expected (https://react.dev/reference/react/useRef).
+
+B:\react-native\Cepat\src\components\InAppNotificationBanner.tsx:52:21
+  50 |
+  51 |   const [activeNotification, setActiveNotification] = useState<CepatNotification | null>(null);
+> 52 |   const slideAnim = useRef(new Animated.Value(-120)).current;
+     |                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ Cannot access ref value during render
+  53 |   const hideTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  54 |
+  55 |   useEffect(() => {                                                                                                                                                                                                                                                                     react-hooks/refs
+  52:21  error    Error: Cannot access refs during render
+
+React refs are values that are not needed for rendering. Refs should only be accessed outside of render, such as in event handlers or effects. Accessing a ref value (the `current` property) during render can cause your component not to update as expected (https://react.dev/reference/react/useRef).
+
+B:\react-native\Cepat\src\components\InAppNotificationBanner.tsx:52:21
+  50 |
+  51 |   const [activeNotification, setActiveNotification] = useState<CepatNotification | null>(null);
+> 52 |   const slideAnim = useRef(new Animated.Value(-120)).current;
+     |                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ Cannot access ref value during render
+  53 |   const hideTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  54 |
+  55 |   useEffect(() => {                                                                                                                                                                                                                                                                     react-hooks/refs
+  52:21  error    Error: Cannot access refs during render
+
+React refs are values that are not needed for rendering. Refs should only be accessed outside of render, such as in event handlers or effects. Accessing a ref value (the `current` property) during render can cause your component not to update as expected (https://react.dev/reference/react/useRef).
+
+B:\react-native\Cepat\src\components\InAppNotificationBanner.tsx:52:21
+  50 |
+  51 |   const [activeNotification, setActiveNotification] = useState<CepatNotification | null>(null);
+> 52 |   const slideAnim = useRef(new Animated.Value(-120)).current;
+     |                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ Cannot access ref value during render
+  53 |   const hideTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  54 |
+  55 |   useEffect(() => {                                                                                                                                                                                                                                                                     react-hooks/refs
+  82:9   error    Error: Cannot access variable before it is declared
+
+`dismissBanner` is accessed before it is declared, which prevents the earlier access from updating when this value changes over time.
+
+B:\react-native\Cepat\src\components\InAppNotificationBanner.tsx:82:9
+  80 |       // Auto dismiss after 4.5 seconds
+  81 |       hideTimeoutRef.current = setTimeout(() => {
+> 82 |         dismissBanner();
+     |         ^^^^^^^^^^^^^ `dismissBanner` accessed before it is declared
+  83 |       }, 4500);
+  84 |     });
+  85 |
+
+B:\react-native\Cepat\src\components\InAppNotificationBanner.tsx:92:3
+   90 |   }, [user, reduceMotion, slideAnim]);
+   91 |
+>  92 |   const dismissBanner = () => {
+      |   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+>  93 |     if (reduceMotion) {
+      | ^^^^^^^^^^^^^^^^^^^^^^^
+>  94 |       slideAnim.setValue(-120);
+      …
+      | ^^^^^^^^^^^^^^^^^^^^^^^
+> 104 |     }
+      | ^^^^^^^^^^^^^^^^^^^^^^^
+> 105 |   };
+      | ^^^^^ `dismissBanner` is declared here
+  106 |
+  107 |   const handlePressBanner = async () => {
+  108 |     if (!activeNotification) return;  react-hooks/immutability
+  90:6   warning  React Hook useEffect has a missing dependency: 'dismissBanner'. Either include it or remove the dependency array                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   react-hooks/exhaustive-deps
+
+B:\react-native\Cepat\src\components\toggle\ToggleView.tsx
+  56:25  error  Error: Cannot access refs during render
+
+React refs are values that are not needed for rendering. Refs should only be accessed outside of render, such as in event handlers or effects. Accessing a ref value (the `current` property) during render can cause your component not to update as expected (https://react.dev/reference/react/useRef).
+
+B:\react-native\Cepat\src\components\toggle\ToggleView.tsx:56:25
+  54 |   }[size];
+  55 |
+> 56 |   const animatedValue = useRef(new Animated.Value(isChecked ? 1 : 0)).current;
+     |                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ Cannot access ref value during render
+  57 |
+  58 |   useEffect(() => {
+  59 |     Animated.timing(animatedValue, {    react-hooks/refs
+  56:25  error  Error: Cannot access refs during render
+
+React refs are values that are not needed for rendering. Refs should only be accessed outside of render, such as in event handlers or effects. Accessing a ref value (the `current` property) during render can cause your component not to update as expected (https://react.dev/reference/react/useRef).
+
+B:\react-native\Cepat\src\components\toggle\ToggleView.tsx:56:25
+  54 |   }[size];
+  55 |
+> 56 |   const animatedValue = useRef(new Animated.Value(isChecked ? 1 : 0)).current;
+     |                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ Cannot access ref value during render
+  57 |
+  58 |   useEffect(() => {
+  59 |     Animated.timing(animatedValue, {    react-hooks/refs
+  78:22  error  Error: Cannot access refs during render
+
+React refs are values that are not needed for rendering. Refs should only be accessed outside of render, such as in event handlers or effects. Accessing a ref value (the `current` property) during render can cause your component not to update as expected (https://react.dev/reference/react/useRef).
+
+B:\react-native\Cepat\src\components\toggle\ToggleView.tsx:78:22
+  76 |   };
+  77 |
+> 78 |   const translateX = animatedValue.interpolate({
+     |                      ^^^^^^^^^^^^^ Passing a ref to a function may read its value during render
+  79 |     inputRange: [0, 1],
+  80 |     outputRange: [0, dimensions.travel],
+  81 |   });                                              react-hooks/refs
+  78:22  error  Error: Cannot access refs during render
+
+React refs are values that are not needed for rendering. Refs should only be accessed outside of render, such as in event handlers or effects. Accessing a ref value (the `current` property) during render can cause your component not to update as expected (https://react.dev/reference/react/useRef).
+
+B:\react-native\Cepat\src\components\toggle\ToggleView.tsx:78:22
+  76 |   };
+  77 |
+> 78 |   const translateX = animatedValue.interpolate({
+     |                      ^^^^^^^^^^^^^^^^^^^^^^^^^ Passing a ref to a function may read its value during render
+  79 |     inputRange: [0, 1],
+  80 |     outputRange: [0, dimensions.travel],
+  81 |   });                                  react-hooks/refs
+  83:19  error  Error: Cannot access refs during render
+
+React refs are values that are not needed for rendering. Refs should only be accessed outside of render, such as in event handlers or effects. Accessing a ref value (the `current` property) during render can cause your component not to update as expected (https://react.dev/reference/react/useRef).
+
+B:\react-native\Cepat\src\components\toggle\ToggleView.tsx:83:19
+  81 |   });
+  82 |
+> 83 |   const trackBg = animatedValue.interpolate({
+     |                   ^^^^^^^^^^^^^ Passing a ref to a function may read its value during render
+  84 |     inputRange: [0, 1],
+  85 |     outputRange: [palette.border || "#CBD5E1", palette.primary || "#0F766E"],
+  86 |   });              react-hooks/refs
+  83:19  error  Error: Cannot access refs during render
+
+React refs are values that are not needed for rendering. Refs should only be accessed outside of render, such as in event handlers or effects. Accessing a ref value (the `current` property) during render can cause your component not to update as expected (https://react.dev/reference/react/useRef).
+
+B:\react-native\Cepat\src\components\toggle\ToggleView.tsx:83:19
+  81 |   });
+  82 |
+> 83 |   const trackBg = animatedValue.interpolate({
+     |                   ^^^^^^^^^^^^^^^^^^^^^^^^^ Passing a ref to a function may read its value during render
+  84 |     inputRange: [0, 1],
+  85 |     outputRange: [palette.border || "#CBD5E1", palette.primary || "#0F766E"],
+  86 |   });  react-hooks/refs
+
+B:\react-native\Cepat\src\dashboard\DashboardContainer.tsx
+   47:10  warning  'DashboardPerformance' is defined but never used                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 @typescript-eslint/no-unused-vars
+   49:10  warning  'DashboardTabs' is defined but never used                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        @typescript-eslint/no-unused-vars
+  116:10  error    Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+B:\react-native\Cepat\src\dashboard\DashboardContainer.tsx:116:10
+  114 |
+  115 |   useEffect(() => {
+> 116 |     void loadAllData();
+      |          ^^^^^^^^^^^ Avoid calling setState() directly within an effect
+  117 |   }, [isAdminAuthorized]);
+  118 |
+  119 |   const metrics: AdminPerformanceMetrics = useMemo(  react-hooks/set-state-in-effect
+  117:6   warning  React Hook useEffect has a missing dependency: 'loadAllData'. Either include it or remove the dependency array                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   react-hooks/exhaustive-deps
+  129:9   warning  'openReportsCount' is assigned a value but never used                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            @typescript-eslint/no-unused-vars
+  134:9   warning  'pendingApprovalsCount' is assigned a value but never used                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       @typescript-eslint/no-unused-vars
+
+B:\react-native\Cepat\src\dashboard\accounts\DashboardAccounts.tsx
+  1:10  warning  'Check' is defined but never used        @typescript-eslint/no-unused-vars
+  1:25  warning  'ShieldCheck' is defined but never used  @typescript-eslint/no-unused-vars
+
+B:\react-native\Cepat\src\dashboard\delete-user\DashboardDeletedUsers.tsx
+  7:3  warning  'UserX' is defined but never used  @typescript-eslint/no-unused-vars
+
+B:\react-native\Cepat\src\dashboard\types.ts
+  2:3  warning  'AccountStatus' is defined but never used  @typescript-eslint/no-unused-vars
+
+B:\react-native\Cepat\src\data\adminStore.ts
+  676:19  warning  Array type using 'Array<T>' is forbidden. Use 'T[]' instead  @typescript-eslint/array-type
+  683:22  warning  Array type using 'Array<T>' is forbidden. Use 'T[]' instead  @typescript-eslint/array-type
+
+B:\react-native\Cepat\src\hooks\useUserAvatar.ts
+  26:7  error  Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+B:\react-native\Cepat\src\hooks\useUserAvatar.ts:26:7
+  24 |   useEffect(() => {
+  25 |     if (!userId) {
+> 26 |       setState(null);
+     |       ^^^^^^^^ Avoid calling setState() directly within an effect
+  27 |       return;
+  28 |     }
+  29 |     let active = true;  react-hooks/set-state-in-effect
+
+✖ 51 problems (16 errors, 35 warnings)
+  0 errors and 2 warnings potentially fixable with the `--fix` option.
+

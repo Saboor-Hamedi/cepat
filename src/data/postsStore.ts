@@ -1,10 +1,26 @@
 import { loadAdminAccounts } from './adminStore';
 import { containsBlockedContactOrUrl } from './marketplaceStore';
 import { resolveServiceAreaName, shouldUseFixtures, supabase } from './marketplaceRepository';
+import {
+  prependCachedFeedItem,
+  removeCachedFeedItem,
+  updateCachedFeedItem,
+} from '../hooks/useInfiniteList';
 import { getStoredJson, setStoredJson } from '../storage/kvStorage';
 import type { CursorPage, Post } from '../types/post';
 
 const POSTS_STORAGE_KEY = '@cepat/technician-posts';
+const POST_LIKES_STORAGE_KEY = '@cepat/post-likes';
+const POST_METRICS_STORAGE_KEY = '@cepat/post-metrics';
+const POST_VIEWED_STORAGE_KEY = '@cepat/post-viewed';
+
+let postSeqCounter = 0;
+
+interface StoredPostMetrics {
+  likeCount?: number;
+  viewCount?: number;
+  shareCount?: number;
+}
 
 const DEFAULT_POSTS: Post[] = [
   {
@@ -17,6 +33,9 @@ const DEFAULT_POSTS: Post[] = [
     serviceArea: 'Jakarta Selatan',
     caption:
       'Completed kitchen copper pipe & water booster pump installation in Kebayoran Baru. Pressure tested with zero leaks.',
+    likeCount: 12,
+    viewCount: 94,
+    shareCount: 4,
     published: true,
     accountStatus: 'active',
     createdAt: '2026-10-29T10:30:00.000Z',
@@ -31,38 +50,136 @@ const DEFAULT_POSTS: Post[] = [
     serviceArea: 'Jakarta Pusat',
     caption:
       'Full inverter AC deep-cleaning and refrigerant pressure calibration for a 3-bedroom apartment in Menteng.',
+    likeCount: 8,
+    viewCount: 67,
+    shareCount: 2,
     published: true,
     accountStatus: 'active',
     createdAt: '2026-10-28T15:15:00.000Z',
   },
 ];
 
+const memoryLikesCache: Record<string, string[]> = {};
+const memoryMetricsCache: Record<string, StoredPostMetrics> = {};
+let memoryPostsCache: Post[] | null = null;
+
+export function getPostEngagementSync(
+  post: Post,
+  userId?: string | null,
+): { liked: boolean; likeCount: number; viewCount: number; shareCount: number } {
+  const likedUsers = memoryLikesCache[post.id];
+  const metric = memoryMetricsCache[post.id];
+  const liked = userId
+    ? likedUsers
+      ? likedUsers.includes(userId)
+      : Boolean(post.likedByMe)
+    : false;
+  const likeCount =
+    metric?.likeCount !== undefined
+      ? Math.max(metric.likeCount, likedUsers ? likedUsers.length : 0)
+      : Math.max(post.likeCount ?? 0, likedUsers ? likedUsers.length : 0);
+  const viewCount = Math.max(post.viewCount ?? 0, metric?.viewCount ?? 0);
+  const shareCount = Math.max(post.shareCount ?? 0, metric?.shareCount ?? 0);
+  return { liked, likeCount, viewCount, shareCount };
+}
+
+async function loadLikesMap(): Promise<Record<string, string[]>> {
+  const map = await getStoredJson<Record<string, string[]>>(POST_LIKES_STORAGE_KEY, {});
+  for (const [k, v] of Object.entries(map)) {
+    memoryLikesCache[k] = v;
+  }
+  return map;
+}
+
+async function loadMetricsMap(): Promise<Record<string, StoredPostMetrics>> {
+  const map = await getStoredJson<Record<string, StoredPostMetrics>>(POST_METRICS_STORAGE_KEY, {});
+  for (const [k, v] of Object.entries(map)) {
+    memoryMetricsCache[k] = v;
+  }
+  return map;
+}
+
+async function applyEngagementToPosts(
+  posts: Post[],
+  activeUserId?: string | null,
+): Promise<Post[]> {
+  if (posts.length === 0) return posts;
+  const [likesMap, metricsMap] = await Promise.all([
+    loadLikesMap(),
+    loadMetricsMap(),
+  ]);
+
+  return posts.map((post) => {
+    const likedUsers = likesMap[post.id] ?? [];
+    const metric = metricsMap[post.id];
+    const baseLikes = post.likeCount ?? 0;
+    const computedLikes =
+      metric?.likeCount !== undefined
+        ? Math.max(metric.likeCount, likedUsers.length)
+        : Math.max(baseLikes, likedUsers.length);
+    const computedViews = Math.max(post.viewCount ?? 0, metric?.viewCount ?? 0);
+    const computedShares = Math.max(post.shareCount ?? 0, metric?.shareCount ?? 0);
+    const likedByMe = activeUserId
+      ? likedUsers.includes(activeUserId)
+      : Boolean(post.likedByMe);
+
+    memoryLikesCache[post.id] = likedUsers;
+    memoryMetricsCache[post.id] = {
+      likeCount: computedLikes,
+      viewCount: computedViews,
+      shareCount: computedShares,
+    };
+
+    return {
+      ...post,
+      likeCount: computedLikes,
+      likedByMe,
+      viewCount: computedViews,
+      shareCount: computedShares,
+    };
+  });
+}
+
 async function loadAllStoredPosts(): Promise<Post[]> {
   const stored = await getStoredJson<Post[]>(POSTS_STORAGE_KEY, []);
   if (stored.length === 0) {
     if (shouldUseFixtures()) {
       await setStoredJson(POSTS_STORAGE_KEY, DEFAULT_POSTS);
-      return DEFAULT_POSTS;
+      const engaged = await applyEngagementToPosts(DEFAULT_POSTS);
+      memoryPostsCache = engaged;
+      return engaged;
     }
+    memoryPostsCache = [];
     return [];
   }
   if (!shouldUseFixtures()) {
-    return stored.filter((p) => !p.id.startsWith('post-seed-'));
+    const nonSeed = stored.filter(
+      (p) => !p.id.startsWith('post-seed-') && !p.technicianId.startsWith('demo-'),
+    );
+    const engaged = await applyEngagementToPosts(nonSeed);
+    memoryPostsCache = engaged;
+    return engaged;
   }
   const existingIds = new Set(stored.map((item) => item.id));
-  return [...stored, ...DEFAULT_POSTS.filter((seed) => !existingIds.has(seed.id))];
+  const combined = [...stored, ...DEFAULT_POSTS.filter((seed) => !existingIds.has(seed.id))];
+  const engaged = await applyEngagementToPosts(combined);
+  memoryPostsCache = engaged;
+  return engaged;
 }
 
 function mapSupabasePost(row: Record<string, unknown>): Post {
   const rawImage = row.image_uri ? String(row.image_uri) : undefined;
   const rawMedia = Array.isArray(row.media_urls) && row.media_urls.length > 0
-    ? row.media_urls.map(String)
+    ? row.media_urls.map(String).filter(Boolean)
     : rawImage
       ? [rawImage]
       : [];
-  const mediaUrls = rawImage && (!rawMedia.length || rawMedia[0] !== rawImage)
-    ? [rawImage]
-    : rawMedia;
+  const mediaUrls =
+    rawMedia.length > 1
+      ? rawMedia
+      : rawImage && (!rawMedia.length || rawMedia[0] !== rawImage)
+        ? [rawImage]
+        : rawMedia;
   return {
     id: String(row.id),
     technicianId: String(row.technician_id),
@@ -81,6 +198,9 @@ function mapSupabasePost(row: Record<string, unknown>): Post {
     imageUri: row.image_uri ? String(row.image_uri) : undefined,
     mediaUrls,
     isServicePost: Boolean(row.is_service_post),
+    likeCount: typeof row.like_count === 'number' ? row.like_count : Number(row.like_count ?? 0) || 0,
+    viewCount: typeof row.view_count === 'number' ? row.view_count : Number(row.view_count ?? 0) || 0,
+    shareCount: typeof row.share_count === 'number' ? row.share_count : Number(row.share_count ?? 0) || 0,
     published: Boolean(row.published),
     accountStatus: 'active',
     createdAt: String(row.created_at ?? new Date().toISOString()),
@@ -141,7 +261,286 @@ function paginateLocalPosts(
 }
 
 /**
- * Loads all posts authored by a specific technician (including drafts/unpublished for the owner).
+ * Checks whether a specific user has liked a given post.
+ */
+export async function hasUserLikedPost(
+  postId: string,
+  userId?: string | null,
+): Promise<boolean> {
+  if (!postId || !userId) return false;
+  const likesMap = await loadLikesMap();
+  if ((likesMap[postId] ?? []).includes(userId)) {
+    memoryLikesCache[postId] = likesMap[postId];
+    return true;
+  }
+  if (supabase && !shouldUseFixtures()) {
+    try {
+      const { data, error } = await supabase
+        .from('technician_post_likes')
+        .select('post_id')
+        .eq('post_id', postId)
+        .eq('user_id', userId)
+        .maybeSingle();
+      if (!error && data) {
+        const updatedList = Array.from(new Set([...(likesMap[postId] ?? []), userId]));
+        likesMap[postId] = updatedList;
+        memoryLikesCache[postId] = updatedList;
+        await setStoredJson(POST_LIKES_STORAGE_KEY, likesMap);
+        return true;
+      }
+    } catch {
+      // Fallback to local likes map
+    }
+  }
+  return false;
+}
+
+/**
+ * Toggles the authenticated user's like on a post.
+ * Updates local persistence, in-memory feed caches silently (avoiding parent FlatList re-renders),
+ * and Supabase `toggle_post_like` / `technician_post_likes`.
+ */
+export async function togglePostLike(
+  postId: string,
+  userId: string,
+): Promise<{ liked: boolean; likeCount: number }> {
+  if (!userId || !userId.trim()) {
+    throw new Error('auth_required_for_like');
+  }
+  if (!postId || !postId.trim()) {
+    throw new Error('invalid_post_id');
+  }
+
+  const [likesMap, metricsMap, allPosts] = await Promise.all([
+    loadLikesMap(),
+    loadMetricsMap(),
+    loadAllStoredPosts(),
+  ]);
+
+  const targetPost = allPosts.find((p) => p.id === postId);
+  const currentUsers = new Set(likesMap[postId] ?? []);
+  const wasLiked = currentUsers.has(userId);
+  const nextLiked = !wasLiked;
+
+  if (nextLiked) {
+    currentUsers.add(userId);
+  } else {
+    currentUsers.delete(userId);
+  }
+
+  const prevCount =
+    metricsMap[postId]?.likeCount ??
+    targetPost?.likeCount ??
+    (wasLiked ? currentUsers.size + 1 : currentUsers.size);
+
+  let nextCount = nextLiked
+    ? Math.max(prevCount + 1, currentUsers.size)
+    : Math.max(0, prevCount - 1, currentUsers.size);
+
+  const updatedUsers = Array.from(currentUsers);
+  likesMap[postId] = updatedUsers;
+  metricsMap[postId] = {
+    ...metricsMap[postId],
+    likeCount: nextCount,
+  };
+  memoryLikesCache[postId] = updatedUsers;
+  memoryMetricsCache[postId] = metricsMap[postId];
+
+  updateCachedFeedItem<Post>(
+    () => true,
+    (p) => p.id === postId,
+    (p) => ({
+      ...p,
+      likeCount: nextCount,
+      likedByMe: nextLiked,
+    }),
+    { silent: true },
+  );
+
+  await Promise.all([
+    setStoredJson(POST_LIKES_STORAGE_KEY, likesMap),
+    setStoredJson(POST_METRICS_STORAGE_KEY, metricsMap),
+    setStoredJson(
+      POSTS_STORAGE_KEY,
+      allPosts.map((p) =>
+        p.id === postId
+          ? { ...p, likeCount: nextCount, likedByMe: nextLiked }
+          : p,
+      ),
+    ),
+  ]);
+
+  if (supabase) {
+    try {
+      const { data: rpcData, error: rpcError } = await supabase.rpc('toggle_post_like', {
+        p_post_id: postId,
+      });
+      if (!rpcError && rpcData && typeof rpcData === 'object') {
+        const payload = rpcData as { liked?: boolean; like_count?: number };
+        if (typeof payload.like_count === 'number') {
+          nextCount = Math.max(payload.like_count, nextLiked ? 1 : 0);
+          metricsMap[postId] = { ...metricsMap[postId], likeCount: nextCount };
+          memoryMetricsCache[postId] = metricsMap[postId];
+          await setStoredJson(POST_METRICS_STORAGE_KEY, metricsMap);
+          updateCachedFeedItem<Post>(
+            () => true,
+            (p) => p.id === postId,
+            (p) => ({ ...p, likeCount: nextCount, likedByMe: nextLiked }),
+            { silent: true },
+          );
+        }
+      } else if (rpcError) {
+        if (nextLiked) {
+          await supabase
+            .from('technician_post_likes')
+            .insert({ post_id: postId, user_id: userId });
+        } else {
+          await supabase
+            .from('technician_post_likes')
+            .delete()
+            .eq('post_id', postId)
+            .eq('user_id', userId);
+        }
+      }
+    } catch {
+      // Keep optimistic local state when offline or before migration is applied
+    }
+  }
+
+  return { liked: nextLiked, likeCount: nextCount };
+}
+
+/**
+ * Records a unique view for a post per viewer session/user and returns the updated viewCount.
+ */
+export async function recordPostView(
+  postId: string,
+  userId?: string | null,
+): Promise<number> {
+  if (!postId) return 0;
+  const viewerKey = userId ? `u:${userId}` : 'guest:local';
+  const [viewedMap, metricsMap, allPosts] = await Promise.all([
+    getStoredJson<Record<string, string[]>>(POST_VIEWED_STORAGE_KEY, {}),
+    loadMetricsMap(),
+    loadAllStoredPosts(),
+  ]);
+
+  const targetPost = allPosts.find((p) => p.id === postId);
+  const currentViews = metricsMap[postId]?.viewCount ?? targetPost?.viewCount ?? 0;
+  const viewersForPost = new Set(viewedMap[postId] ?? []);
+
+  if (viewersForPost.has(viewerKey)) {
+    return currentViews;
+  }
+
+  viewersForPost.add(viewerKey);
+  viewedMap[postId] = Array.from(viewersForPost);
+  const nextViews = currentViews + 1;
+  metricsMap[postId] = {
+    ...metricsMap[postId],
+    viewCount: nextViews,
+  };
+  memoryMetricsCache[postId] = metricsMap[postId];
+
+  updateCachedFeedItem<Post>(
+    () => true,
+    (p) => p.id === postId,
+    (p) => ({
+      ...p,
+      viewCount: nextViews,
+    }),
+    { silent: true },
+  );
+
+  await Promise.all([
+    setStoredJson(POST_VIEWED_STORAGE_KEY, viewedMap),
+    setStoredJson(POST_METRICS_STORAGE_KEY, metricsMap),
+  ]);
+
+  if (supabase) {
+    try {
+      const { data, error } = await supabase.rpc('record_post_view', {
+        p_post_id: postId,
+        p_viewer_key: viewerKey,
+      });
+      if (!error && typeof data === 'number' && data > nextViews) {
+        metricsMap[postId] = { ...metricsMap[postId], viewCount: data };
+        memoryMetricsCache[postId] = metricsMap[postId];
+        await setStoredJson(POST_METRICS_STORAGE_KEY, metricsMap);
+        updateCachedFeedItem<Post>(
+          () => true,
+          (p) => p.id === postId,
+          (p) => ({ ...p, viewCount: data }),
+          { silent: true },
+        );
+        return data;
+      }
+    } catch {
+      // Local metric remains synced
+    }
+  }
+
+  return nextViews;
+}
+
+/**
+ * Increments the share count for a post and syncs with Supabase.
+ */
+export async function incrementPostShare(postId: string): Promise<number> {
+  if (!postId) return 0;
+  const [metricsMap, allPosts] = await Promise.all([
+    loadMetricsMap(),
+    loadAllStoredPosts(),
+  ]);
+  const targetPost = allPosts.find((p) => p.id === postId);
+  const currentShares = metricsMap[postId]?.shareCount ?? targetPost?.shareCount ?? 0;
+  const nextShares = currentShares + 1;
+
+  metricsMap[postId] = {
+    ...metricsMap[postId],
+    shareCount: nextShares,
+  };
+  memoryMetricsCache[postId] = metricsMap[postId];
+
+  updateCachedFeedItem<Post>(
+    () => true,
+    (p) => p.id === postId,
+    (p) => ({
+      ...p,
+      shareCount: nextShares,
+    }),
+    { silent: true },
+  );
+
+  await setStoredJson(POST_METRICS_STORAGE_KEY, metricsMap);
+
+  if (supabase) {
+    try {
+      const { data, error } = await supabase.rpc('increment_post_share_count', {
+        p_post_id: postId,
+      });
+      if (!error && typeof data === 'number' && data > nextShares) {
+        metricsMap[postId] = { ...metricsMap[postId], shareCount: data };
+        memoryMetricsCache[postId] = metricsMap[postId];
+        await setStoredJson(POST_METRICS_STORAGE_KEY, metricsMap);
+        updateCachedFeedItem<Post>(
+          () => true,
+          (p) => p.id === postId,
+          (p) => ({ ...p, shareCount: data }),
+          { silent: true },
+        );
+        return data;
+      }
+    } catch {
+      // Local metric remains synced
+    }
+  }
+
+  return nextShares;
+}
+
+/**
+ * Loads a single post by ID.
  */
 export async function loadPostById(postId: string): Promise<Post | null> {
   if (!postId) return null;
@@ -153,7 +552,9 @@ export async function loadPostById(postId: string): Promise<Post | null> {
         .eq('id', postId)
         .maybeSingle();
       if (!error && data) {
-        return mapSupabasePost(data as Record<string, unknown>);
+        const mapped = mapSupabasePost(data as Record<string, unknown>);
+        const [enriched] = await applyEngagementToPosts([mapped]);
+        return enriched;
       }
     } catch {
       // fallback to local
@@ -182,7 +583,8 @@ export async function loadPosts(
         throw new Error(postTableErrorMessage(error));
       }
       if (!error && Array.isArray(data)) {
-        return data.map((row) => mapSupabasePost(row as Record<string, unknown>));
+        const mapped = data.map((row) => mapSupabasePost(row as Record<string, unknown>));
+        return applyEngagementToPosts(mapped);
       }
     } catch (error) {
       if (!shouldUseFixtures()) {
@@ -224,7 +626,22 @@ export async function loadPostsPage(
     if (error) {
       if (!shouldUseFixtures()) throw new Error(postTableErrorMessage(error));
     } else if (Array.isArray(data)) {
-      const rows = data.map((row) => mapSupabasePost(row as Record<string, unknown>));
+      const remoteRows = await applyEngagementToPosts(
+        data.map((row) => mapSupabasePost(row as Record<string, unknown>)),
+      );
+      let rows = remoteRows;
+      if (!cursor) {
+        const localForTech = (await loadAllStoredPosts()).filter(
+          (post) =>
+            post.technicianId === technicianId &&
+            (includeUnpublished || (post.published && !post.suspended)),
+        );
+        const remoteIds = new Set(remoteRows.map((p) => p.id));
+        const unsyncedLocal = localForTech.filter((p) => !remoteIds.has(p.id));
+        rows = [...unsyncedLocal, ...remoteRows].sort((a, b) =>
+          b.createdAt.localeCompare(a.createdAt),
+        );
+      }
       const items = rows.slice(0, pageSize);
       return {
         items,
@@ -247,27 +664,11 @@ export async function loadPostsPage(
   return paginateLocalPosts(posts, cursor, pageSize);
 }
 
-/**
- * Loads eligible published technician posts for the Marketplace Discovery Feed.
- * Respects:
- * - Publication status (published === true && !post.suspended)
- * - Account status (active only — suspended/blocked accounts are excluded)
- * - Service area & category/search query
- */
-export async function loadMarketplacePublishedPosts(filters?: {
-  area?: string;
-  query?: string;
-  categorySlug?: string;
-}): Promise<Post[]> {
-  const [allPosts, accounts] = await Promise.all([
-    loadAllStoredPosts(),
-    loadAdminAccounts(),
-  ]);
-
-  const blockedOrSuspendedIds = new Set(
-    accounts.filter((acc) => acc.status !== 'active').map((acc) => acc.id),
-  );
-
+function filterPostsSync(
+  sourcePosts: Post[],
+  blockedOrSuspendedIds: Set<string>,
+  filters?: { area?: string; query?: string; categorySlug?: string },
+): Post[] {
   const canonicalArea =
     filters?.area && filters.area !== 'Semua area'
       ? resolveServiceAreaName(filters.area)
@@ -275,7 +676,7 @@ export async function loadMarketplacePublishedPosts(filters?: {
   const q = filters?.query?.trim().toLowerCase() ?? '';
   const cat = filters?.categorySlug?.trim().toLowerCase() ?? '';
 
-  const filteredPosts = allPosts.filter((post) => {
+  const filteredPosts = sourcePosts.filter((post) => {
     if (!post.published || post.suspended) return false;
     if (post.accountStatus && post.accountStatus !== 'active') return false;
     if (blockedOrSuspendedIds.has(post.technicianId)) return false;
@@ -299,13 +700,60 @@ export async function loadMarketplacePublishedPosts(filters?: {
     return true;
   });
 
+  const sorted = [...filteredPosts].sort((a, b) =>
+    b.createdAt.localeCompare(a.createdAt),
+  );
+
   if (canonicalArea && !q) {
-    const matchingArea = filteredPosts.filter((post) => post.serviceArea === canonicalArea);
-    const otherPosts = filteredPosts.filter((post) => post.serviceArea !== canonicalArea);
+    const matchingArea = sorted.filter((post) => post.serviceArea === canonicalArea);
+    const otherPosts = sorted.filter((post) => post.serviceArea !== canonicalArea);
     return [...matchingArea, ...otherPosts];
   }
 
-  return filteredPosts;
+  return sorted;
+}
+
+/**
+ * Synchronously returns the initial page of Marketplace posts from in-memory cache
+ * (or fixture seed data in fixture mode) so `useInfiniteList` renders posts on frame 0
+ * without flashing only the recommendations section while async storage resolves.
+ */
+export function getInitialMarketplacePostsPageSync(
+  filters: { area?: string; query?: string; categorySlug?: string } | undefined,
+  pageSize: number,
+): CursorPage<Post> | null {
+  const basePosts =
+    memoryPostsCache ?? (shouldUseFixtures() ? DEFAULT_POSTS : null);
+  if (!basePosts || basePosts.length === 0) {
+    return null;
+  }
+  const filtered = filterPostsSync(basePosts, new Set(), filters);
+  if (filtered.length === 0) {
+    return null;
+  }
+  return paginateLocalPosts(filtered, null, pageSize);
+}
+
+/**
+ * Loads eligible published technician posts for the Marketplace Discovery Feed.
+ */
+export async function loadMarketplacePublishedPosts(filters?: {
+  area?: string;
+  query?: string;
+  categorySlug?: string;
+}): Promise<Post[]> {
+  const [allPosts, accounts] = await Promise.all([
+    loadAllStoredPosts(),
+    shouldUseFixtures()
+      ? loadAdminAccounts()
+      : getStoredJson<{ id: string; status: string }[]>('@cepat/admin-accounts', []),
+  ]);
+
+  const blockedOrSuspendedIds = new Set(
+    accounts.filter((acc) => acc.status !== 'active').map((acc) => acc.id),
+  );
+
+  return filterPostsSync(allPosts, blockedOrSuspendedIds, filters);
 }
 
 export async function loadMarketplacePublishedPostsPage(
@@ -317,10 +765,24 @@ export async function loadMarketplacePublishedPostsPage(
     filters?.area && filters.area !== 'Semua area'
       ? resolveServiceAreaName(filters.area)
       : null;
-  const search = (filters?.query ?? '')
+  const rawSearch = (filters?.query ?? '')
     .trim()
     .replace(/[%,()_*\\]/g, ' ')
     .replace(/\s+/g, ' ');
+  const strippedHashtag = rawSearch.startsWith('#')
+    ? rawSearch.replace(/^#+/, '').trim()
+    : rawSearch;
+  const hashtagAliasMap: Record<string, string> = {
+    acservice: 'ac',
+    acrepair: 'ac-repair',
+    electrician: 'electrical',
+    homerepair: 'repair',
+    houserepair: 'repair',
+    waterheater: 'water',
+    homerenovation: 'renovation',
+  };
+  const search =
+    hashtagAliasMap[strippedHashtag.toLowerCase()] ?? strippedHashtag;
   const category = filters?.categorySlug?.trim().toLowerCase();
 
   if (supabase && !cursor?.startsWith('local:')) {
@@ -348,10 +810,22 @@ export async function loadMarketplacePublishedPostsPage(
     const { data, error } = await query;
     if (error) {
       if (!shouldUseFixtures()) throw new Error(postTableErrorMessage(error));
-    } else if (Array.isArray(data) && data.length > 0) {
-      const rows = data.map((row) =>
-        mapSupabasePost(row as Record<string, unknown>),
+    } else if (Array.isArray(data) && (data.length > 0 || !shouldUseFixtures())) {
+      const remoteRows = await applyEngagementToPosts(
+        data.map((row) => mapSupabasePost(row as Record<string, unknown>)),
       );
+      let rows = remoteRows;
+      if (!cursor) {
+        const localPublished = await loadMarketplacePublishedPosts(filters);
+        const remoteIds = new Set(remoteRows.map((p) => p.id));
+        const unsyncedLocal = localPublished.filter((p) => !remoteIds.has(p.id));
+        rows = [...unsyncedLocal, ...remoteRows].sort((a, b) =>
+          b.createdAt.localeCompare(a.createdAt),
+        );
+        if (!category && !search) {
+          memoryPostsCache = rows;
+        }
+      }
       let orderedRows = rows;
       if (canonicalArea && !search) {
         const matchingArea = rows.filter((post) => post.serviceArea === canonicalArea);
@@ -394,7 +868,8 @@ export async function loadMarketplacePublishedPostsPage(
 }
 
 /**
- * Creates a new technician post. Enforces ownership and non-empty caption.
+ * Creates a new technician post. Enforces ownership and non-empty caption,
+ * and immediately injects the post into Marketplace and Profile feed caches.
  */
 export async function createPost(input: {
   actorUserId: string;
@@ -428,13 +903,13 @@ export async function createPost(input: {
     throw new Error('url_blocked');
   }
 
-  // Ensure no private email or phone number is leaked in public post captions
   if (/\b[^\s@]+@[^\s@]+\.[^\s@]+\b/.test(cleanCaption)) {
     throw new Error('private_contact_in_post');
   }
 
+  postSeqCounter += 1;
   const newPost: Post = {
-    id: `post-${Date.now()}`,
+    id: `post-${Date.now()}-${postSeqCounter}`,
     technicianId: input.technicianId,
     technicianName: input.technicianName?.trim() || 'Teknisi Cepat',
     technicianBusinessName: input.technicianBusinessName?.trim(),
@@ -447,6 +922,10 @@ export async function createPost(input: {
     imageUri: primaryImage,
     mediaUrls,
     isServicePost: input.isServicePost ?? false,
+    likeCount: 0,
+    likedByMe: false,
+    viewCount: 0,
+    shareCount: 0,
     published: input.published ?? true,
     accountStatus: 'active',
     createdAt: new Date().toISOString(),
@@ -498,7 +977,25 @@ export async function createPost(input: {
   }
 
   const current = await loadAllStoredPosts();
-  await setStoredJson(POSTS_STORAGE_KEY, [newPost, ...current]);
+  const nextCreatedList = [newPost, ...current];
+  memoryPostsCache = nextCreatedList;
+  await setStoredJson(POSTS_STORAGE_KEY, nextCreatedList);
+
+  // Immediately sync in-memory caches so Marketplace and Profile feeds show the new post without manual refresh
+  prependCachedFeedItem<Post>(
+    (cacheKey) => {
+      if (cacheKey.startsWith(`posts:${newPost.technicianId}:`)) {
+        return newPost.published || cacheKey.endsWith(':owner');
+      }
+      if (newPost.published && !newPost.suspended && cacheKey.startsWith('marketplace-posts:')) {
+        return cacheKey.endsWith(':all') || cacheKey.endsWith(`:${newPost.categorySlug}`);
+      }
+      return false;
+    },
+    newPost,
+    (p) => p.id,
+  );
+
   return newPost;
 }
 
@@ -513,6 +1010,7 @@ export async function updatePost(input: {
   imageUri?: string;
   mediaUrls?: string[];
   isServicePost?: boolean;
+  serviceArea?: string;
 }): Promise<Post> {
   const current = await loadAllStoredPosts();
   let existing = current.find((p) => p.id === input.postId);
@@ -543,14 +1041,16 @@ export async function updatePost(input: {
   }
 
   const hasExplicitImageChange = input.imageUri !== undefined || input.mediaUrls !== undefined;
-  const finalImage = hasExplicitImageChange
-    ? (input.imageUri ? input.imageUri : (input.mediaUrls && input.mediaUrls[0]) ? input.mediaUrls[0] : undefined)
-    : existing.imageUri;
   const finalMedia = hasExplicitImageChange
     ? (input.mediaUrls !== undefined
-        ? input.mediaUrls
-        : finalImage ? [finalImage] : [])
+        ? input.mediaUrls.filter(Boolean)
+        : input.imageUri
+          ? [input.imageUri]
+          : [])
     : (existing.mediaUrls ?? (existing.imageUri ? [existing.imageUri] : []));
+  const finalImage = hasExplicitImageChange
+    ? (finalMedia[0] ?? (input.imageUri || undefined))
+    : existing.imageUri;
 
   const updatedPost: Post = {
     ...existing,
@@ -560,11 +1060,31 @@ export async function updatePost(input: {
     imageUri: finalImage,
     mediaUrls: finalMedia,
     isServicePost: input.isServicePost ?? existing.isServicePost ?? false,
+    serviceArea: input.serviceArea?.trim() || existing.serviceArea,
     updatedAt: new Date().toISOString(),
   };
 
   const nextAll = current.map((p) => (p.id === input.postId ? updatedPost : p));
+  memoryPostsCache = nextAll;
   await setStoredJson(POSTS_STORAGE_KEY, nextAll);
+
+  if (updatedPost.published && !updatedPost.suspended) {
+    updateCachedFeedItem<Post>(
+      () => true,
+      (p) => p.id === input.postId,
+      () => updatedPost,
+    );
+  } else {
+    removeCachedFeedItem<Post>(
+      (key) => key.startsWith('marketplace-posts:') || key.endsWith(':public'),
+      (p) => p.id === input.postId,
+    );
+    updateCachedFeedItem<Post>(
+      (key) => key.endsWith(':owner'),
+      (p) => p.id === input.postId,
+      () => updatedPost,
+    );
+  }
 
   if (supabase) {
     try {
@@ -577,6 +1097,7 @@ export async function updatePost(input: {
           image_uri: finalImage ?? null,
           media_urls: finalMedia,
           is_service_post: updatedPost.isServicePost,
+          service_area: updatedPost.serviceArea,
         })
         .eq('id', input.postId);
     } catch {
@@ -624,6 +1145,24 @@ export async function suspendPost(input: {
   const nextAll = current.map((p) => (p.id === input.postId ? updatedPost : p));
   await setStoredJson(POSTS_STORAGE_KEY, nextAll);
 
+  if (input.suspended) {
+    removeCachedFeedItem<Post>(
+      (key) => key.startsWith('marketplace-posts:') || key.endsWith(':public'),
+      (p) => p.id === input.postId,
+    );
+    updateCachedFeedItem<Post>(
+      (key) => key.endsWith(':owner'),
+      (p) => p.id === input.postId,
+      () => updatedPost,
+    );
+  } else {
+    updateCachedFeedItem<Post>(
+      () => true,
+      (p) => p.id === input.postId,
+      () => updatedPost,
+    );
+  }
+
   if (supabase) {
     try {
       await supabase
@@ -665,6 +1204,15 @@ export async function updateProfileOnPosts(input: {
 
   if (changed) {
     await setStoredJson(POSTS_STORAGE_KEY, nextAll);
+    updateCachedFeedItem<Post>(
+      () => true,
+      (p) => p.technicianId === input.technicianId,
+      (p) => ({
+        ...p,
+        technicianName: input.technicianName?.trim() || p.technicianName,
+        technicianAvatarUri: input.technicianAvatarUri ?? p.technicianAvatarUri,
+      }),
+    );
   }
 
   if (supabase) {
@@ -692,7 +1240,6 @@ export async function deletePost(input: {
   const current = await loadAllStoredPosts();
   let existing = current.find((p) => p.id === input.postId);
 
-  // If not found in local storage, check Supabase
   if (!existing && supabase) {
     try {
       const { data } = await supabase
@@ -706,7 +1253,6 @@ export async function deletePost(input: {
     } catch {}
   }
 
-  // If not found anywhere, it is already deleted (idempotent delete)
   if (!existing) {
     if (supabase) {
       try {
@@ -718,6 +1264,7 @@ export async function deletePost(input: {
     }
     const filtered = current.filter((p) => p.id !== input.postId);
     await setStoredJson(POSTS_STORAGE_KEY, filtered);
+    removeCachedFeedItem<Post>(() => true, (p) => p.id === input.postId);
     return filtered.filter((p) => p.technicianId === input.actorUserId);
   }
 
@@ -734,6 +1281,7 @@ export async function deletePost(input: {
 
   const filtered = current.filter((p) => p.id !== input.postId);
   await setStoredJson(POSTS_STORAGE_KEY, filtered);
+  removeCachedFeedItem<Post>(() => true, (p) => p.id === input.postId);
 
   if (supabase) {
     try {

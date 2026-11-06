@@ -336,9 +336,6 @@ export function TechnicianCard({
             </Text>
           </View>
         </View>
-        {source === 'fixtures' && technician.available && (
-          <Text style={styles.sampleAvailability}>{t('technician.sampleAvailability')}</Text>
-        )}
       </View>
     </Pressable>
   );

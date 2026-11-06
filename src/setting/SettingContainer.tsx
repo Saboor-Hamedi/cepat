@@ -1,6 +1,7 @@
 import { router, useLocalSearchParams } from "expo-router";
 import {
   Bell,
+  Circle,
   FileText,
   Globe,
   Info,
@@ -37,6 +38,7 @@ import { setInAppPushEnabled } from "../data/notifications";
 import { useLanguage } from "../i18n/locale";
 import { colors, spacing } from "../theme/tokens";
 import { font } from "../theme/typography";
+import { resolveProfileAccent } from "../theme/profileAccent";
 import type {
   SavedAddress,
   Technician,
@@ -46,6 +48,7 @@ import { SettingAccount } from "./account/SettingAccount";
 import { SettingPassword } from "./account/SettingPassword";
 import { SettingAddress } from "./address/SettingAddress";
 import { SettingAppearance } from "./appearance/SettingAppearance";
+import { SettingProfileAccent } from "./profile/SettingProfileAccent";
 import { type SettingSectionKey } from "./components/SettingHeader";
 import { SettingNavLink } from "./components/SettingNavLink";
 import { SettingDeleteAccount } from "./delete-account/SettingDeleteAccount";
@@ -57,7 +60,7 @@ import { APP_VERSION, SettingVersion } from "./version";
 
 export function SettingContainer() {
   const { language } = useLanguage();
-  const { palette, setThemeMode, setLargeText, setReduceMotion } =
+  const { palette, setThemeMode, setLargeText, setReduceMotion, profileAccentId } =
     useAppearance();
   const { user, effectiveRole, updateUserProfile } = useAuth();
   const params = useLocalSearchParams<{ tab?: string; returnTo?: string }>();
@@ -70,6 +73,7 @@ export function SettingContainer() {
     params.tab === "notifications" ||
     params.tab === "language" ||
     params.tab === "appearance" ||
+    params.tab === "profile-accent" ||
     params.tab === "policy" ||
     params.tab === "version" ||
     params.tab === "delete-account" ||
@@ -109,6 +113,7 @@ export function SettingContainer() {
     activeSection !== "account" &&
     activeSection !== "language" &&
     activeSection !== "appearance" &&
+    activeSection !== "profile-accent" &&
     activeSection !== "policy" &&
     activeSection !== "version"
       ? null
@@ -297,6 +302,8 @@ export function SettingContainer() {
         return language === "en" ? "Notifications" : "Notifikasi";
       case "appearance":
         return language === "en" ? "Appearance" : "Tampilan";
+      case "profile-accent":
+        return language === "en" ? "Profile Ring" : "Aksen Foto";
       case "policy":
         return language === "en" ? "Term Policy" : "Kebijakan & Syarat";
       case "version":
@@ -322,6 +329,16 @@ export function SettingContainer() {
       router.replace("/" as any);
     }
   };
+
+  // Label for the currently selected profile ring accent (shown on the nav row).
+  const activeProfileAccent = resolveProfileAccent(profileAccentId);
+  const currentProfileAccentLabel = activeProfileAccent
+    ? language === "en"
+      ? activeProfileAccent.labelEn
+      : activeProfileAccent.labelId
+    : language === "en"
+      ? "None"
+      : "Tanpa";
 
   const currentThemeLabel =
     preferences.appearance === "dark"
@@ -475,11 +492,19 @@ export function SettingContainer() {
                   />
                 )}
                 <SettingNavLink
+                  showDivider
                   icon={Palette}
                   title={language === "en" ? "Appearance" : "Tampilan"}
                   valueText={currentThemeLabel}
                   onPress={() => setSelectedSection("appearance")}
                   testID="setting-tab-appearance"
+                />
+                <SettingNavLink
+                  icon={Circle}
+                  title={language === "en" ? "Profile Ring" : "Aksen Foto Profil"}
+                  valueText={currentProfileAccentLabel}
+                  onPress={() => setSelectedSection("profile-accent")}
+                  testID="setting-tab-profile-accent"
                 />
               </View>
 
@@ -594,6 +619,14 @@ export function SettingContainer() {
                     void setInAppPushEnabled(notifications.push);
                     void handleUpdatePrefs({ ...preferences, notifications });
                   }}
+                />
+              )}
+
+              {visibleSection === "profile-accent" && (
+                <SettingProfileAccent
+                  avatarUri={avatarUri || undefined}
+                  displayName={displayName}
+                  subtitle={email || username || undefined}
                 />
               )}
 

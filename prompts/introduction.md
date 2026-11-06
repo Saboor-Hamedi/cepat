@@ -97,8 +97,17 @@ It should include:
 - Featured or recommended technicians where appropriate.
 - Navigation to detailed technician profiles.
 - Access to each user's role-specific dashboard and bookings.
+- A social-commerce feed of technician posts (Threads-style): avatars with an optional profile ring, verified names, ratings, media, price, and quick actions.
 
 The interface should remain clean, fast, and easy to navigate.
+
+### Social-Commerce Feed (current implementation)
+
+Technicians post serviceable work from their profile. Each post card shows:
+
+- Left column: circular 44px avatar (with optional **Profile Ring** accent) and a hairline connector line threading posts.
+- Right column: name + verified badge + rating chip; `@handle · service area` on the line below (never beside the name); optional service title (category) and caption; full-width media; a footer with the starting price, **Book** (functional), and **Like / Comment / Share** icon buttons that are intentionally UI-only until back-end actions are implemented, plus an optional save-technician **Bookmark**.
+- Like, comment and share have **no handlers by design**; the only action that navigates is Book (`/booking/[id]`).
 
 ### Technician Profiles
 
@@ -115,8 +124,9 @@ Profiles may include:
 - Ratings and written customer reviews.
 - Verification status.
 - Availability and booking options.
+- A personal **Profile Ring** accent around the avatar (3px round border, 10 selectable colors + "None"), chosen in Settings → Preferences → Profile Ring with a live preview. Applied to all in-app avatars and to the compose FAB.
 
-Allow controlled visual customization where practical. Customization must not permit arbitrary executable code, unsafe HTML, or changes that compromise accessibility, application security, or visual consistency.
+Allow controlled visual customization where practical. Customization must not permit arbitrary executable code, unsafe HTML, or changes that compromise accessibility, application security, or visual consistency. The profile ring is a controlled accent: a fixed set of known hex colors applied only as a border.
 
 Clicking a technician card opens the technician's profile. Customers can review the profile before selecting the booking action.
 
@@ -172,6 +182,8 @@ Security checks must not rely exclusively on client-side filtering.
 Customers can submit a one-to-five-star rating and written feedback after a completed job.
 
 Reviews can contribute to technician visibility and ranking. Ranking must account for factors such as review count, reliability, and relevance, rather than relying on a single review.
+
+One review per **booking** is enforced end-to-end: the booking screen swaps the form for a read-only submitted state once a review exists, and the store layer rejects duplicates (`review_already_submitted`) including offline/lost-state cases via a locally stored review index. Remote persistence lives on the booking row (`review_rating`, `review_comment`).
 
 Customers can submit reports about technicians. Reports may include a reason, explanation, and supporting photographs.
 
@@ -374,4 +386,4 @@ This document defines the product direction and engineering expectations. It doe
 
 The actual project setup, installed packages, completed features, test results, and remaining work must be recorded in `project-status.md` as development proceeds.
 
-**Final instruction:** Treat this document as the shared product context. Follow the feature-specific specifications for implementation details, follow `agent-rules.md` for working procedures, and update project status only after verifying the actual state of the codebase.
+**Final instruction:** Treat this document as the shared product context. Follow the feature-specific specifications for implementation details, follow `agent-rules.md` for working procedures (see its November 2026 Appendix A for current UI invariants), and read `project-status.md` for the actual, verified implementation state — it is authoritative where it and this document disagree.

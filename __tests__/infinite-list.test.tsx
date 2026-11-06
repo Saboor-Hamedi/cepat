@@ -1,6 +1,9 @@
 import { act, renderHook, waitFor } from '@testing-library/react-native';
 
-import { useInfiniteList } from '../src/hooks/useInfiniteList';
+import {
+  prependCachedFeedItem,
+  useInfiniteList,
+} from '../src/hooks/useInfiniteList';
 import type { CursorPage } from '../src/types/post';
 
 interface Item {
@@ -45,5 +48,41 @@ describe('useInfiniteList', () => {
     ]);
     expect(result.current.hasMore).toBe(false);
     expect(fetchPage).toHaveBeenCalledTimes(2);
+  });
+
+  it('immediately reflects prepended items in mounted feeds without requiring a manual refresh', async () => {
+    const fetchPage = jest.fn(
+      async (): Promise<CursorPage<Item>> => ({
+        items: [{ id: 'existing-1' }],
+        nextCursor: null,
+        hasMore: false,
+      }),
+    );
+    const cacheKey = `marketplace-posts:Semua area:all`;
+    const { result } = await renderHook(() =>
+      useInfiniteList({
+        cacheKey,
+        fetchPage,
+        keyExtractor: (item: Item) => item.id,
+        pageSize: 10,
+      }),
+    );
+
+    await waitFor(() => expect(result.current.items).toHaveLength(1));
+
+    await act(async () => {
+      prependCachedFeedItem<Item>(
+        (key) => key.startsWith('marketplace-posts:'),
+        { id: 'new-post-from-profile' },
+        (item) => item.id,
+      );
+    });
+
+    expect(result.current.items.map((item) => item.id)).toEqual([
+      'new-post-from-profile',
+      'existing-1',
+    ]);
+    expect(result.current.refreshing).toBe(false);
+    expect(fetchPage).toHaveBeenCalledTimes(1);
   });
 });

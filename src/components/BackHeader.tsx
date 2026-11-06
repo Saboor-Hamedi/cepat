@@ -97,7 +97,12 @@ export function BackHeader({
         )}
       </Pressable>
 
-      <View style={styles.titleWrap}>
+      <View
+        style={[
+          styles.titleWrap,
+          titleComponent ? styles.titleWrapFull : null,
+        ]}
+      >
         {titleComponent ? (
           titleComponent
         ) : title ? (
@@ -111,9 +116,11 @@ export function BackHeader({
         ) : null}
       </View>
 
-      <View style={styles.rightWrap}>
-        {rightElement || null}
-      </View>
+      {rightElement || !titleComponent ? (
+        <View style={styles.rightWrap}>
+          {rightElement || null}
+        </View>
+      ) : null}
     </View>
   );
 }
@@ -125,7 +132,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     marginBottom: spacing.sm,
-    minHeight: 46,
+    minHeight: 44,
     paddingHorizontal: 2,
     paddingVertical: 0,
     width: '100%',
@@ -134,18 +141,19 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     borderRadius: 999,
     flexDirection: 'row',
-    gap: 4,
+    gap: 2,
     justifyContent: 'center',
-    minHeight: 40,
-    minWidth: 40,
+    marginLeft: -2,
+    minHeight: 36,
+    minWidth: 34,
     paddingVertical: 2,
   },
   backBtnPill: {
-    paddingHorizontal: 12,
+    paddingHorizontal: 9,
   },
   backBtnIconOnly: {
     paddingHorizontal: 0,
-    width: 40,
+    width: 34,
   },
   backLabel: {
     fontSize: font.label,
@@ -156,7 +164,12 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     flex: 1,
     justifyContent: 'center',
-    paddingHorizontal: 8,
+    paddingHorizontal: 6,
+  },
+  titleWrapFull: {
+    alignItems: 'stretch',
+    paddingLeft: 4,
+    paddingRight: 0,
   },
   titleText: {
     fontSize: font.heading,
@@ -168,7 +181,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     flexDirection: 'row',
     justifyContent: 'flex-end',
-    minHeight: 40,
-    minWidth: 40,
+    minHeight: 36,
+    minWidth: 34,
   },
 });

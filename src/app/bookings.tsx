@@ -1,6 +1,14 @@
-import { router } from "expo-router";
+import { router, useLocalSearchParams } from "expo-router";
 import { useEffect, useMemo, useState } from "react";
-import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import {
+  Animated,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  View,
+} from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import {
@@ -17,7 +25,7 @@ import {
   StatusFilterPills,
 } from "../bookings";
 import { useAppearance } from "../context/AppearanceContext";
-import { loadTechnicians } from "../data/marketplaceRepository";
+import { loadTechnicians, shouldUseFixtures } from "../data/marketplaceRepository";
 import {
   isChatEnabledForStatus,
   loadBookings,
@@ -26,8 +34,10 @@ import {
   loadSubmittedReviews,
   subscribeToBookings,
   transitionBookingStatus,
+  updateBookingReview,
 } from "../data/marketplaceStore";
 import { localizeArea, useLanguage } from "../i18n/locale";
+import { useFadeIn } from "../hooks/useFadeIn";
 import { useAuth } from "../auth/AuthProvider";
 import { TaskContainer } from "../task";
 import type {
@@ -42,16 +52,27 @@ import { font } from '../theme/typography';
 type CustomerHubTab =
   "current" | "history" | "messages" | "saved" | "reviews_reports";
 
-export default function CustomerBookingsScreen() {
+export interface CustomerBookingsScreenProps { initialHub?: "bookings" | "tasks"; }
+export default function CustomerBookingsScreen({ initialHub }: CustomerBookingsScreenProps = {}) {
   const { language, t } = useLanguage();
   const { palette } = useAppearance();
-  const { user, roles, effectiveRole } = useAuth();
+  const { user, roles, effectiveRole, applicationStatus, applicationError, refreshAccount } = useAuth();
+  const params = useLocalSearchParams<{ hub?: string }>();
+  const isPreview = shouldUseFixtures();
+  const requestedHub = initialHub ?? (params.hub === "tasks" ? "tasks" : params.hub === "bookings" ? "bookings" : undefined);
   const isTechnicianAccount = Boolean(
-    user &&
-      ((effectiveRole === "technician" || roles.includes("technician")) ||
-        (effectiveRole === "admin" || roles.includes("admin"))),
+    (user &&
+      (effectiveRole === "technician" ||
+        roles.includes("technician") ||
+        effectiveRole === "admin" ||
+        roles.includes("admin") ||
+        user.user_metadata?.requested_account_type === "technician")) ||
+      (requestedHub === "tasks" && isPreview && !user)
   );
-  const [hub, setHub] = useState<"bookings" | "tasks">("bookings");
+  const [manualHub, setManualHub] = useState<{ base: typeof requestedHub; value: "bookings" | "tasks" } | null>(null);
+  const hub: "bookings" | "tasks" = manualHub && manualHub.base === requestedHub ? manualHub.value : (requestedHub === "tasks" ? "tasks" : "bookings");
+  const setHub = (next: "bookings" | "tasks") => setManualHub({ base: requestedHub, value: next });
+  const isApprovedTechnician = (isTechnicianAccount && applicationStatus !== "rejected") || (isPreview && !user);
   const [tab, setTab] = useState<CustomerHubTab>("current");
   const [allBookings, setAllBookings] = useState<BookingRecord[]>([]);
   const [loading, setLoading] = useState(true);
@@ -62,6 +83,10 @@ export default function CustomerBookingsScreen() {
   const [technicians, setTechnicians] = useState<Technician[]>([]);
   const [reviews, setReviews] = useState<TechnicianReview[]>([]);
   const [reports, setReports] = useState<TechnicianReport[]>([]);
+  const [editingReviewKey, setEditingReviewKey] = useState<string | null>(null);
+  const [editRating, setEditRating] = useState<number>(5);
+  const [editComment, setEditComment] = useState<string>("");
+  const [savingReviewEdit, setSavingReviewEdit] = useState(false);
 
   useEffect(() => {
     let active = true;
@@ -160,14 +185,85 @@ export default function CustomerBookingsScreen() {
     [bookings],
   );
 
+  const currentUserId = user?.id;
   const uniqueReviews = useMemo(() => {
     const seen = new Set<string>();
+    const customerCompletedIds = new Set(
+      bookings
+        .filter((b) => b.status === "completed" && b.customerUserId === currentUserId)
+        .map((b) => b.id),
+    );
     return reviews.filter((r) => {
       if (seen.has(r.id)) return false;
+      if (
+        r.customerUserId &&
+        currentUserId &&
+        r.customerUserId !== currentUserId
+      ) {
+        return false;
+      }
+      if (
+        r.bookingId &&
+        currentUserId &&
+        !customerCompletedIds.has(r.bookingId) &&
+        r.customerUserId !== currentUserId
+      ) {
+        return false;
+      }
       seen.add(r.id);
       return true;
     });
-  }, [reviews]);
+  }, [bookings, currentUserId, reviews]);
+
+  const handleSaveInlineReviewEdit = async (params: {
+    bookingId?: string;
+    reviewId?: string;
+    technicianId: string;
+  }) => {
+    if (!user?.id || savingReviewEdit) return;
+    setSavingReviewEdit(true);
+    try {
+      const updated = await updateBookingReview({
+        bookingId: params.bookingId,
+        reviewId: params.reviewId,
+        customerUserId: user.id,
+        technicianId: params.technicianId,
+        rating: editRating,
+        comment: editComment,
+      });
+      setReviews((prev) => {
+        const exists = prev.some(
+          (r) => r.id === updated.id || (r.bookingId && r.bookingId === updated.bookingId),
+        );
+        return exists
+          ? prev.map((r) =>
+              r.id === updated.id || (r.bookingId && r.bookingId === updated.bookingId)
+                ? updated
+                : r,
+            )
+          : [updated, ...prev];
+      });
+      if (updated.bookingId) {
+        setBookings((prev) =>
+          prev.map((b) =>
+            b.id === updated.bookingId
+              ? { ...b, reviewRating: updated.rating, reviewComment: updated.comment }
+              : b,
+          ),
+        );
+        setAllBookings((prev) =>
+          prev.map((b) =>
+            b.id === updated.bookingId
+              ? { ...b, reviewRating: updated.rating, reviewComment: updated.comment }
+              : b,
+          ),
+        );
+      }
+      setEditingReviewKey(null);
+    } finally {
+      setSavingReviewEdit(false);
+    }
+  };
 
   const uniqueReports = useMemo(() => {
     const seen = new Set<string>();
@@ -202,7 +298,15 @@ export default function CustomerBookingsScreen() {
     [technicians],
   );
 
-  const showTasks = isTechnicianAccount && hub === "tasks";
+  const showTasks = hub === "tasks";
+  const showHubSwitcher = isTechnicianAccount || hub === "tasks" || Boolean(user);
+  const headerTitle =
+    hub === "tasks"
+      ? language === "en"
+        ? "Tasks & Requests"
+        : "Tugas & Permintaan"
+      : t("dashboard.customerTitle");
+  const hubFade = useFadeIn(hub);
 
   return (
     <SafeAreaView
@@ -213,20 +317,20 @@ export default function CustomerBookingsScreen() {
         style={styles.screenContent}
         contentContainerStyle={styles.scrollContent}
       >
-        <View style={styles.container}>
+        <View style={styles.container} testID="technician-social-profile-card">
           {/* Top app header: back chevron + screen title */}
           <BackHeader
-            title={t("dashboard.customerTitle")}
+            title={headerTitle}
             backBtnTestID="customer-bookings-back-btn"
             testID="customer-bookings-header"
           />
 
           {/* Hidden semantic tag to preserve test compatibility */}
           <Text style={styles.srOnly} testID="bookings-heading">
-            {t("dashboard.customerTitle")}
+            {headerTitle}
           </Text>
 
-          {isTechnicianAccount && (
+          {showHubSwitcher && (
             <HubSwitcher<"bookings" | "tasks">
               activeTab={hub}
               onSelectTab={setHub}
@@ -244,14 +348,52 @@ export default function CustomerBookingsScreen() {
             />
           )}
 
-          {showTasks ? (
+          <Animated.View
+            style={{
+              opacity: hubFade.opacity,
+              transform: [{ translateY: hubFade.translateY }],
+            }}
+          >
+          {showTasks ? (!isApprovedTechnician ? (
+            <View
+              style={[styles.card, { backgroundColor: palette.surfaceElevated, borderColor: palette.border }]}
+              testID="unapproved-technician-banner"
+            >
+              <Text style={[styles.cardTitle, { color: palette.text }]}>
+                {applicationStatus === "rejected"
+                  ? language === "en" ? "Application Rejected" : "Pengajuan Ditolak"
+                  : language === "en" ? "Application Under Review" : "Pengajuan Sedang Ditinjau"}
+              </Text>
+              <Text style={[styles.cardSub, { color: palette.textMuted }]}>
+                {applicationStatus === "rejected"
+                  ? language === "en"
+                    ? "Your technician application was not approved. You can re-apply or continue as a customer."
+                    : "Pengajuan teknisi Anda belum disetujui. Anda dapat mengajukan ulang atau lanjut sebagai pelanggan."
+                  : language === "en"
+                    ? "Your technician application is being verified by our team. You will have full access once approved."
+                    : "Pengajuan teknisi Anda sedang diverifikasi oleh tim kami. Akses penuh akan terbuka setelah disetujui."}
+              </Text>
+              {applicationError ? (
+                <View style={{ marginTop: spacing.sm }}>
+                  <Text style={{ color: palette.danger, fontSize: font.body }}>{applicationError}</Text>
+                  <Pressable
+                    accessibilityRole="button"
+                    onPress={() => { void refreshAccount(); }}
+                    style={[styles.editReviewPillBtn, { alignSelf: "flex-start", backgroundColor: palette.primary, borderColor: palette.primary, marginTop: spacing.xs }]}
+                  >
+                    <Text style={{ color: "#FFFFFF", fontWeight: "700" }}>{t("home.retry")}</Text>
+                  </Pressable>
+                </View>
+              ) : null}
+            </View>
+          ) : (
             <TaskContainer
               bookings={allBookings}
               loading={loading}
               onBookingAction={handleTechBookingAction}
               showHeader={false}
             />
-          ) : null}
+          )) : null}
 
           {!showTasks && (<>
           <StatusFilterPills<CustomerHubTab>
@@ -323,18 +465,150 @@ export default function CustomerBookingsScreen() {
             )
           ) : tab === "history" ? (
             historyBookings.length > 0 ? (
-              historyBookings.map((booking) => (
-                <BookingCard
-                  key={booking.id}
-                  booking={booking}
-                  technicianAvatarUri={
-                    technicianById.get(booking.technicianUserId)?.avatarUri
-                  }
-                  technicianVerified={
-                    technicianById.get(booking.technicianUserId)?.verified
-                  }
-                />
-              ))
+              historyBookings.map((booking) => {
+                const canCustomerEditHistoryReview = Boolean(
+                  user?.id &&
+                    booking.status === "completed" &&
+                    booking.customerUserId === user.id &&
+                    user.id !== booking.technicianUserId &&
+                    typeof booking.reviewRating === "number",
+                );
+                const isEditingThisHistory =
+                  editingReviewKey === `history-${booking.id}`;
+                return (
+                  <View key={booking.id}>
+                    <BookingCard
+                      booking={booking}
+                      technicianAvatarUri={
+                        technicianById.get(booking.technicianUserId)?.avatarUri
+                      }
+                      technicianVerified={
+                        technicianById.get(booking.technicianUserId)?.verified
+                      }
+                    />
+                    {canCustomerEditHistoryReview ? (
+                      isEditingThisHistory ? (
+                        <View
+                          style={[
+                            styles.card,
+                            {
+                              backgroundColor: palette.surface,
+                              borderColor: palette.primary,
+                              marginTop: -6,
+                            },
+                          ]}
+                          testID={`history-edit-review-form-${booking.id}`}
+                        >
+                          <View style={styles.inlineStarsRow}>
+                            {[1, 2, 3, 4, 5].map((star) => (
+                              <Pressable
+                                key={star}
+                                accessibilityRole="button"
+                                onPress={() => setEditRating(star)}
+                                style={[
+                                  styles.inlineStarBtn,
+                                  editRating >= star && styles.inlineStarBtnActive,
+                                ]}
+                                testID={`history-edit-star-${booking.id}-${star}`}
+                              >
+                                <Text
+                                  style={[
+                                    styles.inlineStarText,
+                                    editRating >= star && styles.inlineStarTextActive,
+                                  ]}
+                                >
+                                  ★
+                                </Text>
+                              </Pressable>
+                            ))}
+                          </View>
+                          <TextInput
+                            multiline
+                            onChangeText={setEditComment}
+                            placeholder={t("booking.reviewPlaceholder")}
+                            placeholderTextColor={palette.textMuted}
+                            style={[
+                              styles.inlineReviewInput,
+                              {
+                                backgroundColor: palette.surfaceElevated,
+                                borderColor: palette.border,
+                                color: palette.text,
+                              },
+                            ]}
+                            testID={`history-edit-comment-input-${booking.id}`}
+                            value={editComment}
+                          />
+                          <View style={styles.inlineEditActions}>
+                            <Pressable
+                              accessibilityRole="button"
+                              onPress={() => setEditingReviewKey(null)}
+                              style={[
+                                styles.inlineActionBtn,
+                                { borderColor: palette.border },
+                              ]}
+                              testID={`history-cancel-edit-review-${booking.id}`}
+                            >
+                              <Text style={{ color: palette.text, fontWeight: "700" }}>
+                                {language === "en" ? "Cancel" : "Batal"}
+                              </Text>
+                            </Pressable>
+                            <Pressable
+                              accessibilityRole="button"
+                              disabled={savingReviewEdit}
+                              onPress={() => {
+                                void handleSaveInlineReviewEdit({
+                                  bookingId: booking.id,
+                                  technicianId: booking.technicianUserId,
+                                });
+                              }}
+                              style={[
+                                styles.inlineActionBtn,
+                                {
+                                  backgroundColor: palette.primary,
+                                  borderColor: palette.primary,
+                                },
+                              ]}
+                              testID={`history-save-edit-review-${booking.id}`}
+                            >
+                              <Text style={{ color: "#FFFFFF", fontWeight: "800" }}>
+                                {language === "en" ? "Save Feedback" : "Simpan Ulasan"}
+                              </Text>
+                            </Pressable>
+                          </View>
+                        </View>
+                      ) : (
+                        <View style={styles.historyFeedbackActionRow}>
+                          <Pressable
+                            accessibilityRole="button"
+                            onPress={() => {
+                              setEditRating(booking.reviewRating ?? 5);
+                              setEditComment(booking.reviewComment ?? "");
+                              setEditingReviewKey(`history-${booking.id}`);
+                            }}
+                            style={[
+                              styles.editReviewPillBtn,
+                              {
+                                backgroundColor: palette.primarySoft,
+                                borderColor: palette.primary,
+                              },
+                            ]}
+                            testID={`history-edit-review-btn-${booking.id}`}
+                          >
+                            <Text
+                              style={[
+                                styles.editReviewPillText,
+                                { color: palette.primary },
+                              ]}
+                            >
+                              {language === "en" ? "Edit Feedback" : "Edit Ulasan"}
+                            </Text>
+                          </Pressable>
+                        </View>
+                      )
+                    ) : null}
+                  </View>
+                );
+              })
             ) : (
               <EmptyState
                 title={
@@ -446,27 +720,159 @@ export default function CustomerBookingsScreen() {
                       : "Ulasan yang Kamu Kirim"}{" "}
                     ({uniqueReviews.length})
                   </Text>
-                  {uniqueReviews.map((rev) => (
-                    <View
-                      key={rev.id}
-                      style={[
-                        styles.card,
-                        {
-                          backgroundColor: palette.surface,
-                          borderColor: palette.border,
-                        },
-                      ]}
-                    >
-                      <Text style={[styles.cardTitle, { color: palette.text }]}>
-                        ★ {rev.rating.toFixed(1)}
-                      </Text>
-                      <Text
-                        style={[styles.cardSub, { color: palette.textMuted }]}
+                  {uniqueReviews.map((rev) => {
+                    const linkedBooking = rev.bookingId
+                      ? bookings.find((b) => b.id === rev.bookingId)
+                      : bookings.find(
+                          (b) =>
+                            b.technicianUserId === rev.technicianId &&
+                            b.status === "completed" &&
+                            b.customerUserId === user?.id,
+                        );
+                    const canEditThisReview = Boolean(
+                      user?.id &&
+                        linkedBooking &&
+                        linkedBooking.status === "completed" &&
+                        linkedBooking.customerUserId === user.id &&
+                        user.id !== linkedBooking.technicianUserId,
+                    );
+                    const isEditingThisRev = editingReviewKey === `rev-${rev.id}`;
+                    return (
+                      <View
+                        key={rev.id}
+                        style={[
+                          styles.card,
+                          {
+                            backgroundColor: palette.surface,
+                            borderColor: palette.border,
+                          },
+                        ]}
                       >
-                        {rev.comment}
-                      </Text>
-                    </View>
-                  ))}
+                        <View style={styles.cardTop}>
+                          <Text style={[styles.cardTitle, { color: palette.text }]}>
+                            ★ {rev.rating.toFixed(1)}
+                          </Text>
+                          {canEditThisReview && !isEditingThisRev ? (
+                            <Pressable
+                              accessibilityRole="button"
+                              onPress={() => {
+                                setEditRating(rev.rating);
+                                setEditComment(rev.comment ?? "");
+                                setEditingReviewKey(`rev-${rev.id}`);
+                              }}
+                              style={[
+                                styles.editReviewPillBtn,
+                                {
+                                  backgroundColor: palette.primarySoft,
+                                  borderColor: palette.primary,
+                                },
+                              ]}
+                              testID={`hub-edit-review-btn-${rev.id}`}
+                            >
+                              <Text
+                                style={[
+                                  styles.editReviewPillText,
+                                  { color: palette.primary },
+                                ]}
+                              >
+                                {language === "en" ? "Edit Feedback" : "Edit Ulasan"}
+                              </Text>
+                            </Pressable>
+                          ) : null}
+                        </View>
+                        {isEditingThisRev && linkedBooking ? (
+                          <View
+                            style={{ marginTop: spacing.sm }}
+                            testID={`hub-edit-review-form-${rev.id}`}
+                          >
+                            <View style={styles.inlineStarsRow}>
+                              {[1, 2, 3, 4, 5].map((star) => (
+                                <Pressable
+                                  key={star}
+                                  accessibilityRole="button"
+                                  onPress={() => setEditRating(star)}
+                                  style={[
+                                    styles.inlineStarBtn,
+                                    editRating >= star && styles.inlineStarBtnActive,
+                                  ]}
+                                  testID={`hub-edit-star-${rev.id}-${star}`}
+                                >
+                                  <Text
+                                    style={[
+                                      styles.inlineStarText,
+                                      editRating >= star && styles.inlineStarTextActive,
+                                    ]}
+                                  >
+                                    ★
+                                  </Text>
+                                </Pressable>
+                              ))}
+                            </View>
+                            <TextInput
+                              multiline
+                              onChangeText={setEditComment}
+                              placeholder={t("booking.reviewPlaceholder")}
+                              placeholderTextColor={palette.textMuted}
+                              style={[
+                                styles.inlineReviewInput,
+                                {
+                                  backgroundColor: palette.surfaceElevated,
+                                  borderColor: palette.border,
+                                  color: palette.text,
+                                },
+                              ]}
+                              testID={`hub-edit-comment-input-${rev.id}`}
+                              value={editComment}
+                            />
+                            <View style={styles.inlineEditActions}>
+                              <Pressable
+                                accessibilityRole="button"
+                                onPress={() => setEditingReviewKey(null)}
+                                style={[
+                                  styles.inlineActionBtn,
+                                  { borderColor: palette.border },
+                                ]}
+                                testID={`hub-cancel-edit-review-${rev.id}`}
+                              >
+                                <Text style={{ color: palette.text, fontWeight: "700" }}>
+                                  {language === "en" ? "Cancel" : "Batal"}
+                                </Text>
+                              </Pressable>
+                              <Pressable
+                                accessibilityRole="button"
+                                disabled={savingReviewEdit}
+                                onPress={() => {
+                                  void handleSaveInlineReviewEdit({
+                                    bookingId: linkedBooking.id,
+                                    reviewId: rev.id,
+                                    technicianId: linkedBooking.technicianUserId,
+                                  });
+                                }}
+                                style={[
+                                  styles.inlineActionBtn,
+                                  {
+                                    backgroundColor: palette.primary,
+                                    borderColor: palette.primary,
+                                  },
+                                ]}
+                                testID={`hub-save-edit-review-${rev.id}`}
+                              >
+                                <Text style={{ color: "#FFFFFF", fontWeight: "800" }}>
+                                  {language === "en" ? "Save Feedback" : "Simpan Ulasan"}
+                                </Text>
+                              </Pressable>
+                            </View>
+                          </View>
+                        ) : (
+                          <Text
+                            style={[styles.cardSub, { color: palette.textMuted }]}
+                          >
+                            {rev.comment}
+                          </Text>
+                        )}
+                      </View>
+                    );
+                  })}
                 </>
               )}
 
@@ -507,6 +913,7 @@ export default function CustomerBookingsScreen() {
             </View>
           )}
           </>)}
+          </Animated.View>
         </View>
       </ScrollView>
       <AppNavigationBar activeTab="bookings" />
@@ -565,5 +972,65 @@ const styles = StyleSheet.create({
     marginTop: 6,
     paddingHorizontal: 8,
     paddingVertical: 3,
+  },
+  historyFeedbackActionRow: {
+    alignItems: "flex-end",
+    marginBottom: spacing.sm,
+    marginTop: -6,
+  },
+  editReviewPillBtn: {
+    borderRadius: radii.pill,
+    borderWidth: 1,
+    paddingHorizontal: 12,
+    paddingVertical: 5,
+  },
+  editReviewPillText: {
+    fontSize: font.caption,
+    fontWeight: "800",
+  },
+  inlineStarsRow: {
+    flexDirection: "row",
+    gap: 8,
+    marginBottom: spacing.xs,
+  },
+  inlineStarBtn: {
+    alignItems: "center",
+    borderColor: "#CBD5E1",
+    borderRadius: radii.sm,
+    borderWidth: 1,
+    height: 34,
+    justifyContent: "center",
+    width: 34,
+  },
+  inlineStarBtnActive: {
+    backgroundColor: "#FEF3C7",
+    borderColor: "#F59E0B",
+  },
+  inlineStarText: {
+    color: "#94A3B8",
+    fontSize: font.subtitle,
+  },
+  inlineStarTextActive: {
+    color: "#F59E0B",
+  },
+  inlineReviewInput: {
+    borderRadius: radii.sm,
+    borderWidth: 1,
+    fontSize: font.label,
+    minHeight: 70,
+    padding: spacing.sm,
+    textAlignVertical: "top",
+  },
+  inlineEditActions: {
+    flexDirection: "row",
+    gap: spacing.xs,
+    justifyContent: "flex-end",
+    marginTop: spacing.xs,
+  },
+  inlineActionBtn: {
+    borderRadius: radii.sm,
+    borderWidth: 1,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
   },
 });

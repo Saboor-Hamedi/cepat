@@ -36,6 +36,7 @@ const USER_PREFS_KEY = '@cepat/user-preferences:';
 const ACCOUNT_PROFILE_KEY = '@cepat/account-profile:';
 const TECH_WORKSPACE_KEY = '@cepat/technician-workspace:';
 const BOOKINGS_STORAGE_KEY = '@cepat/bookings';
+const ARCHIVED_BOOKINGS_KEY = '@cepat/archived-bookings:';
 const MESSAGES_STORAGE_KEY = '@cepat/booking-messages';
 const REVIEWS_STORAGE_KEY = '@cepat/submitted-reviews';
 const REPORTS_STORAGE_KEY = '@cepat/submitted-reports';
@@ -90,6 +91,15 @@ function mapSupabaseBooking(
     createdAt: String(row.created_at ?? ''),
     updatedAt: String(row.updated_at ?? ''),
     source: 'supabase',
+    reviewRating:
+      typeof row.review_rating === 'number'
+        ? row.review_rating
+        : row.review_rating != null && Number.isFinite(Number(row.review_rating))
+          ? Number(row.review_rating)
+          : undefined,
+    reviewComment: row.review_comment
+      ? String(row.review_comment)
+      : undefined,
   };
 }
 
@@ -720,6 +730,21 @@ export async function loadBookings(): Promise<BookingRecord[]> {
   return rows.map((row) => mapSupabaseBooking(row, namesById, areasById));
 }
 
+export async function loadArchivedBookingIds(userId?: string | null): Promise<string[]> {
+  if (!userId) return [];
+  return getStoredJson<string[]>(scopeKey(ARCHIVED_BOOKINGS_KEY, userId), []);
+}
+
+export async function archiveBookingForUser(
+  userId: string | null | undefined,
+  bookingId: string,
+): Promise<void> {
+  if (!userId) return;
+  const current = await loadArchivedBookingIds(userId);
+  if (current.includes(bookingId)) return;
+  await setStoredJson(scopeKey(ARCHIVED_BOOKINGS_KEY, userId), [...current, bookingId]);
+}
+
 export async function loadBookingById(bookingId: string): Promise<BookingRecord | null> {
   const bookings = await loadBookings();
   return bookings.find((b) => b.id === bookingId) ?? null;
@@ -1292,6 +1317,7 @@ export async function sendBookingMessage(input: {
 export async function submitBookingReview(input: {
   bookingId: string;
   technicianId: string;
+  customerUserId?: string;
   customerName: string;
   rating: number;
   comment: string;
@@ -1303,7 +1329,25 @@ export async function submitBookingReview(input: {
   if (booking && booking.customerUserId === booking.technicianUserId) {
     throw new Error('cannot_review_self');
   }
+  if (
+    input.customerUserId &&
+    (input.customerUserId === input.technicianId ||
+      (booking && booking.customerUserId !== input.customerUserId))
+  ) {
+    throw new Error('unauthorized_review_actor');
+  }
   if (booking && booking.reviewRating) {
+    throw new Error('review_already_submitted');
+  }
+  const existingStoredReviews = await getStoredJson<TechnicianReview[]>(
+    REVIEWS_STORAGE_KEY,
+    [],
+  );
+  if (
+    existingStoredReviews.some(
+      (stored) => booking && stored.bookingId === booking.id,
+    )
+  ) {
     throw new Error('review_already_submitted');
   }
   const normalizedRating = Math.round(input.rating);
@@ -1315,6 +1359,7 @@ export async function submitBookingReview(input: {
     id: `review-${Date.now()}`,
     technicianId: input.technicianId,
     bookingId: input.bookingId,
+    customerUserId: booking?.customerUserId ?? input.customerUserId,
     customerName: input.customerName.trim() || 'Pelanggan Cepat',
     rating: normalizedRating,
     comment: input.comment.trim().slice(0, 1000),
@@ -1341,14 +1386,26 @@ export async function submitBookingReview(input: {
     }
     if (supabase) {
       try {
-        await supabase
-          .from('bookings')
-          .update({
-            review_rating: normalizedRating,
-            review_comment: review.comment,
-          })
-          .eq('id', booking.id);
-      } catch {}
+        const { error: rpcError } = await supabase.rpc('submit_or_update_booking_review', {
+          p_booking_id: booking.id,
+          p_rating: normalizedRating,
+          p_comment: review.comment ?? '',
+        });
+        if (rpcError) {
+          const { error } = await supabase
+            .from('bookings')
+            .update({
+              review_rating: normalizedRating,
+              review_comment: review.comment,
+            })
+            .eq('id', booking.id);
+          if (error) {
+            console.warn('[marketplaceStore] Persisting booking review failed:', error.message);
+          }
+        }
+      } catch (err) {
+        console.warn('[marketplaceStore] Persisting booking review failed:', err);
+      }
     }
   }
 
@@ -1370,12 +1427,206 @@ export async function submitBookingReview(input: {
   return review;
 }
 
+/**
+ * Allows ONLY the customer who completed a specific task with a technician to edit their submitted feedback.
+ * Admins, the technician themselves, and unrelated users are strictly rejected.
+ */
+export async function updateBookingReview(input: {
+  bookingId?: string;
+  reviewId?: string;
+  customerUserId: string;
+  technicianId: string;
+  rating: number;
+  comment: string;
+}): Promise<TechnicianReview> {
+  const actorId = input.customerUserId?.trim();
+  if (!actorId) {
+    throw new Error('unauthorized_review_actor');
+  }
+  if (actorId === input.technicianId) {
+    throw new Error('cannot_review_self');
+  }
+
+  const normalizedRating = Math.round(input.rating);
+  if (normalizedRating < 1 || normalizedRating > 5) {
+    throw new Error('invalid_rating');
+  }
+
+  const cleanComment = input.comment.trim().slice(0, 1000);
+  const allBookings = await loadBookings();
+  const directBooking = input.bookingId
+    ? (await loadBookingById(input.bookingId)) ?? allBookings.find((b) => b.id === input.bookingId)
+    : undefined;
+
+  const storedReviews = await getStoredJson<TechnicianReview[]>(REVIEWS_STORAGE_KEY, []);
+  const existingReview = storedReviews.find(
+    (rev) =>
+      (input.reviewId && rev.id === input.reviewId) ||
+      (input.bookingId && rev.bookingId === input.bookingId) ||
+      (rev.technicianId === input.technicianId && rev.customerUserId === actorId),
+  );
+
+  const matchedBooking =
+    directBooking ??
+    (existingReview?.bookingId
+      ? allBookings.find((b) => b.id === existingReview.bookingId)
+      : undefined) ??
+    allBookings.find(
+      (b) =>
+        b.technicianUserId === input.technicianId &&
+        b.customerUserId === actorId &&
+        b.status === 'completed',
+    );
+
+  if (!matchedBooking || matchedBooking.status !== 'completed') {
+    throw new Error('booking_not_completed');
+  }
+
+  if (
+    matchedBooking.customerUserId !== actorId ||
+    matchedBooking.technicianUserId === actorId ||
+    matchedBooking.technicianUserId !== input.technicianId
+  ) {
+    throw new Error('unauthorized_review_actor');
+  }
+
+  if (existingReview?.customerUserId && existingReview.customerUserId !== actorId) {
+    throw new Error('unauthorized_review_actor');
+  }
+
+  const oldRating = existingReview?.rating ?? matchedBooking.reviewRating ?? normalizedRating;
+  const nowDate = new Date().toISOString().slice(0, 10);
+
+  const updatedReview: TechnicianReview = {
+    id: existingReview?.id ?? `review-${matchedBooking.id}`,
+    technicianId: input.technicianId,
+    bookingId: matchedBooking.id,
+    customerUserId: actorId,
+    customerName: existingReview?.customerName || matchedBooking.customerName || 'Pelanggan Cepat',
+    rating: normalizedRating,
+    comment: cleanComment,
+    createdAt: existingReview?.createdAt ?? matchedBooking.updatedAt?.slice(0, 10) ?? nowDate,
+    updatedAt: nowDate,
+  };
+
+  const hasStoredMatch = storedReviews.some(
+    (rev) => rev.id === updatedReview.id || (rev.bookingId && rev.bookingId === matchedBooking.id),
+  );
+  const nextStoredReviews = hasStoredMatch
+    ? storedReviews.map((rev) =>
+        rev.id === updatedReview.id || (rev.bookingId && rev.bookingId === matchedBooking.id)
+          ? updatedReview
+          : rev,
+      )
+    : [updatedReview, ...storedReviews];
+  await setStoredJson(REVIEWS_STORAGE_KEY, nextStoredReviews);
+
+  const updatedBooking: BookingRecord = {
+    ...matchedBooking,
+    reviewRating: normalizedRating,
+    reviewComment: cleanComment,
+    updatedAt: new Date().toISOString(),
+  };
+  const currentBookings = await getStoredJson<BookingRecord[]>(BOOKINGS_STORAGE_KEY, fixtureBookings);
+  const bookingExistsInStored = currentBookings.some((b) => b.id === matchedBooking.id);
+  const nextBookings = bookingExistsInStored
+    ? currentBookings.map((b) => (b.id === matchedBooking.id ? updatedBooking : b))
+    : [updatedBooking, ...currentBookings];
+  await setStoredJson(BOOKINGS_STORAGE_KEY, nextBookings);
+
+  const fxIndex = fixtureBookings.findIndex((b) => b.id === matchedBooking.id);
+  if (fxIndex >= 0) {
+    fixtureBookings[fxIndex] = updatedBooking;
+  }
+
+  if (supabase) {
+    try {
+      const { error: rpcError } = await supabase.rpc('submit_or_update_booking_review', {
+        p_booking_id: matchedBooking.id,
+        p_rating: normalizedRating,
+        p_comment: cleanComment,
+      });
+      if (rpcError) {
+        await supabase
+          .from('bookings')
+          .update({
+            review_rating: normalizedRating,
+            review_comment: cleanComment,
+          })
+          .eq('id', matchedBooking.id)
+          .eq('customer_user_id', actorId);
+      }
+    } catch (err) {
+      console.warn('[marketplaceStore] Updating booking review failed:', err);
+    }
+  }
+
+  const techIndex = fixtureTechnicians.findIndex((item) => item.id === input.technicianId);
+  if (techIndex >= 0) {
+    const tech = fixtureTechnicians[techIndex];
+    const count = Math.max(1, tech.reviewCount);
+    const totalScore = tech.averageRating * count - oldRating + normalizedRating;
+    const nextAvg = Number(Math.max(1, Math.min(5, totalScore / count)).toFixed(1));
+    const hasInTechReviews = tech.reviews.some(
+      (r) => r.id === updatedReview.id || (r.bookingId && r.bookingId === matchedBooking.id),
+    );
+    fixtureTechnicians[techIndex] = {
+      ...tech,
+      averageRating: nextAvg,
+      reviews: hasInTechReviews
+        ? tech.reviews.map((r) =>
+            r.id === updatedReview.id || (r.bookingId && r.bookingId === matchedBooking.id)
+              ? updatedReview
+              : r,
+          )
+        : [updatedReview, ...tech.reviews],
+    };
+  }
+
+  return updatedReview;
+}
+
 export async function submitDirectTechnicianReview(input: {
   technicianId: string;
+  customerUserId?: string;
+  bookingId?: string;
   customerName?: string;
   rating: number;
   comment: string;
 }): Promise<TechnicianReview> {
+  if (input.customerUserId) {
+    if (input.customerUserId === input.technicianId) {
+      throw new Error('cannot_review_self');
+    }
+    const allBookings = await loadBookings();
+    const storedReviews = await getStoredJson<TechnicianReview[]>(REVIEWS_STORAGE_KEY, []);
+    const completedForCustomer = allBookings.filter(
+      (b) =>
+        b.technicianUserId === input.technicianId &&
+        b.customerUserId === input.customerUserId &&
+        b.status === 'completed',
+    );
+    if (completedForCustomer.length === 0) {
+      throw new Error('unauthorized_review_actor');
+    }
+    const unreviewedBooking = completedForCustomer.find(
+      (b) =>
+        !b.reviewRating &&
+        !storedReviews.some((rev) => rev.bookingId === b.id),
+    );
+    if (!unreviewedBooking) {
+      throw new Error('review_already_submitted');
+    }
+    return submitBookingReview({
+      bookingId: input.bookingId ?? unreviewedBooking.id,
+      technicianId: input.technicianId,
+      customerUserId: input.customerUserId,
+      customerName: input.customerName?.trim() || unreviewedBooking.customerName || 'Pelanggan Cepat',
+      rating: input.rating,
+      comment: input.comment,
+    });
+  }
+
   const normalizedRating = Math.max(1, Math.min(5, Math.round(input.rating)));
   const review: TechnicianReview = {
     id: `review-${Date.now()}`,
@@ -1408,7 +1659,66 @@ export async function submitDirectTechnicianReview(input: {
 }
 
 export async function loadSubmittedReviews(): Promise<TechnicianReview[]> {
-  return getStoredJson<TechnicianReview[]>(REVIEWS_STORAGE_KEY, []);
+  const useFx = shouldUseFixtures();
+  const [storedReviews, bookings] = await Promise.all([
+    getStoredJson<TechnicianReview[]>(REVIEWS_STORAGE_KEY, []),
+    useFx
+      ? getStoredJson<BookingRecord[]>(BOOKINGS_STORAGE_KEY, fixtureBookings)
+      : loadBookings().catch(() => getStoredJson<BookingRecord[]>(BOOKINGS_STORAGE_KEY, [])),
+  ]);
+
+  const byBookingId = new Map<string, BookingRecord>();
+  for (const b of bookings) {
+    byBookingId.set(b.id, b);
+  }
+
+  const enrichedStored = storedReviews
+    .map((rev) => {
+      const linked = rev.bookingId ? byBookingId.get(rev.bookingId) : undefined;
+      if (!linked) return rev;
+      return {
+        ...rev,
+        customerUserId: rev.customerUserId ?? linked.customerUserId,
+        technicianId: rev.technicianId ?? linked.technicianUserId,
+      };
+    })
+    .filter((rev) => {
+      if (useFx) return true;
+      return (
+        !rev.technicianId?.startsWith('demo-') &&
+        !rev.bookingId?.startsWith('booking-demo-') &&
+        rev.customerUserId !== 'demo-customer'
+      );
+    });
+
+  const existingBookingIds = new Set(
+    enrichedStored.map((rev) => rev.bookingId).filter(Boolean),
+  );
+
+  const synthesizedFromBookings: TechnicianReview[] = bookings
+    .filter(
+      (b) =>
+        b.status === 'completed' &&
+        typeof b.reviewRating === 'number' &&
+        b.reviewRating >= 1 &&
+        !existingBookingIds.has(b.id) &&
+        (useFx ||
+          (!b.id.startsWith('booking-demo-') &&
+            !b.technicianUserId.startsWith('demo-') &&
+            b.customerUserId !== 'demo-customer')),
+    )
+    .map((b) => ({
+      id: `review-${b.id}`,
+      bookingId: b.id,
+      technicianId: b.technicianUserId,
+      customerUserId: b.customerUserId,
+      customerName: b.customerName || 'Pelanggan Cepat',
+      rating: b.reviewRating as number,
+      comment: b.reviewComment ?? '',
+      createdAt: (b.updatedAt || b.createdAt || new Date().toISOString()).slice(0, 10),
+    }));
+
+  return [...enrichedStored, ...synthesizedFromBookings];
 }
 
 export async function submitTechnicianReport(input: {

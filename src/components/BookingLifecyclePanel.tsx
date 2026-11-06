@@ -37,6 +37,7 @@ import {
   subscribeToBookingMessages,
   submitBookingReview,
   transitionBookingStatus,
+  updateBookingReview,
 } from "../data/marketplaceStore";
 import { useUserAvatar } from "../hooks/useUserAvatar";
 import { localizeArea, useLanguage } from "../i18n/locale";
@@ -228,6 +229,13 @@ export function BookingLifecyclePanel({
   const [reviewSubmitted, setReviewSubmitted] = useState<boolean>(
     Boolean(activeBooking.reviewRating),
   );
+  const [submittingReview, setSubmittingReview] = useState<boolean>(false);
+  const [prevReviewBookingId, setPrevReviewBookingId] = useState(activeBooking.id);
+  if (prevReviewBookingId !== activeBooking.id) {
+    setPrevReviewBookingId(activeBooking.id);
+    setReviewSubmitted(Boolean(activeBooking.reviewRating));
+    setSubmittingReview(false);
+  }
 
   const handleTransition = async (
     nextStatus: BookingRecord["status"],
@@ -311,16 +319,20 @@ export function BookingLifecyclePanel({
     (Boolean(user) && (user?.id === activeBooking.technicianUserId || (user?.id === "demo-rizky" && activeBooking.technicianUserId === "demo-rizky")));
   const isCustomerUser =
     !isTechnicianUser &&
-    Boolean(user) &&
-    user?.id !== activeBooking.technicianUserId;
+    Boolean(user?.id) &&
+    user?.id !== activeBooking.technicianUserId &&
+    user?.id === activeBooking.customerUserId;
   const hasAlreadyReviewed = reviewSubmitted || Boolean(activeBooking.reviewRating);
+  const [isEditingReview, setIsEditingReview] = useState(false);
 
   const handleSubmitReview = async () => {
-    if (!reviewRating || !isCustomerUser || hasAlreadyReviewed) return;
+    if (!reviewRating || !isCustomerUser || !user?.id || hasAlreadyReviewed || submittingReview) return;
+    setSubmittingReview(true);
     try {
       await submitBookingReview({
         bookingId: activeBooking.id,
         technicianId: activeBooking.technicianUserId,
+        customerUserId: user.id,
         customerName: activeBooking.customerName,
         rating: reviewRating,
         comment: reviewComment,
@@ -331,8 +343,40 @@ export function BookingLifecyclePanel({
         reviewRating,
         reviewComment,
       });
-    } catch {
-      // Ignore duplicate or invalid review error
+    } catch (err) {
+      if (err instanceof Error && err.message === "review_already_submitted") {
+        setReviewSubmitted(true);
+        onBookingChange({
+          ...activeBooking,
+          reviewRating: activeBooking.reviewRating ?? reviewRating,
+          reviewComment: activeBooking.reviewComment ?? reviewComment,
+        });
+      }
+    } finally {
+      setSubmittingReview(false);
+    }
+  };
+
+  const handleSaveEditedReview = async () => {
+    if (!reviewRating || !isCustomerUser || !user?.id || submittingReview) return;
+    setSubmittingReview(true);
+    try {
+      const updated = await updateBookingReview({
+        bookingId: activeBooking.id,
+        customerUserId: user.id,
+        technicianId: activeBooking.technicianUserId,
+        rating: reviewRating,
+        comment: reviewComment,
+      });
+      setIsEditingReview(false);
+      setReviewSubmitted(true);
+      onBookingChange({
+        ...activeBooking,
+        reviewRating: updated.rating,
+        reviewComment: updated.comment,
+      });
+    } finally {
+      setSubmittingReview(false);
     }
   };
 
@@ -856,7 +900,7 @@ export function BookingLifecyclePanel({
                   : "Ulasan dan rating dari pelanggan untuk layanan yang selesai"}
             </Text>
           </View>
-          {hasAlreadyReviewed ? (
+          {hasAlreadyReviewed && !isEditingReview ? (
             <View style={styles.reviewSubmittedBox}>
               <View style={styles.starsRow}>
                 {[1, 2, 3, 4, 5].map((star) => (
@@ -879,12 +923,46 @@ export function BookingLifecyclePanel({
                   &quot;{activeBooking.reviewComment || reviewComment}&quot;
                 </Text>
               ) : null}
-              <Text
-                style={[styles.reviewDoneText, { color: palette.primary, marginTop: 6 }]}
-                testID="booking-review-submitted"
+              <View
+                style={{
+                  alignItems: "center",
+                  flexDirection: "row",
+                  justifyContent: "space-between",
+                  marginTop: 8,
+                }}
               >
-                {t("booking.reviewSubmitted")}
-              </Text>
+                <Text
+                  style={[styles.reviewDoneText, { color: palette.primary }]}
+                  testID="booking-review-submitted"
+                >
+                  {t("booking.reviewSubmitted")}
+                </Text>
+                {isCustomerUser ? (
+                  <Pressable
+                    accessibilityRole="button"
+                    onPress={() => {
+                      setReviewRating(activeBooking.reviewRating ?? reviewRating ?? 5);
+                      setReviewComment(activeBooking.reviewComment ?? reviewComment ?? "");
+                      setIsEditingReview(true);
+                    }}
+                    style={[
+                      styles.smallAcceptBtn,
+                      {
+                        backgroundColor: palette.primarySoft,
+                        borderColor: palette.primary,
+                        borderWidth: 1,
+                        paddingHorizontal: 12,
+                        paddingVertical: 6,
+                      },
+                    ]}
+                    testID="edit-booking-review-btn"
+                  >
+                    <Text style={{ color: palette.primary, fontSize: font.caption, fontWeight: "800" }}>
+                      {language === "en" ? "Edit Feedback" : "Edit Ulasan"}
+                    </Text>
+                  </Pressable>
+                ) : null}
+              </View>
             </View>
           ) : isCustomerUser ? (
             <>
@@ -928,18 +1006,72 @@ export function BookingLifecyclePanel({
                 testID="booking-review-input"
                 value={reviewComment}
               />
-              <Pressable
-                accessibilityRole="button"
-                onPress={() => {
-                  void handleSubmitReview();
-                }}
-                style={[styles.acceptBtn, { backgroundColor: palette.primary }]}
-                testID="submit-booking-review"
-              >
-                <Text style={styles.acceptBtnText}>
-                  {t("booking.submitReview")}
-                </Text>
-              </Pressable>
+              {isEditingReview ? (
+                <View style={styles.centeredActionRow}>
+                  <Pressable
+                    accessibilityRole="button"
+                    disabled={submittingReview}
+                    onPress={() => {
+                      setIsEditingReview(false);
+                      setReviewRating(activeBooking.reviewRating ?? 5);
+                      setReviewComment(activeBooking.reviewComment ?? "");
+                    }}
+                    style={styles.smallDeclineBtn}
+                    testID="cancel-edit-review-btn"
+                  >
+                    <Text style={styles.smallDeclineBtnText}>
+                      {language === "en" ? "Cancel" : "Batal"}
+                    </Text>
+                  </Pressable>
+                  <Pressable
+                    accessibilityRole="button"
+                    accessibilityState={{ disabled: submittingReview }}
+                    disabled={submittingReview}
+                    onPress={() => {
+                      void handleSaveEditedReview();
+                    }}
+                    style={[
+                      styles.smallAcceptBtn,
+                      { backgroundColor: palette.primary },
+                      submittingReview && { opacity: 0.6 },
+                    ]}
+                    testID="save-edited-review-btn"
+                  >
+                    <Text style={styles.smallAcceptBtnText}>
+                      {submittingReview
+                        ? language === "en"
+                          ? "Saving..."
+                          : "Menyimpan..."
+                        : language === "en"
+                          ? "Save Feedback"
+                          : "Simpan Ulasan"}
+                    </Text>
+                  </Pressable>
+                </View>
+              ) : (
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityState={{ disabled: submittingReview }}
+                  disabled={submittingReview}
+                  onPress={() => {
+                    void handleSubmitReview();
+                  }}
+                  style={[
+                    styles.acceptBtn,
+                    { backgroundColor: palette.primary },
+                    submittingReview && { opacity: 0.6 },
+                  ]}
+                  testID="submit-booking-review"
+                >
+                  <Text style={styles.acceptBtnText}>
+                    {submittingReview
+                      ? language === "en"
+                        ? "Submitting..."
+                        : "Mengirim..."
+                      : t("booking.submitReview")}
+                  </Text>
+                </Pressable>
+              )}
             </>
           ) : (
             <Text style={{ color: palette.textMuted, fontSize: font.label}}>

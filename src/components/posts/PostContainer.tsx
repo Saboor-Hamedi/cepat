@@ -39,6 +39,13 @@ import { PostComposer } from './PostComposer';
 import { PostFooter } from './PostFooter';
 import { PostHeader, PostPill } from './PostHeader';
 
+export interface PostContainerInitialValues {
+  caption?: string;
+  images?: string[];
+  isServicePost?: boolean;
+  serviceArea?: string;
+}
+
 export interface PostContainerProps {
   onCreatePost: (input: {
     caption: string;
@@ -54,6 +61,15 @@ export interface PostContainerProps {
   };
   customImageLauncher?: () => Promise<string | null>;
   showTitle?: boolean;
+  headerTitle?: string;
+  initialValues?: PostContainerInitialValues;
+  onCancel?: () => void;
+  hideAvatar?: boolean;
+  resetOnSubmit?: boolean;
+  rootTestID?: string;
+  inputTestID?: string;
+  submitTestID?: string;
+  cancelTestID?: string;
 }
 
 export function PostContainer({
@@ -61,6 +77,15 @@ export function PostContainer({
   technicianProfile,
   customImageLauncher,
   showTitle = false,
+  headerTitle,
+  initialValues,
+  onCancel,
+  hideAvatar = false,
+  resetOnSubmit = !initialValues,
+  rootTestID = 'post-composer',
+  inputTestID = 'create-post-caption-input',
+  submitTestID = 'submit-new-post-btn',
+  cancelTestID = initialValues ? 'cancel-edit-post-btn' : 'compose-cancel-btn',
 }: PostContainerProps) {
   const isModal = showTitle;
   const params = useLocalSearchParams<{ area?: string }>();
@@ -70,19 +95,35 @@ export function PostContainer({
   const insets = useSafeAreaInsets();
 
   const initialArea =
-    typeof params.area === 'string' && params.area.trim() ? params.area : 'Semua area';
+    initialValues?.serviceArea && initialValues.serviceArea.trim()
+      ? initialValues.serviceArea
+      : typeof params.area === 'string' && params.area.trim()
+        ? params.area
+        : 'Semua area';
 
-  const [caption, setCaption] = useState('');
-  const [images, setImages] = useState<string[]>([]);
-  const [isServicePost, setIsServicePost] = useState(false);
-  const [attachArea, setAttachArea] = useState(false);
+  const [caption, setCaption] = useState(initialValues?.caption ?? '');
+  const [images, setImages] = useState<string[]>(() =>
+    Array.isArray(initialValues?.images)
+      ? initialValues.images.filter(Boolean).slice(0, MAX_POST_IMAGES)
+      : [],
+  );
+  const [isServicePost, setIsServicePost] = useState(
+    Boolean(initialValues?.isServicePost),
+  );
+  const [attachArea, setAttachArea] = useState(
+    Boolean(
+      initialValues?.serviceArea &&
+        initialValues.serviceArea.trim() &&
+        initialValues.serviceArea !== 'Semua area',
+    ),
+  );
   const [areaLabel, setAreaLabel] = useState(initialArea);
   const [showPickerModal, setShowPickerModal] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (initialArea !== 'Semua area' || !user?.id) return;
+    if (initialValues?.serviceArea || initialArea !== 'Semua area' || !user?.id) return;
     let active = true;
     void loadSavedAddresses(user.id)
       .then((addresses) => {
@@ -99,7 +140,7 @@ export function PostContainer({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user?.id]);
 
-  if (technicianProfile && user) {
+  if (technicianProfile && user && !initialValues) {
     const isDifferentUser =
       user.id !== technicianProfile.id &&
       !technicianProfile.id.startsWith('demo-');
@@ -221,10 +262,12 @@ export function PostContainer({
         isServicePost,
         serviceArea: attachArea ? areaLabel : 'Semua area',
       });
-      setCaption('');
-      setImages([]);
-      setIsServicePost(false);
-      setAttachArea(false);
+      if (resetOnSubmit) {
+        setCaption('');
+        setImages([]);
+        setIsServicePost(false);
+        setAttachArea(false);
+      }
       setShowPickerModal(false);
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Unable to create post.');
@@ -427,6 +470,7 @@ export function PostContainer({
         autoFocus={isModal}
         modal={isModal}
         onChangeText={handleTextChange}
+        testID={inputTestID}
         value={caption}
       />
       {renderAreaChip()}
@@ -437,14 +481,17 @@ export function PostContainer({
 
   if (isModal) {
     return (
-      <View style={[styles.screenRoot, { backgroundColor: MODAL_BG }]} testID="post-composer">
+      <View style={[styles.screenRoot, { backgroundColor: MODAL_BG }]} testID={rootTestID}>
         <PostHeader
           busy={busy}
+          cancelTestID={cancelTestID}
           canSubmit={canSubmit}
-          onCancel={handleClose}
+          onCancel={onCancel ?? handleClose}
           onPublish={() => {
             void handlePublish();
           }}
+          submitTestID={submitTestID}
+          title={headerTitle}
         />
 
         <KeyboardAvoidingView
@@ -488,25 +535,57 @@ export function PostContainer({
   }
 
   return (
-    <View style={styles.inlineRoot} testID="post-composer">
+    <View
+      style={[
+        styles.inlineRoot,
+        hideAvatar && styles.inlineRootNoPadding,
+      ]}
+      testID={rootTestID}
+    >
       <View style={styles.threadRow}>
-        <View style={styles.avatarColumn}>
-          <Avatar uri={avatarUri} name={displayName} size={36} />
-          <View style={styles.connectorLine} />
-        </View>
-        <View style={styles.inlineBody}>
-          <PostComposer onChangeText={handleTextChange} value={caption} />
+        {!hideAvatar ? (
+          <View style={styles.avatarColumn}>
+            <Avatar uri={avatarUri} name={displayName} size={36} />
+            <View style={styles.connectorLine} />
+          </View>
+        ) : null}
+        <View style={[styles.inlineBody, hideAvatar && styles.inlineBodyNoPad]}>
+          <PostComposer
+            onChangeText={handleTextChange}
+            testID={inputTestID}
+            value={caption}
+          />
           {renderAreaChip()}
           <PostFooter images={images} onRemoveImage={handleRemoveImage} />
           <View style={styles.inlineFooter}>
             {renderIconRow()}
+            {onCancel ? (
+              <Pressable
+                accessibilityRole="button"
+                disabled={busy}
+                onPress={onCancel}
+                style={({ pressed }) => [
+                  styles.inlineCancelPill,
+                  {
+                    backgroundColor: palette.surfaceElevated,
+                    borderColor: palette.border,
+                    opacity: pressed ? 0.65 : 1,
+                  },
+                ]}
+                testID={cancelTestID}
+              >
+                <Text style={[styles.inlineCancelText, { color: palette.text }]}>
+                  {language === 'en' ? 'Cancel' : 'Batal'}
+                </Text>
+              </Pressable>
+            ) : null}
             <PostPill
               busy={busy}
               canSubmit={canSubmit}
               onPress={() => {
                 void handlePublish();
               }}
-              testID="submit-new-post-btn"
+              testID={submitTestID}
             />
           </View>
         </View>
@@ -519,7 +598,9 @@ export function PostContainer({
           {error}
         </Text>
       ) : null}
-      <View style={[styles.inlineDivider, { backgroundColor: palette.border }]} />
+      {!hideAvatar ? (
+        <View style={[styles.inlineDivider, { backgroundColor: palette.border }]} />
+      ) : null}
       {pickerModal}
     </View>
   );
@@ -650,6 +731,10 @@ const styles = StyleSheet.create({
     paddingTop: 4,
     width: '100%',
   },
+  inlineRootNoPadding: {
+    paddingHorizontal: 0,
+    paddingTop: 4,
+  },
   inlineDivider: {
     height: StyleSheet.hairlineWidth,
     marginTop: spacing.sm,
@@ -660,11 +745,28 @@ const styles = StyleSheet.create({
     minWidth: 0,
     paddingLeft: 14,
   },
+  inlineBodyNoPad: {
+    paddingLeft: 0,
+  },
   inlineFooter: {
     alignItems: 'center',
     flexDirection: 'row',
-    gap: 4,
+    gap: 8,
     marginTop: spacing.xs,
+  },
+  inlineCancelPill: {
+    alignItems: 'center',
+    borderRadius: 999,
+    borderWidth: 1,
+    height: 32,
+    justifyContent: 'center',
+    minWidth: 64,
+    paddingHorizontal: 12,
+  },
+  inlineCancelText: {
+    fontSize: font.label,
+    fontWeight: '700',
+    letterSpacing: -0.1,
   },
   pickerOverlay: {
     backgroundColor: 'rgba(0, 0, 0, 0.55)',

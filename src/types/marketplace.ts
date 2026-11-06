@@ -37,11 +37,13 @@ export interface TechnicianReview {
   id: string;
   technicianId?: string;
   bookingId?: string;
+  customerUserId?: string;
   customerName: string;
   rating: number;
   comment?: string;
   commentEn?: string;
   createdAt?: string;
+  updatedAt?: string;
 }
 
 export interface TechnicianAvailabilitySlot {
@@ -164,6 +166,7 @@ export interface TechnicianReport {
   reportedTechnicianId: string;
   technicianName: string;
   bookingId?: string;
+  customerUserId?: string;
   category: 'quality' | 'safety' | 'off_platform' | 'no_show' | 'other';
   description: string;
   severity: 'low' | 'medium' | 'high';

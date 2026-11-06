@@ -75,6 +75,8 @@ function ThemedStack() {
       >
         <Stack.Screen name="index" options={{ animation: stackAnim }} />
         <Stack.Screen name="search" options={{ animation: stackAnim }} />
+        <Stack.Screen name="messages" options={{ animation: stackAnim }} />
+        <Stack.Screen name="chat/[id]" options={{ animation: stackAnim }} />
         <Stack.Screen
           name="compose"
           options={{ animation: reduceMotion ? 'none' : 'slide_from_bottom' }}

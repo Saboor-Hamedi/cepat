@@ -44,7 +44,9 @@ import {
   loadBookings,
   loadSubmittedReviews,
   saveTechnicianWorkspaceProfile,
+  submitBookingReview,
   submitTechnicianReport,
+  updateBookingReview,
   updateTechnicianPortfolio,
 } from "../../data/marketplaceStore";
 import {
@@ -59,6 +61,7 @@ import { categoryName, localizeArea, useLanguage } from "../../i18n/locale";
 import { useAppearance } from "../../context/AppearanceContext";
 import { useAuth } from "../../auth/AuthProvider";
 import type {
+  BookingRecord,
   DataSource,
   PortfolioItem,
   Technician,
@@ -156,6 +159,11 @@ export default function TechnicianProfileScreen() {
 
   // Review State & Permissions
   const [hasCompletedTaskWithTech, setHasCompletedTaskWithTech] = useState(false);
+  const [customerCompletedBookings, setCustomerCompletedBookings] = useState<BookingRecord[]>([]);
+  const [editingProfileReviewId, setEditingProfileReviewId] = useState<string | null>(null);
+  const [profileReviewRating, setProfileReviewRating] = useState<number>(5);
+  const [profileReviewComment, setProfileReviewComment] = useState<string>("");
+  const [savingProfileReview, setSavingProfileReview] = useState(false);
   const feedIsTechnician = roles.includes("technician") || effectiveRole === "technician";
   const feedIsOwner = Boolean(
     user &&
@@ -248,18 +256,19 @@ export default function TechnicianProfileScreen() {
         ).length;
         setDynamicCompletedJobs(completed);
 
-        const userHasCompletedTask = Boolean(
-          user &&
-            allBookings.some(
+        const matchedCustomerBookings = user?.id
+          ? allBookings.filter(
               (b) =>
                 b.status === "completed" &&
                 b.customerUserId === user.id &&
+                b.technicianUserId !== user.id &&
                 (b.technicianUserId === effectiveTargetId ||
                   (loadedTechnician && b.technicianUserId === loadedTechnician.id) ||
                   (effectiveTargetId === "demo-rizky" && b.technicianUserId === "demo-rizky")),
-            ),
-        );
-        setHasCompletedTaskWithTech(userHasCompletedTask);
+            )
+          : [];
+        setCustomerCompletedBookings(matchedCustomerBookings);
+        setHasCompletedTaskWithTech(matchedCustomerBookings.length > 0);
       })
       .catch(() => {});
 
@@ -446,7 +455,12 @@ export default function TechnicianProfileScreen() {
 
   const baseReviews = rawTechnician?.reviews ?? [];
   const dynamicIds = new Set(dynamicReviews.map((r) => r.id));
-  const dedupedBase = baseReviews.filter((r) => !dynamicIds.has(r.id));
+  const dynamicBookingIds = new Set(
+    dynamicReviews.map((r) => r.bookingId).filter(Boolean),
+  );
+  const dedupedBase = baseReviews.filter(
+    (r) => !dynamicIds.has(r.id) && (!r.bookingId || !dynamicBookingIds.has(r.bookingId)),
+  );
   const mergedReviews = isTechnicianProfile ? [...dynamicReviews, ...dedupedBase] : [];
 
   const effectiveReviewCount = isTechnicianProfile ? mergedReviews.length : 0;
@@ -550,11 +564,18 @@ export default function TechnicianProfileScreen() {
   const canPost = isProfileOwner && (isTechnicianUser || isAdminUser);
   const canAddReview = Boolean(
     isTechnicianProfile &&
-    user &&
+      user?.id &&
       !isProfileOwner &&
       user.id !== technician.id &&
-      (isAdminUser || hasCompletedTaskWithTech),
+      hasCompletedTaskWithTech,
   );
+  const unreviewedCompletedBooking = canAddReview
+    ? customerCompletedBookings.find(
+        (b) =>
+          !b.reviewRating &&
+          !mergedReviews.some((r) => r.bookingId === b.id),
+      )
+    : undefined;
 
   const handleCreatePost = async (input: {
     caption: string;
@@ -599,14 +620,23 @@ export default function TechnicianProfileScreen() {
     post: PostType,
     newCaption: string,
     newImageUri?: string,
+    updates?: {
+      mediaUrls: string[];
+      isServicePost: boolean;
+      serviceArea?: string;
+    },
   ) => {
     const ownerId = user?.id || technician.id;
+    const nextMediaUrls =
+      updates?.mediaUrls ?? (newImageUri ? [newImageUri] : []);
     await updatePost({
       actorUserId: ownerId,
       postId: post.id,
       caption: newCaption,
-      imageUri: newImageUri,
-      mediaUrls: newImageUri ? [newImageUri] : [],
+      imageUri: nextMediaUrls[0],
+      mediaUrls: nextMediaUrls,
+      isServicePost: updates?.isServicePost ?? post.isServicePost,
+      serviceArea: updates?.serviceArea ?? post.serviceArea,
     });
     await postFeed.refresh();
   };
@@ -1013,6 +1043,9 @@ export default function TechnicianProfileScreen() {
                       isAdmin={isAdminUser}
                       authorName={technician.displayName}
                       authorAvatarUri={technician.avatarUri}
+                      authorRating={technician.averageRating}
+                      authorReviewCount={technician.reviewCount}
+                      serviceStartingPrice={item.isServicePost ? startingPrice : undefined}
                       onEdit={handleEditPost}
                       onDelete={handleDeletePost}
                       onSuspend={handleSuspendPost}
@@ -1900,62 +1933,352 @@ export default function TechnicianProfileScreen() {
                 </View>
               </View>
 
-              {technician.reviews.length ? (
-                technician.reviews.map((review) => (
-                  <View
-                    key={review.id}
+              {canAddReview && unreviewedCompletedBooking && !editingProfileReviewId && (
+                <View
+                  style={[
+                    styles.reviewCard,
+                    {
+                      backgroundColor: palette.surface,
+                      borderColor: palette.primary,
+                      marginBottom: spacing.md,
+                    },
+                  ]}
+                  testID="profile-new-review-card"
+                >
+                  <Text style={[styles.reviewerName, { color: palette.text, marginBottom: 6 }]}>
+                    {language === "en"
+                      ? `Share feedback for ${unreviewedCompletedBooking.serviceNameSnapshot}`
+                      : `Beri ulasan untuk ${unreviewedCompletedBooking.serviceNameSnapshot}`}
+                  </Text>
+                  <View style={{ flexDirection: "row", gap: 8, marginBottom: 8 }}>
+                    {[1, 2, 3, 4, 5].map((star) => (
+                      <Pressable
+                        key={star}
+                        accessibilityRole="button"
+                        onPress={() => setProfileReviewRating(star)}
+                        style={{
+                          alignItems: "center",
+                          backgroundColor:
+                            profileReviewRating >= star ? "#FEF3C7" : palette.surfaceElevated,
+                          borderColor:
+                            profileReviewRating >= star ? "#F59E0B" : palette.border,
+                          borderRadius: radii.sm,
+                          borderWidth: 1,
+                          height: 34,
+                          justifyContent: "center",
+                          width: 34,
+                        }}
+                        testID={`profile-new-review-star-${star}`}
+                      >
+                        <Text
+                          style={{
+                            color: profileReviewRating >= star ? "#F59E0B" : palette.textMuted,
+                            fontSize: font.subtitle,
+                          }}
+                        >
+                          ★
+                        </Text>
+                      </Pressable>
+                    ))}
+                  </View>
+                  <TextInput
+                    multiline
+                    onChangeText={setProfileReviewComment}
+                    placeholder={t("booking.reviewPlaceholder")}
+                    placeholderTextColor={palette.textMuted}
                     style={[
-                      styles.reviewCard,
+                      styles.reportInput,
                       {
-                        backgroundColor: palette.surface,
+                        backgroundColor: palette.surfaceElevated,
                         borderColor: palette.border,
+                        color: palette.text,
+                        minHeight: 72,
                       },
                     ]}
+                    testID="profile-new-review-input"
+                    value={profileReviewComment}
+                  />
+                  <Pressable
+                    accessibilityRole="button"
+                    disabled={savingProfileReview}
+                    onPress={async () => {
+                      if (!user?.id || savingProfileReview) return;
+                      setSavingProfileReview(true);
+                      try {
+                        const created = await submitBookingReview({
+                          bookingId: unreviewedCompletedBooking.id,
+                          technicianId: technician.id,
+                          customerUserId: user.id,
+                          customerName:
+                            unreviewedCompletedBooking.customerName ||
+                            accountDisplayName ||
+                            "Pelanggan Cepat",
+                          rating: profileReviewRating,
+                          comment: profileReviewComment,
+                        });
+                        setDynamicReviews((prev) => [created, ...prev]);
+                        setCustomerCompletedBookings((prev) =>
+                          prev.map((b) =>
+                            b.id === unreviewedCompletedBooking.id
+                              ? {
+                                  ...b,
+                                  reviewRating: created.rating,
+                                  reviewComment: created.comment,
+                                }
+                              : b,
+                          ),
+                        );
+                        setProfileReviewComment("");
+                      } finally {
+                        setSavingProfileReview(false);
+                      }
+                    }}
+                    style={[
+                      styles.formSaveBtnModern,
+                      {
+                        alignSelf: "flex-end",
+                        backgroundColor: palette.primary,
+                        marginTop: 8,
+                      },
+                    ]}
+                    testID="profile-submit-review-btn"
                   >
-                    <View style={styles.reviewTop}>
-                      <Text
-                        style={[styles.reviewerName, { color: palette.text }]}
-                      >
-                        {review.customerName}
-                      </Text>
-                      <View style={styles.reviewRating}>
-                        <Text style={styles.star}>★</Text>
+                    <Text style={styles.formSaveBtnTextModern}>
+                      {t("booking.submitReview")}
+                    </Text>
+                  </Pressable>
+                </View>
+              )}
+
+              {technician.reviews.length ? (
+                technician.reviews.map((review) => {
+                  const isOwnCompletedCustomerReview = Boolean(
+                    canAddReview &&
+                      user?.id &&
+                      (review.customerUserId === user.id ||
+                        (review.bookingId &&
+                          customerCompletedBookings.some(
+                            (b) => b.id === review.bookingId && b.customerUserId === user.id,
+                          ))),
+                  );
+                  const isEditingThisReview = editingProfileReviewId === review.id;
+                  return (
+                    <View
+                      key={review.id}
+                      style={[
+                        styles.reviewCard,
+                        {
+                          backgroundColor: palette.surface,
+                          borderColor: isEditingThisReview
+                            ? palette.primary
+                            : palette.border,
+                        },
+                      ]}
+                    >
+                      <View style={styles.reviewTop}>
                         <Text
-                          style={[
-                            styles.reviewRatingText,
-                            { color: palette.text },
-                          ]}
+                          style={[styles.reviewerName, { color: palette.text }]}
                         >
-                          {review.rating.toFixed(1)}
+                          {review.customerName}
                         </Text>
+                        <View style={{ alignItems: "center", flexDirection: "row", gap: 8 }}>
+                          <View style={styles.reviewRating}>
+                            <Text style={styles.star}>★</Text>
+                            <Text
+                              style={[
+                                styles.reviewRatingText,
+                                { color: palette.text },
+                              ]}
+                            >
+                              {review.rating.toFixed(1)}
+                            </Text>
+                          </View>
+                          {isOwnCompletedCustomerReview && !isEditingThisReview ? (
+                            <Pressable
+                              accessibilityRole="button"
+                              onPress={() => {
+                                setProfileReviewRating(review.rating);
+                                setProfileReviewComment(review.comment ?? "");
+                                setEditingProfileReviewId(review.id);
+                              }}
+                              style={[
+                                styles.smallEditPortfolioBtn,
+                                { backgroundColor: palette.primarySoft },
+                              ]}
+                              testID={`profile-edit-review-btn-${review.id}`}
+                            >
+                              <Pencil
+                                size={13}
+                                color={palette.primary}
+                                strokeWidth={ICON_STROKE}
+                              />
+                              <Text
+                                style={[
+                                  styles.smallEditPortfolioText,
+                                  { color: palette.primary },
+                                ]}
+                              >
+                                {language === "en" ? "Edit" : "Edit"}
+                              </Text>
+                            </Pressable>
+                          ) : null}
+                        </View>
                       </View>
+                      {isEditingThisReview ? (
+                        <View
+                          style={{ marginTop: 8 }}
+                          testID={`profile-edit-review-form-${review.id}`}
+                        >
+                          <View style={{ flexDirection: "row", gap: 8, marginBottom: 8 }}>
+                            {[1, 2, 3, 4, 5].map((star) => (
+                              <Pressable
+                                key={star}
+                                accessibilityRole="button"
+                                onPress={() => setProfileReviewRating(star)}
+                                style={{
+                                  alignItems: "center",
+                                  backgroundColor:
+                                    profileReviewRating >= star
+                                      ? "#FEF3C7"
+                                      : palette.surfaceElevated,
+                                  borderColor:
+                                    profileReviewRating >= star
+                                      ? "#F59E0B"
+                                      : palette.border,
+                                  borderRadius: radii.sm,
+                                  borderWidth: 1,
+                                  height: 34,
+                                  justifyContent: "center",
+                                  width: 34,
+                                }}
+                                testID={`profile-edit-review-star-${review.id}-${star}`}
+                              >
+                                <Text
+                                  style={{
+                                    color:
+                                      profileReviewRating >= star
+                                        ? "#F59E0B"
+                                        : palette.textMuted,
+                                    fontSize: font.subtitle,
+                                  }}
+                                >
+                                  ★
+                                </Text>
+                              </Pressable>
+                            ))}
+                          </View>
+                          <TextInput
+                            multiline
+                            onChangeText={setProfileReviewComment}
+                            placeholder={t("booking.reviewPlaceholder")}
+                            placeholderTextColor={palette.textMuted}
+                            style={[
+                              styles.reportInput,
+                              {
+                                backgroundColor: palette.surfaceElevated,
+                                borderColor: palette.border,
+                                color: palette.text,
+                                minHeight: 72,
+                              },
+                            ]}
+                            testID={`profile-edit-review-input-${review.id}`}
+                            value={profileReviewComment}
+                          />
+                          <View style={styles.formButtonRow}>
+                            <Pressable
+                              accessibilityRole="button"
+                              onPress={() => setEditingProfileReviewId(null)}
+                              style={[
+                                styles.formCancelBtnModern,
+                                {
+                                  backgroundColor: palette.surfaceElevated,
+                                  borderColor: palette.border,
+                                },
+                              ]}
+                              testID={`profile-cancel-edit-review-${review.id}`}
+                            >
+                              <Text style={[styles.formBtnTextModern, { color: palette.text }]}>
+                                {language === "en" ? "Cancel" : "Batal"}
+                              </Text>
+                            </Pressable>
+                            <Pressable
+                              accessibilityRole="button"
+                              disabled={savingProfileReview}
+                              onPress={async () => {
+                                if (!user?.id || savingProfileReview) return;
+                                setSavingProfileReview(true);
+                                try {
+                                  const updated = await updateBookingReview({
+                                    bookingId: review.bookingId,
+                                    reviewId: review.id,
+                                    customerUserId: user.id,
+                                    technicianId: technician.id,
+                                    rating: profileReviewRating,
+                                    comment: profileReviewComment,
+                                  });
+                                  setDynamicReviews((prev) => {
+                                    const exists = prev.some(
+                                      (r) =>
+                                        r.id === updated.id ||
+                                        (r.bookingId && r.bookingId === updated.bookingId),
+                                    );
+                                    return exists
+                                      ? prev.map((r) =>
+                                          r.id === updated.id ||
+                                          (r.bookingId && r.bookingId === updated.bookingId)
+                                            ? updated
+                                            : r,
+                                        )
+                                      : [updated, ...prev];
+                                  });
+                                  setEditingProfileReviewId(null);
+                                } finally {
+                                  setSavingProfileReview(false);
+                                }
+                              }}
+                              style={[
+                                styles.formSaveBtnModern,
+                                { backgroundColor: palette.primary },
+                              ]}
+                              testID={`profile-save-edit-review-${review.id}`}
+                            >
+                              <Text style={styles.formSaveBtnTextModern}>
+                                {language === "en" ? "Save Feedback" : "Simpan Ulasan"}
+                              </Text>
+                            </Pressable>
+                          </View>
+                        </View>
+                      ) : (
+                        <>
+                          {(language === "en"
+                            ? review.commentEn || review.comment
+                            : review.comment) && (
+                            <Text
+                              style={[
+                                styles.reviewComment,
+                                { color: palette.textMuted },
+                              ]}
+                            >
+                              {language === "en"
+                                ? review.commentEn || review.comment
+                                : review.comment}
+                            </Text>
+                          )}
+                          {review.createdAt && (
+                            <Text
+                              style={[
+                                styles.reviewDate,
+                                { color: palette.textMuted },
+                              ]}
+                            >
+                              {formatDate(review.createdAt, language)}
+                            </Text>
+                          )}
+                        </>
+                      )}
                     </View>
-                    {(language === "en"
-                      ? review.commentEn || review.comment
-                      : review.comment) && (
-                      <Text
-                        style={[
-                          styles.reviewComment,
-                          { color: palette.textMuted },
-                        ]}
-                      >
-                        {language === "en"
-                          ? review.commentEn || review.comment
-                          : review.comment}
-                      </Text>
-                    )}
-                    {review.createdAt && (
-                      <Text
-                        style={[
-                          styles.reviewDate,
-                          { color: palette.textMuted },
-                        ]}
-                      >
-                        {formatDate(review.createdAt, language)}
-                      </Text>
-                    )}
-                  </View>
-                ))
+                  );
+                })
               ) : (
                 <EmptyState
                   title={t("profile.noReviews")}

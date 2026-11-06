@@ -473,3 +473,46 @@ Verification currently available:
 - Live portfolio/avatar storage URLs are not configured; non-URL storage paths use placeholders.
 
 See `prompts/project-status.md` for current commands, outstanding verification, and next steps. Keep this feature `implemented_unverified` until database security and native E2E verification pass.
+
+## 14. Current Implementation Snapshot (November 2026)
+
+The screens above are built. This section records how the feed actually works today so the next agent doesn't have to reverse-engineer it.
+
+### Marketplace feed — Threads-style posts (`src/components/posts/Post.tsx`)
+
+- Two-column row: left = 44px avatar (`threadAvatarBtn`) with optional connecting hairline (`threadLine`) for threading; right = content column (`threadRight`) padded 14 from the avatar.
+- Header row: tappable author pressable. `authorMeta` column holds (a) name row — display name (`authorNameCompact`), verified badge (`BadgeCheck`, `palette.primary`), optional rating chip (`★ 4.9 (128)`); (b) sub row below the name — `@handle · localized service area` (`authorSub`), always its own line; handle never renders beside the name (long handles previously displaced the timestamp).
+- Top-right cluster: relative timestamp (`formatPostTime`) and either a `PostDropdown` (owner/admin: Edit post, Delete post with confirmation modal, Restore/Suspend post) or a `StatusPill` (owner draft/published) when no menu is shown.
+- Body: optional caption, optional single or 2×N grid media (`singleImageFrame`/`gridImageFrame`, 16:9).
+- **Footer actions** (`footerRow`, hidden while editing):
+  - Left: price (`formatRupiah` + `/ visit` or `/ kunjungan` when `serviceStartingPrice` is set) followed by UI-only **Like** (Heart, `post-like-btn-<id>`) and **Comment** (MessageCircle, `post-comment-btn-<id>`) icon buttons. **Neither has an `onPress` — by explicit decision.**
+  - Right: **Book** icon button (CalendarCheck, `palette.primary` on `palette.primarySoft`; same 34×34 footprint as the other icon buttons; `post-book-btn-<id>`; pushes `/booking/[id]` with `{ id: post.technicianId, postId: post.id }`) — the only footer action that navigates.
+  - **Share** (Share2, `post-share-btn-<id>`) — UI-only, no handler.
+  - **Bookmark** (save technician) — rendered only when `onToggleSaveTechnician` is provided; reflects `savedTechnician` via `accessibilityState.selected` (filled bookmark, `palette.primary`).
+- Real like/comment/share back-ends do not exist yet; see `project-status.md` §2026-11-06 and `agent-rules.md` Appendix A.
+
+### Profile ring accent
+
+- 10 accent colors (`emerald`…`lime`) or `none`; stored in appearance storage (`@cepat/appearance-context-v1`); rendering owned by `Avatar` (3px ring + 2px inner gap; 1px gap for ≤44px sizes; `borderWidth: PROFILE_ACCENT_RING_WIDTH`).
+- Compose FAB (`nav-compose-fab` in `Header.tsx`) mirrors the accent; plus icon stays white.
+- `Avatar` is memoized; accent changes re-render only the ring stroke, not the artwork.
+
+### Search parity
+
+- Marketplace feed trigger (`SearchFieldTrigger`) → push to `/search`.
+- `/search` (`src/app/search/index.tsx` → `SearchResults.tsx`) and the location-picker area search (`MarketplaceSearch.tsx`, `area-search-input`) render the same `SearchField` (`radius 12`, `borderWidth 1`, `height 40`, `palette.inputBg`, custom view-drawn magnifier, `font.title` text, clear button). Only placeholders/labels/testIDs differ; `autoFocus` and `Link.AppleZoomTarget` are `/search`-only.
+- Both top bars collapse on scroll via `Animated` interpolation (height/opacity/scale/translateY over 0–88px).
+
+### Price & category label
+
+- `serviceStartingPrice` via `formatRupiah(value, language)`; service chip via `categoryChipLabel` + `CORE_CATEGORY_FILTERS`.
+
+### Known gaps / verification pending
+
+- Likes, comments and share are UI-only (no persistence, no counts).
+- Like counts/booking CTA behavior in the owner's own posts: unchanged.
+- Map area search is the region-index list; street tiles/geocoding not configured.
+- Remote database verification pending: `20261106000000_notifications_delete_owner.sql`, `20261106000100_bookings_review_fields.sql`.
+- Maestro E2E not yet run on device.
+
+See `agent-rules.md` Appendix A for the invariants an agent must not break, and `project-status.md` for the latest commands actually run and their results.

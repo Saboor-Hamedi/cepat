@@ -14,6 +14,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { useAppearance } from '../../context/AppearanceContext';
 import { localizeArea, useLanguage } from '../../i18n/locale';
+import { SearchField } from '../search/SearchField';
 import { colors, radii, spacing } from '../../theme/tokens';
 import type { IndonesianRegion, SavedAddress, Technician } from '../../types/marketplace';
 import { font } from '../../theme/typography';
@@ -268,15 +269,10 @@ export function MarketplaceMapSearchModal({
             {t('home.areaSheetBody')}
           </Text>
 
-          <View
-            style={[
-              styles.areaSearchBox,
-              { backgroundColor: palette.inputBg, borderColor: palette.border },
-            ]}
-          >
-            <TextInput
+          <View style={styles.areaSearchWrap}>
+            <SearchField
               accessibilityLabel={t('home.areaSearchPlaceholder')}
-              autoCapitalize="none"
+              clearAccessibilityLabel={t('home.clearSearch')}
               onChangeText={(text) => {
                 setAreaQuery(text);
                 const q = text.trim().toLocaleLowerCase('id-ID');
@@ -295,22 +291,11 @@ export function MarketplaceMapSearchModal({
                   }
                 }
               }}
+              onClear={() => setAreaQuery('')}
               placeholder={t('home.areaSearchPlaceholder')}
-              placeholderTextColor={palette.textMuted}
-              style={[styles.areaSearchInput, { color: palette.text }]}
               testID="area-search-input"
               value={areaQuery}
             />
-            {areaQuery.length > 0 && (
-              <Pressable
-                accessibilityRole="button"
-                onPress={() => setAreaQuery('')}
-                style={styles.clearAreaSearchBtn}
-                testID="clear-area-search"
-              >
-                <Text style={styles.clearAreaSearchText}>×</Text>
-              </Pressable>
-            )}
           </View>
 
           <ScrollView
@@ -802,20 +787,9 @@ const styles = StyleSheet.create({
     marginBottom: spacing.md,
     marginTop: 4,
   },
-  areaSearchBox: {
-    alignItems: 'center',
-    backgroundColor: '#FFFFFF',
-    borderColor: colors.line,
-    borderRadius: radii.md,
-    borderWidth: 1,
-    flexDirection: 'row',
-    height: 48,
+  areaSearchWrap: {
     marginBottom: spacing.md,
-    paddingHorizontal: spacing.md,
   },
-  areaSearchInput: { color: colors.ink, flex: 1, fontSize: font.label, height: '100%' },
-  clearAreaSearchBtn: { alignItems: 'center', height: 28, justifyContent: 'center', width: 28 },
-  clearAreaSearchText: { color: colors.muted, fontSize: font.heading, fontWeight: '700' },
   sheetScroll: { maxHeight: 500 },
   sheetSectionLabel: {
     color: colors.muted,

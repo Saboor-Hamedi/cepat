@@ -11,6 +11,7 @@ import {
 import { useColorScheme } from 'react-native';
 
 import { colors } from '../theme/tokens';
+import { DEFAULT_PROFILE_ACCENT_ID } from '../theme/profileAccent';
 
 export type ThemeMode = 'light' | 'dark' | 'system';
 
@@ -77,6 +78,9 @@ interface StoredAppearanceState {
   themeMode: ThemeMode;
   largeText: boolean;
   reduceMotion: boolean;
+  // Persisted accent id for the profile avatar ring. Optional so older
+  // stored payloads remain valid; missing values fall back to "none".
+  profileAccentId?: string;
 }
 
 export interface AppearanceContextValue {
@@ -92,6 +96,9 @@ export interface AppearanceContextValue {
   setThemeMode: (mode: ThemeMode) => Promise<void>;
   setLargeText: (enabled: boolean) => Promise<void>;
   setReduceMotion: (enabled: boolean) => Promise<void>;
+  // Profile avatar ring accent. "none" disables the ring entirely.
+  profileAccentId: string;
+  setProfileAccent: (id: string) => Promise<void>;
 }
 
 const AppearanceContext = createContext<AppearanceContextValue>({
@@ -107,6 +114,8 @@ const AppearanceContext = createContext<AppearanceContextValue>({
   setThemeMode: async () => {},
   setLargeText: async () => {},
   setReduceMotion: async () => {},
+  profileAccentId: DEFAULT_PROFILE_ACCENT_ID,
+  setProfileAccent: async () => {},
 });
 
 export function AppearanceProvider({ children }: PropsWithChildren) {
@@ -114,6 +123,9 @@ export function AppearanceProvider({ children }: PropsWithChildren) {
   const [themeMode, setThemeModeState] = useState<ThemeMode>('light');
   const [largeText, setLargeTextState] = useState<boolean>(false);
   const [reduceMotion, setReduceMotionState] = useState<boolean>(false);
+  const [profileAccentId, setProfileAccentId] = useState<string>(
+    DEFAULT_PROFILE_ACCENT_ID,
+  );
   const [isHydrated, setIsHydrated] = useState(false);
 
   useEffect(() => {
@@ -134,6 +146,9 @@ export function AppearanceProvider({ children }: PropsWithChildren) {
         }
         if (typeof parsed.reduceMotion === 'boolean') {
           setReduceMotionState(parsed.reduceMotion);
+        }
+        if (typeof parsed.profileAccentId === 'string' && parsed.profileAccentId) {
+          setProfileAccentId(parsed.profileAccentId);
         }
       })
       .catch((error: unknown) => {
@@ -164,9 +179,10 @@ export function AppearanceProvider({ children }: PropsWithChildren) {
         themeMode: normalized,
         largeText,
         reduceMotion,
+        profileAccentId,
       });
     },
-    [largeText, persist, reduceMotion],
+    [largeText, persist, profileAccentId, reduceMotion],
   );
 
   const setLargeText = useCallback(
@@ -176,9 +192,10 @@ export function AppearanceProvider({ children }: PropsWithChildren) {
         themeMode,
         largeText: enabled,
         reduceMotion,
+        profileAccentId,
       });
     },
-    [persist, reduceMotion, themeMode],
+    [persist, profileAccentId, reduceMotion, themeMode],
   );
 
   const setReduceMotion = useCallback(
@@ -188,9 +205,24 @@ export function AppearanceProvider({ children }: PropsWithChildren) {
         themeMode,
         largeText,
         reduceMotion: enabled,
+        profileAccentId,
       });
     },
-    [largeText, persist, themeMode],
+    [largeText, persist, profileAccentId, themeMode],
+  );
+
+  const setProfileAccent = useCallback(
+    async (id: string) => {
+      // Persist the picker selection immediately, same as theme/accessibility.
+      setProfileAccentId(id);
+      await persist({
+        themeMode,
+        largeText,
+        reduceMotion,
+        profileAccentId: id,
+      });
+    },
+    [largeText, persist, reduceMotion, themeMode],
   );
 
   const effectiveTheme: 'light' | 'dark' = useMemo(() => {
@@ -223,6 +255,8 @@ export function AppearanceProvider({ children }: PropsWithChildren) {
       setThemeMode,
       setLargeText,
       setReduceMotion,
+      profileAccentId,
+      setProfileAccent,
     }),
     [
       effectiveTheme,
@@ -231,9 +265,11 @@ export function AppearanceProvider({ children }: PropsWithChildren) {
       isDark,
       largeText,
       palette,
+      profileAccentId,
       reduceMotion,
       scaleFont,
       setLargeText,
+      setProfileAccent,
       setReduceMotion,
       setThemeMode,
       themeMode,

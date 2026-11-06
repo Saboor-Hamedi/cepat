@@ -6,8 +6,10 @@ import { getStoredJson, setStoredJson } from '../storage/kvStorage';
 import { shouldUseFixtures, supabase } from './marketplaceRepository';
 
 const LOCAL_NOTIFICATIONS_KEY = '@cepat/notifications:';
+const DELETED_NOTIFICATIONS_KEY = '@cepat/notifications-deleted:';
 const IN_APP_PUSH_SETTING_KEY = '@cepat/settings:in_app_push_enabled';
 const MAX_NOTIFICATIONS = 100;
+const MAX_DELETED_TOMBSTONES = 200;
 let realtimeChannelSequence = 0;
 
 export async function getInAppPushEnabled(): Promise<boolean> {
@@ -79,10 +81,42 @@ function localKey(userId: string) {
   return `${LOCAL_NOTIFICATIONS_KEY}${userId}`;
 }
 
+function deletedKey(userId: string) {
+  return `${DELETED_NOTIFICATIONS_KEY}${userId}`;
+}
+
+async function loadDeletedIds(userId: string): Promise<string[]> {
+  try {
+    return await getStoredJson<string[]>(deletedKey(userId), []);
+  } catch {
+    return [];
+  }
+}
+
+async function addDeletedId(userId: string, notificationId: string): Promise<void> {
+  const current = await loadDeletedIds(userId);
+  if (current.includes(notificationId)) return;
+  await setStoredJson(
+    deletedKey(userId),
+    [...current, notificationId].slice(-MAX_DELETED_TOMBSTONES),
+  );
+}
+
+async function filterDeleted(
+  userId: string,
+  list: CepatNotification[],
+): Promise<CepatNotification[]> {
+  const deleted = await loadDeletedIds(userId);
+  if (deleted.length === 0) return list;
+  const deletedSet = new Set(deleted);
+  return list.filter((item) => !deletedSet.has(item.id));
+}
+
 export async function loadNotifications(userId: string): Promise<CepatNotification[]> {
   if (!userId) throw new Error('authentication_required');
   if (shouldUseFixtures()) {
-    return getStoredJson<CepatNotification[]>(localKey(userId), []);
+    const local = await getStoredJson<CepatNotification[]>(localKey(userId), []);
+    return filterDeleted(userId, local);
   }
   if (!supabase) throw new Error('supabase_unavailable');
 
@@ -94,7 +128,9 @@ export async function loadNotifications(userId: string): Promise<CepatNotificati
     .limit(MAX_NOTIFICATIONS);
   if (error) throw new Error(`notifications_load_failed: ${error.message}`);
 
-  return (data ?? []).map((row) => ({
+  return filterDeleted(
+    userId,
+    (data ?? []).map((row) => ({
     id: String(row.id),
     userId: String(row.user_id),
     type: (row.type as CepatNotification['type']) ?? 'system',
@@ -106,7 +142,8 @@ export async function loadNotifications(userId: string): Promise<CepatNotificati
         : {},
     readAt: row.read_at ? String(row.read_at) : undefined,
     createdAt: String(row.created_at),
-  }));
+  })),
+  );
 }
 
 export async function markNotificationRead(
@@ -205,6 +242,7 @@ export async function deleteNotification(
 ): Promise<void> {
   if (!userId || !notificationId) return;
   try {
+    await addDeletedId(userId, notificationId);
     const notifications = await getStoredJson<CepatNotification[]>(localKey(userId), []);
     const filtered = notifications.filter((item) => item.id !== notificationId);
     await setStoredJson(localKey(userId), filtered);
@@ -214,13 +252,16 @@ export async function deleteNotification(
 
   if (supabase && !shouldUseFixtures()) {
     try {
-      await supabase
+      const { error } = await supabase
         .from('notifications')
         .delete()
         .eq('id', notificationId)
         .eq('user_id', userId);
-    } catch {
-      // ignore supabase delete error
+      if (error) {
+        console.warn('[notifications] Remote delete failed (item stays hidden locally):', error.message);
+      }
+    } catch (err) {
+      console.warn('[notifications] Remote delete failed (item stays hidden locally):', err);
     }
   }
   notifyNotificationChange();

@@ -10,6 +10,7 @@ export interface PostComposerProps {
   onChangeText: (text: string) => void;
   autoFocus?: boolean;
   modal?: boolean;
+  testID?: string;
 }
 
 export function PostComposer({
@@ -17,6 +18,7 @@ export function PostComposer({
   onChangeText,
   autoFocus = false,
   modal = false,
+  testID = 'create-post-caption-input',
 }: PostComposerProps) {
   const { language } = useLanguage();
   const { palette, scaleFont } = useAppearance();
@@ -46,7 +48,7 @@ export function PostComposer({
           paddingTop: modal ? 6 : 7,
         },
       ]}
-      testID="create-post-caption-input"
+      testID={testID}
       value={value}
     />
   );
