@@ -485,3 +485,87 @@ Every element must have a clear purpose. Every interactive element must work. Ev
 Do not redesign unrelated Marketplace components.
 
 Implement the search experience, integrate it properly, test it, and provide a concise summary of the files changed, functionality implemented, and tests performed.
+
+---
+
+## 14. Architecture Specification: Top-Up, In-App Wallet & Escrow Payment System
+
+### 14.1 Objective & Overview
+Enable seamless, trust-guaranteed transactions across Cepat using an in-app digital wallet and escrow system modeled after Southeast Asian superapps (Gojek, Grab) and global service platforms (TaskRabbit, Airbnb). Customers top up their balances, book services with guaranteed funds, and technicians receive instant payouts upon verified job completion without cash friction.
+
+### 14.2 The 3-Party Money Flow & Escrow Mechanics
+```
+Customer Top-Up (QRIS / Virtual Account / E-Wallet)
+         │
+         ▼
+[ Customer Available Balance ]
+         │
+         │ (Booking Confirmed)
+         ▼
+[ Locked Escrow Vault ] ──(Guarantees technician payment without releasing prematurely)
+         │
+         │ (Job Completed by Tech + Approved by Customer)
+         ├──────────────────────────────┐
+         ▼                              ▼
+[ Technician Earnings Wallet ]    [ Cepat Platform Commission (e.g. 10%) ]
+         │
+         ▼ (Instant Disbursement / Payout)
+Technician's Registered Bank Account (BCA, Mandiri, BRI, etc.)
+```
+
+### 14.3 Core Payment Components
+1. **Double-Entry Ledger Architecture**:
+   - Balances are never stored as single mutable rows (`balance = balance + 1000`).
+   - Balances are calculated sums of immutable ledger transactions (`topup`, `escrow_lock`, `escrow_release`, `platform_fee`, `refund`, `payout`).
+   - Provides auditability, tamper-resistance, and instant financial reconciliation.
+
+2. **Payment Gateway Integration (Midtrans / Xendit)**:
+   - **QRIS**: Instant QR code generation compatible with all Indonesian banks and e-wallets.
+   - **Bank Virtual Accounts (VA)**: Dedicated VA numbers for BCA, Mandiri, BNI, BRI, Permata.
+   - **Direct E-Wallets**: Deep-link or direct binding for GoPay, ShopeePay, OVO, and Dana.
+   - **Webhook Engine**: Authenticated webhook handlers that listen for gateway status callbacks (`capture`, `settlement`, `expire`, `cancel`) and credit balances atomically.
+
+3. **Booking & Escrow Lifecycle**:
+   - **Hold / Lock**: On booking acceptance, the agreed quote or base deposit is locked from customer's available balance into escrow.
+   - **In-Progress Work**: Technician can work knowing funds are reserved and guaranteed.
+   - **Verification & Settlement**: Customer inspects work, enters completion confirmation, and rates the technician. Funds split into technician earnings and platform revenue.
+   - **Cancellation & Dispute Handling**: If a technician cancels or does not arrive, escrow funds instantly return to customer's available balance with zero deduction or transaction penalty.
+
+4. **Technician Cashout (Disbursement API)**:
+   - Technicians connect and verify their bank account name and account number.
+   - On payout request, gateway disbursement sends funds directly to the technician's bank account in real-time.
+
+---
+
+## 15. Push Notifications System (Expo Notifications)
+
+### 15.1 Purpose & Scope
+Ensure instant, real-time alerts on mobile devices for:
+- New booking requests and status transitions (Pending -> Accepted -> In-Progress -> Completed).
+- Real-time chat messages between customer and assigned technician.
+- Top-up balance confirmations and escrow payout updates.
+- Post engagement (likes, reviews, verified badge updates).
+
+### 15.2 Architecture & Flow
+1. **Device Registration & Permissions**:
+   - Request system notification permissions using `expo-notifications`.
+   - Retrieve unique `ExpoPushToken` on physical devices.
+   - Register the push token to the user's profile in database storage.
+2. **Notification Channels (Android)**:
+   - High-priority sound & vibration channel for Bookings & Emergencies.
+   - Standard channel for Chat and Social Updates.
+3. **Foreground & Background Presentation Handlers**:
+   - Configure `setNotificationHandler` so in-app banner alerts appear even when the app is foregrounded.
+   - Handle notification responses (`addNotificationResponseReceivedListener`) to deep-link directly into the relevant booking or chat screen (`/booking/[id]`, `/chat/[id]`).
+
+---
+
+## 16. Technician Star Ratings on Marketplace Posts
+
+### 16.1 Design & Display
+Marketplace post headers display the technician's actual ratings identically to their profile cover:
+- Prominent amber gold star (`★`).
+- Bold average rating score (`4.9`, `5.0`).
+- Muted review count (`(38 rev)` / `(38 ul)`).
+- Instant mapping with fixture technician registry and asynchronous dynamic resolution for new/custom technician posts.
+
