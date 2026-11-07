@@ -5,6 +5,8 @@ export interface TechnicianRecommendationCardProps {
   source?: DataSource;
   onPress?: () => void;
   onChat?: () => void;
+  cardWidth?: number;
+  cardGap?: number;
   testID?: string;
 }
 

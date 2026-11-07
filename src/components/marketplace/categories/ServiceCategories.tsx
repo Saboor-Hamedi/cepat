@@ -91,7 +91,7 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     gap: spacing.xs + 2,
-    paddingHorizontal: spacing.lg,
+    paddingHorizontal: 0,
   },
   categoryPill: {
     alignItems: 'center',

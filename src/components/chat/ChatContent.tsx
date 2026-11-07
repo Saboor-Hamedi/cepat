@@ -14,6 +14,7 @@ import { useAppearance } from '../../context/AppearanceContext';
 import { useLanguage } from '../../i18n/locale';
 import type { BookingMessage } from '../../types/marketplace';
 import { Avatar } from '../marketplace-ui';
+import { SwipeableRow } from '../SwipeableRow';
 import { createChatContentStyles } from './css/chatStyles';
 
 export interface ChatContentProps {
@@ -23,6 +24,7 @@ export interface ChatContentProps {
   isChatClosed: boolean;
   historyCleared: boolean;
   onUndoClear: () => void;
+  onDeleteMessage?: (messageId: string) => void;
   chatError: string | null;
   partnerAvatarUri?: string;
   senderAvatarUri?: string;
@@ -35,6 +37,7 @@ export function ChatContent({
   isChatClosed,
   historyCleared,
   onUndoClear,
+  onDeleteMessage,
   chatError,
   partnerAvatarUri,
   senderAvatarUri,
@@ -151,77 +154,87 @@ export function ChatContent({
             const bubbleTextColor = isMyMsg ? '#FFFFFF' : palette.text;
 
             return (
-              <View
+              <SwipeableRow
                 key={msg.id}
-                style={[
-                  styles.messageRow,
-                  isMyMsg ? styles.myRow : styles.theirRow,
-                  startsGroup && index > 0 && styles.groupSpacing,
-                ]}
+                deleteAccessibilityLabel={
+                  language === 'en' ? 'Delete message' : 'Hapus pesan'
+                }
+                deleteTestID={`delete-chat-message-${msg.id}`}
+                onDelete={
+                  onDeleteMessage ? () => onDeleteMessage(msg.id) : undefined
+                }
               >
-                {!isMyMsg && (
-                  <View style={[styles.messageAvatarWrap, styles.avatarLeft]}>
-                    {startsGroup ? (
-                      <Avatar
-                        name={msg.senderName}
-                        size={30}
-                        uri={partnerAvatarUri}
-                      />
-                    ) : (
-                      <View style={styles.avatarSpacer} />
-                    )}
-                  </View>
-                )}
+                <View
+                  style={[
+                    styles.messageRow,
+                    isMyMsg ? styles.myRow : styles.theirRow,
+                    startsGroup && index > 0 && styles.groupSpacing,
+                  ]}
+                >
+                  {!isMyMsg && (
+                    <View style={[styles.messageAvatarWrap, styles.avatarLeft]}>
+                      {startsGroup ? (
+                        <Avatar
+                          name={msg.senderName}
+                          size={30}
+                          uri={partnerAvatarUri}
+                        />
+                      ) : (
+                        <View style={styles.avatarSpacer} />
+                      )}
+                    </View>
+                  )}
 
-                <View style={isMyMsg ? styles.myBubbleWrap : styles.theirBubbleWrap}>
-                  <View
-                    style={[
-                      styles.bubble,
-                      isMyMsg
-                        ? [styles.myBubble, { backgroundColor: palette.primary }]
-                        : [
-                            styles.theirBubble,
-                            { backgroundColor: palette.surfaceElevated },
-                          ],
-                    ]}
-                  >
-                    {!isMyMsg && startsGroup && (
-                      <Text
-                        style={[
-                          styles.bubbleSender,
-                          { color: palette.primary },
-                        ]}
-                      >
-                        {msg.senderName}
-                      </Text>
-                    )}
-                    <Text style={[styles.bubbleBody, { color: bubbleTextColor }]}>
-                      {msg.body}
-                    </Text>
-                  </View>
-                  {timeStr ? (
-                    <Text
+                  <View style={isMyMsg ? styles.myBubbleWrap : styles.theirBubbleWrap}>
+                    <View
                       style={[
-                        styles.bubbleTimeUnder,
-                        isMyMsg ? styles.timeUnderMy : styles.timeUnderTheir,
-                        { color: palette.textMuted },
+                        styles.bubble,
+                        isMyMsg
+                          ? [styles.myBubble, { backgroundColor: palette.primary }]
+                          : [
+                              styles.theirBubble,
+                              { backgroundColor: palette.surfaceElevated },
+                            ],
                       ]}
                     >
-                      {timeStr}
-                    </Text>
-                  ) : null}
-                </View>
-
-                {isMyMsg && (
-                  <View style={[styles.messageAvatarWrap, styles.avatarRight]}>
-                    {startsGroup ? (
-                      <Avatar name={selfName} size={30} uri={senderAvatarUri} />
-                    ) : (
-                      <View style={styles.avatarSpacer} />
-                    )}
+                      {!isMyMsg && startsGroup && (
+                        <Text
+                          style={[
+                            styles.bubbleSender,
+                            { color: palette.primary },
+                          ]}
+                        >
+                          {msg.senderName}
+                        </Text>
+                      )}
+                      <Text style={[styles.bubbleBody, { color: bubbleTextColor }]}>
+                        {msg.body}
+                      </Text>
+                    </View>
+                    {timeStr ? (
+                      <Text
+                        style={[
+                          styles.bubbleTimeUnder,
+                          isMyMsg ? styles.timeUnderMy : styles.timeUnderTheir,
+                          { color: palette.textMuted },
+                        ]}
+                      >
+                        {timeStr}
+                      </Text>
+                    ) : null}
                   </View>
-                )}
-              </View>
+
+                  {isMyMsg && (
+                    <View style={[styles.messageAvatarWrap, styles.avatarRight]}>
+                      {startsGroup ? (
+                        <Avatar name={selfName} size={30} uri={senderAvatarUri} />
+                      ) : (
+                        <View style={styles.avatarSpacer} />
+                      )}
+                    </View>
+                  )}
+                </View>
+              </SwipeableRow>
             );
           })
         )}

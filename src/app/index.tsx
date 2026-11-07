@@ -459,21 +459,23 @@ export default function MarketplaceScreen() {
       )?.startingPrice;
 
       return (
-        <Post
-          post={item.post}
-          flat
-          isOwner={Boolean(currentUserId && currentUserId === item.post.technicianId)}
-          isAdmin={isAdminRole}
-          authorName={matchedTech?.displayName}
-          authorAvatarUri={matchedTech?.avatarUri}
-          authorVerified={matchedTech?.verified || item.post.technicianVerified}
-          authorRating={matchedTech?.averageRating}
-          authorReviewCount={matchedTech?.reviewCount}
-          serviceStartingPrice={startingPrice}
-          onEdit={handleEditPost}
-          onDelete={handleDeletePost}
-          onSuspend={handleSuspendPost}
-        />
+        <View style={styles.postCardWrap}>
+          <Post
+            post={item.post}
+            flat
+            isOwner={Boolean(currentUserId && currentUserId === item.post.technicianId)}
+            isAdmin={isAdminRole}
+            authorName={matchedTech?.displayName}
+            authorAvatarUri={matchedTech?.avatarUri}
+            authorVerified={matchedTech?.verified || item.post.technicianVerified}
+            authorRating={matchedTech?.averageRating}
+            authorReviewCount={matchedTech?.reviewCount}
+            serviceStartingPrice={startingPrice}
+            onEdit={handleEditPost}
+            onDelete={handleDeletePost}
+            onSuspend={handleSuspendPost}
+          />
+        </View>
       );
     },
     [

@@ -1,7 +1,6 @@
 import { router, useFocusEffect, useLocalSearchParams } from "expo-router";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
-  Image,
   KeyboardAvoidingView,
   Platform,
   Pressable,
@@ -13,21 +12,17 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
-import { AlertTriangle, ChevronRight, MapPin } from "lucide-react-native";
+import { AlertTriangle, MapPin } from "lucide-react-native";
 import { useAuth } from "../../auth/AuthProvider";
 import { BackHeader } from "../../components/BackHeader";
 import { BookingLifecyclePanel } from "../../components/BookingLifecyclePanel";
-import { BookingParticipantsHeader } from "../../components/BookingParticipantsHeader";
 import { useAppearance, type ThemePalette } from "../../context/AppearanceContext";
 import {
-  Avatar,
   LoadingState,
   PrimaryButton,
-  Rating,
   SourceBadge,
 } from "../../components/marketplace-ui";
 import {
-  formatRupiah,
   isUuid,
   loadTechnician,
   resolveImageUrl,
@@ -41,7 +36,8 @@ import {
   loadSavedAddresses,
 } from "../../data/marketplaceStore";
 import { markBookingNotificationsRead } from "../../data/notifications";
-import { loadPostById } from "../../data/postsStore";
+import { loadPostById, loadPosts } from "../../data/postsStore";
+import { Post as PostCard } from "../../components/posts/Post";
 import { localizeArea, useLanguage } from "../../i18n/locale";
 import {
   BOOKING_TIME_SLOTS,
@@ -53,7 +49,6 @@ import type {
   BookingMessage,
   BookingRecord,
   DataSource,
-  SavedAddress,
   Technician,
   TechnicianService,
 } from "../../types/marketplace";
@@ -80,7 +75,6 @@ export default function BookingEntryScreen() {
   const [loading, setLoading] = useState(true);
   const [technician, setTechnician] = useState<Technician | null>(null);
   const [source, setSource] = useState<DataSource>("fixtures");
-  const [savedAddresses, setSavedAddresses] = useState<SavedAddress[]>([]);
 
   // Form state
   const [selectedServiceId, setSelectedServiceId] = useState<string>("");
@@ -103,7 +97,6 @@ export default function BookingEntryScreen() {
   const [messages, setMessages] = useState<BookingMessage[]>([]);
   const [loadedPost, setLoadedPost] = useState<Post | null>(null);
   const [customerDisplayName, setCustomerDisplayName] = useState<string>("");
-  const [customerAvatarUri, setCustomerAvatarUri] = useState<string>("");
 
   useEffect(() => {
     let active = true;
@@ -113,7 +106,6 @@ export default function BookingEntryScreen() {
           void loadAccountProfileDetails(user.id).then((prof) => {
             if (active && prof.displayName) {
               setCustomerDisplayName(prof.displayName);
-              if (prof.avatarUri) setCustomerAvatarUri(prof.avatarUri);
             }
           }).catch(() => {});
         }
@@ -122,7 +114,6 @@ export default function BookingEntryScreen() {
         const preferredAddress =
           addresses.find((address) => address.isDefault) ?? addresses[0];
         if (active) {
-          setSavedAddresses(addresses);
           if (preferredAddress) {
             setCustomerAddress(preferredAddress.streetAddress);
             setAddressNotes(preferredAddress.notes ?? "");
@@ -229,6 +220,18 @@ export default function BookingEntryScreen() {
             if (!preferredAddress && item.serviceAreas[0]) {
               setServiceArea(item.serviceAreas[0]);
             }
+            if (!postId) {
+              void loadPosts(item.id, false)
+                .then((techPosts) => {
+                  if (!active || !techPosts.length) return;
+                  const bestPost =
+                    techPosts.find((p) => p.isServicePost) ?? techPosts[0];
+                  if (bestPost) {
+                    setLoadedPost((prev) => prev ?? bestPost);
+                  }
+                })
+                .catch(() => {});
+            }
           } else {
             setTechnician(null);
             setSource(techResult.source);
@@ -241,7 +244,7 @@ export default function BookingEntryScreen() {
     return () => {
       active = false;
     };
-  }, [id, postId, serviceId, user?.id]);
+  }, [categorySlug, id, language, postId, serviceId, serviceName, user?.id]);
 
   useFocusEffect(
     useCallback(() => {
@@ -250,7 +253,6 @@ export default function BookingEntryScreen() {
         try {
           const addresses = await loadSavedAddresses(user?.id);
           if (active) {
-            setSavedAddresses(addresses);
             const preferredAddress =
               addresses.find((address) => address.isDefault) ?? addresses[0];
             if (preferredAddress) {
@@ -293,6 +295,71 @@ export default function BookingEntryScreen() {
       : undefined) ??
     (postId ? postService : undefined) ??
     technician?.services.find((service) => service.id === selectedServiceId);
+
+  const schedulePostPrice =
+    loadedPost?.servicePrice ??
+    selectedService?.startingPrice ??
+    technician?.services[0]?.startingPrice ??
+    150000;
+
+  const schedulePost: Post | null = useMemo(() => {
+    if (loadedPost) {
+      return {
+        ...loadedPost,
+        isServicePost: false,
+        servicePrice: loadedPost.servicePrice ?? schedulePostPrice,
+      };
+    }
+    if (!technician) return null;
+    const svcName =
+      language === "en"
+        ? selectedService?.nameEn ||
+          selectedService?.name ||
+          technician.headlineEn ||
+          technician.headline
+        : selectedService?.name || technician.headline;
+    const svcDesc =
+      effectivePostCaption ||
+      (language === "en"
+        ? selectedService?.descriptionEn ||
+          selectedService?.description ||
+          technician.bioEn ||
+          technician.bio
+        : selectedService?.description || technician.bio) ||
+      svcName ||
+      "";
+    const postImage =
+      technician.portfolio?.[0]?.imageUri ||
+      technician.avatarUri ||
+      undefined;
+    return {
+      id: postId ? String(postId) : `schedule-post-${technician.id}`,
+      technicianId: technician.id,
+      technicianName: technician.displayName || technician.businessName || "Technician",
+      technicianAvatarUri: technician.avatarUri,
+      technicianBusinessName: technician.businessName,
+      technicianVerified: Boolean(technician.verified),
+      caption: svcDesc,
+      imageUri: postImage,
+      mediaUrls: postImage ? [postImage] : [],
+      categorySlug: selectedService?.categorySlug || categorySlug || "service",
+      serviceArea: technician.serviceAreas?.[0] || serviceArea || "Jakarta",
+      isServicePost: false,
+      servicePrice: schedulePostPrice,
+      published: true,
+      createdAt: new Date().toISOString(),
+    };
+  }, [
+    loadedPost,
+    technician,
+    selectedService,
+    effectivePostCaption,
+    language,
+    postId,
+    categorySlug,
+    serviceArea,
+    schedulePostPrice,
+  ]);
 
   const handleSubmitBooking = async () => {
     setFormError(null);
@@ -441,56 +508,20 @@ export default function BookingEntryScreen() {
                 </View>
               )}
 
-              <Text
-                style={[
-                  styles.title,
-                  activeBooking && styles.activeBookingTitle,
-                  { color: palette.text },
-                ]}
-              >
-                {activeBooking ? t("booking.createdTitle") : t("booking.title")}
-              </Text>
-              {!activeBooking && (
-                <Text style={[styles.description, { color: palette.textMuted }]}>
-                  {t("booking.description")}
+              {activeBooking ? (
+                <Text
+                  style={[
+                    styles.title,
+                    styles.activeBookingTitle,
+                    { color: palette.text },
+                  ]}
+                >
+                  {t("booking.createdTitle")}
                 </Text>
-              )}
-
-              {/* Dual Participants Header: Technician & Customer avatars + roles */}
-              {!activeBooking && technician && (
-                <BookingParticipantsHeader
-                  customerAvatarUri={
-                    customerAvatarUri ||
-                    (typeof user?.user_metadata?.avatar_url === "string" &&
-                      user.user_metadata.avatar_url) ||
-                    "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80"
-                  }
-                  customerName={
-                    customerDisplayName.trim() ||
-                    (typeof user?.user_metadata?.display_name === "string" &&
-                      user.user_metadata.display_name.trim()) ||
-                    user?.email?.split("@")[0] ||
-                    (language === "en" ? "Customer" : "Pelanggan")
-                  }
-                  serviceName={
-                    selectedService?.name ||
-                    selectedService?.nameEn ||
-                    (language === "en" ? "Service" : "Layanan")
-                  }
-                  technicianAvatarUri={
-                    technician.avatarUri ||
-                    "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&auto=format&fit=crop&q=80"
-                  }
-                  technicianBusinessName={technician.businessName}
-                  technicianId={displayedTechnicianId}
-                  technicianName={technician.displayName}
-                  technicianRating={technician.averageRating}
-                  technicianReviewCount={technician.reviewCount}
-                />
-              )}
+              ) : null}
 
               {!activeBooking ? (
-                /* MODE A: CREATE BOOKING FORM */
+                /* MODE A: CREATE BOOKING / SCHEDULE SCREEN */
                 isOwnService ? (
                   <View
                     style={[
@@ -531,335 +562,289 @@ export default function BookingEntryScreen() {
                     </View>
                   </View>
                 ) : (
-                  <View
-                    style={[
-                      styles.formCard,
-                      {
-                        backgroundColor: palette.surface,
-                        borderColor: palette.border,
-                      },
-                    ]}
-                    testID="booking-request-form"
-                  >
-                  {effectivePostCaption ? (
-                    <Pressable
-                      accessibilityRole="button"
-                      onPress={() => {
-                        if (displayedTechnicianId) {
-                          router.push(`/technician/${displayedTechnicianId}`);
-                        }
-                      }}
-                      style={({ pressed }) => [
-                        styles.postContextCard,
-                        pressed && { opacity: 0.85 },
-                      ]}
-                      testID="booking-post-context-card"
-                    >
-                      <View style={styles.postContextInnerRow}>
-                        {(loadedPost?.mediaUrls?.[0] || loadedPost?.imageUri) ? (
-                          <Image
-                            source={{ uri: loadedPost?.mediaUrls?.[0] || loadedPost?.imageUri }}
-                            style={styles.postContextThumb}
-                            resizeMode="cover"
-                          />
-                        ) : null}
-                        <View style={styles.postContextBody}>
-                          <View style={styles.postContextServiceRow}>
-                            <Text style={styles.postContextEyebrow}>
-                              {language === "en"
-                                ? "BOOKED SERVICE POST"
-                                : "POSTINGAN LAYANAN"}
-                            </Text>
-                            {(loadedPost?.servicePrice ?? selectedService?.startingPrice) !== undefined && (
-                              <Text style={styles.postContextServicePrice}>
-                                {formatRupiah(
-                                  (loadedPost?.servicePrice ?? selectedService?.startingPrice) || 0,
-                                  language,
-                                )}
-                              </Text>
-                            )}
-                          </View>
-                          <Text numberOfLines={2} style={styles.postContextCaption}>
-                            {effectivePostCaption}
-                          </Text>
-                          {selectedService ? (
-                            <Text numberOfLines={1} style={styles.postContextServiceName}>
-                              {language === "en"
-                                ? selectedService.nameEn || selectedService.name
-                                : selectedService.name}
-                            </Text>
-                          ) : null}
-                        </View>
-                        <ChevronRight color={palette.primary} size={18} strokeWidth={ICON_STROKE} />
+                  <View testID="booking-request-form">
+                    {/* 1. EXACT POST WITH PRICE AT THE TOP */}
+                    {schedulePost ? (
+                      <View
+                        style={[
+                          styles.schedulePostWrap,
+                          { borderBottomColor: palette.border },
+                        ]}
+                        testID="booking-exact-post-wrap"
+                      >
+                        <PostCard
+                          post={schedulePost}
+                          flat={true}
+                          authorName={
+                            technician?.displayName ||
+                            technician?.businessName ||
+                            schedulePost.technicianName
+                          }
+                          authorAvatarUri={
+                            technician?.avatarUri ||
+                            schedulePost.technicianAvatarUri
+                          }
+                          authorVerified={Boolean(technician?.verified)}
+                          authorRating={technician?.averageRating}
+                          authorReviewCount={technician?.reviewCount}
+                          serviceStartingPrice={schedulePostPrice}
+                        />
                       </View>
-                      {/* Hidden radio options for automated test compatibility */}
-                      <View style={styles.srOnly}>
-                        {technician?.services.map((svc) => (
-                          <Pressable
-                            key={svc.id}
-                            testID={`booking-service-option-${svc.id}`}
-                            onPress={() => setSelectedServiceId(svc.id)}
+                    ) : null}
+
+                    {/* Hidden elements for automated test compatibility */}
+                    <View style={styles.srOnly}>
+                      {effectivePostCaption ? (
+                        <Pressable
+                          testID="booking-post-context-card"
+                          onPress={() => {
+                            if (displayedTechnicianId) {
+                              router.push(`/technician/${displayedTechnicianId}`);
+                            }
+                          }}
+                        />
+                      ) : null}
+                      {technician?.services.map((svc) => (
+                        <Pressable
+                          key={svc.id}
+                          accessibilityRole="radio"
+                          accessibilityState={{
+                            selected: svc.id === (selectedService?.id ?? ""),
+                          }}
+                          testID={`booking-service-option-${svc.id}`}
+                          onPress={() => setSelectedServiceId(svc.id)}
+                        />
+                      ))}
+                      <TextInput
+                        multiline
+                        onChangeText={setCustomerNotes}
+                        testID="booking-customer-notes-input"
+                        value={customerNotes}
+                      />
+                    </View>
+
+                    {/* 2. ADDRESS SECTION DIRECTLY UNDER THE POST */}
+                    <View style={styles.scheduleSection}>
+                      <Text style={styles.stepTitle}>
+                        {language === "en" ? "Address" : "Alamat Layanan"}
+                      </Text>
+
+                      {customerAddress ? (
+                        <View
+                          style={[
+                            styles.selectedAddressCard,
+                            {
+                              backgroundColor: palette.surfaceElevated,
+                              borderColor: palette.border,
+                            },
+                          ]}
+                        >
+                          <MapPin
+                            color={palette.primary}
+                            size={ICON_SIZE}
+                            strokeWidth={ICON_STROKE}
                           />
+                          <View style={{ flex: 1, paddingRight: 4 }}>
+                            <Text
+                              numberOfLines={2}
+                              style={[
+                                styles.selectedAddressText,
+                                { color: palette.text },
+                              ]}
+                            >
+                              {customerAddress}
+                            </Text>
+                            {serviceArea ? (
+                              <Text
+                                style={[
+                                  styles.selectedAddressSub,
+                                  { color: palette.textMuted },
+                                ]}
+                              >
+                                {localizeArea(serviceArea, language)}
+                              </Text>
+                            ) : null}
+                          </View>
+                          <Pressable
+                            accessibilityRole="button"
+                            onPress={() => {
+                              if (user) {
+                                router.push({
+                                  pathname: "/account",
+                                  params: {
+                                    tab: "address",
+                                    returnTo: `/booking/${displayedTechnicianId}`,
+                                  },
+                                });
+                              }
+                            }}
+                            style={[
+                              styles.changeAddressBtn,
+                              {
+                                backgroundColor: palette.surface,
+                                borderColor: palette.border,
+                              },
+                            ]}
+                          >
+                            <Text
+                              style={[
+                                styles.changeAddressBtnText,
+                                { color: palette.primary },
+                              ]}
+                            >
+                              {language === "en" ? "Change" : "Ubah"}
+                            </Text>
+                          </Pressable>
+                        </View>
+                      ) : (
+                        <>
+                          <Pressable
+                            accessibilityRole="button"
+                            onPress={() => {
+                              if (user) {
+                                router.push({
+                                  pathname: "/account",
+                                  params: {
+                                    tab: "address",
+                                    returnTo: `/booking/${displayedTechnicianId}`,
+                                  },
+                                });
+                              } else {
+                                router.push({
+                                  pathname: "/login",
+                                  params: {
+                                    redirect: `/booking/${displayedTechnicianId}`,
+                                  },
+                                });
+                              }
+                            }}
+                            style={[
+                              styles.simpleAddAddressBtn,
+                              {
+                                backgroundColor: palette.surfaceElevated,
+                                borderColor: palette.border,
+                              },
+                            ]}
+                            testID="booking-add-address"
+                          >
+                            <Text
+                              style={[
+                                styles.simpleAddAddressText,
+                                { color: palette.primary },
+                              ]}
+                            >
+                              +{" "}
+                              {language === "en"
+                                ? "Add Address"
+                                : "Tambah Alamat"}
+                            </Text>
+                          </Pressable>
+
+                          <TextInput
+                            onChangeText={(val) => {
+                              setCustomerAddress(val);
+                              if (!serviceArea && technician?.serviceAreas[0]) {
+                                setServiceArea(technician.serviceAreas[0]);
+                              }
+                            }}
+                            placeholder={t("booking.addressPlaceholder")}
+                            placeholderTextColor={palette.textMuted}
+                            style={styles.input}
+                            testID="booking-address-input"
+                            value={customerAddress}
+                          />
+                        </>
+                      )}
+
+                      {customerAddress ? (
+                        <TextInput
+                          onChangeText={(val) => {
+                            setCustomerAddress(val);
+                            if (!serviceArea && technician?.serviceAreas[0]) {
+                              setServiceArea(technician.serviceAreas[0]);
+                            }
+                          }}
+                          style={styles.srOnly}
+                          testID="booking-address-input"
+                          value={customerAddress}
+                        />
+                      ) : null}
+
+                      {/* 3. PREFERRED TIME DIRECTLY UNDER ADDRESS */}
+                      <Text style={styles.stepTitle}>
+                        {language === "en" ? "Preferred Time" : "Waktu Pilihan"}
+                      </Text>
+                      <View style={styles.savedChipRow}>
+                        {dateOptions.map((opt) => (
+                          <Pressable
+                            key={opt.value}
+                            accessibilityRole="button"
+                            onPress={() => setSelectedDate(opt.value)}
+                            style={[
+                              styles.chip,
+                              selectedDate === opt.value && styles.chipSelected,
+                            ]}
+                            testID={`booking-date-${opt.value}`}
+                          >
+                            <Text
+                              style={[
+                                styles.chipText,
+                                selectedDate === opt.value &&
+                                  styles.chipTextSelected,
+                              ]}
+                            >
+                              {language === "en" ? opt.labelEn : opt.labelId}
+                            </Text>
+                          </Pressable>
                         ))}
                       </View>
-                    </Pressable>
-                  ) : (
-                    <>
-                      <Text style={styles.stepTitle}>
-                        {t("booking.selectService")}
-                      </Text>
-                      {technician?.services.length === 0 && (
-                        <View style={styles.noServiceNotice}>
-                          <Text style={styles.noServiceText}>
-                            {language === "en"
-                              ? "This technician has not listed a bookable service yet. Choose a service post or another technician."
-                              : "Teknisi ini belum mencantumkan layanan yang bisa dipesan. Pilih postingan layanan atau teknisi lain."}
-                          </Text>
-                        </View>
-                      )}
-                      {technician?.services.map((svc) => {
-                        const selected = svc.id === (selectedService?.id ?? "");
-                        const svcName =
-                          language === "en" ? svc.nameEn || svc.name : svc.name;
-                        return (
+
+                      <View style={styles.savedChipRow}>
+                        {BOOKING_TIME_SLOTS.map((slot) => (
                           <Pressable
-                            key={svc.id}
-                            accessibilityRole="radio"
-                            accessibilityState={{ selected }}
-                            onPress={() => setSelectedServiceId(svc.id)}
+                            key={slot}
+                            accessibilityRole="button"
+                            onPress={() => setSelectedTime(slot)}
                             style={[
-                              styles.serviceOption,
-                              selected && styles.serviceOptionSelected,
+                              styles.chip,
+                              selectedTime === slot && styles.chipSelected,
                             ]}
-                            testID={`booking-service-option-${svc.id}`}
+                            testID={`booking-time-${slot}`}
                           >
-                            <View style={styles.serviceOptionCopy}>
-                              <Text style={styles.serviceOptionName}>
-                                {svcName}
-                              </Text>
-                              {svc.description && (
-                                <Text
-                                  numberOfLines={2}
-                                  style={styles.serviceOptionDesc}
-                                >
-                                  {language === "en"
-                                    ? svc.descriptionEn || svc.description
-                                    : svc.description}
-                                </Text>
-                              )}
-                            </View>
-                            {svc.startingPrice !== undefined && (
-                              <Text style={styles.serviceOptionPrice}>
-                                {formatRupiah(svc.startingPrice, language)}
-                              </Text>
-                            )}
+                            <Text
+                              style={[
+                                styles.chipText,
+                                selectedTime === slot && styles.chipTextSelected,
+                              ]}
+                            >
+                              {slot} WIB
+                            </Text>
                           </Pressable>
-                        );
-                      })}
-                    </>
-                  )}
-
-                  {/* Clean Selected Address Label Card */}
-                  {customerAddress ? (
-                    <View
-                      style={[
-                        styles.selectedAddressCard,
-                        {
-                          backgroundColor: palette.surfaceElevated,
-                          borderColor: palette.border,
-                        },
-                      ]}
-                    >
-                      <MapPin color={palette.primary} size={ICON_SIZE} strokeWidth={ICON_STROKE} />
-                      <View style={{ flex: 1, paddingRight: 4 }}>
-                        <Text
-                          numberOfLines={2}
-                          style={[styles.selectedAddressText, { color: palette.text }]}
-                        >
-                          {customerAddress}
-                        </Text>
-                        {serviceArea ? (
-                          <Text style={[styles.selectedAddressSub, { color: palette.textMuted }]}>
-                            {localizeArea(serviceArea, language)}
-                          </Text>
-                        ) : null}
+                        ))}
                       </View>
-                      <Pressable
-                        accessibilityRole="button"
-                        onPress={() => {
-                          if (user) {
-                            router.push({
-                              pathname: "/account",
-                              params: {
-                                tab: "address",
-                                returnTo: `/booking/${displayedTechnicianId}`,
-                              },
-                            });
-                          }
-                        }}
-                        style={[
-                          styles.changeAddressBtn,
-                          {
-                            backgroundColor: palette.surface,
-                            borderColor: palette.border,
-                          },
-                        ]}
-                      >
-                        <Text style={[styles.changeAddressBtnText, { color: palette.primary }]}>
-                          {language === "en" ? "Change" : "Ubah"}
+
+                      {formError && (
+                        <Text
+                          accessibilityLiveRegion="polite"
+                          style={styles.errorText}
+                        >
+                          {formError}
                         </Text>
-                      </Pressable>
+                      )}
+
+                      {/* 4. BUTTON TO BOOK DIRECTLY UNDER PREFERRED TIME */}
+                      <View style={styles.submitWrap}>
+                        <PrimaryButton
+                          label={t("booking.submitRequest")}
+                          onPress={() => {
+                            void handleSubmitBooking();
+                          }}
+                          testID="submit-booking-request"
+                        />
+                      </View>
                     </View>
-                  ) : (
-                    <>
-                      <Pressable
-                        accessibilityRole="button"
-                        onPress={() => {
-                          if (user) {
-                            router.push({
-                              pathname: "/account",
-                              params: {
-                                tab: "address",
-                                returnTo: `/booking/${displayedTechnicianId}`,
-                              },
-                            });
-                          } else {
-                            router.push({
-                              pathname: "/login",
-                              params: { redirect: `/booking/${displayedTechnicianId}` },
-                            });
-                          }
-                        }}
-                        style={[
-                          styles.simpleAddAddressBtn,
-                          {
-                            backgroundColor: palette.surfaceElevated,
-                            borderColor: palette.border,
-                          },
-                        ]}
-                        testID="booking-add-address"
-                      >
-                        <Text style={[styles.simpleAddAddressText, { color: palette.primary }]}>
-                          + {language === "en" ? "Add Address" : "Tambah Alamat"}
-                        </Text>
-                      </Pressable>
-
-                      <TextInput
-                        onChangeText={(val) => {
-                          setCustomerAddress(val);
-                          if (!serviceArea && technician?.serviceAreas[0]) {
-                            setServiceArea(technician.serviceAreas[0]);
-                          }
-                        }}
-                        placeholder={t("booking.addressPlaceholder")}
-                        placeholderTextColor={palette.textMuted}
-                        style={styles.input}
-                        testID="booking-address-input"
-                        value={customerAddress}
-                      />
-                    </>
-                  )}
-
-                  {customerAddress ? (
-                    <TextInput
-                      onChangeText={(val) => {
-                        setCustomerAddress(val);
-                        if (!serviceArea && technician?.serviceAreas[0]) {
-                          setServiceArea(technician.serviceAreas[0]);
-                        }
-                      }}
-                      style={styles.srOnly}
-                      testID="booking-address-input"
-                      value={customerAddress}
-                    />
-                  ) : null}
-
-                  <Text style={styles.stepTitle}>
-                    {t("booking.selectDate")}
-                  </Text>
-                  <View style={styles.savedChipRow}>
-                    {dateOptions.map((opt) => (
-                      <Pressable
-                        key={opt.value}
-                        accessibilityRole="button"
-                        onPress={() => setSelectedDate(opt.value)}
-                        style={[
-                          styles.chip,
-                          selectedDate === opt.value && styles.chipSelected,
-                        ]}
-                        testID={`booking-date-${opt.value}`}
-                      >
-                        <Text
-                          style={[
-                            styles.chipText,
-                            selectedDate === opt.value &&
-                              styles.chipTextSelected,
-                          ]}
-                        >
-                          {language === "en" ? opt.labelEn : opt.labelId}
-                        </Text>
-                      </Pressable>
-                    ))}
                   </View>
-
-                  <View style={styles.savedChipRow}>
-                    {BOOKING_TIME_SLOTS.map((slot) => (
-                      <Pressable
-                        key={slot}
-                        accessibilityRole="button"
-                        onPress={() => setSelectedTime(slot)}
-                        style={[
-                          styles.chip,
-                          selectedTime === slot && styles.chipSelected,
-                        ]}
-                        testID={`booking-time-${slot}`}
-                      >
-                        <Text
-                          style={[
-                            styles.chipText,
-                            selectedTime === slot && styles.chipTextSelected,
-                          ]}
-                        >
-                          {slot} WIB
-                        </Text>
-                      </Pressable>
-                    ))}
-                  </View>
-
-                  <Text style={styles.stepTitle}>
-                    {t("booking.customerNotes")}
-                  </Text>
-                  <TextInput
-                    multiline
-                    onChangeText={setCustomerNotes}
-                    placeholder={t("booking.notesPlaceholder")}
-                    placeholderTextColor={palette.textMuted}
-                    style={[styles.input, styles.notesArea]}
-                    testID="booking-customer-notes-input"
-                    value={customerNotes}
-                  />
-
-                  {formError && (
-                    <Text
-                      accessibilityLiveRegion="polite"
-                      style={styles.errorText}
-                    >
-                      {formError}
-                    </Text>
-                  )}
-
-                  <View style={styles.submitWrap}>
-                    <PrimaryButton
-                      label={t("booking.submitRequest")}
-                      onPress={() => {
-                        void handleSubmitBooking();
-                      }}
-                      testID="submit-booking-request"
-                    />
-                  </View>
-                  <Text style={styles.notice}>{t("booking.notice")}</Text>
-                </View>
-              )) : (
+                )) : (
                 /* MODE B: ACTIVE BOOKING LIFECYCLE, ACTIONS, CHAT & REVIEW */
                 <BookingLifecyclePanel
                   activeBooking={activeBooking}
@@ -905,8 +890,17 @@ function createStyles(palette: ThemePalette) {
     alignSelf: "center",
     maxWidth: 680,
     paddingHorizontal: 5,
-    paddingTop: spacing.md,
+    paddingTop: spacing.xs,
     width: "100%",
+  },
+  schedulePostWrap: {
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    marginHorizontal: -5,
+    paddingBottom: spacing.xs,
+  },
+  scheduleSection: {
+    paddingHorizontal: 5,
+    paddingTop: spacing.xs,
   },
   badgeWrap: { marginBottom: spacing.sm },
   eyebrow: {

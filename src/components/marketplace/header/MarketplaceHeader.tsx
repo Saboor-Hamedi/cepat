@@ -224,10 +224,12 @@ export const MarketplaceHeader = memo(function MarketplaceHeader({
 const styles = StyleSheet.create({
   headerContainer: {
     alignItems: 'center',
+    alignSelf: 'center',
     flexDirection: 'row',
     justifyContent: 'space-between',
+    maxWidth: 820,
     paddingBottom: spacing.xs,
-    paddingHorizontal: spacing.lg,
+    paddingHorizontal: 5,
     paddingTop: spacing.xs,
     width: '100%',
   },
@@ -238,7 +240,10 @@ const styles = StyleSheet.create({
     marginRight: spacing.sm,
   },
   avatarButton: {
-    marginRight: spacing.sm + 2,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 12,
+    width: 42,
   },
   textWrap: {
     flex: 1,

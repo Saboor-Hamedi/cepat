@@ -1,9 +1,19 @@
-import { Platform } from 'react-native';
+import { LogBox, Platform } from 'react-native';
 import * as Notifications from 'expo-notifications';
 import { AndroidImportance } from 'expo-notifications';
 import { router } from 'expo-router';
 
 import { getStoredJson, setStoredJson } from '../storage/kvStorage';
+
+try {
+  LogBox.ignoreLogs([
+    'expo-notifications',
+    'Push notifications (remote notifications) are unavailable in Expo Go',
+    'functionality is not fully supported in Expo Go',
+  ]);
+} catch {
+  // Ignore if LogBox is unavailable in test runtime
+}
 
 const PUSH_TOKEN_STORAGE_KEY = '@cepat/push_token';
 const IN_APP_PUSH_SETTING_KEY = '@cepat/settings:in_app_push_enabled';
@@ -16,15 +26,19 @@ async function isInAppPushEnabled(): Promise<boolean> {
 }
 
 // Configure global foreground notification behavior
-Notifications.setNotificationHandler({
-  handleNotification: async () => ({
-    shouldShowAlert: true,
-    shouldPlaySound: true,
-    shouldSetBadge: true,
-    shouldShowBanner: true,
-    shouldShowList: true,
-  }),
-});
+try {
+  Notifications.setNotificationHandler({
+    handleNotification: async () => ({
+      shouldShowAlert: true,
+      shouldPlaySound: true,
+      shouldSetBadge: true,
+      shouldShowBanner: true,
+      shouldShowList: true,
+    }),
+  });
+} catch {
+  // Ignore in unsupported runtimes
+}
 
 /**
  * Initialize Expo Push Notifications:
@@ -74,11 +88,15 @@ export async function initPushNotifications(): Promise<{
       return { granted: false, pushToken: null };
     }
 
-    // 3. Retrieve Push Token (safely handles simulator / preview environments)
+    // 3. Retrieve Push Token (skip remote token fetch on Android Expo Go where SDK 53+ disables remote push)
     try {
-      const tokenResult = await Notifications.getExpoPushTokenAsync();
-      cachedPushToken = tokenResult.data;
-      await setStoredJson(PUSH_TOKEN_STORAGE_KEY, cachedPushToken);
+      if (Platform.OS === 'android' && !process.env.EXPO_PUBLIC_EAS_PROJECT_ID) {
+        cachedPushToken = await getStoredJson<string | null>(PUSH_TOKEN_STORAGE_KEY, null);
+      } else {
+        const tokenResult = await Notifications.getExpoPushTokenAsync();
+        cachedPushToken = tokenResult.data;
+        await setStoredJson(PUSH_TOKEN_STORAGE_KEY, cachedPushToken);
+      }
     } catch {
       // In simulator or environments without EAS project ID, fallback to stored token
       cachedPushToken = await getStoredJson<string | null>(PUSH_TOKEN_STORAGE_KEY, null);

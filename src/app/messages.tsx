@@ -14,10 +14,13 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAuth } from '../auth/AuthProvider';
 import { BackHeader } from '../components/BackHeader';
 import { Avatar } from '../components/marketplace-ui';
+import { SwipeableRow } from '../components/SwipeableRow';
 import { useAppearance } from '../context/AppearanceContext';
 import { loadTechnicians } from '../data/marketplaceRepository';
 import {
+  archiveBookingForUser,
   isChatEnabledForStatus,
+  loadArchivedBookingIds,
   loadBookingMessages,
   loadBookings,
 } from '../data/marketplaceStore';
@@ -157,9 +160,10 @@ export default function MessagesScreen() {
         setRefreshing(true);
       }
       try {
-        const [allBookings, techResult] = await Promise.all([
+        const [allBookings, techResult, archivedIds] = await Promise.all([
           loadBookings(),
           loadTechnicians(),
+          loadArchivedBookingIds(user?.id),
         ]);
 
         const techAvatarMap = new Map<string, string | undefined>();
@@ -168,6 +172,9 @@ export default function MessagesScreen() {
         }
 
         const eligibleBookings = allBookings.filter((booking) => {
+          if (archivedIds.includes(booking.id)) {
+            return false;
+          }
           if (!isChatEnabledForStatus(booking.status)) {
             return false;
           }
@@ -245,15 +252,33 @@ export default function MessagesScreen() {
     router.push(`/chat/${encodeURIComponent(bookingId)}` as never);
   }, []);
 
+  const handleDeleteConversation = useCallback(
+    (bookingId: string) => {
+      setConversations((prev) =>
+        prev.filter((item) => item.booking.id !== bookingId),
+      );
+      void archiveBookingForUser(user?.id, bookingId).catch(() => {});
+    },
+    [user?.id],
+  );
+
   const renderItem = useCallback(
     ({ item }: { item: ConversationListItem }) => (
-      <ConversationRow
-        item={item}
-        language={language}
-        onPress={handleOpenChat}
-      />
+      <SwipeableRow
+        deleteAccessibilityLabel={
+          language === 'en' ? 'Delete conversation' : 'Hapus percakapan'
+        }
+        deleteTestID={`delete-message-thread-${item.booking.id}`}
+        onDelete={() => handleDeleteConversation(item.booking.id)}
+      >
+        <ConversationRow
+          item={item}
+          language={language}
+          onPress={handleOpenChat}
+        />
+      </SwipeableRow>
     ),
-    [handleOpenChat, language],
+    [handleDeleteConversation, handleOpenChat, language],
   );
 
   const keyExtractor = useCallback(

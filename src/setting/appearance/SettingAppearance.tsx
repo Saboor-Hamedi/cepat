@@ -33,11 +33,7 @@ export function SettingAppearance({
     setReduceMotion,
   } = useAppearance();
 
-  const currentTheme =
-    preferences.appearance === "warm" ||
-    preferences.appearance === "highContrast"
-      ? preferences.appearance
-      : themeMode;
+  const currentTheme = themeMode;
   const currentLargeText = largeText;
   const currentReduceMotion = reduceMotion;
 

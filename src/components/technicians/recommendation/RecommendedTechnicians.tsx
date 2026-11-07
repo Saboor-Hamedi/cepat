@@ -1,6 +1,14 @@
 import { router } from 'expo-router';
-import { memo, useMemo } from 'react';
-import { FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
+import { memo, useCallback, useMemo, useState } from 'react';
+import {
+  FlatList,
+  type LayoutChangeEvent,
+  Pressable,
+  StyleSheet,
+  Text,
+  useWindowDimensions,
+  View,
+} from 'react-native';
 
 import { useAppearance } from '../../../context/AppearanceContext';
 import { useLanguage } from '../../../i18n/locale';
@@ -9,6 +17,8 @@ import { font } from '../../../theme/typography';
 import type { Technician } from '../../../types/marketplace';
 import { TechnicianRecommendationCard } from './TechnicianRecommendationCard';
 import type { RecommendedTechniciansProps } from './technicianRecommendation.types';
+
+const CARD_GAP = 6;
 
 /**
  * Bayesian-weighted recommendation score:
@@ -40,6 +50,24 @@ export const RecommendedTechnicians = memo(function RecommendedTechnicians({
 }: RecommendedTechniciansProps) {
   const { language } = useLanguage();
   const { palette } = useAppearance();
+  const { width: windowWidth } = useWindowDimensions();
+  const [measuredWidth, setMeasuredWidth] = useState(0);
+
+  // Exact width of a single post inside the 5px left and 5px right margins
+  const effectiveContainerWidth =
+    measuredWidth > 100
+      ? measuredWidth
+      : Math.max(260, Math.min(windowWidth, 820) - 10);
+
+  // 2 recommendation cards side-by-side equal the exact width of 1 post
+  const cardWidth = Math.floor((effectiveContainerWidth - CARD_GAP) / 2);
+
+  const handleLayout = useCallback((event: LayoutChangeEvent) => {
+    const nextWidth = Math.round(event.nativeEvent.layout.width);
+    if (nextWidth > 100) {
+      setMeasuredWidth((prev) => (Math.abs(prev - nextWidth) > 1 ? nextWidth : prev));
+    }
+  }, []);
 
   const handleSeeAll = () => {
     if (onSeeAll) {
@@ -93,7 +121,11 @@ export const RecommendedTechnicians = memo(function RecommendedTechnicians({
   }
 
   return (
-    <View style={styles.container} testID={testID ?? 'recommended-technicians-section'}>
+    <View
+      onLayout={handleLayout}
+      style={styles.container}
+      testID={testID ?? 'recommended-technicians-section'}
+    >
       {/* Header: Title + See All */}
       <View style={styles.headerRow}>
         <View style={styles.titleWrap}>
@@ -121,17 +153,22 @@ export const RecommendedTechnicians = memo(function RecommendedTechnicians({
         </Pressable>
       </View>
 
-      {/* Horizontally scrollable list */}
+      {/* Horizontally scrollable list: 2 cards fit exact post width */}
       <FlatList
         horizontal
+        decelerationRate="fast"
+        snapToAlignment="start"
+        snapToInterval={cardWidth + CARD_GAP}
         showsHorizontalScrollIndicator={false}
         contentContainerStyle={styles.horizontalList}
         data={recommendedList}
         keyExtractor={(item) => `rec-${item.id}`}
-        renderItem={({ item }) => (
+        renderItem={({ item, index }) => (
           <TechnicianRecommendationCard
             technician={item}
             source={source}
+            cardWidth={cardWidth}
+            cardGap={index === recommendedList.length - 1 ? 0 : CARD_GAP}
             onPress={
               onSelectTechnician ? () => onSelectTechnician(item) : undefined
             }
@@ -147,15 +184,15 @@ export const RecommendedTechnicians = memo(function RecommendedTechnicians({
 
 const styles = StyleSheet.create({
   container: {
-    marginVertical: spacing.md,
+    marginVertical: spacing.sm,
     width: '100%',
   },
   headerRow: {
     alignItems: 'flex-end',
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginBottom: spacing.sm + 2,
-    paddingHorizontal: spacing.lg,
+    marginBottom: spacing.sm,
+    paddingHorizontal: 0,
   },
   titleWrap: {
     flex: 1,
@@ -178,7 +215,6 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
   horizontalList: {
-    paddingLeft: spacing.lg,
-    paddingRight: spacing.sm,
+    paddingHorizontal: 0,
   },
 });

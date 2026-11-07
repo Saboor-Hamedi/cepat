@@ -60,8 +60,7 @@ import { APP_VERSION, SettingVersion } from "./version";
 
 export function SettingContainer() {
   const { language } = useLanguage();
-  const { palette, setThemeMode, setLargeText, setReduceMotion, profileAccentId } =
-    useAppearance();
+  const { palette, themeMode, profileAccentId } = useAppearance();
   const { user, effectiveRole, updateUserProfile } = useAuth();
   const params = useLocalSearchParams<{ tab?: string; returnTo?: string }>();
 
@@ -160,15 +159,6 @@ export function SettingContainer() {
         );
         setAddressNotes(acct.addressNotes);
         setPreferences(prefs);
-        if (
-          prefs.appearance === "light" ||
-          prefs.appearance === "dark" ||
-          prefs.appearance === "system"
-        ) {
-          void setThemeMode(prefs.appearance);
-        }
-        void setLargeText(prefs.accessibility.largeText);
-        void setReduceMotion(prefs.accessibility.reduceMotion);
         setSavedAddresses(addresses);
         setTechProfile(tech);
         setDeletionRequest(delReq);
@@ -177,7 +167,7 @@ export function SettingContainer() {
     return () => {
       active = false;
     };
-  }, [setLargeText, setReduceMotion, setThemeMode, user]);
+  }, [user]);
 
   const handleSavePrivateContact = async () => {
     const targetUserId =
@@ -277,14 +267,7 @@ export function SettingContainer() {
     await handleSaveTechProfile(next);
   };
 
-  const activeBg =
-    preferences.appearance === "dark" || palette.background === "#18191A"
-      ? palette.background
-      : preferences.appearance === "warm"
-        ? "#F4EFE6"
-        : preferences.appearance === "highContrast"
-          ? "#FFFFFF"
-          : palette.background;
+  const activeBg = palette.background;
 
   const getSectionTitle = (section: SettingSectionKey): string => {
     switch (section) {
@@ -341,11 +324,11 @@ export function SettingContainer() {
       : "Tanpa";
 
   const currentThemeLabel =
-    preferences.appearance === "dark"
+    themeMode === "dark"
       ? language === "en"
         ? "Dark"
         : "Gelap"
-      : preferences.appearance === "light"
+      : themeMode === "light"
         ? language === "en"
           ? "Light"
           : "Terang"

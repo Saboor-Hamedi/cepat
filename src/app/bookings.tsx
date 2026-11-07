@@ -18,6 +18,7 @@ import {
   TechnicianCard,
 } from "../components/marketplace-ui";
 import { BackHeader } from "../components/BackHeader";
+import { SwipeableRow } from "../components/SwipeableRow";
 import {
   BookingCard,
   BookingsEmptyState,
@@ -28,7 +29,9 @@ import { useAppearance } from "../context/AppearanceContext";
 import { loadTechnicians, shouldUseFixtures } from "../data/marketplaceRepository";
 import { subscribeToReconnect } from "../services/networkStatus";
 import {
+  archiveBookingForUser,
   isChatEnabledForStatus,
+  loadArchivedBookingIds,
   loadBookings,
   loadSavedTechnicianIds,
   loadSubmittedReports,
@@ -88,6 +91,26 @@ export default function CustomerBookingsScreen({ initialHub }: CustomerBookingsS
   const [editRating, setEditRating] = useState<number>(5);
   const [editComment, setEditComment] = useState<string>("");
   const [savingReviewEdit, setSavingReviewEdit] = useState(false);
+  const [archivedIds, setArchivedIds] = useState<string[]>([]);
+
+  useEffect(() => {
+    let active = true;
+    void loadArchivedBookingIds(user?.id)
+      .then((ids) => {
+        if (active) setArchivedIds(ids);
+      })
+      .catch(() => {});
+    return () => {
+      active = false;
+    };
+  }, [user?.id]);
+
+  const handleArchiveBooking = (bookingId: string) => {
+    setArchivedIds((prev) =>
+      prev.includes(bookingId) ? prev : [...prev, bookingId],
+    );
+    void archiveBookingForUser(user?.id, bookingId).catch(() => {});
+  };
 
   useEffect(() => {
     let active = true;
@@ -166,28 +189,35 @@ export default function CustomerBookingsScreen({ initialHub }: CustomerBookingsS
 
   const currentBookings = useMemo(
     () =>
-      bookings.filter((b) =>
-        [
-          "requested",
-          "alternative_proposed",
-          "confirmed",
-          "in_progress",
-        ].includes(b.status),
+      bookings.filter(
+        (b) =>
+          !archivedIds.includes(b.id) &&
+          [
+            "requested",
+            "alternative_proposed",
+            "confirmed",
+            "in_progress",
+          ].includes(b.status),
       ),
-    [bookings],
+    [archivedIds, bookings],
   );
 
   const historyBookings = useMemo(
     () =>
-      bookings.filter((b) =>
-        ["completed", "cancelled", "declined"].includes(b.status),
+      bookings.filter(
+        (b) =>
+          !archivedIds.includes(b.id) &&
+          ["completed", "cancelled", "declined"].includes(b.status),
       ),
-    [bookings],
+    [archivedIds, bookings],
   );
 
   const activeChatBookings = useMemo(
-    () => bookings.filter((b) => isChatEnabledForStatus(b.status)),
-    [bookings],
+    () =>
+      bookings.filter(
+        (b) => !archivedIds.includes(b.id) && isChatEnabledForStatus(b.status),
+      ),
+    [archivedIds, bookings],
   );
 
   const currentUserId = user?.id;
@@ -454,16 +484,24 @@ export default function CustomerBookingsScreen({ initialHub }: CustomerBookingsS
           ) : tab === "current" ? (
             currentBookings.length > 0 ? (
               currentBookings.map((booking) => (
-                <BookingCard
+                <SwipeableRow
                   key={booking.id}
-                  booking={booking}
-                  technicianAvatarUri={
-                    technicianById.get(booking.technicianUserId)?.avatarUri
+                  deleteAccessibilityLabel={
+                    language === "en" ? "Delete booking" : "Hapus pesanan"
                   }
-                  technicianVerified={
-                    technicianById.get(booking.technicianUserId)?.verified
-                  }
-                />
+                  deleteTestID={`delete-booking-${booking.id}`}
+                  onDelete={() => handleArchiveBooking(booking.id)}
+                >
+                  <BookingCard
+                    booking={booking}
+                    technicianAvatarUri={
+                      technicianById.get(booking.technicianUserId)?.avatarUri
+                    }
+                    technicianVerified={
+                      technicianById.get(booking.technicianUserId)?.verified
+                    }
+                  />
+                </SwipeableRow>
               ))
             ) : (
               <BookingsEmptyState />
@@ -482,15 +520,23 @@ export default function CustomerBookingsScreen({ initialHub }: CustomerBookingsS
                   editingReviewKey === `history-${booking.id}`;
                 return (
                   <View key={booking.id}>
-                    <BookingCard
-                      booking={booking}
-                      technicianAvatarUri={
-                        technicianById.get(booking.technicianUserId)?.avatarUri
+                    <SwipeableRow
+                      deleteAccessibilityLabel={
+                        language === "en" ? "Delete booking" : "Hapus pesanan"
                       }
-                      technicianVerified={
-                        technicianById.get(booking.technicianUserId)?.verified
-                      }
-                    />
+                      deleteTestID={`delete-history-booking-${booking.id}`}
+                      onDelete={() => handleArchiveBooking(booking.id)}
+                    >
+                      <BookingCard
+                        booking={booking}
+                        technicianAvatarUri={
+                          technicianById.get(booking.technicianUserId)?.avatarUri
+                        }
+                        technicianVerified={
+                          technicianById.get(booking.technicianUserId)?.verified
+                        }
+                      />
+                    </SwipeableRow>
                     {canCustomerEditHistoryReview ? (
                       isEditingThisHistory ? (
                         <View
@@ -631,37 +677,45 @@ export default function CustomerBookingsScreen({ initialHub }: CustomerBookingsS
           ) : tab === "messages" ? (
             activeChatBookings.length > 0 ? (
               activeChatBookings.map((booking) => (
-                <Pressable
+                <SwipeableRow
                   key={booking.id}
-                  accessibilityRole="button"
-                  onPress={() =>
-                    router.push({
-                      pathname: "/booking/[id]",
-                      params: { id: booking.id },
-                    })
+                  deleteAccessibilityLabel={
+                    language === "en" ? "Delete conversation" : "Hapus percakapan"
                   }
-                  style={[
-                    styles.card,
-                    {
-                      backgroundColor: palette.surface,
-                      borderColor: palette.border,
-                    },
-                  ]}
-                  testID={`chat-thread-${booking.id}`}
+                  deleteTestID={`delete-chat-thread-${booking.id}`}
+                  onDelete={() => handleArchiveBooking(booking.id)}
                 >
-                  <View style={styles.cardTop}>
-                    <Text style={[styles.cardTitle, { color: palette.text }]}>
-                      {booking.technicianBusinessName || booking.technicianName}
+                  <Pressable
+                    accessibilityRole="button"
+                    onPress={() =>
+                      router.push({
+                        pathname: "/booking/[id]",
+                        params: { id: booking.id },
+                      })
+                    }
+                    style={[
+                      styles.card,
+                      {
+                        backgroundColor: palette.surface,
+                        borderColor: palette.border,
+                      },
+                    ]}
+                    testID={`chat-thread-${booking.id}`}
+                  >
+                    <View style={styles.cardTop}>
+                      <Text style={[styles.cardTitle, { color: palette.text }]}>
+                        {booking.technicianBusinessName || booking.technicianName}
+                      </Text>
+                      <Text style={styles.chatOpenBadge}>
+                        {language === "en" ? "Open Chat" : "Buka Chat"}
+                      </Text>
+                    </View>
+                    <Text style={[styles.cardSub, { color: palette.textMuted }]}>
+                      {booking.serviceNameSnapshot} ·{" "}
+                      {localizeArea(booking.serviceArea, language)}
                     </Text>
-                    <Text style={styles.chatOpenBadge}>
-                      {language === "en" ? "Open Chat" : "Buka Chat"}
-                    </Text>
-                  </View>
-                  <Text style={[styles.cardSub, { color: palette.textMuted }]}>
-                    {booking.serviceNameSnapshot} ·{" "}
-                    {localizeArea(booking.serviceArea, language)}
-                  </Text>
-                </Pressable>
+                  </Pressable>
+                </SwipeableRow>
               ))
             ) : (
               <EmptyState

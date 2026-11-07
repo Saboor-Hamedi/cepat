@@ -51,7 +51,6 @@ import { DashboardHeader } from './header/DashboardHeader';
 import { DashboardOverview } from './overview/DashboardOverview';
 import { DashboardPerformance } from './performance/DashboardPerformance';
 import { DashboardReports } from './reports/DashboardReports';
-import { DashboardTabs } from './tabs/DashboardTabs';
 import type { DashboardTab } from './types';
 
 interface DashboardContainerProps {
@@ -166,11 +165,6 @@ export function DashboardContainer({
         feedbacks: deletionFeedbacks,
       }),
     [bookings, accounts, deletionFeedbacks],
-  );
-
-  const openReportsCount = useMemo(
-    () => reports.filter((r) => r.status === 'submitted' || r.status === 'under_review').length,
-    [reports],
   );
 
   const pendingApprovalsCount = useMemo(
@@ -400,7 +394,7 @@ export function DashboardContainer({
               />
             ) : (
               <>
-                {/* 1. Main Dashboard Front Page: Graphs, User instances, and overview */}
+                {/* 1. Main Dashboard Front Page: Categorized like Settings */}
                 {activeTab === 'dashboard' && (
                   <DashboardOverview
                     userCounts={userCounts}
@@ -408,6 +402,17 @@ export function DashboardContainer({
                     bookings={bookings}
                     reports={reports}
                     deletedUsersCount={deletionFeedbacks.length}
+                    pendingApprovalsCount={pendingApprovalsCount}
+                    platformSettings={platformSettings}
+                    onUpdatePlatformSettings={handleUpdatePlatformSettings}
+                    onNavigateTab={setActiveTab}
+                  />
+                )}
+
+                {/* Performance Tab */}
+                {activeTab === 'performance' && (
+                  <DashboardPerformance
+                    metrics={metrics}
                     onNavigateTab={setActiveTab}
                   />
                 )}

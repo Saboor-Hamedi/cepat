@@ -748,18 +748,61 @@ export async function loadBookings(): Promise<BookingRecord[]> {
 }
 
 export async function loadArchivedBookingIds(userId?: string | null): Promise<string[]> {
-  if (!userId) return [];
-  return getStoredJson<string[]>(scopeKey(ARCHIVED_BOOKINGS_KEY, userId), []);
+  const effectiveUserId = userId || 'guest';
+  return getStoredJson<string[]>(scopeKey(ARCHIVED_BOOKINGS_KEY, effectiveUserId), []);
 }
 
 export async function archiveBookingForUser(
   userId: string | null | undefined,
   bookingId: string,
 ): Promise<void> {
-  if (!userId) return;
-  const current = await loadArchivedBookingIds(userId);
+  const effectiveUserId = userId || 'guest';
+  const current = await loadArchivedBookingIds(effectiveUserId);
   if (current.includes(bookingId)) return;
-  await setStoredJson(scopeKey(ARCHIVED_BOOKINGS_KEY, userId), [...current, bookingId]);
+  await setStoredJson(scopeKey(ARCHIVED_BOOKINGS_KEY, effectiveUserId), [...current, bookingId]);
+}
+
+const DELETED_MESSAGES_KEY = '@cepat/deleted-messages';
+
+export async function loadDeletedMessageIds(userId?: string | null): Promise<string[]> {
+  const effectiveUserId = userId || 'guest';
+  return getStoredJson<string[]>(scopeKey(DELETED_MESSAGES_KEY, effectiveUserId), []);
+}
+
+export async function deleteBookingMessageForUser(
+  userId: string | null | undefined,
+  bookingId: string,
+  messageId: string,
+): Promise<void> {
+  const effectiveUserId = userId || 'guest';
+  const current = await loadDeletedMessageIds(effectiveUserId);
+  if (!current.includes(messageId)) {
+    await setStoredJson(scopeKey(DELETED_MESSAGES_KEY, effectiveUserId), [
+      ...current,
+      messageId,
+    ]);
+  }
+  if (shouldUseFixtures()) {
+    const allMessages = await getStoredJson<Record<string, BookingMessage[]>>(
+      MESSAGES_STORAGE_KEY,
+      fixtureMessages,
+    );
+    const list = allMessages[bookingId];
+    if (Array.isArray(list)) {
+      allMessages[bookingId] = list.filter((m) => m.id !== messageId);
+      await setStoredJson(MESSAGES_STORAGE_KEY, allMessages);
+    }
+  } else if (supabase && userId) {
+    try {
+      await supabase
+        .from('messages')
+        .delete()
+        .eq('id', messageId)
+        .eq('sender_user_id', userId);
+    } catch {
+      // Fallback to local hidden list above
+    }
+  }
 }
 
 export async function loadBookingById(bookingId: string): Promise<BookingRecord | null> {

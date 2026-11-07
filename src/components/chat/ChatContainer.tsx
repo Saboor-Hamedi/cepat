@@ -14,8 +14,10 @@ import { LoadingState } from '../marketplace-ui';
 import { useAppearance } from '../../context/AppearanceContext';
 import { fixtureTechnicians } from '../../data/fixtures';
 import {
+  deleteBookingMessageForUser,
   loadBookingById,
   loadBookingMessages,
+  loadDeletedMessageIds,
   maskBlockedContactOrUrl,
   sendBookingMessage,
   subscribeToBookingMessages,
@@ -81,9 +83,14 @@ export function ChatContainer({
     let unsubscribe: (() => void) | undefined;
 
     const refreshMessages = () => {
-      void loadBookingMessages(bookingId)
-        .then((loaded) => {
-          if (active) setMessages(loaded);
+      void Promise.all([
+        loadBookingMessages(bookingId),
+        loadDeletedMessageIds(user?.id),
+      ])
+        .then(([loaded, deletedIds]) => {
+          if (active) {
+            setMessages(loaded.filter((m) => !deletedIds.includes(m.id)));
+          }
           if (user?.id) void markBookingNotificationsRead(user.id, bookingId);
         })
         .catch((err: unknown) => {
@@ -246,6 +253,16 @@ export function ChatContainer({
     }
   };
 
+  const handleDeleteMessage = useCallback(
+    (messageId: string) => {
+      setMessages((current) => current.filter((m) => m.id !== messageId));
+      void deleteBookingMessageForUser(user?.id, bookingId, messageId).catch(
+        () => {},
+      );
+    },
+    [bookingId, user?.id],
+  );
+
   const handleClearHistory = () => {
     Alert.alert(
       language === 'en' ? 'Delete Chat History?' : 'Hapus Riwayat Chat?',
@@ -309,6 +326,7 @@ export function ChatContainer({
             historyCleared={historyCleared}
             isChatClosed={Boolean(isChatClosed)}
             messages={messages}
+            onDeleteMessage={handleDeleteMessage}
             onUndoClear={() => setHistoryCleared(false)}
             partnerAvatarUri={partnerAvatarUri}
             partnerName={partnerName}

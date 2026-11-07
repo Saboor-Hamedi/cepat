@@ -1,6 +1,15 @@
-import { Briefcase, Camera, Globe, MapPin, Tag, X } from 'lucide-react-native';
+import {
+  Briefcase,
+  Camera,
+  Check,
+  Globe,
+  MapPin,
+  MessageSquare,
+  Users,
+  X,
+} from 'lucide-react-native';
 import { router, useLocalSearchParams } from 'expo-router';
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import {
   KeyboardAvoidingView,
   Modal,
@@ -16,33 +25,43 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { useAuth } from '../../auth/AuthProvider';
 import { useAppearance } from '../../context/AppearanceContext';
-import { containsBlockedContactOrUrl, loadSavedAddresses } from '../../data/marketplaceStore';
-import { formatRupiah } from '../../data/marketplaceRepository';
+import {
+  containsBlockedContactOrUrl,
+  loadSavedAddresses,
+} from '../../data/marketplaceStore';
 import { localizeArea, useLanguage } from '../../i18n/locale';
 import { ICON_STROKE } from '../../theme/icons';
-import { radii, spacing } from '../../theme/tokens';
+import { spacing } from '../../theme/tokens';
 import { font } from '../../theme/typography';
 import { Avatar } from '../Avatar';
 import { StrictImagePicker } from '../StrictImagePicker';
 import {
   MAX_POST_CHARS,
   MAX_POST_IMAGES,
+  MINT,
   MODAL_BG,
   MODAL_DANGER,
+  MODAL_HANDLE,
   MODAL_MUTED,
   MODAL_SHEET_BORDER,
   MODAL_SURFACE,
   MODAL_SURFACE_BORDER,
-  MODAL_HANDLE,
   MODAL_TEXT,
-  MINT,
 } from './constants';
 import { PostComposer } from './PostComposer';
 import { PostFooter } from './PostFooter';
 import { PostHeader, PostPill } from './PostHeader';
+import {
+  formatRupiahInput,
+  parseRupiahInput,
+  PriceInput,
+  type PriceMode,
+  validateServicePriceInput,
+} from './PriceInput';
 
 export interface PostContainerInitialValues {
   caption?: string;
+  serviceTitle?: string;
   images?: string[];
   isServicePost?: boolean;
   servicePrice?: number;
@@ -105,6 +124,9 @@ export function PostContainer({
         ? params.area
         : 'Semua area';
 
+  const [serviceTitle, setServiceTitle] = useState(
+    initialValues?.serviceTitle ?? '',
+  );
   const [caption, setCaption] = useState(initialValues?.caption ?? '');
   const [images, setImages] = useState<string[]>(() =>
     Array.isArray(initialValues?.images)
@@ -114,9 +136,33 @@ export function PostContainer({
   const [isServicePost, setIsServicePost] = useState(
     Boolean(initialValues?.isServicePost),
   );
-  const [servicePrice, setServicePrice] = useState<string>(
-    initialValues?.servicePrice ? String(initialValues.servicePrice) : '',
+
+  // Two representations for price:
+  // 1. displayPrice ("1.000.000")
+  // 2. canonicalPrice (1000000)
+  const [displayPrice, setDisplayPrice] = useState<string>(() =>
+    typeof initialValues?.servicePrice === 'number' &&
+    initialValues.servicePrice > 0
+      ? formatRupiahInput(initialValues.servicePrice)
+      : '',
   );
+  const [canonicalPrice, setCanonicalPrice] = useState<number | undefined>(() =>
+    typeof initialValues?.servicePrice === 'number' &&
+    initialValues.servicePrice > 0
+      ? Math.floor(initialValues.servicePrice)
+      : undefined,
+  );
+  const [priceMode, setPriceMode] = useState<PriceMode>(() => {
+    if (
+      initialValues?.isServicePost &&
+      initialValues.servicePrice === undefined
+    ) {
+      return 'quotation';
+    }
+    return 'fixed';
+  });
+  const [showPriceValidation, setShowPriceValidation] = useState(false);
+
   const [attachArea, setAttachArea] = useState(
     Boolean(
       initialValues?.serviceArea &&
@@ -125,12 +171,19 @@ export function PostContainer({
     ),
   );
   const [areaLabel, setAreaLabel] = useState(initialArea);
+  const [audienceMode, setAudienceMode] = useState<'anyone' | 'area'>('anyone');
   const [showPickerModal, setShowPickerModal] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (initialValues?.serviceArea || initialArea !== 'Semua area' || !user?.id) return;
+    if (
+      initialValues?.serviceArea ||
+      initialArea !== 'Semua area' ||
+      !user?.id
+    ) {
+      return;
+    }
     let active = true;
     void loadSavedAddresses(user.id)
       .then((addresses) => {
@@ -146,6 +199,31 @@ export function PostContainer({
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user?.id]);
+
+  const handlePriceChange = useCallback(
+    (next: { displayValue: string; canonicalValue: number | undefined }) => {
+      setDisplayPrice(next.displayValue);
+      setCanonicalPrice(next.canonicalValue);
+      if (showPriceValidation) {
+        setShowPriceValidation(false);
+      }
+      if (error) {
+        setError(null);
+      }
+    },
+    [error, showPriceValidation],
+  );
+
+  const handlePriceModeChange = useCallback(
+    (nextMode: PriceMode) => {
+      setPriceMode(nextMode);
+      setShowPriceValidation(false);
+      if (error) {
+        setError(null);
+      }
+    },
+    [error],
+  );
 
   if (technicianProfile && user && !initialValues) {
     const isDifferentUser =
@@ -169,18 +247,52 @@ export function PostContainer({
       ? user.user_metadata.avatar_url
       : undefined);
 
+  const trimmedTitle = serviceTitle.trim();
   const trimmedCaption = caption.trim();
-  const hasContent = trimmedCaption.length > 0 || images.length > 0;
+  const combinedCaption =
+    isServicePost && trimmedTitle
+      ? trimmedCaption
+        ? `${trimmedTitle} — ${trimmedCaption}`
+        : trimmedTitle
+      : trimmedCaption;
+
+  const hasContent = combinedCaption.length > 0 || images.length > 0;
   const isOverCharLimit = caption.length > MAX_POST_CHARS;
-  const hasUrl = containsBlockedContactOrUrl(trimmedCaption);
+  const hasUrl =
+    containsBlockedContactOrUrl(trimmedCaption) ||
+    containsBlockedContactOrUrl(trimmedTitle);
+
+  const priceValidation = validateServicePriceInput({
+    isServicePost,
+    priceMode,
+    canonicalPrice,
+    displayValue: displayPrice,
+    language,
+  });
+
   const canSubmit = hasContent && !isOverCharLimit && !hasUrl && !busy;
 
   const textColor = isModal ? MODAL_TEXT : palette.text;
   const mutedColor = isModal ? MODAL_MUTED : palette.textMuted;
+  const surfaceBg = isModal ? MODAL_SURFACE : palette.surfaceElevated;
+  const borderColor = isModal ? MODAL_SHEET_BORDER : palette.border;
   const isAttached = attachArea;
 
   const handleTextChange = (text: string) => {
     setCaption(text);
+    if (containsBlockedContactOrUrl(text)) {
+      setError(
+        language === 'en'
+          ? 'Sharing links or contact information is prohibited for security.'
+          : 'Berbagi tautan atau kontak dilarang demi keamanan bersama.',
+      );
+    } else if (error) {
+      setError(null);
+    }
+  };
+
+  const handleTitleChange = (text: string) => {
+    setServiceTitle(text);
     if (containsBlockedContactOrUrl(text)) {
       setError(
         language === 'en'
@@ -210,7 +322,9 @@ export function PostContainer({
           setError(null);
         }
       } catch (err: unknown) {
-        setError(err instanceof Error ? err.message : 'Failed to select image.');
+        setError(
+          err instanceof Error ? err.message : 'Failed to select image.',
+        );
       }
       return;
     }
@@ -259,26 +373,40 @@ export function PostContainer({
       return;
     }
 
+    // Validate Service Price if user entered a price or is in fixed price mode on a bookable service post
+    if (isServicePost && priceMode === 'fixed') {
+      if (!priceValidation.isValid) {
+        setShowPriceValidation(true);
+        setError(priceValidation.errorMessage);
+        return;
+      }
+    }
+
     setBusy(true);
     setError(null);
     try {
-      const numericPrice =
-        isServicePost && servicePrice.trim()
-          ? parseInt(servicePrice.replace(/[^0-9]/g, ''), 10) || undefined
+      const resolvedNumericPrice =
+        isServicePost && priceMode === 'fixed'
+          ? (canonicalPrice ?? parseRupiahInput(displayPrice))
           : undefined;
+
       await onCreatePost({
-        caption: trimmedCaption,
+        caption: combinedCaption,
         imageUri: images[0],
         mediaUrls: images,
         isServicePost,
-        servicePrice: numericPrice,
+        servicePrice: resolvedNumericPrice,
         serviceArea: attachArea ? areaLabel : 'Semua area',
       });
       if (resetOnSubmit) {
+        setServiceTitle('');
         setCaption('');
         setImages([]);
         setIsServicePost(false);
-        setServicePrice('');
+        setDisplayPrice('');
+        setCanonicalPrice(undefined);
+        setPriceMode('fixed');
+        setShowPriceValidation(false);
         setAttachArea(false);
       }
       setShowPickerModal(false);
@@ -287,6 +415,114 @@ export function PostContainer({
     } finally {
       setBusy(false);
     }
+  };
+
+  const renderPostTypeSelector = () => (
+    <View
+      style={[
+        styles.postTypeBar,
+        { backgroundColor: surfaceBg, borderColor },
+      ]}
+      testID="compose-post-type-selector"
+    >
+      <Pressable
+        accessibilityRole="tab"
+        accessibilityState={{ selected: isServicePost }}
+        disabled={busy}
+        onPress={() => {
+          setIsServicePost(true);
+          setError(null);
+        }}
+        style={[
+          styles.postTypeTab,
+          isServicePost && { backgroundColor: MINT },
+        ]}
+        testID="compose-type-service"
+      >
+        <Briefcase
+          color={isServicePost ? '#0B0E14' : mutedColor}
+          size={14}
+          strokeWidth={ICON_STROKE}
+        />
+        <Text
+          style={[
+            styles.postTypeTabText,
+            {
+              color: isServicePost ? '#0B0E14' : mutedColor,
+              fontWeight: isServicePost ? '800' : '600',
+            },
+          ]}
+        >
+          {language === 'en' ? 'Service Offer' : 'Tawaran Layanan'}
+        </Text>
+      </Pressable>
+
+      <Pressable
+        accessibilityRole="tab"
+        accessibilityState={{ selected: !isServicePost }}
+        disabled={busy}
+        onPress={() => {
+          setIsServicePost(false);
+          setShowPriceValidation(false);
+          setError(null);
+        }}
+        style={[
+          styles.postTypeTab,
+          !isServicePost && { backgroundColor: MINT },
+        ]}
+        testID="compose-type-community"
+      >
+        <MessageSquare
+          color={!isServicePost ? '#0B0E14' : mutedColor}
+          size={14}
+          strokeWidth={ICON_STROKE}
+        />
+        <Text
+          style={[
+            styles.postTypeTabText,
+            {
+              color: !isServicePost ? '#0B0E14' : mutedColor,
+              fontWeight: !isServicePost ? '800' : '600',
+            },
+          ]}
+        >
+          {language === 'en' ? 'Community Post' : 'Postingan Komunitas'}
+        </Text>
+      </Pressable>
+    </View>
+  );
+
+  const renderServiceTitleField = () => {
+    if (!isServicePost) return null;
+    return (
+      <View style={styles.serviceTitleWrap}>
+        <Text style={[styles.sectionFieldLabel, { color: mutedColor }]}>
+          {language === 'en' ? 'SERVICE TITLE (OPTIONAL)' : 'JUDUL LAYANAN (OPSIONAL)'}
+        </Text>
+        <TextInput
+          editable={!busy}
+          maxLength={80}
+          onChangeText={handleTitleChange}
+          placeholder={
+            language === 'en'
+              ? 'e.g. AC Washing & Maintenance'
+              : 'cth: Cuci & Servis AC'
+          }
+          placeholderTextColor={mutedColor}
+          returnKeyType="next"
+          style={[
+            styles.serviceTitleInput,
+            {
+              backgroundColor: surfaceBg,
+              borderColor,
+              color: textColor,
+            },
+          ]}
+          testID="compose-service-title-input"
+          value={serviceTitle}
+        />
+      </View>
+    );
   };
 
   const renderCounter = () => {
@@ -323,7 +559,9 @@ export function PostContainer({
         </Text>
         <Pressable
           accessibilityRole="button"
-          accessibilityLabel={language === 'en' ? 'Remove location' : 'Hapus lokasi'}
+          accessibilityLabel={
+            language === 'en' ? 'Remove location' : 'Hapus lokasi'
+          }
           hitSlop={8}
           onPress={() => setAttachArea(false)}
           style={styles.areaChipRemove}
@@ -335,103 +573,22 @@ export function PostContainer({
     );
   };
 
-  
   const renderServicePriceSection = () => {
     if (!isServicePost) return null;
-    const numericVal = parseInt(servicePrice.replace(/[^0-9]/g, ''), 10) || 0;
-    const estimatedPayout = Math.max(0, Math.round(numericVal * 0.9));
-    const estimatedFee = Math.max(0, numericVal - estimatedPayout);
-
-    const quickAmounts = [50000, 100000, 150000, 250000];
 
     return (
-      <View
-        style={[
-          styles.priceSectionCard,
-          {
-            backgroundColor: isModal ? 'rgba(16, 185, 129, 0.08)' : 'rgba(16, 185, 129, 0.06)',
-            borderColor: isModal ? 'rgba(16, 185, 129, 0.3)' : 'rgba(16, 185, 129, 0.25)',
-          },
-        ]}
-        testID="compose-service-price-section"
-      >
-        <View style={styles.priceSectionHeader}>
-          <Tag color={MINT} size={15} strokeWidth={ICON_STROKE} />
-          <Text style={[styles.priceSectionTitle, { color: isModal ? MODAL_TEXT : palette.text }]}>
-            {language === 'en' ? 'Service Price (IDR)' : 'Tarif / Biaya Jasa (IDR)'}
-          </Text>
-          <View style={styles.serviceBadge}>
-            <Text style={styles.serviceBadgeText}>
-              {language === 'en' ? 'Bookable' : 'Bisa Dipesan'}
-            </Text>
-          </View>
-        </View>
-
-        <View style={styles.priceInputWrapper}>
-          <Text style={[styles.priceCurrencyPrefix, { color: MINT }]}>Rp</Text>
-          <TextInput
-            keyboardType="numeric"
-            maxLength={10}
-            onChangeText={(text) => setServicePrice(text.replace(/[^0-9]/g, ''))}
-            placeholder={language === 'en' ? 'e.g. 100000' : 'cth: 100000'}
-            placeholderTextColor={isModal ? MODAL_MUTED : palette.textMuted}
-            style={[
-              styles.priceInputField,
-              {
-                color: isModal ? MODAL_TEXT : palette.text,
-                backgroundColor: isModal ? 'rgba(0, 0, 0, 0.2)' : palette.inputBg,
-                borderColor: isModal ? MODAL_SHEET_BORDER : palette.border,
-              },
-            ]}
-            testID="compose-service-price-input"
-            value={servicePrice}
-          />
-        </View>
-
-        <View style={styles.quickChipsRow}>
-          {quickAmounts.map((amt) => {
-            const isSelected = numericVal === amt;
-            return (
-              <Pressable
-                key={amt}
-                onPress={() => setServicePrice(String(amt))}
-                style={[
-                  styles.quickChip,
-                  isSelected && styles.quickChipActive,
-                  {
-                    borderColor: isSelected ? MINT : isModal ? MODAL_SHEET_BORDER : palette.border,
-                    backgroundColor: isSelected ? 'rgba(16, 185, 129, 0.15)' : 'transparent',
-                  },
-                ]}
-              >
-                <Text
-                  style={[
-                    styles.quickChipText,
-                    { color: isSelected ? MINT : isModal ? MODAL_MUTED : palette.textMuted },
-                  ]}
-                >
-                  {formatRupiah(amt, language)}
-                </Text>
-              </Pressable>
-            );
-          })}
-        </View>
-
-        {numericVal > 0 && (
-          <View style={styles.priceBreakdownNotice}>
-            <Text style={[styles.priceBreakdownText, { color: isModal ? MODAL_TEXT : palette.text }]}>
-              {language === 'en'
-                ? `Customer pays: ${formatRupiah(numericVal, language)} • You receive: ${formatRupiah(estimatedPayout, language)}`
-                : `Pelanggan bayar: ${formatRupiah(numericVal, language)} • Anda terima: ${formatRupiah(estimatedPayout, language)}`}
-            </Text>
-            <Text style={[styles.priceBreakdownFee, { color: isModal ? MODAL_MUTED : palette.textMuted }]}>
-              {language === 'en'
-                ? `(Platform tax & service fee ~10%: ${formatRupiah(estimatedFee, language)})`
-                : `(Potongan pajak & biaya platform ~10%: ${formatRupiah(estimatedFee, language)})`}
-            </Text>
-          </View>
-        )}
-      </View>
+      <PriceInput
+        canonicalValue={canonicalPrice}
+        disabled={busy}
+        displayValue={displayPrice}
+        inputTestID="compose-service-price-input"
+        isModal={isModal}
+        onChangeMode={handlePriceModeChange}
+        onChangePrice={handlePriceChange}
+        priceMode={priceMode}
+        sectionTestID="compose-service-price-section"
+        showValidationError={showPriceValidation}
+      />
     );
   };
 
@@ -442,7 +599,11 @@ export function PostContainer({
         accessibilityState={{ checked: isServicePost }}
         disabled={busy}
         hitSlop={8}
-        onPress={() => setIsServicePost((value) => !value)}
+        onPress={() => {
+          setIsServicePost((value) => !value);
+          setShowPriceValidation(false);
+          setError(null);
+        }}
         style={({ pressed }) => [
           styles.iconBtn,
           { opacity: pressed ? 0.6 : 1 },
@@ -451,7 +612,7 @@ export function PostContainer({
       >
         <Briefcase
           color={isServicePost ? MINT : mutedColor}
-          size={21}
+          size={20}
           strokeWidth={1.8}
         />
       </Pressable>
@@ -469,33 +630,40 @@ export function PostContainer({
       >
         <MapPin
           color={isAttached ? MINT : mutedColor}
-          size={21}
+          size={20}
           strokeWidth={1.8}
         />
       </Pressable>
 
       <Pressable
         accessibilityRole="button"
-        accessibilityLabel={language === 'en' ? 'Attach photo' : 'Lampirkan foto'}
+        accessibilityLabel={
+          language === 'en' ? 'Attach photo' : 'Lampirkan foto'
+        }
         disabled={busy || images.length >= MAX_POST_IMAGES}
         hitSlop={8}
         onPress={handleAddImage}
         style={({ pressed }) => [
-          styles.iconBtn,
+          styles.addPhotoActionPill,
           {
-            opacity: images.length >= MAX_POST_IMAGES ? 0.35 : pressed ? 0.6 : 1,
+            backgroundColor: surfaceBg,
+            borderColor,
+            opacity:
+              images.length >= MAX_POST_IMAGES ? 0.4 : pressed ? 0.65 : 1,
           },
         ]}
         testID="add-image-btn"
       >
-        <View
-          testID="toggle-post-photo-picker-btn"
-          style={styles.iconCanvas}
-        >
-          <Camera color={mutedColor} size={22} strokeWidth={1.8} />
+        <View testID="toggle-post-photo-picker-btn" style={styles.addPhotoInner}>
+          <Camera color={MINT} size={16} strokeWidth={1.8} />
+          <Text style={[styles.addPhotoLabel, { color: textColor }]}>
+            {language === 'en' ? 'Add Photos' : 'Tambah Foto'}
+          </Text>
           {images.length > 0 && (
-            <View style={[styles.mediaCountBadge, { backgroundColor: MINT }]}>
-              <Text style={styles.mediaCountBadgeText}>{images.length}</Text>
+            <View style={[styles.mediaCountInline, { backgroundColor: MINT }]}>
+              <Text style={styles.mediaCountBadgeText}>
+                {images.length}/{MAX_POST_IMAGES}
+              </Text>
             </View>
           )}
         </View>
@@ -515,7 +683,9 @@ export function PostContainer({
     >
       <Pressable
         accessibilityRole="button"
-        accessibilityLabel={language === 'en' ? 'Close photo options' : 'Tutup pilihan foto'}
+        accessibilityLabel={
+          language === 'en' ? 'Close photo options' : 'Tutup pilihan foto'
+        }
         onPress={() => setShowPickerModal(false)}
         style={styles.pickerOverlay}
         testID="composer-image-picker-backdrop"
@@ -579,6 +749,48 @@ export function PostContainer({
 
   const composerBody = (
     <>
+      {renderPostTypeSelector()}
+
+      {/* User profile info row */}
+      <View style={styles.authorIdentityRow}>
+        <Text
+          numberOfLines={1}
+          style={[styles.authorDisplayName, { color: textColor }]}
+        >
+          {displayName}
+        </Text>
+        <View
+          style={[
+            styles.authorModeBadge,
+            {
+              backgroundColor: isServicePost
+                ? 'rgba(16, 185, 129, 0.14)'
+                : surfaceBg,
+            },
+          ]}
+        >
+          {isServicePost ? (
+            <Check color={MINT} size={11} strokeWidth={2.5} />
+          ) : null}
+          <Text
+            style={[
+              styles.authorModeBadgeText,
+              { color: isServicePost ? MINT : mutedColor },
+            ]}
+          >
+            {isServicePost
+              ? language === 'en'
+                ? 'Bookable Service'
+                : 'Layanan Bisa Dipesan'
+              : language === 'en'
+                ? 'Community Update'
+                : 'Update Komunitas'}
+          </Text>
+        </View>
+      </View>
+
+      {renderServiceTitleField()}
+
       <PostComposer
         autoFocus={isModal}
         modal={isModal}
@@ -586,16 +798,20 @@ export function PostContainer({
         testID={inputTestID}
         value={caption}
       />
-      {renderAreaChip()}
+
       {renderServicePriceSection()}
       <PostFooter images={images} onRemoveImage={handleRemoveImage} />
+      {renderAreaChip()}
       {renderIconRow()}
     </>
   );
 
   if (isModal) {
     return (
-      <View style={[styles.screenRoot, { backgroundColor: MODAL_BG }]} testID={rootTestID}>
+      <View
+        style={[styles.screenRoot, { backgroundColor: MODAL_BG }]}
+        testID={rootTestID}
+      >
         <PostHeader
           busy={busy}
           cancelTestID={cancelTestID}
@@ -609,39 +825,62 @@ export function PostContainer({
         />
 
         <KeyboardAvoidingView
-          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          keyboardVerticalOffset={Platform.OS === 'ios' ? 12 : 0}
           style={styles.modalKeyboard}
         >
           <ScrollView
             style={styles.modalScroll}
             contentContainerStyle={styles.modalScrollContent}
             keyboardShouldPersistTaps="handled"
+            automaticallyAdjustKeyboardInsets={true}
           >
             <View style={styles.threadRow}>
               <View style={styles.avatarColumn}>
                 <Avatar uri={avatarUri} name={displayName} size={36} />
                 <View style={styles.connectorLine} />
               </View>
-              <View style={styles.inputColumn}>
-                {composerBody}
-              </View>
+              <View style={styles.inputColumn}>{composerBody}</View>
             </View>
             {error ? (
-              <Text style={[styles.errorText, { color: MODAL_DANGER }]} testID="create-post-error">
+              <Text
+                style={[styles.errorText, { color: MODAL_DANGER }]}
+                testID="create-post-error"
+              >
                 {error}
               </Text>
             ) : null}
           </ScrollView>
         </KeyboardAvoidingView>
 
-        <View style={[styles.footerNote, { paddingBottom: insets.bottom + 10 }]}>
-          <Globe color={MODAL_MUTED} size={13} strokeWidth={1.8} />
-          <Text style={styles.footerNoteText}>
-            {language === 'en'
-              ? 'Anyone can view & reply'
-              : 'Siapa saja bisa melihat & membalas'}
+        <Pressable
+          accessibilityRole="button"
+          onPress={() =>
+            setAudienceMode((prev) => (prev === 'anyone' ? 'area' : 'anyone'))
+          }
+          style={[styles.footerNote, { paddingBottom: insets.bottom + 10 }]}
+          testID="compose-audience-toggle"
+        >
+          {audienceMode === 'anyone' ? (
+            <Globe color={MODAL_MUTED} size={13} strokeWidth={1.8} />
+          ) : (
+            <Users color={MINT} size={13} strokeWidth={1.8} />
+          )}
+          <Text
+            style={[
+              styles.footerNoteText,
+              audienceMode === 'area' && { color: MINT },
+            ]}
+          >
+            {audienceMode === 'anyone'
+              ? language === 'en'
+                ? 'Anyone can view & reply'
+                : 'Siapa saja bisa melihat & membalas'
+              : language === 'en'
+                ? `Customers in ${localizeArea(areaLabel, language)} can view & book`
+                : `Pelanggan di ${localizeArea(areaLabel, language)} bisa melihat & memesan`}
           </Text>
-        </View>
+        </Pressable>
 
         {pickerModal}
       </View>
@@ -650,10 +889,7 @@ export function PostContainer({
 
   return (
     <View
-      style={[
-        styles.inlineRoot,
-        hideAvatar && styles.inlineRootNoPadding,
-      ]}
+      style={[styles.inlineRoot, hideAvatar && styles.inlineRootNoPadding]}
       testID={rootTestID}
     >
       <View style={styles.threadRow}>
@@ -664,14 +900,16 @@ export function PostContainer({
           </View>
         ) : null}
         <View style={[styles.inlineBody, hideAvatar && styles.inlineBodyNoPad]}>
+          {renderPostTypeSelector()}
+          {renderServiceTitleField()}
           <PostComposer
             onChangeText={handleTextChange}
             testID={inputTestID}
             value={caption}
           />
+          {renderServicePriceSection()}
+          <PostFooter images={images} onRemoveImage={handleRemoveImage} />
           {renderAreaChip()}
-      {renderServicePriceSection()}
-      <PostFooter images={images} onRemoveImage={handleRemoveImage} />
           <View style={styles.inlineFooter}>
             {renderIconRow()}
             {onCancel ? (
@@ -714,7 +952,9 @@ export function PostContainer({
         </Text>
       ) : null}
       {!hideAvatar ? (
-        <View style={[styles.inlineDivider, { backgroundColor: palette.border }]} />
+        <View
+          style={[styles.inlineDivider, { backgroundColor: palette.border }]}
+        />
       ) : null}
       {pickerModal}
     </View>
@@ -722,86 +962,68 @@ export function PostContainer({
 }
 
 const styles = StyleSheet.create({
-  priceSectionCard: {
-    borderRadius: radii.md,
-    borderWidth: 1,
-    marginVertical: spacing.sm,
-    padding: spacing.sm + 2,
-  },
-  priceSectionHeader: {
-    flexDirection: 'row',
+  postTypeBar: {
     alignItems: 'center',
-    gap: spacing.xs + 2,
-    marginBottom: spacing.xs + 2,
-  },
-  priceSectionTitle: {
-    fontSize: font.label,
-    fontWeight: '700',
-    flex: 1,
-  },
-  serviceBadge: {
-    backgroundColor: 'rgba(16, 185, 129, 0.2)',
-    paddingHorizontal: 8,
-    paddingVertical: 2,
-    borderRadius: 9999,
-  },
-  serviceBadgeText: {
-    color: MINT,
-    fontSize: 11,
-    fontWeight: '700',
-  },
-  priceInputWrapper: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.xs,
-  },
-  priceCurrencyPrefix: {
-    fontSize: font.title,
-    fontWeight: '800',
-  },
-  priceInputField: {
-    flex: 1,
+    borderRadius: 10,
     borderWidth: 1,
-    borderRadius: radii.sm,
-    paddingHorizontal: spacing.sm,
-    paddingVertical: Platform.OS === 'ios' ? 8 : 4,
-    fontSize: font.body,
-    fontWeight: '600',
-  },
-  quickChipsRow: {
     flexDirection: 'row',
-    flexWrap: 'wrap',
+    marginBottom: spacing.xs,
+    padding: 3,
+  },
+  postTypeTab: {
+    alignItems: 'center',
+    borderRadius: 8,
+    flex: 1,
+    flexDirection: 'row',
     gap: 6,
-    marginTop: spacing.xs + 2,
+    height: 32,
+    justifyContent: 'center',
   },
-  quickChip: {
-    borderWidth: 1,
-    borderRadius: 9999,
-    paddingHorizontal: 10,
-    paddingVertical: 4,
+  postTypeTabText: {
+    fontSize: font.label,
   },
-  quickChipActive: {
-    borderWidth: 1.5,
-  },
-  quickChipText: {
-    fontSize: 11,
-    fontWeight: '600',
-  },
-  priceBreakdownNotice: {
-    marginTop: spacing.xs + 2,
-    paddingTop: spacing.xs,
-    borderTopWidth: 1,
-    borderTopColor: 'rgba(16, 185, 129, 0.15)',
-  },
-  priceBreakdownText: {
-    fontSize: 12,
-    fontWeight: '700',
-  },
-  priceBreakdownFee: {
-    fontSize: 11,
+  authorIdentityRow: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    gap: 8,
+    marginBottom: 4,
     marginTop: 2,
   },
-
+  authorDisplayName: {
+    fontSize: font.subtitle,
+    fontWeight: '800',
+  },
+  authorModeBadge: {
+    alignItems: 'center',
+    borderRadius: 999,
+    flexDirection: 'row',
+    gap: 4,
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+  },
+  authorModeBadgeText: {
+    fontSize: 10,
+    fontWeight: '700',
+  },
+  serviceTitleWrap: {
+    marginBottom: 6,
+    marginTop: 4,
+  },
+  sectionFieldLabel: {
+    fontSize: 11,
+    fontWeight: '800',
+    letterSpacing: 0.6,
+    marginBottom: 4,
+  },
+  serviceTitleInput: {
+    borderRadius: 10,
+    borderWidth: 1,
+    fontSize: font.subtitle,
+    fontWeight: '600',
+    height: 40,
+    paddingHorizontal: 12,
+    paddingVertical: 0,
+  },
   screenRoot: {
     flex: 1,
   },
@@ -866,7 +1088,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     flex: 1,
     flexDirection: 'row',
-    gap: 18,
+    gap: 12,
     marginTop: spacing.sm,
     paddingBottom: spacing.xs,
   },
@@ -879,27 +1101,34 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     width: 32,
   },
-  iconCanvas: {
-    alignItems: 'center',
-    height: 28,
-    justifyContent: 'center',
-    position: 'relative',
-    width: 28,
-  },
-  mediaCountBadge: {
+  addPhotoActionPill: {
     alignItems: 'center',
     borderRadius: 999,
-    height: 15,
+    borderWidth: 1,
+    height: 32,
     justifyContent: 'center',
-    minWidth: 15,
-    paddingHorizontal: 2,
-    position: 'absolute',
-    right: -6,
-    top: -5,
+    paddingHorizontal: 10,
+  },
+  addPhotoInner: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    gap: 6,
+  },
+  addPhotoLabel: {
+    fontSize: font.caption,
+    fontWeight: '700',
+  },
+  mediaCountInline: {
+    alignItems: 'center',
+    borderRadius: 999,
+    height: 16,
+    justifyContent: 'center',
+    minWidth: 22,
+    paddingHorizontal: 5,
   },
   mediaCountBadgeText: {
     color: '#0B0E14',
-    fontSize: font.caption,
+    fontSize: 10,
     fontWeight: '800',
   },
   counter: {
@@ -922,32 +1151,29 @@ const styles = StyleSheet.create({
     letterSpacing: 0.1,
   },
   inlineRoot: {
-    paddingHorizontal: 12,
-    paddingTop: 4,
+    paddingHorizontal: spacing.md,
+    paddingTop: spacing.sm,
     width: '100%',
   },
   inlineRootNoPadding: {
     paddingHorizontal: 0,
-    paddingTop: 4,
-  },
-  inlineDivider: {
-    height: StyleSheet.hairlineWidth,
-    marginTop: spacing.sm,
-    width: '100%',
+    paddingTop: 0,
   },
   inlineBody: {
     flex: 1,
-    minWidth: 0,
-    paddingLeft: 14,
+    paddingBottom: spacing.sm,
+    paddingLeft: 12,
   },
   inlineBodyNoPad: {
+    paddingBottom: 0,
     paddingLeft: 0,
   },
   inlineFooter: {
     alignItems: 'center',
     flexDirection: 'row',
     gap: 8,
-    marginTop: spacing.xs,
+    justifyContent: 'space-between',
+    marginTop: 2,
   },
   inlineCancelPill: {
     alignItems: 'center',
@@ -955,55 +1181,54 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     height: 32,
     justifyContent: 'center',
-    minWidth: 64,
     paddingHorizontal: 12,
   },
   inlineCancelText: {
     fontSize: font.label,
-    fontWeight: '700',
-    letterSpacing: -0.1,
+    fontWeight: '600',
+  },
+  inlineDivider: {
+    height: StyleSheet.hairlineWidth,
+    width: '100%',
+  },
+  errorText: {
+    fontSize: font.caption,
+    fontWeight: '600',
+    marginTop: spacing.xs,
   },
   pickerOverlay: {
-    backgroundColor: 'rgba(0, 0, 0, 0.55)',
+    backgroundColor: 'rgba(0, 0, 0, 0.65)',
     flex: 1,
     justifyContent: 'flex-end',
   },
   pickerSheet: {
-    alignSelf: 'center',
-    borderTopLeftRadius: 16,
-    borderTopRightRadius: 16,
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
     borderWidth: 1,
-    maxWidth: 520,
-    paddingBottom: spacing.xl,
+    paddingBottom: 28,
     paddingHorizontal: spacing.lg,
-    paddingTop: spacing.md,
-    width: '100%',
+    paddingTop: 10,
   },
   pickerHandle: {
     alignSelf: 'center',
-    borderRadius: 2,
+    borderRadius: 999,
     height: 4,
-    marginBottom: spacing.md,
-    width: 40,
+    marginBottom: 14,
+    width: 38,
   },
   pickerTitle: {
     fontWeight: '800',
-    letterSpacing: -0.3,
+    marginBottom: spacing.sm,
   },
   cancelPickerBtn: {
     alignItems: 'center',
-    borderRadius: radii.sm,
+    borderRadius: 12,
     borderWidth: 1,
+    height: 44,
     justifyContent: 'center',
-    marginTop: spacing.md,
-    minHeight: 44,
+    marginTop: spacing.sm,
   },
   cancelPickerBtnText: {
-    fontWeight: '600',
-  },
-  errorText: {
-    fontSize: font.body,
-    fontWeight: '500',
-    marginTop: spacing.xs,
+    fontWeight: '700',
   },
 });
