@@ -1,3 +1,4 @@
+import { router } from "expo-router";
 import {
   useEffect,
   useMemo,
@@ -445,11 +446,23 @@ export function BookingLifecyclePanel({
             )}
           </Pressable>
         </View>
-        <View style={styles.bookingMetaBox}>
+        <Pressable
+          accessibilityRole="button"
+          onPress={() => {
+            if (activeBooking.technicianUserId) {
+              router.push(`/technician/${activeBooking.technicianUserId}`);
+            }
+          }}
+          style={({ pressed }) => [
+            styles.bookingMetaBox,
+            pressed && { opacity: 0.8 },
+          ]}
+          testID="booking-meta-post-link"
+        >
           <Text style={styles.bookingMetaLine}>
             {activeBooking.serviceNameSnapshot}
-            {activeBooking.agreedPrice
-              ? ` · ${formatRupiah(activeBooking.agreedPrice, language)}`
+            {(activeBooking.servicePrice ?? activeBooking.agreedPrice)
+              ? ` · ${formatRupiah((activeBooking.servicePrice ?? activeBooking.agreedPrice) || 0, language)}`
               : ""}
           </Text>
           <Text style={styles.bookingMetaSub}>
@@ -468,7 +481,7 @@ export function BookingLifecyclePanel({
               {activeBooking.proposedStartAt}
             </Text>
           )}
-        </View>
+        </Pressable>
 
         {statusError && <Text style={styles.errorText}>{statusError}</Text>}
 
@@ -867,6 +880,7 @@ export function BookingLifecyclePanel({
       <Modal
         animationType={reduceMotion ? "none" : "slide"}
         onRequestClose={() => setIsChatModalOpen(false)}
+        statusBarTranslucent
         transparent={false}
         visible={isChatModalOpen}
       >

@@ -8,7 +8,7 @@ import {
   Heart,
   Share2,
 } from "lucide-react-native";
-import { useEffect, useState } from "react";
+import { memo, useCallback, useEffect, useState } from "react";
 import {
   Modal,
   Pressable,
@@ -22,11 +22,14 @@ import { useAuth } from "../../auth/AuthProvider";
 import { useAppearance } from "../../context/AppearanceContext";
 import { formatRupiah, loadTechnician } from "../../data/marketplaceRepository";
 import {
+  deletePost,
   getPostEngagementSync,
   hasUserLikedPost,
   incrementPostShare,
   recordPostView,
+  suspendPost,
   togglePostLike,
+  updatePost,
 } from "../../data/postsStore";
 import { localizeArea, useLanguage } from "../../i18n/locale";
 import {
@@ -40,8 +43,8 @@ import { colors, radii, spacing } from "../../theme/tokens";
 import { font } from "../../theme/typography";
 import type { Post as PostType } from "../../types/post";
 import { buildPostSharePayload, formatCompactCount } from "../../utils/postShare";
+import { useMarketplaceStore } from "../../utils/useMarketplaceStore";
 import { Avatar } from "../marketplace-ui";
-import { CORE_CATEGORY_FILTERS } from "../search/CategoryTabs";
 import { PostContainer } from "./PostContainer";
 import { PostDropdown } from "./PostDropdown";
 import { PostMediaCarousel } from "./PostMediaCarousel";
@@ -54,6 +57,7 @@ export interface PostEditUpdates {
   imageUri?: string;
   mediaUrls: string[];
   isServicePost: boolean;
+  servicePrice?: number;
   serviceArea?: string;
 }
 
@@ -71,6 +75,7 @@ export interface PostProps {
   onSuspend?: (postId: string, suspended: boolean) => Promise<void>;
   authorName?: string;
   authorAvatarUri?: string;
+  authorVerified?: boolean;
   flat?: boolean;
   isLastInThread?: boolean;
   authorRating?: number;
@@ -78,21 +83,6 @@ export interface PostProps {
   serviceStartingPrice?: number;
   savedTechnician?: boolean;
   onToggleSaveTechnician?: () => void;
-}
-
-function categoryChipLabel(
-  slug: string | undefined,
-  language: "id" | "en",
-): string {
-  if (!slug) return "";
-  const core = CORE_CATEGORY_FILTERS[slug];
-  if (core) {
-    return language === "en" ? core.en : core.id;
-  }
-  return slug
-    .split("-")
-    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
-    .join(" ");
 }
 
 function fixAuthorTypo(text?: string): string {
@@ -133,7 +123,7 @@ function formatPostTime(dateString: string, language: "id" | "en"): string {
   }
 }
 
-export function Post({
+export const Post = memo(function Post({
   post,
   isOwner = false,
   isAdmin = false,
@@ -142,6 +132,7 @@ export function Post({
   onSuspend,
   authorName,
   authorAvatarUri,
+  authorVerified,
   flat = true,
   authorRating,
   authorReviewCount,
@@ -154,12 +145,21 @@ export function Post({
   const { palette, reduceMotion, scaleFont } = useAppearance();
   const [isEditing, setIsEditing] = useState(false);
   const [editedPostOverride, setEditedPostOverride] = useState<Partial<PostType> | null>(null);
+  const [isDeletedLocal, setIsDeletedLocal] = useState(false);
   const [imageError, setImageError] = useState(false);
+  const handleAllImagesError = useCallback(() => {
+    setImageError(true);
+  }, []);
   const [confirmDeleteVisible, setConfirmDeleteVisible] = useState(false);
   const [likedOverride, setLikedOverride] = useState<boolean | null>(null);
   const [likeCountOverride, setLikeCountOverride] = useState<number | null>(null);
   const [viewCountOverride, setViewCountOverride] = useState<number | null>(null);
-  const [asyncTech, setAsyncTech] = useState<{ averageRating: number; reviewCount: number } | null>(null);
+  const [asyncTech, setAsyncTech] = useState<{
+    averageRating: number;
+    reviewCount: number;
+    verified?: boolean;
+    startingPrice?: number;
+  } | null>(null);
   const [cachedAuthorAvatar, setCachedAuthorAvatar] = useState<string | undefined>(
     () => authorAvatarMemoryCache[post.technicianId],
   );
@@ -167,6 +167,29 @@ export function Post({
   const effectivePost: PostType = editedPostOverride
     ? { ...post, ...editedPostOverride }
     : post;
+
+  const storeTech = useMarketplaceStore(
+    useCallback((s) => s.technicianById[effectivePost.technicianId], [effectivePost.technicianId]),
+  );
+  const storeVerified = useMarketplaceStore(
+    useCallback(
+      (s) => s.verifiedTechnicianIds[effectivePost.technicianId],
+      [effectivePost.technicianId],
+    ),
+  );
+  const setTechnicianVerifiedInStore = useMarketplaceStore((s) => s.setTechnicianVerified);
+  const updatePostInStore = useMarketplaceStore((s) => s.updatePostInStore);
+  const removePostFromStore = useMarketplaceStore((s) => s.removePostFromStore);
+
+  const storeStartingPrice = storeTech?.services?.find(
+    (srv) => typeof srv.startingPrice === "number",
+  )?.startingPrice;
+
+  const effectivePrice =
+    effectivePost.servicePrice ??
+    serviceStartingPrice ??
+    storeStartingPrice ??
+    asyncTech?.startingPrice;
 
   const syncEngagement = getPostEngagementSync(effectivePost, user?.id);
   const liked = Boolean(user?.id) && (likedOverride ?? syncEngagement.liked);
@@ -229,21 +252,33 @@ export function Post({
   }, [post.id, user?.id]);
 
   useEffect(() => {
-    if (typeof authorRating === "number" && authorRating > 0) return;
+    if (
+      typeof authorRating === "number" &&
+      authorRating > 0 &&
+      typeof authorVerified === "boolean"
+    ) {
+      return;
+    }
+    if (storeTech) return;
     if (!effectivePost.technicianId) return;
     let active = true;
     void loadTechnician(effectivePost.technicianId).then((res) => {
       if (active && res?.item) {
+        const firstPrice = res.item.services?.find(
+          (srv) => typeof srv.startingPrice === "number",
+        )?.startingPrice;
         setAsyncTech({
           averageRating: res.item.averageRating,
           reviewCount: res.item.reviewCount,
+          verified: Boolean(res.item.verified),
+          startingPrice: firstPrice,
         });
       }
     });
     return () => {
       active = false;
     };
-  }, [authorRating, effectivePost.technicianId]);
+  }, [authorRating, authorVerified, effectivePost.technicianId, storeTech]);
 
   const handleToggleLike = () => {
     if (!user?.id) {
@@ -271,8 +306,8 @@ export function Post({
 
   const handleNativeShare = async () => {
     const priceLabel =
-      typeof serviceStartingPrice === "number"
-        ? formatRupiah(serviceStartingPrice, language)
+      typeof effectivePrice === "number"
+        ? formatRupiah(effectivePrice, language)
         : undefined;
     const payload = buildPostSharePayload(effectivePost, language, priceLabel);
     void incrementPostShare(post.id);
@@ -304,13 +339,21 @@ export function Post({
   );
   const isActualOwner = Boolean(isOwner || isSelfPost);
   const canBook = Boolean(effectivePost.isServicePost) && !isSelfPost && !isOwner;
-  const isVerified = Boolean(
-    effectivePost.technicianVerified ||
-    effectivePost.technicianId === "demo-rizky" ||
-    effectivePost.technicianId === "demo-sari" ||
-    (isActualOwner &&
-      (roles.includes("technician") || roles.includes("admin"))),
-  );
+  const isVerified =
+    typeof storeVerified === "boolean"
+      ? storeVerified
+      : Boolean(
+          authorVerified ||
+            storeTech?.verified ||
+            asyncTech?.verified ||
+            effectivePost.technicianVerified ||
+            effectivePost.technicianId === "demo-rizky" ||
+            effectivePost.technicianId === "demo-sari" ||
+            (isActualOwner &&
+              (roles.includes("technician") ||
+                roles.includes("admin") ||
+                Boolean(user?.user_metadata?.verified))),
+        );
 
   const images =
     effectivePost.mediaUrls && effectivePost.mediaUrls.length > 0
@@ -320,6 +363,7 @@ export function Post({
         : [];
   const displayName = fixAuthorTypo(
     authorName ||
+      storeTech?.displayName ||
       (isSelfPost &&
         typeof user?.user_metadata?.display_name === "string" &&
         user.user_metadata.display_name.trim()) ||
@@ -327,6 +371,7 @@ export function Post({
   );
   const rawAuthorHandle =
     effectivePost.technicianUsername ||
+    storeTech?.username ||
     (isActualOwner &&
       typeof user?.user_metadata?.username === "string" &&
       user.user_metadata.username.trim()) ||
@@ -335,6 +380,7 @@ export function Post({
   const authorHandle = `@${rawAuthorHandle.replace(/^@/, "")}`;
   const displayAvatar =
     authorAvatarUri ||
+    storeTech?.avatarUri ||
     (isSelfPost &&
       typeof user?.user_metadata?.avatar_url === "string" &&
       user.user_metadata.avatar_url) ||
@@ -345,19 +391,28 @@ export function Post({
   const displayRating =
     (typeof authorRating === "number" && authorRating > 0
       ? authorRating
-      : asyncTech?.averageRating) ??
+      : (storeTech?.averageRating ?? asyncTech?.averageRating)) ??
     (isVerified ? 5.0 : undefined);
 
   const displayReviewCount =
     typeof authorReviewCount === "number" && authorReviewCount > 0
       ? authorReviewCount
-      : asyncTech?.reviewCount;
+      : (storeTech?.reviewCount ?? asyncTech?.reviewCount);
 
   const handleConfirmDelete = async () => {
-    if (!onDelete) return;
     setConfirmDeleteVisible(false);
     try {
-      await onDelete(post.id);
+      if (onDelete) {
+        await onDelete(post.id);
+      } else {
+        await deletePost({
+          actorUserId: user?.id || effectivePost.technicianId,
+          postId: post.id,
+          isAdmin: isAdminUser,
+        });
+      }
+      removePostFromStore(post.id);
+      setIsDeletedLocal(true);
     } catch (err) {
       console.warn("[Post] Delete post error:", err);
     }
@@ -366,6 +421,41 @@ export function Post({
   const handleDeletePress = () => {
     setConfirmDeleteVisible(true);
   };
+
+  const handleToggleSuspend = async () => {
+    const nextSuspended = !effectivePost.suspended;
+    try {
+      if (onSuspend) {
+        await onSuspend(post.id, nextSuspended);
+      } else {
+        await suspendPost({
+          actorUserId: user?.id || "verified-admin-1",
+          postId: post.id,
+          suspended: nextSuspended,
+        });
+      }
+      setEditedPostOverride((prev) => ({
+        ...(prev ?? {}),
+        suspended: nextSuspended,
+      }));
+      updatePostInStore(post.id, (p) => ({ ...p, suspended: nextSuspended }));
+    } catch (err) {
+      console.warn("[Post] Suspend post error:", err);
+    }
+  };
+
+  const handleAdminToggleVerified = async () => {
+    const nextVerified = !isVerified;
+    setTechnicianVerifiedInStore(effectivePost.technicianId, nextVerified);
+    setEditedPostOverride((prev) => ({
+      ...(prev ?? {}),
+      technicianVerified: nextVerified,
+    }));
+  };
+
+  if (isDeletedLocal) {
+    return null;
+  }
 
   return (
     <View
@@ -492,12 +582,11 @@ export function Post({
             >
               {formatPostTime(effectivePost.createdAt, language)}
             </Text>
-            {(isActualOwner && (onEdit || onDelete)) ||
-            (isAdminUser && onSuspend) ? (
+            {isActualOwner || isAdminUser ? (
               <PostDropdown
                 postId={post.id}
                 actions={[
-                  ...(isActualOwner && onEdit
+                  ...(isActualOwner
                     ? [
                         {
                           label:
@@ -509,20 +598,7 @@ export function Post({
                         },
                       ]
                     : []),
-                  ...(isActualOwner && onDelete
-                    ? [
-                        {
-                          label:
-                            language === "en"
-                              ? "Delete post"
-                              : "Hapus postingan",
-                          testID: `delete-post-btn-${post.id}`,
-                          tone: "danger" as const,
-                          onPress: handleDeletePress,
-                        },
-                      ]
-                    : []),
-                  ...(isAdminUser && !isActualOwner && onSuspend
+                  ...(isAdminUser && !isActualOwner
                     ? [
                         {
                           label: effectivePost.suspended
@@ -535,62 +611,102 @@ export function Post({
                           testID: effectivePost.suspended
                             ? `unsuspend-post-btn-${post.id}`
                             : `suspend-post-btn-${post.id}`,
-                          onPress: () =>
-                            void onSuspend(post.id, !effectivePost.suspended),
+                          onPress: () => {
+                            void handleToggleSuspend();
+                          },
+                        },
+                        {
+                          label:
+                            language === "en"
+                              ? "Edit post & price"
+                              : "Edit postingan & harga",
+                          testID: `admin-edit-post-btn-${post.id}`,
+                          onPress: () => {
+                            setIsEditing(true);
+                          },
+                        },
+                        {
+                          label: isVerified
+                            ? language === "en"
+                              ? "Revoke verified badge"
+                              : "Cabut lencana terverifikasi"
+                            : language === "en"
+                              ? "Verify technician"
+                              : "Verifikasi teknisi",
+                          testID: `admin-verify-tech-btn-${post.id}`,
+                          onPress: () => {
+                            void handleAdminToggleVerified();
+                          },
+                        },
+                        {
+                          label:
+                            language === "en"
+                              ? "Inspect technician profile"
+                              : "Periksa profil teknisi",
+                          testID: `admin-inspect-tech-btn-${post.id}`,
+                          onPress: () => {
+                            router.push(`/technician/${effectivePost.technicianId}`);
+                          },
+                        },
+                        {
+                          label:
+                            language === "en"
+                              ? "Open Admin Console"
+                              : "Buka Konsol Admin",
+                          testID: `admin-console-btn-${post.id}`,
+                          onPress: () => {
+                            router.push("/admin" as never);
+                          },
+                        },
+                      ]
+                    : []),
+                  ...(isActualOwner || isAdminUser
+                    ? [
+                        {
+                          label: language === "en" ? "Delete" : "Hapus",
+                          testID: `delete-post-btn-${post.id}`,
+                          tone: "danger" as const,
+                          onPress: handleDeletePress,
                         },
                       ]
                     : []),
                 ]}
               />
-            ) : isOwner ? (
-              <View
-                style={[
-                  styles.statusPill,
-                  {
-                    backgroundColor: effectivePost.published
-                      ? palette.primarySoft
-                      : palette.surfaceElevated,
-                  },
-                ]}
-              >
-                <Text
-                  style={[
-                    styles.statusPillText,
-                    {
-                      color: effectivePost.published
-                        ? palette.primary
-                        : palette.textMuted,
-                    },
-                  ]}
-                >
-                  {effectivePost.published
-                    ? language === "en"
-                      ? "Published"
-                      : "Tayang"
-                    : language === "en"
-                      ? "Draft"
-                      : "Draf"}
-                </Text>
-              </View>
             ) : null}
           </View>
         </View>
 
-        {effectivePost.isServicePost ? (
-          <Text
-            numberOfLines={2}
-            style={[
-              styles.serviceTitle,
-              {
-                color: palette.text,
-                fontSize: scaleFont(postTypography.serviceCategory.fontSize),
-                lineHeight: scaleFont(postTypography.serviceCategory.lineHeight),
-              },
-            ]}
+        {typeof effectivePrice === "number" && effectivePrice > 0 ? (
+          <View
+            style={styles.topPriceWrap}
             testID={`post-service-title-${post.id}`}
           >
-            {categoryChipLabel(effectivePost.categorySlug, language)}
-          </Text>
+            <Text
+              numberOfLines={1}
+              style={[
+                styles.topPriceText,
+                {
+                  color: palette.primary,
+                  fontSize: scaleFont(postTypography.price.fontSize),
+                },
+              ]}
+              testID={`post-price-${post.id}`}
+            >
+              {formatRupiah(effectivePrice, language)}
+              <Text
+                style={[
+                  styles.priceUnit,
+                  {
+                    color: palette.textMuted,
+                    fontSize: scaleFont(postTypography.priceUnit.fontSize),
+                  },
+                ]}
+              >
+                {" "}
+                / {language === "en" ? "visit" : "kunjungan"}
+              </Text>
+            </Text>
+          </View>
         ) : null}
 
         {/* Post Content Body */}
@@ -634,42 +750,15 @@ export function Post({
           {images.length > 0 && !imageError ? (
             <PostMediaCarousel
               images={images}
-              onAllImagesError={() => setImageError(true)}
+              onAllImagesError={handleAllImagesError}
               postId={post.id}
             />
           ) : null}
         </View>
 
-        {/* Unified Price & Action Footer */}
+        {/* Unified Action Footer */}
         <View style={styles.footerRow} testID={`post-footer-${post.id}`}>
           <View style={styles.footerLeft}>
-            {typeof serviceStartingPrice === "number" ? (
-              <Text
-                numberOfLines={1}
-                style={[
-                  styles.priceText,
-                  {
-                    color: palette.text,
-                    fontSize: scaleFont(postTypography.price.fontSize),
-                  },
-                ]}
-                testID={`post-price-${post.id}`}
-              >
-                {formatRupiah(serviceStartingPrice, language)}
-                <Text
-                  style={[
-                    styles.priceUnit,
-                    {
-                      color: palette.textMuted,
-                      fontSize: scaleFont(postTypography.priceUnit.fontSize),
-                    },
-                  ]}
-                >
-                  {" "}
-                  / {language === "en" ? "visit" : "kunjungan"}
-                </Text>
-              </Text>
-            ) : null}
             <Pressable
               accessibilityRole="button"
               accessibilityState={{ selected: liked }}
@@ -813,12 +902,12 @@ export function Post({
             caption: effectivePost.content || effectivePost.caption || "",
             images,
             isServicePost: Boolean(effectivePost.isServicePost),
+            servicePrice: effectivePost.servicePrice,
             serviceArea: effectivePost.serviceArea,
           }}
           inputTestID={`edit-post-caption-input-${post.id}`}
           onCancel={() => setIsEditing(false)}
           onCreatePost={async (input) => {
-            if (!onEdit) return;
             const nextMediaUrls =
               input.mediaUrls ?? (input.imageUri ? [input.imageUri] : []);
             const nextImageUri = nextMediaUrls[0];
@@ -827,22 +916,46 @@ export function Post({
               imageUri: nextImageUri,
               mediaUrls: nextMediaUrls,
               isServicePost: input.isServicePost,
+              servicePrice: input.servicePrice,
               serviceArea: input.serviceArea,
             };
-            await onEdit(
-              effectivePost,
-              input.caption,
-              nextImageUri,
-              updates,
-            );
-            setEditedPostOverride({
+            if (onEdit) {
+              await onEdit(
+                effectivePost,
+                input.caption,
+                nextImageUri,
+                updates,
+              );
+            } else {
+              await updatePost({
+                actorUserId: user?.id || effectivePost.technicianId,
+                postId: post.id,
+                caption: input.caption,
+                imageUri: nextImageUri,
+                mediaUrls: nextMediaUrls,
+                isServicePost: input.isServicePost,
+                servicePrice: input.servicePrice,
+                serviceArea: input.serviceArea,
+                isAdmin: isAdminUser,
+              });
+            }
+            const nextOverrides: Partial<PostType> = {
               caption: input.caption,
               content: input.caption,
               imageUri: nextImageUri,
               mediaUrls: nextMediaUrls,
               isServicePost: input.isServicePost,
+              servicePrice: input.servicePrice,
               serviceArea: input.serviceArea || effectivePost.serviceArea,
-            });
+            };
+            setEditedPostOverride((prev) => ({
+              ...(prev ?? {}),
+              ...nextOverrides,
+            }));
+            updatePostInStore(post.id, (p) => ({
+              ...p,
+              ...nextOverrides,
+            }));
             setImageError(false);
             setIsEditing(false);
           }}
@@ -914,7 +1027,7 @@ export function Post({
       </Modal>
     </View>
   );
-}
+});
 
 const styles = StyleSheet.create({
   card: {
@@ -1026,6 +1139,14 @@ const styles = StyleSheet.create({
   serviceTitle: {
     fontWeight: postTypography.serviceCategory.fontWeight,
     marginTop: 3,
+  },
+  topPriceWrap: {
+    alignItems: "center",
+    flexDirection: "row",
+    marginTop: 4,
+  },
+  topPriceText: {
+    fontWeight: postTypography.price.fontWeight,
   },
   bodyContent: {
     marginTop: postSpacing.headerToBodyGap,

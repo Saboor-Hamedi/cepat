@@ -26,6 +26,7 @@ import {
 } from "../bookings";
 import { useAppearance } from "../context/AppearanceContext";
 import { loadTechnicians, shouldUseFixtures } from "../data/marketplaceRepository";
+import { subscribeToReconnect } from "../services/networkStatus";
 import {
   isChatEnabledForStatus,
   loadBookings,
@@ -153,9 +154,13 @@ export default function CustomerBookingsScreen({ initialHub }: CustomerBookingsS
           },
         )
       : () => {};
+    const unsubscribeReconnect = subscribeToReconnect(() => {
+      void refresh();
+    });
     return () => {
       active = false;
       unsubscribe();
+      unsubscribeReconnect();
     };
   }, [reloadBookingsKey, user?.id]);
 

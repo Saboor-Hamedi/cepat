@@ -315,6 +315,7 @@ export function TaskContainer({
                 imageUri: input.imageUri,
                 mediaUrls: input.mediaUrls,
                 isServicePost: input.isServicePost,
+                servicePrice: input.servicePrice,
                 serviceArea: "Jakarta Selatan",
                 categorySlug: "plumbing",
                 published: true,
@@ -340,6 +341,8 @@ export function TaskContainer({
                   mediaUrls: nextMediaUrls,
                   isServicePost:
                     updates?.isServicePost ?? targetPost.isServicePost,
+                  servicePrice:
+                    updates?.servicePrice ?? targetPost.servicePrice,
                   serviceArea: updates?.serviceArea ?? targetPost.serviceArea,
                 });
                 const nextPosts = await loadPosts("demo-rizky", true);

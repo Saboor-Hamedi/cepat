@@ -1043,6 +1043,7 @@ export default function TechnicianProfileScreen() {
                       isAdmin={isAdminUser}
                       authorName={technician.displayName}
                       authorAvatarUri={technician.avatarUri}
+                      authorVerified={Boolean(technician.verified)}
                       authorRating={technician.averageRating}
                       authorReviewCount={technician.reviewCount}
                       serviceStartingPrice={item.isServicePost ? startingPrice : undefined}

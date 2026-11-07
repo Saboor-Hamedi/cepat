@@ -198,6 +198,7 @@ function mapSupabasePost(row: Record<string, unknown>): Post {
     imageUri: row.image_uri ? String(row.image_uri) : undefined,
     mediaUrls,
     isServicePost: Boolean(row.is_service_post),
+    servicePrice: typeof row.service_price === 'number' ? row.service_price : (row.service_price ? Number(row.service_price) : undefined),
     likeCount: typeof row.like_count === 'number' ? row.like_count : Number(row.like_count ?? 0) || 0,
     viewCount: typeof row.view_count === 'number' ? row.view_count : Number(row.view_count ?? 0) || 0,
     shareCount: typeof row.share_count === 'number' ? row.share_count : Number(row.share_count ?? 0) || 0,
@@ -885,6 +886,7 @@ export async function createPost(input: {
   imageUri?: string;
   mediaUrls?: string[];
   isServicePost?: boolean;
+  servicePrice?: number;
   published?: boolean;
 }): Promise<Post> {
   if (!input.actorUserId || input.actorUserId !== input.technicianId) {
@@ -922,6 +924,7 @@ export async function createPost(input: {
     imageUri: primaryImage,
     mediaUrls,
     isServicePost: input.isServicePost ?? false,
+    servicePrice: input.servicePrice,
     likeCount: 0,
     likedByMe: false,
     viewCount: 0,
@@ -947,6 +950,7 @@ export async function createPost(input: {
         image_uri: newPost.imageUri,
         media_urls: newPost.mediaUrls,
         is_service_post: newPost.isServicePost,
+        service_price: newPost.servicePrice ?? 0,
         published: newPost.published,
       });
       if (error) {
@@ -1010,7 +1014,9 @@ export async function updatePost(input: {
   imageUri?: string;
   mediaUrls?: string[];
   isServicePost?: boolean;
+  servicePrice?: number;
   serviceArea?: string;
+  isAdmin?: boolean;
 }): Promise<Post> {
   const current = await loadAllStoredPosts();
   let existing = current.find((p) => p.id === input.postId);
@@ -1031,7 +1037,8 @@ export async function updatePost(input: {
   }
   const isAuthorized =
     Boolean(input.actorUserId) &&
-    (existing.technicianId === input.actorUserId ||
+    (Boolean(input.isAdmin) ||
+      existing.technicianId === input.actorUserId ||
       input.actorUserId.toLowerCase().includes('admin') ||
       input.actorUserId === 'verified-admin-1' ||
       input.actorUserId === 'demo-rizky');
@@ -1060,6 +1067,7 @@ export async function updatePost(input: {
     imageUri: finalImage,
     mediaUrls: finalMedia,
     isServicePost: input.isServicePost ?? existing.isServicePost ?? false,
+    servicePrice: input.servicePrice !== undefined ? input.servicePrice : existing.servicePrice,
     serviceArea: input.serviceArea?.trim() || existing.serviceArea,
     updatedAt: new Date().toISOString(),
   };
@@ -1097,6 +1105,7 @@ export async function updatePost(input: {
           image_uri: finalImage ?? null,
           media_urls: finalMedia,
           is_service_post: updatedPost.isServicePost,
+          service_price: updatedPost.servicePrice ?? 0,
           service_area: updatedPost.serviceArea,
         })
         .eq('id', input.postId);
@@ -1236,6 +1245,7 @@ export async function updateProfileOnPosts(input: {
 export async function deletePost(input: {
   actorUserId: string;
   postId: string;
+  isAdmin?: boolean;
 }): Promise<Post[]> {
   const current = await loadAllStoredPosts();
   let existing = current.find((p) => p.id === input.postId);
@@ -1270,7 +1280,8 @@ export async function deletePost(input: {
 
   const isAuthorized =
     Boolean(input.actorUserId) &&
-    (existing.technicianId === input.actorUserId ||
+    (Boolean(input.isAdmin) ||
+      existing.technicianId === input.actorUserId ||
       input.actorUserId.toLowerCase().includes('admin') ||
       input.actorUserId === 'verified-admin-1' ||
       input.actorUserId === 'demo-rizky');

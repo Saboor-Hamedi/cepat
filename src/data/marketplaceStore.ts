@@ -84,6 +84,23 @@ function mapSupabaseBooking(
       typeof row.agreed_price === 'number'
         ? row.agreed_price
         : Number(row.agreed_price) || undefined,
+    servicePrice:
+      typeof row.service_price === 'number'
+        ? row.service_price
+        : Number(row.service_price) || undefined,
+    platformFee:
+      typeof row.platform_fee === 'number'
+        ? row.platform_fee
+        : Number(row.platform_fee) || undefined,
+    technicianPayout:
+      typeof row.technician_payout === 'number'
+        ? row.technician_payout
+        : Number(row.technician_payout) || undefined,
+    totalAmount:
+      typeof row.total_amount === 'number'
+        ? row.total_amount
+        : Number(row.total_amount) || undefined,
+    postId: row.post_id ? String(row.post_id) : undefined,
     currency: 'IDR',
     cancellationReason: row.cancellation_reason
       ? String(row.cancellation_reason)
@@ -802,6 +819,11 @@ export interface CreateBookingInput {
   customerLongitude?: number;
   requestedStartAt: string;
   customerNotes?: string;
+  servicePrice?: number;
+  platformFee?: number;
+  technicianPayout?: number;
+  totalAmount?: number;
+  postId?: string;
 }
 
 export async function createBookingRequest(input: CreateBookingInput): Promise<BookingRecord> {
@@ -848,6 +870,11 @@ export async function createBookingRequest(input: CreateBookingInput): Promise<B
     status: 'requested',
     customerNotes: input.customerNotes?.trim().slice(0, 500),
     agreedPrice: input.service.startingPrice,
+    servicePrice: input.servicePrice ?? input.service.startingPrice,
+    platformFee: input.platformFee,
+    technicianPayout: input.technicianPayout,
+    totalAmount: input.totalAmount ?? input.servicePrice ?? input.service.startingPrice,
+    postId: input.postId,
     currency: 'IDR',
     createdAt: now,
     updatedAt: now,
@@ -914,6 +941,11 @@ export async function createBookingRequest(input: CreateBookingInput): Promise<B
         status: 'requested',
         customer_notes: newBooking.customerNotes ?? null,
         agreed_price: newBooking.agreedPrice ?? null,
+        service_price: newBooking.servicePrice ?? newBooking.agreedPrice ?? null,
+        platform_fee: newBooking.platformFee ?? null,
+        technician_payout: newBooking.technicianPayout ?? null,
+        total_amount: newBooking.totalAmount ?? newBooking.agreedPrice ?? null,
+        post_id: newBooking.postId ?? null,
         currency: 'IDR',
       })
       .select('*')

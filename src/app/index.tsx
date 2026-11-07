@@ -1,6 +1,6 @@
-import { Link, router } from 'expo-router';
+import { router } from 'expo-router';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Animated, Pressable, RefreshControl, StyleSheet, Text, View } from 'react-native';
+import { Pressable, RefreshControl, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { useAuth } from '../auth/AuthProvider';
@@ -11,15 +11,22 @@ import {
   LoadingState,
   SectionTitle,
   ServiceCategoryGlyph,
-  TechnicianCard,
 } from '../components/marketplace-ui';
+import {
+  RecommendedTechnicians,
+} from '../components/technicians';
+import {
+  MarketplaceHeader,
+  ServiceCategories,
+} from '../components/marketplace';
+import { useMarketplaceStore } from '../components/marketplace/utils/useMarketplaceStore';
+import { loadNotifications } from '../data/notifications';
 import { InfiniteFlatList } from '../components/InfiniteFlatList';
 import {
   buildCategoryFilters,
-  CategoryTabs,
 } from '../components/search/CategoryTabs';
+import { OfflineBanner } from '../components/OfflineBanner';
 import { MarketplaceMapSearchModal } from '../components/marketplace/MarketplaceSearch';
-import { SearchFieldTrigger } from '../components/search/SearchField';
 import { Post } from '../components/posts/Post';
 import {
   filterTechnicians,
@@ -31,6 +38,7 @@ import {
   shouldUseFixtures,
 } from '../data/marketplaceRepository';
 import { fixtureTechnicians } from '../data/fixtures';
+import { subscribeToReconnect } from '../services/networkStatus';
 import {
   loadSavedAddresses,
   loadSavedTechnicianIds,
@@ -45,7 +53,7 @@ import {
   updatePost,
 } from '../data/postsStore';
 import { useInfiniteList } from '../hooks/useInfiniteList';
-import { localizeArea, useLanguage } from '../i18n/locale';
+import { useLanguage } from '../i18n/locale';
 import { colors, radii, spacing } from '../theme/tokens';
 import type {
   DataSource,
@@ -66,12 +74,7 @@ interface PopularTaskItem {
   technicianName: string;
 }
 
-type MarketplaceListItem =
-  | { key: string; kind: 'recommendations-heading' }
-  | { key: string; kind: 'technicians-heading' }
-  | { key: string; kind: 'post'; post: PostType }
-  | { key: string; kind: 'recommended-technician'; technician: Technician }
-  | { key: string; kind: 'technician'; technician: Technician };
+type MarketplaceListItem = { key: string; kind: 'post'; post: PostType };
 
 let cachedCategories: ServiceCategory[] = [];
 let cachedTechnicians: Technician[] = [];
@@ -82,8 +85,6 @@ let cachedSelectedArea = 'Semua area';
 let cachedHasMore = false;
 let cachedSource: DataSource = shouldUseFixtures() ? 'fixtures' : 'supabase';
 let hasInitialLoaded = false;
-
-const SEARCH_HEADER_HEIGHT = 52;
 
 export default function MarketplaceScreen() {
   const { language, t } = useLanguage();
@@ -105,7 +106,24 @@ export default function MarketplaceScreen() {
   const [hasMore, setHasMore] = useState(cachedHasMore);
   const [error, setError] = useState(false);
   const [reloadKey, setReloadKey] = useState(0);
+  const [unreadCount, setUnreadCount] = useState(0);
   const refreshInFlightRef = useRef(false);
+
+  const setStoreTechnicians = useMarketplaceStore((s) => s.setTechnicians);
+  const appendStoreTechnicians = useMarketplaceStore((s) => s.appendTechnicians);
+  const setStoreCategories = useMarketplaceStore((s) => s.setCategories);
+  const setStoreServiceAreas = useMarketplaceStore((s) => s.setServiceAreas);
+  const setStorePosts = useMarketplaceStore((s) => s.setPosts);
+  const setStoreSelectedCategory = useMarketplaceStore((s) => s.setSelectedCategory);
+  const setStoreSelectedArea = useMarketplaceStore((s) => s.setSelectedArea);
+  const setStoreSavedTechIds = useMarketplaceStore((s) => s.setSavedTechIds);
+
+  useEffect(() => {
+    if (!user?.id) return;
+    void loadNotifications(user.id).then((items) => {
+      setUnreadCount(items.filter((n) => !n.readAt).length);
+    });
+  }, [user?.id]);
 
   const categoryFilters = useMemo(
     () => buildCategoryFilters(categories, language, t),
@@ -182,6 +200,12 @@ export default function MarketplaceScreen() {
           setArea((prev) => (prev === nextArea ? prev : nextArea));
           setSavedAddresses(addresses);
           setSavedTechIds(savedIds);
+
+          setStoreCategories(categoryResult.items);
+          setStoreTechnicians(technicianResult.items);
+          setStoreServiceAreas(areaResult.items);
+          setStoreSelectedArea(nextArea);
+          setStoreSavedTechIds(savedIds);
         },
       )
       .catch(() => {
@@ -193,14 +217,33 @@ export default function MarketplaceScreen() {
     return () => {
       active = false;
     };
-  }, [reloadKey, user?.id]);
+  }, [
+    reloadKey,
+    setStoreCategories,
+    setStoreSavedTechIds,
+    setStoreSelectedArea,
+    setStoreServiceAreas,
+    setStoreTechnicians,
+    user?.id,
+  ]);
+
+  useEffect(() => {
+    if (postFeed.items.length > 0) {
+      setStorePosts(postFeed.items);
+    }
+  }, [postFeed.items, setStorePosts]);
+
+  useEffect(() => {
+    setStoreSelectedCategory(selectedCategory);
+  }, [selectedCategory, setStoreSelectedCategory]);
 
   const handleSelectArea = useCallback((nextArea: string, customNotice?: string) => {
     cachedSelectedArea = nextArea;
     setArea(nextArea);
+    setStoreSelectedArea(nextArea);
     setPinNotice(customNotice ?? null);
     void saveSelectedArea(nextArea);
-  }, []);
+  }, [setStoreSelectedArea]);
 
   const technicianById = useMemo(() => {
     const map = new Map<string, Technician>();
@@ -258,13 +301,22 @@ export default function MarketplaceScreen() {
         const uniqueNext = page.items.filter((item) => !seen.has(item.id));
         return [...current, ...uniqueNext];
       });
+      appendStoreTechnicians(page.items);
       setHasMore(page.hasMore);
     } catch {
       setError(true);
     } finally {
       setIsLoadingMore(false);
     }
-  }, [error, hasMore, isLoading, isLoadingMore, isRefreshing, technicians.length]);
+  }, [
+    appendStoreTechnicians,
+    error,
+    hasMore,
+    isLoading,
+    isLoadingMore,
+    isRefreshing,
+    technicians.length,
+  ]);
 
   const loadMoreAll = useCallback(async () => {
     await Promise.all([
@@ -277,53 +329,23 @@ export default function MarketplaceScreen() {
     if (postFeed.loading && postFeed.items.length === 0) {
       return [];
     }
-    const items: MarketplaceListItem[] = [];
+    if (postFeed.items.length === 0) {
+      return [];
+    }
 
-    // Pick top available or top-rated technicians from visibleTechnicians
-    const availablePool = visibleTechnicians.filter((technician) => technician.available);
-    const candidatePool = availablePool.length > 0 ? availablePool : visibleTechnicians;
-    // Prioritize demo-rizky if in candidatePool so tests and users always have a solid recommendation
-    const prioritized = [...candidatePool].sort((a, b) => {
-      if (a.id === 'demo-rizky') return -1;
-      if (b.id === 'demo-rizky') return 1;
-      return b.averageRating - a.averageRating;
+    // Prioritize bookable service posts at the top of the feed
+    const sortedPosts = [...postFeed.items].sort((a, b) => {
+      if (a.isServicePost && !b.isServicePost) return -1;
+      if (!a.isServicePost && b.isServicePost) return 1;
+      return 0;
     });
-    const recommendations = prioritized.slice(0, 3);
-    const recommendationIds = new Set(recommendations.map((technician) => technician.id));
 
-    if (postFeed.items.length > 0) {
-      for (const post of postFeed.items) {
-        items.push({ key: `post-${post.id}`, kind: 'post', post });
-      }
-    }
-
-    // 2. Recommendations (Section 2 - Always fixed position, never jumping)
-    if (recommendations.length > 0) {
-      items.push({
-        key: 'recommendations-heading',
-        kind: 'recommendations-heading',
-      });
-      for (const technician of recommendations) {
-        items.push({
-          key: `recommended-${technician.id}`,
-          kind: 'recommended-technician',
-          technician,
-        });
-      }
-    }
-
-    // 3. Technicians to Consider (Section 3 - All remaining matching technicians without duplication)
-    const remainingTechnicians = visibleTechnicians.filter((t) => !recommendationIds.has(t.id));
-
-    if (remainingTechnicians.length > 0) {
-      items.push({ key: 'technicians-heading', kind: 'technicians-heading' });
-      for (const technician of remainingTechnicians) {
-        items.push({ key: `technician-${technician.id}`, kind: 'technician', technician });
-      }
-    }
-
-    return items;
-  }, [postFeed.items, postFeed.loading, visibleTechnicians]);
+    return sortedPosts.map((post) => ({
+      key: `post-${post.id}`,
+      kind: 'post',
+      post,
+    }));
+  }, [postFeed.items, postFeed.loading]);
 
   const handlePullToRefresh = useCallback(async () => {
     if (refreshInFlightRef.current || isLoading) return;
@@ -342,190 +364,278 @@ export default function MarketplaceScreen() {
       setServiceAreas(areaResult.items);
       setSource(technicianResult.source);
       setHasMore(technicianResult.hasMore);
+
+      setStoreCategories(categoryResult.items);
+      setStoreTechnicians(technicianResult.items);
+      setStoreServiceAreas(areaResult.items);
     } catch {
       // Preserve current visible feed if background refresh fails
     } finally {
       refreshInFlightRef.current = false;
       setIsRefreshing(false);
     }
-  }, [isLoading, refreshPostFeed]);
+  }, [
+    isLoading,
+    refreshPostFeed,
+    setStoreCategories,
+    setStoreServiceAreas,
+    setStoreTechnicians,
+  ]);
 
-  const retry = () => {
+  useEffect(() => {
+    const unsub = subscribeToReconnect(() => {
+      void handlePullToRefresh();
+    });
+    return unsub;
+  }, [handlePullToRefresh]);
+
+  const retry = useCallback(() => {
     setIsLoading(true);
     setError(false);
     void refreshPostFeed();
     setReloadKey((key) => key + 1);
-  };
+  }, [refreshPostFeed]);
 
-  const [scrollY] = useState(() => new Animated.Value(0));
-  const searchHeaderHeight = scrollY.interpolate({
-    inputRange: [0, 88],
-    outputRange: [SEARCH_HEADER_HEIGHT, 0],
-    extrapolate: 'clamp',
-  });
-  const searchHeaderOpacity = scrollY.interpolate({
-    inputRange: [0, 52],
-    outputRange: [1, 0],
-    extrapolate: 'clamp',
-  });
-  const searchHeaderScale = scrollY.interpolate({
-    inputRange: [0, 88],
-    outputRange: [1, 0.92],
-    extrapolate: 'clamp',
-  });
-  const searchHeaderTranslateY = scrollY.interpolate({
-    inputRange: [0, 88],
-    outputRange: [0, -10],
-    extrapolate: 'clamp',
-  });
+  const isAdminRole = roles.includes('admin') || effectiveRole === 'admin';
+  const currentUserId = user?.id;
 
-  const handleEditPost = async (
-    post: PostType,
-    newCaption: string,
-    newImageUri?: string,
-    updates?: {
-      mediaUrls: string[];
-      isServicePost: boolean;
-      serviceArea?: string;
+  const handleEditPost = useCallback(
+    async (
+      post: PostType,
+      newCaption: string,
+      newImageUri?: string,
+      updates?: {
+        mediaUrls: string[];
+        isServicePost: boolean;
+        servicePrice?: number;
+        serviceArea?: string;
+      },
+    ) => {
+      if (!currentUserId) return;
+      const nextMediaUrls =
+        updates?.mediaUrls ?? (newImageUri ? [newImageUri] : []);
+      await updatePost({
+        actorUserId: currentUserId,
+        postId: post.id,
+        caption: newCaption,
+        imageUri: nextMediaUrls[0],
+        mediaUrls: nextMediaUrls,
+        isServicePost: updates?.isServicePost ?? post.isServicePost,
+        servicePrice: updates?.servicePrice ?? post.servicePrice,
+        serviceArea: updates?.serviceArea ?? post.serviceArea,
+        isAdmin: isAdminRole,
+      });
     },
-  ) => {
-    if (!user) return;
-    const nextMediaUrls =
-      updates?.mediaUrls ?? (newImageUri ? [newImageUri] : []);
-    await updatePost({
-      actorUserId: user.id,
-      postId: post.id,
-      caption: newCaption,
-      imageUri: nextMediaUrls[0],
-      mediaUrls: nextMediaUrls,
-      isServicePost: updates?.isServicePost ?? post.isServicePost,
-      serviceArea: updates?.serviceArea ?? post.serviceArea,
-    });
-  };
+    [currentUserId, isAdminRole],
+  );
 
-  const handleDeletePost = async (postId: string) => {
-    if (!user) return;
-    try {
-      await deletePost({ actorUserId: user.id, postId });
-    } catch (err) {
-      console.warn('[handleDeletePost] Failed to delete post:', err);
-    }
-  };
+  const handleDeletePost = useCallback(
+    async (postId: string) => {
+      if (!currentUserId) return;
+      try {
+        await deletePost({ actorUserId: currentUserId, postId, isAdmin: isAdminRole });
+      } catch (err) {
+        console.warn('[handleDeletePost] Failed to delete post:', err);
+      }
+    },
+    [currentUserId, isAdminRole],
+  );
 
-  const handleSuspendPost = async (postId: string, suspended: boolean) => {
-    if (!user) return;
-    await suspendPost({ actorUserId: user.id, postId, suspended });
-  };
+  const handleSuspendPost = useCallback(
+    async (postId: string, suspended: boolean) => {
+      if (!currentUserId) return;
+      await suspendPost({ actorUserId: currentUserId, postId, suspended });
+    },
+    [currentUserId],
+  );
 
-  const Header = (
-    <View style={styles.contentWidth}>
-      <CategoryTabs
-        categories={categoryFilters}
-        selected={selectedCategory}
-        onSelect={setSelectedCategory}
-      />
-      {pinNotice ? <Text style={styles.pinNoticeText}>{pinNotice}</Text> : null}
+  const extractItemKey = useCallback((item: MarketplaceListItem) => item.key, []);
 
-      {/* Popular Tasks Discovery */}
-      {popularTasks.length > 0 && (
-        <>
-          <SectionTitle
-            eyebrow={t('home.popularServicesEyebrow')}
-            title={t('home.popularServicesTitle')}
-          />
-          <View style={styles.popularGrid}>
-            {popularTasks.map((task) => (
-              <Pressable
-                key={task.id}
-                accessibilityRole="button"
-                onPress={() =>
-                  router.push({
-                    pathname: '/technician/[id]',
-                    params: { id: task.technicianId },
-                  })
-                }
-                style={[
-                  styles.popularTaskCard,
-                  { backgroundColor: palette.surface, borderColor: palette.border },
-                ]}
-                testID={`popular-task-${task.id}`}
-              >
-                <View style={styles.popularTaskHeader}>
-                  <View
-                    style={[
-                      styles.popularTaskGlyph,
-                      { backgroundColor: palette.primarySoft },
-                    ]}
-                  >
-                    <ServiceCategoryGlyph
-                      icon={task.categorySlug}
-                      size={18}
-                      color={palette.primary}
-                    />
+  const renderMarketplaceItem = useCallback(
+    ({ item }: { item: MarketplaceListItem }) => {
+      const matchedTech = technicianById.get(item.post.technicianId);
+      const startingPrice = matchedTech?.services.find(
+        (srv) => typeof srv.startingPrice === 'number',
+      )?.startingPrice;
+
+      return (
+        <Post
+          post={item.post}
+          flat
+          isOwner={Boolean(currentUserId && currentUserId === item.post.technicianId)}
+          isAdmin={isAdminRole}
+          authorName={matchedTech?.displayName}
+          authorAvatarUri={matchedTech?.avatarUri}
+          authorVerified={matchedTech?.verified || item.post.technicianVerified}
+          authorRating={matchedTech?.averageRating}
+          authorReviewCount={matchedTech?.reviewCount}
+          serviceStartingPrice={startingPrice}
+          onEdit={handleEditPost}
+          onDelete={handleDeletePost}
+          onSuspend={handleSuspendPost}
+        />
+      );
+    },
+    [
+      currentUserId,
+      handleDeletePost,
+      handleEditPost,
+      handleSuspendPost,
+      isAdminRole,
+      technicianById,
+    ],
+  );
+
+  const Header = useMemo(
+    () => (
+      <View style={styles.contentWidth}>
+        <OfflineBanner />
+        <ServiceCategories
+          categoryFilters={categoryFilters}
+          selected={selectedCategory}
+          onSelect={setSelectedCategory}
+        />
+        {pinNotice ? <Text style={styles.pinNoticeText}>{pinNotice}</Text> : null}
+
+        <RecommendedTechnicians
+          technicians={technicians}
+          source={source}
+          selectedCategory={selectedCategory}
+          selectedArea={area}
+          onSeeAll={() => router.push('/technicians')}
+          onSelectTechnician={(tech) =>
+            router.push(`/technician/${encodeURIComponent(tech.id)}`)
+          }
+          onChatWithTechnician={() => router.push('/messages')}
+        />
+
+        {/* Popular Tasks Discovery */}
+        {popularTasks.length > 0 && (
+          <>
+            <SectionTitle
+              eyebrow={t('home.popularServicesEyebrow')}
+              title={t('home.popularServicesTitle')}
+            />
+            <View style={styles.popularGrid}>
+              {popularTasks.map((task) => (
+                <Pressable
+                  key={task.id}
+                  accessibilityRole="button"
+                  onPress={() =>
+                    router.push({
+                      pathname: '/technician/[id]',
+                      params: { id: task.technicianId },
+                    })
+                  }
+                  style={[
+                    styles.popularTaskCard,
+                    { backgroundColor: palette.surface, borderColor: palette.border },
+                  ]}
+                  testID={`popular-task-${task.id}`}
+                >
+                  <View style={styles.popularTaskHeader}>
+                    <View
+                      style={[
+                        styles.popularTaskGlyph,
+                        { backgroundColor: palette.primarySoft },
+                      ]}
+                    >
+                      <ServiceCategoryGlyph
+                        icon={task.categorySlug}
+                        size={18}
+                        color={palette.primary}
+                      />
+                    </View>
+                    <Text style={[styles.popularTaskPrice, { color: palette.primary }]}>
+                      {formatRupiah(task.startingPrice, language)}
+                    </Text>
                   </View>
-                  <Text style={[styles.popularTaskPrice, { color: palette.primary }]}>
-                    {formatRupiah(task.startingPrice, language)}
+                  <Text
+                    numberOfLines={1}
+                    style={[styles.popularTaskTitle, { color: palette.text }]}
+                  >
+                    {language === 'en' ? task.nameEn : task.name}
                   </Text>
-                </View>
-                <Text
-                  numberOfLines={1}
-                  style={[styles.popularTaskTitle, { color: palette.text }]}
-                >
-                  {language === 'en' ? task.nameEn : task.name}
-                </Text>
-                <Text
-                  numberOfLines={1}
-                  style={[styles.popularTaskProvider, { color: palette.textMuted }]}
-                >
-                  {task.technicianName}
-                </Text>
-              </Pressable>
-            ))}
-          </View>
-        </>
-      )}
+                  <Text
+                    numberOfLines={1}
+                    style={[styles.popularTaskProvider, { color: palette.textMuted }]}
+                  >
+                    {task.technicianName}
+                  </Text>
+                </Pressable>
+              ))}
+            </View>
+          </>
+        )}
 
-      {/* Bookmarked / Saved Technicians */}
-      {savedTechnicians.length > 0 && (
-        <View style={styles.savedHighlightBar}>
-          <View style={styles.savedHighlightCopy}>
-            <Text style={styles.savedEyebrow}>{t('home.savedSectionEyebrow')}</Text>
-            <Text style={styles.savedTitle}>
-              {t('home.savedSectionTitle')} ({savedTechnicians.length})
-            </Text>
+        {/* Bookmarked / Saved Technicians */}
+        {savedTechnicians.length > 0 && (
+          <View style={styles.savedHighlightBar}>
+            <View style={styles.savedHighlightCopy}>
+              <Text style={styles.savedEyebrow}>{t('home.savedSectionEyebrow')}</Text>
+              <Text style={styles.savedTitle}>
+                {t('home.savedSectionTitle')} ({savedTechnicians.length})
+              </Text>
+            </View>
+            <Pressable
+              accessibilityRole="button"
+              onPress={() => router.push('/bookings')}
+              style={styles.savedActionBtn}
+              testID="open-saved-technicians"
+            >
+              <Text style={styles.savedActionText}>{t('nav.bookings')} →</Text>
+            </Pressable>
           </View>
-          <Pressable
-            accessibilityRole="button"
-            onPress={() => router.push('/bookings')}
-            style={styles.savedActionBtn}
-            testID="open-saved-technicians"
-          >
-            <Text style={styles.savedActionText}>{t('nav.bookings')} →</Text>
-          </Pressable>
-        </View>
-      )}
-
-    </View>
+        )}
+      </View>
+    ),
+    [
+      area,
+      categoryFilters,
+      language,
+      palette.border,
+      palette.primary,
+      palette.primarySoft,
+      palette.surface,
+      palette.text,
+      palette.textMuted,
+      pinNotice,
+      popularTasks,
+      savedTechnicians.length,
+      selectedCategory,
+      source,
+      t,
+      technicians,
+    ],
   );
 
   return (
     <SafeAreaView style={[styles.safeArea, { backgroundColor: palette.background }]} edges={['top', 'bottom']}>
+      {/* Profile Header at the TOP */}
+      <MarketplaceHeader
+        unreadMessagesCount={unreadCount}
+        selectedArea={area}
+        onPressLocation={() => setAreaModalVisible(true)}
+        onPressSearch={() =>
+          router.push({
+            pathname: '/search',
+            params: { area, category: selectedCategory },
+          } as never)
+        }
+        onPressChat={() => router.push('/messages')}
+      />
+
       <View style={styles.feedRoot}>
       <InfiniteFlatList
         style={styles.feedList}
-        contentContainerStyle={[styles.listContent, { paddingTop: SEARCH_HEADER_HEIGHT }]}
-        onScroll={Animated.event(
-          [{ nativeEvent: { contentOffset: { y: scrollY } } }],
-          { useNativeDriver: false },
-        )}
-        scrollEventThrottle={16}
+        contentContainerStyle={styles.listContent}
         data={marketplaceItems}
         hasMore={postFeed.hasMore || hasMore}
         loadingMore={postFeed.loadingMore || isLoadingMore}
         onLoadMore={() => {
           void loadMoreAll();
         }}
-        keyExtractor={(item) => item.key}
+        keyExtractor={extractItemKey}
         ListHeaderComponent={Header}
         ListEmptyComponent={
           isLoading || postFeed.loading ? (
@@ -576,85 +686,7 @@ export default function MarketplaceScreen() {
             />
           )
         }
-        renderItem={({ item, index }) => {
-          if (item.kind === 'recommendations-heading') {
-            return (
-              <View style={styles.feedSectionTitle} testID="marketplace-recommendations-section">
-                <SectionTitle
-                  eyebrow={language === 'en' ? 'SUGGESTED NEAR YOU' : 'REKOMENDASI DI SEKITARMU'}
-                  title={language === 'en' ? 'Technicians to consider' : 'Teknisi yang bisa dipilih'}
-                  trailing={language === 'en' ? 'Recommended' : 'Rekomendasi'}
-                />
-              </View>
-            );
-          }
-          if (item.kind === 'technicians-heading') {
-            return (
-              <View style={styles.feedSectionTitle}>
-                <SectionTitle
-                  eyebrow={
-                    area === 'Semua area'
-                      ? t('home.featuredEyebrow')
-                      : t('home.areaEyebrow', {
-                          area: localizeArea(area, language).toLocaleUpperCase(
-                            language === 'id' ? 'id-ID' : 'en-US',
-                          ),
-                        })
-                  }
-                  title={t('home.resultsTitle')}
-                  trailing={`${visibleTechnicians.length}${hasMore ? '+' : ''} ${t('home.profiles')}`}
-                />
-              </View>
-            );
-          }
-          if (item.kind === 'post') {
-            const matchedTech = technicianById.get(item.post.technicianId);
-            const startingPrice = matchedTech?.services.find(
-              (srv) => typeof srv.startingPrice === 'number',
-            )?.startingPrice;
-            return (
-              <Post
-                flat
-                isLastInThread={index === marketplaceItems.length - 1}
-                post={item.post}
-                isOwner={Boolean(user?.id && user.id === item.post.technicianId)}
-                isAdmin={roles.includes('admin') || effectiveRole === 'admin'}
-                authorName={matchedTech?.displayName}
-                authorAvatarUri={matchedTech?.avatarUri}
-                authorRating={matchedTech?.averageRating}
-                authorReviewCount={matchedTech?.reviewCount}
-                serviceStartingPrice={item.post.isServicePost ? startingPrice : undefined}
-                onEdit={handleEditPost}
-                onDelete={handleDeletePost}
-                onSuspend={handleSuspendPost}
-              />
-            );
-          }
-          if (item.kind === 'recommended-technician') {
-            const technician = item.technician;
-            if (!technician?.id) return null;
-            return (
-              <View style={styles.cardWrap} testID={`recommended-technician-${technician.id}`}>
-                <TechnicianCard
-                  technician={technician}
-                  source={source}
-                  onPress={() => router.push(`/technician/${encodeURIComponent(technician.id)}`)}
-                />
-              </View>
-            );
-          }
-          const technician = item.technician;
-          if (!technician?.id) return null;
-          return (
-            <View style={styles.cardWrap}>
-              <TechnicianCard
-                technician={technician}
-                source={source}
-                onPress={() => router.push(`/technician/${encodeURIComponent(technician.id)}`)}
-              />
-            </View>
-          );
-        }}
+        renderItem={renderMarketplaceItem}
         listFooter={
           <>
             {postFeed.error ? (
@@ -689,133 +721,13 @@ export default function MarketplaceScreen() {
             onRefresh={() => {
               void handlePullToRefresh();
             }}
-            progressViewOffset={SEARCH_HEADER_HEIGHT}
+            progressViewOffset={0}
             tintColor={palette.primary}
             colors={[palette.primary]}
           />
         }
         testID="technician-list"
       />
-
-        <Animated.View
-          pointerEvents="box-none"
-          style={[
-            styles.stickySearchHeader,
-            {
-              backgroundColor: palette.background,
-              height: searchHeaderHeight,
-              opacity: searchHeaderOpacity,
-              transform: [
-                { translateY: searchHeaderTranslateY },
-                { scale: searchHeaderScale },
-              ],
-            },
-          ]}
-        >
-          <View style={[styles.contentWidth, styles.searchHeaderInner]}>
-            <View style={styles.searchRow}>
-              <View
-                style={[
-                  styles.searchInputShell,
-                  {
-                    backgroundColor: palette.inputBg,
-                    borderColor: palette.border,
-                  },
-                ]}
-              >
-                <Link
-                  asChild
-                  href={
-                    {
-                      pathname: '/search',
-                      params: {
-                        area,
-                        category: selectedCategory,
-                      },
-                    } as never
-                  }
-                >
-                  <Pressable
-                    accessibilityLabel={t('home.search')}
-                    accessibilityRole="button"
-                    style={styles.marketplaceSearchTrigger}
-                    testID="marketplace-search"
-                  >
-                    <SearchFieldTrigger borderless placeholder={t('home.search')} />
-                  </Pressable>
-                </Link>
-
-                <Pressable
-                  accessibilityRole="button"
-                  accessibilityLabel={`${t('home.areaLabel')}: ${
-                    area === 'Semua area'
-                      ? t('home.allAreasOption')
-                      : localizeArea(area, language)
-                  }`}
-                  onPress={() => setAreaModalVisible(true)}
-                  style={styles.searchLocationInlineButton}
-                  testID="area-picker-trigger"
-                >
-                  <Text
-                    numberOfLines={1}
-                    style={[styles.searchLocationValue, { color: palette.textMuted }]}
-                  >
-                    {area === 'Semua area'
-                      ? t('home.allAreasOption')
-                      : localizeArea(area, language)}
-                  </Text>
-                </Pressable>
-              </View>
-
-              <Pressable
-                accessibilityRole="button"
-                accessibilityLabel={language === 'en' ? 'Messages' : 'Pesan'}
-                onPress={() => router.push('/messages' as never)}
-                style={({ pressed }) => [
-                  styles.searchChatButton,
-                  {
-                    backgroundColor: palette.inputBg,
-                    borderColor: palette.border,
-                    opacity: pressed ? 0.75 : 1,
-                  },
-                ]}
-                testID="marketplace-messages-button"
-              >
-                <View style={styles.chatIconCanvas}>
-                  <View
-                    style={[
-                      styles.chatBubbleBody,
-                      { borderColor: palette.text },
-                    ]}
-                  >
-                    <View
-                      style={[
-                        styles.chatLineLong,
-                        { backgroundColor: palette.text },
-                      ]}
-                    />
-                    <View
-                      style={[
-                        styles.chatLineShort,
-                        { backgroundColor: palette.text },
-                      ]}
-                    />
-                  </View>
-                  <View
-                    style={[
-                      styles.chatBubbleTail,
-                      {
-                        backgroundColor: palette.inputBg,
-                        borderBottomColor: palette.text,
-                        borderLeftColor: palette.text,
-                      },
-                    ]}
-                  />
-                </View>
-              </Pressable>
-            </View>
-          </View>
-        </Animated.View>
       </View>
 
       <MarketplaceMapSearchModal

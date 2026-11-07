@@ -803,3 +803,138 @@ export function computeAdminPerformanceMetrics(params: {
     churnCount: feedbacks.length,
   };
 }
+
+
+// =============================================================================
+// Platform Tax & Fee Administration
+// =============================================================================
+
+const ADMIN_PLATFORM_SETTINGS_KEY = '@cepat/admin-platform-settings';
+
+export interface PlatformSettings {
+  id: string;
+  platformFeeType: 'percentage' | 'fixed';
+  platformFeeRate: number; // e.g. 10.0 for 10%
+  platformFeeFixed: number; // e.g. 10000 for IDR 10,000
+  minimumFee: number; // e.g. 5000 for IDR 5,000
+  taxName: string;
+  description?: string;
+  updatedAt: string;
+}
+
+export const DEFAULT_PLATFORM_SETTINGS: PlatformSettings = {
+  id: 'default',
+  platformFeeType: 'percentage',
+  platformFeeRate: 10.0,
+  platformFeeFixed: 10000,
+  minimumFee: 5000,
+  taxName: 'Biaya Platform & Layanan',
+  description: 'Pajak dan komisi resmi platform Cepat untuk setiap transaksi pesanan teknisi.',
+  updatedAt: new Date().toISOString(),
+};
+
+export async function loadPlatformSettings(): Promise<PlatformSettings> {
+  const cached = await getStoredJson<PlatformSettings>(
+    ADMIN_PLATFORM_SETTINGS_KEY,
+    DEFAULT_PLATFORM_SETTINGS,
+  );
+  if (!supabase) return cached;
+  try {
+    const { data, error } = await supabase
+      .from('platform_settings')
+      .select('*')
+      .eq('id', 'default')
+      .maybeSingle();
+    if (data && !error) {
+      const mapped: PlatformSettings = {
+        id: String(data.id || 'default'),
+        platformFeeType: data.platform_fee_type === 'fixed' ? 'fixed' : 'percentage',
+        platformFeeRate: Number(data.platform_fee_rate ?? 10.0),
+        platformFeeFixed: Number(data.platform_fee_fixed ?? 10000),
+        minimumFee: Number(data.minimum_fee ?? 5000),
+        taxName: String(data.tax_name || 'Biaya Platform & Layanan'),
+        description: data.description ? String(data.description) : undefined,
+        updatedAt: String(data.updated_at || new Date().toISOString()),
+      };
+      await setStoredJson(ADMIN_PLATFORM_SETTINGS_KEY, mapped);
+      return mapped;
+    }
+  } catch (err) {
+    console.warn('[loadPlatformSettings] Supabase error, using cached settings:', err);
+  }
+  return cached;
+}
+
+export async function updateAdminPlatformSettings(
+  input: Partial<PlatformSettings>,
+): Promise<PlatformSettings> {
+  const current = await loadPlatformSettings();
+  const next: PlatformSettings = {
+    ...current,
+    ...input,
+    updatedAt: new Date().toISOString(),
+  };
+
+  await setStoredJson(ADMIN_PLATFORM_SETTINGS_KEY, next);
+
+  if (supabase) {
+    try {
+      await supabase
+        .from('platform_settings')
+        .upsert({
+          id: 'default',
+          platform_fee_type: next.platformFeeType,
+          platform_fee_rate: next.platformFeeRate,
+          platform_fee_fixed: next.platformFeeFixed,
+          minimum_fee: next.minimumFee,
+          tax_name: next.taxName,
+          description: next.description ?? null,
+          updated_at: next.updatedAt,
+        });
+    } catch (err) {
+      console.warn('[updateAdminPlatformSettings] Supabase error:', err);
+    }
+  }
+
+  return next;
+}
+
+export interface PlatformFeeCalculation {
+  servicePrice: number;
+  platformFee: number;
+  technicianPayout: number;
+  totalAmount: number;
+  feeRatePercent: number;
+}
+
+export function calculatePlatformFee(
+  servicePrice: number,
+  settings: PlatformSettings = DEFAULT_PLATFORM_SETTINGS,
+): PlatformFeeCalculation {
+  const validPrice = Math.max(0, servicePrice || 0);
+  let fee = 0;
+  if (settings.platformFeeType === 'percentage') {
+    fee = Math.round((validPrice * settings.platformFeeRate) / 100);
+  } else {
+    fee = settings.platformFeeFixed;
+  }
+  if (validPrice > 0) {
+    fee = Math.max(settings.minimumFee, fee);
+    if (fee > validPrice) fee = validPrice;
+  } else {
+    fee = 0;
+  }
+
+  const technicianPayout = Math.max(0, validPrice - fee);
+  const totalAmount = validPrice;
+  const feeRatePercent =
+    validPrice > 0 ? Math.round((fee / validPrice) * 100) : settings.platformFeeRate;
+
+  return {
+    servicePrice: validPrice,
+    platformFee: fee,
+    technicianPayout,
+    totalAmount,
+    feeRatePercent,
+  };
+}

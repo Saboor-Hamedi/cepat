@@ -45,6 +45,7 @@ import { AppNavigationBar, EmptyState, LoadingState } from '../components/market
 import { BackHeader } from "../components/BackHeader";
 import { StatusFilterPills } from '../bookings';
 import { SwipeableRow } from '../components/SwipeableRow';
+import { subscribeToReconnect } from '../services/networkStatus';
 import { useAppearance, type ThemePalette } from '../context/AppearanceContext';
 import {
   deleteNotification,
@@ -140,10 +141,14 @@ export default function NotificationsScreen() {
     const unsubscribeChanges = subscribeToNotificationChanges(() => {
       void refresh(true);
     });
+    const unsubscribeReconnect = subscribeToReconnect(() => {
+      void refresh(true);
+    });
     return () => {
       active = false;
       unsubscribe();
       unsubscribeChanges();
+      unsubscribeReconnect();
     };
   }, [refresh, userId]);
 
@@ -173,6 +178,26 @@ export default function NotificationsScreen() {
       await deleteNotification(userId, notificationId);
     } catch {
       void refresh(true);
+    }
+  };
+
+  const handleToggleRead = async (item: CepatNotification) => {
+    if (!userId) return;
+    const isCurrentlyRead = Boolean(item.readAt);
+    const newReadAt = isCurrentlyRead ? undefined : new Date().toISOString();
+    setNotifications((current) =>
+      current.map((notification) =>
+        notification.id === item.id
+          ? { ...notification, readAt: newReadAt }
+          : notification,
+      ),
+    );
+    try {
+      if (!isCurrentlyRead) {
+        await markNotificationRead(userId, item.id);
+      }
+    } catch {
+      // ignore
     }
   };
 
@@ -346,6 +371,7 @@ export default function NotificationsScreen() {
                 item={item}
                 language={language}
                 onDelete={() => void handleDeleteNotification(item.id)}
+                onToggleRead={() => void handleToggleRead(item)}
                 onPress={() => void handleOpenNotification(item)}
                 palette={palette}
                 styles={styles}
@@ -379,6 +405,7 @@ function SwipeableNotificationCard({
   styles,
   onPress,
   onDelete,
+  onToggleRead,
 }: {
   item: CepatNotification;
   language: 'id' | 'en';
@@ -386,6 +413,7 @@ function SwipeableNotificationCard({
   styles: ReturnType<typeof createStyles>;
   onPress: () => void;
   onDelete: () => void;
+  onToggleRead: () => void;
 }) {
   const tone = notificationTone(item);
   const toneStyle = tone === 'generic' ? null : TONE_STYLES[tone];
@@ -395,6 +423,8 @@ function SwipeableNotificationCard({
       deleteAccessibilityLabel="Delete notification"
       deleteTestID={`delete-notification-${item.id}`}
       onDelete={onDelete}
+      onToggleRead={onToggleRead}
+      isRead={Boolean(item.readAt)}
       testID={`notification-${item.id}`}
     >
       <View style={styles.row}>

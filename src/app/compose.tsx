@@ -72,6 +72,7 @@ export default function ComposeScreen() {
     imageUri?: string;
     mediaUrls?: string[];
     isServicePost: boolean;
+    servicePrice?: number;
     serviceArea?: string;
   }) => {
     if (!user) return;
@@ -87,6 +88,7 @@ export default function ComposeScreen() {
         imageUri: input.imageUri,
         mediaUrls: input.mediaUrls,
         isServicePost: input.isServicePost,
+        servicePrice: input.servicePrice,
         serviceArea:
           input.serviceArea && input.serviceArea !== 'Semua area'
             ? input.serviceArea

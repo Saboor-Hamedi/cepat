@@ -1,4 +1,4 @@
-import { Briefcase, Camera, Globe, MapPin, X } from 'lucide-react-native';
+import { Briefcase, Camera, Globe, MapPin, Tag, X } from 'lucide-react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useState } from 'react';
 import {
@@ -9,6 +9,7 @@ import {
   ScrollView,
   StyleSheet,
   Text,
+  TextInput,
   View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -16,6 +17,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAuth } from '../../auth/AuthProvider';
 import { useAppearance } from '../../context/AppearanceContext';
 import { containsBlockedContactOrUrl, loadSavedAddresses } from '../../data/marketplaceStore';
+import { formatRupiah } from '../../data/marketplaceRepository';
 import { localizeArea, useLanguage } from '../../i18n/locale';
 import { ICON_STROKE } from '../../theme/icons';
 import { radii, spacing } from '../../theme/tokens';
@@ -43,6 +45,7 @@ export interface PostContainerInitialValues {
   caption?: string;
   images?: string[];
   isServicePost?: boolean;
+  servicePrice?: number;
   serviceArea?: string;
 }
 
@@ -52,6 +55,7 @@ export interface PostContainerProps {
     imageUri?: string;
     mediaUrls?: string[];
     isServicePost: boolean;
+    servicePrice?: number;
     serviceArea?: string;
   }) => Promise<void>;
   technicianProfile?: {
@@ -109,6 +113,9 @@ export function PostContainer({
   );
   const [isServicePost, setIsServicePost] = useState(
     Boolean(initialValues?.isServicePost),
+  );
+  const [servicePrice, setServicePrice] = useState<string>(
+    initialValues?.servicePrice ? String(initialValues.servicePrice) : '',
   );
   const [attachArea, setAttachArea] = useState(
     Boolean(
@@ -255,17 +262,23 @@ export function PostContainer({
     setBusy(true);
     setError(null);
     try {
+      const numericPrice =
+        isServicePost && servicePrice.trim()
+          ? parseInt(servicePrice.replace(/[^0-9]/g, ''), 10) || undefined
+          : undefined;
       await onCreatePost({
         caption: trimmedCaption,
         imageUri: images[0],
         mediaUrls: images,
         isServicePost,
+        servicePrice: numericPrice,
         serviceArea: attachArea ? areaLabel : 'Semua area',
       });
       if (resetOnSubmit) {
         setCaption('');
         setImages([]);
         setIsServicePost(false);
+        setServicePrice('');
         setAttachArea(false);
       }
       setShowPickerModal(false);
@@ -318,6 +331,106 @@ export function PostContainer({
         >
           <X color={MINT} size={13} strokeWidth={ICON_STROKE} />
         </Pressable>
+      </View>
+    );
+  };
+
+  
+  const renderServicePriceSection = () => {
+    if (!isServicePost) return null;
+    const numericVal = parseInt(servicePrice.replace(/[^0-9]/g, ''), 10) || 0;
+    const estimatedPayout = Math.max(0, Math.round(numericVal * 0.9));
+    const estimatedFee = Math.max(0, numericVal - estimatedPayout);
+
+    const quickAmounts = [50000, 100000, 150000, 250000];
+
+    return (
+      <View
+        style={[
+          styles.priceSectionCard,
+          {
+            backgroundColor: isModal ? 'rgba(16, 185, 129, 0.08)' : 'rgba(16, 185, 129, 0.06)',
+            borderColor: isModal ? 'rgba(16, 185, 129, 0.3)' : 'rgba(16, 185, 129, 0.25)',
+          },
+        ]}
+        testID="compose-service-price-section"
+      >
+        <View style={styles.priceSectionHeader}>
+          <Tag color={MINT} size={15} strokeWidth={ICON_STROKE} />
+          <Text style={[styles.priceSectionTitle, { color: isModal ? MODAL_TEXT : palette.text }]}>
+            {language === 'en' ? 'Service Price (IDR)' : 'Tarif / Biaya Jasa (IDR)'}
+          </Text>
+          <View style={styles.serviceBadge}>
+            <Text style={styles.serviceBadgeText}>
+              {language === 'en' ? 'Bookable' : 'Bisa Dipesan'}
+            </Text>
+          </View>
+        </View>
+
+        <View style={styles.priceInputWrapper}>
+          <Text style={[styles.priceCurrencyPrefix, { color: MINT }]}>Rp</Text>
+          <TextInput
+            keyboardType="numeric"
+            maxLength={10}
+            onChangeText={(text) => setServicePrice(text.replace(/[^0-9]/g, ''))}
+            placeholder={language === 'en' ? 'e.g. 100000' : 'cth: 100000'}
+            placeholderTextColor={isModal ? MODAL_MUTED : palette.textMuted}
+            style={[
+              styles.priceInputField,
+              {
+                color: isModal ? MODAL_TEXT : palette.text,
+                backgroundColor: isModal ? 'rgba(0, 0, 0, 0.2)' : palette.inputBg,
+                borderColor: isModal ? MODAL_SHEET_BORDER : palette.border,
+              },
+            ]}
+            testID="compose-service-price-input"
+            value={servicePrice}
+          />
+        </View>
+
+        <View style={styles.quickChipsRow}>
+          {quickAmounts.map((amt) => {
+            const isSelected = numericVal === amt;
+            return (
+              <Pressable
+                key={amt}
+                onPress={() => setServicePrice(String(amt))}
+                style={[
+                  styles.quickChip,
+                  isSelected && styles.quickChipActive,
+                  {
+                    borderColor: isSelected ? MINT : isModal ? MODAL_SHEET_BORDER : palette.border,
+                    backgroundColor: isSelected ? 'rgba(16, 185, 129, 0.15)' : 'transparent',
+                  },
+                ]}
+              >
+                <Text
+                  style={[
+                    styles.quickChipText,
+                    { color: isSelected ? MINT : isModal ? MODAL_MUTED : palette.textMuted },
+                  ]}
+                >
+                  {formatRupiah(amt, language)}
+                </Text>
+              </Pressable>
+            );
+          })}
+        </View>
+
+        {numericVal > 0 && (
+          <View style={styles.priceBreakdownNotice}>
+            <Text style={[styles.priceBreakdownText, { color: isModal ? MODAL_TEXT : palette.text }]}>
+              {language === 'en'
+                ? `Customer pays: ${formatRupiah(numericVal, language)} • You receive: ${formatRupiah(estimatedPayout, language)}`
+                : `Pelanggan bayar: ${formatRupiah(numericVal, language)} • Anda terima: ${formatRupiah(estimatedPayout, language)}`}
+            </Text>
+            <Text style={[styles.priceBreakdownFee, { color: isModal ? MODAL_MUTED : palette.textMuted }]}>
+              {language === 'en'
+                ? `(Platform tax & service fee ~10%: ${formatRupiah(estimatedFee, language)})`
+                : `(Potongan pajak & biaya platform ~10%: ${formatRupiah(estimatedFee, language)})`}
+            </Text>
+          </View>
+        )}
       </View>
     );
   };
@@ -474,6 +587,7 @@ export function PostContainer({
         value={caption}
       />
       {renderAreaChip()}
+      {renderServicePriceSection()}
       <PostFooter images={images} onRemoveImage={handleRemoveImage} />
       {renderIconRow()}
     </>
@@ -556,7 +670,8 @@ export function PostContainer({
             value={caption}
           />
           {renderAreaChip()}
-          <PostFooter images={images} onRemoveImage={handleRemoveImage} />
+      {renderServicePriceSection()}
+      <PostFooter images={images} onRemoveImage={handleRemoveImage} />
           <View style={styles.inlineFooter}>
             {renderIconRow()}
             {onCancel ? (
@@ -607,6 +722,86 @@ export function PostContainer({
 }
 
 const styles = StyleSheet.create({
+  priceSectionCard: {
+    borderRadius: radii.md,
+    borderWidth: 1,
+    marginVertical: spacing.sm,
+    padding: spacing.sm + 2,
+  },
+  priceSectionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xs + 2,
+    marginBottom: spacing.xs + 2,
+  },
+  priceSectionTitle: {
+    fontSize: font.label,
+    fontWeight: '700',
+    flex: 1,
+  },
+  serviceBadge: {
+    backgroundColor: 'rgba(16, 185, 129, 0.2)',
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 9999,
+  },
+  serviceBadgeText: {
+    color: MINT,
+    fontSize: 11,
+    fontWeight: '700',
+  },
+  priceInputWrapper: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xs,
+  },
+  priceCurrencyPrefix: {
+    fontSize: font.title,
+    fontWeight: '800',
+  },
+  priceInputField: {
+    flex: 1,
+    borderWidth: 1,
+    borderRadius: radii.sm,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: Platform.OS === 'ios' ? 8 : 4,
+    fontSize: font.body,
+    fontWeight: '600',
+  },
+  quickChipsRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 6,
+    marginTop: spacing.xs + 2,
+  },
+  quickChip: {
+    borderWidth: 1,
+    borderRadius: 9999,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+  },
+  quickChipActive: {
+    borderWidth: 1.5,
+  },
+  quickChipText: {
+    fontSize: 11,
+    fontWeight: '600',
+  },
+  priceBreakdownNotice: {
+    marginTop: spacing.xs + 2,
+    paddingTop: spacing.xs,
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(16, 185, 129, 0.15)',
+  },
+  priceBreakdownText: {
+    fontSize: 12,
+    fontWeight: '700',
+  },
+  priceBreakdownFee: {
+    fontSize: 11,
+    marginTop: 2,
+  },
+
   screenRoot: {
     flex: 1,
   },

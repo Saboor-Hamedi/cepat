@@ -138,6 +138,11 @@ export interface BookingRecord {
   status: BookingStatus;
   customerNotes?: string;
   agreedPrice?: number;
+  servicePrice?: number;
+  platformFee?: number;
+  technicianPayout?: number;
+  totalAmount?: number;
+  postId?: string;
   currency: 'IDR';
   customerAcceptedWorkDone?: boolean;
   cancellationReason?: string;

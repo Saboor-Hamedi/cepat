@@ -4,6 +4,7 @@
 
 import { getStoredJson, setStoredJson } from '../storage/kvStorage';
 import { shouldUseFixtures, supabase } from './marketplaceRepository';
+import { triggerLocalPushNotification } from '../services/pushNotifications';
 
 const LOCAL_NOTIFICATIONS_KEY = '@cepat/notifications:';
 const DELETED_NOTIFICATIONS_KEY = '@cepat/notifications-deleted:';
@@ -39,6 +40,13 @@ export function dispatchInAppNotification(notification: CepatNotification) {
       // ignore listener error
     }
   }
+
+  // Trigger system push notification (sound, banner, vibration)
+  void triggerLocalPushNotification({
+    title: notification.title,
+    body: notification.body,
+    data: notification.data,
+  });
 }
 
 // Global notification change listener for instant badge synchronization across components

@@ -38,6 +38,11 @@ export function DashboardTabs({
       testID: 'admin-tab-dashboard',
     },
     {
+      key: 'tax',
+      label: language === 'en' ? 'Platform Tax & Fee' : 'Pajak & Biaya',
+      testID: 'admin-tab-tax',
+    },
+    {
       key: 'reports',
       label: withCount(
         language === 'en' ? 'Reports' : 'Laporan',
@@ -101,6 +106,7 @@ export function DashboardTabs({
 
 const styles = StyleSheet.create({
   tabsWrapper: {
-    marginBottom: spacing.md,
+    paddingHorizontal: 0,
+    paddingVertical: spacing.xs,
   },
 });

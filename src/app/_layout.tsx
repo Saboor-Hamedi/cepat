@@ -10,6 +10,8 @@ import { AppearanceProvider, useAppearance } from '../context/AppearanceContext'
 import { LanguageProvider } from '../i18n/locale';
 import { PostDropdownProvider } from '../components/posts/PostDropdown';
 import { InAppNotificationBanner } from '../components/InAppNotificationBanner';
+import { NetworkProvider } from '../context/NetworkContext';
+import { initPushNotifications } from '../services/pushNotifications';
 
 if (Platform.OS !== 'web') {
   void SplashScreen.preventAutoHideAsync().catch((error: unknown) => {
@@ -53,6 +55,7 @@ function ThemedStack() {
 
   useEffect(() => {
     disableFloatingDevGearButton();
+    void initPushNotifications();
   }, []);
 
   useEffect(() => {
@@ -101,14 +104,16 @@ function ThemedStack() {
 
 export default function RootLayout() {
   return (
-    <AuthProvider>
-      <AppearanceProvider>
-        <LanguageProvider>
-          <PostDropdownProvider>
-            <ThemedStack />
-          </PostDropdownProvider>
-        </LanguageProvider>
-      </AppearanceProvider>
-    </AuthProvider>
+    <NetworkProvider>
+      <AuthProvider>
+        <AppearanceProvider>
+          <LanguageProvider>
+            <PostDropdownProvider>
+              <ThemedStack />
+            </PostDropdownProvider>
+          </LanguageProvider>
+        </AppearanceProvider>
+      </AuthProvider>
+    </NetworkProvider>
   );
 }

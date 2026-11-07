@@ -1,4 +1,4 @@
-import { type ComponentRef, useCallback, useRef, useState } from 'react';
+import { type ComponentRef, memo, useCallback, useEffect, useRef, useState } from 'react';
 import {
   Image,
   type LayoutChangeEvent,
@@ -35,7 +35,7 @@ interface CarouselSlideProps {
   testID?: string;
 }
 
-function CarouselSlide({
+const CarouselSlide = memo(function CarouselSlide({
   uri,
   width,
   height,
@@ -43,17 +43,28 @@ function CarouselSlide({
   onImageError,
   testID,
 }: CarouselSlideProps) {
+  const multiTouchGuardRef = useRef(false);
+
   return (
     <Pressable
       accessibilityHint="Tap to open full screen photo zoom"
       accessibilityLabel="Post photo"
       accessibilityRole="button"
-      onPress={onPress}
-      onTouchStart={(e) => {
-        // If user touches with 2 fingers to zoom inline, pop up to real zoom immediately
-        if (e.nativeEvent.touches.length >= 2) {
-          onPress();
+      onPress={() => {
+        if (multiTouchGuardRef.current) {
+          multiTouchGuardRef.current = false;
+          return;
         }
+        onPress();
+      }}
+      onTouchMove={(e) => {
+        if (e.nativeEvent.touches.length > 1) {
+          multiTouchGuardRef.current = true;
+        }
+      }}
+      onTouchStart={(e) => {
+        // Ignore 2-finger or 3-finger screenshot gestures so they never trigger image zoom modal
+        multiTouchGuardRef.current = e.nativeEvent.touches.length > 1;
       }}
       style={[styles.slideWrapper, { width, height }]}
       testID={testID}
@@ -67,7 +78,7 @@ function CarouselSlide({
       />
     </Pressable>
   );
-}
+});
 
 export interface PostMediaCarouselProps {
   images: readonly string[];
@@ -75,7 +86,7 @@ export interface PostMediaCarouselProps {
   onAllImagesError?: () => void;
 }
 
-export function PostMediaCarousel({
+export const PostMediaCarousel = memo(function PostMediaCarousel({
   images,
   postId,
   onAllImagesError,
@@ -133,16 +144,18 @@ export function PostMediaCarousel({
     }
   };
 
-  const handleSlideImageError = (originalIndex: number) => {
+  useEffect(() => {
+    if (validImages.length > 0 && displayImages.length === 0) {
+      onAllImagesError?.();
+    }
+  }, [validImages.length, displayImages.length, onAllImagesError]);
+
+  const handleSlideImageError = useCallback((originalIndex: number) => {
     setFailedIndices((prev) => {
-      const next = { ...prev, [originalIndex]: true };
-      const remaining = validImages.filter((_, i) => !next[i]);
-      if (remaining.length === 0) {
-        onAllImagesError?.();
-      }
-      return next;
+      if (prev[originalIndex]) return prev;
+      return { ...prev, [originalIndex]: true };
     });
-  };
+  }, []);
 
   const handleOpenZoom = useCallback(
     (index: number) => {
@@ -168,7 +181,6 @@ export function PostMediaCarousel({
           {
             height: frameHeight,
             backgroundColor: palette.surfaceElevated,
-            borderColor: palette.border,
           },
         ]}
       >
@@ -288,7 +300,7 @@ export function PostMediaCarousel({
       )}
     </View>
   );
-}
+});
 
 const styles = StyleSheet.create({
   root: {
@@ -296,8 +308,8 @@ const styles = StyleSheet.create({
     width: '100%',
   },
   carouselFrame: {
-    borderRadius: postRadii.media,
-    borderWidth: StyleSheet.hairlineWidth,
+    borderRadius: 0,
+    borderWidth: 0,
     overflow: 'hidden',
     position: 'relative',
     width: '100%',

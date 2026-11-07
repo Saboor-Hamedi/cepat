@@ -6,6 +6,7 @@ import type {
   AdminReportRecord,
   AdminTechnicianApplication,
   AdminUserCounts,
+  PlatformSettings,
 } from '../data/adminStore';
 import type { BookingRecord, ServiceCategory } from '../types/marketplace';
 
@@ -17,7 +18,8 @@ export type DashboardTab =
   | 'accounts'
   | 'approvals'
   | 'bookings'
-  | 'categories';
+  | 'categories'
+  | 'tax';
 
 export interface DashboardState {
   reports: AdminReportRecord[];
@@ -25,6 +27,7 @@ export interface DashboardState {
   applications: AdminTechnicianApplication[];
   bookings: BookingRecord[];
   categories: ServiceCategory[];
+  platformSettings?: PlatformSettings;
   userCounts: AdminUserCounts | null;
   deletionFeedbacks: AdminDeletionFeedback[];
   metrics: AdminPerformanceMetrics;

@@ -1,6 +1,7 @@
 import {
   ActivityIndicator,
   FlatList,
+  Platform,
   StyleSheet,
   View,
   type FlatListProps,
@@ -33,6 +34,11 @@ export function InfiniteFlatList<T>({
 
   return (
     <FlatList
+      initialNumToRender={6}
+      maxToRenderPerBatch={8}
+      updateCellsBatchingPeriod={50}
+      windowSize={7}
+      removeClippedSubviews={Platform.OS === 'android'}
       {...flatListProps}
       data={data}
       onEndReached={hasMore && !loadingMore ? onLoadMore : undefined}

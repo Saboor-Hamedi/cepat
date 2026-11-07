@@ -17,8 +17,12 @@ import {
   loadAdminAccounts,
   loadAdminApplications,
   loadAdminBookings,
+  DEFAULT_PLATFORM_SETTINGS,
   loadAdminCategories,
   loadAdminDeletionFeedbacks,
+  loadPlatformSettings,
+  updateAdminPlatformSettings,
+  type PlatformSettings,
   loadAdminReports,
   loadAdminUserCounts,
   toggleAdminTechnicianVerified,
@@ -41,6 +45,7 @@ import { DashboardAccounts } from './accounts/DashboardAccounts';
 import { DashboardApprovals } from './approvals/DashboardApprovals';
 import { DashboardBookings } from './bookings/DashboardBookings';
 import { DashboardCategories } from './categories/DashboardCategories';
+import { DashboardPlatformTax } from './platform/DashboardPlatformTax';
 import { DashboardDeletedUsers } from './delete-user/DashboardDeletedUsers';
 import { DashboardHeader } from './header/DashboardHeader';
 import { DashboardOverview } from './overview/DashboardOverview';
@@ -62,7 +67,7 @@ export function DashboardContainer({
   const { palette } = useAppearance();
 
   const [activeTab, setActiveTab] = useState<DashboardTab>('dashboard');
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(isAdminAuthorized);
   const [refreshing, setRefreshing] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [adminNotice, setAdminNotice] = useState<string | null>(null);
@@ -72,6 +77,9 @@ export function DashboardContainer({
   const [applications, setApplications] = useState<AdminTechnicianApplication[]>([]);
   const [bookings, setBookings] = useState<BookingRecord[]>([]);
   const [categories, setCategories] = useState<ServiceCategory[]>([]);
+  const [platformSettings, setPlatformSettings] = useState<PlatformSettings>(
+    DEFAULT_PLATFORM_SETTINGS,
+  );
   const [userCounts, setUserCounts] = useState<AdminUserCounts | null>(null);
   const [deletionFeedbacks, setDeletionFeedbacks] = useState<AdminDeletionFeedback[]>([]);
 
@@ -86,7 +94,7 @@ export function DashboardContainer({
     else setLoading(true);
 
     try {
-      const [reps, accs, apps, bks, cats, counts, feedbacks] = await Promise.all([
+      const [reps, accs, apps, bks, cats, counts, feedbacks, pSettings] = await Promise.all([
         loadAdminReports(),
         loadAdminAccounts(),
         loadAdminApplications(),
@@ -94,6 +102,7 @@ export function DashboardContainer({
         loadAdminCategories(),
         loadAdminUserCounts(),
         loadAdminDeletionFeedbacks(),
+        loadPlatformSettings(),
       ]);
 
       setReports(reps);
@@ -103,6 +112,7 @@ export function DashboardContainer({
       setCategories(cats);
       setUserCounts(counts);
       setDeletionFeedbacks(feedbacks);
+      setPlatformSettings(pSettings);
       setLoadError(null);
     } catch (err) {
       setLoadError(err instanceof Error ? err.message : String(err));
@@ -113,7 +123,39 @@ export function DashboardContainer({
   };
 
   useEffect(() => {
-    void loadAllData();
+    let active = true;
+    if (!isAdminAuthorized) return;
+    Promise.all([
+      loadAdminReports(),
+      loadAdminAccounts(),
+      loadAdminApplications(),
+      loadAdminBookings(),
+      loadAdminCategories(),
+      loadAdminUserCounts(),
+      loadAdminDeletionFeedbacks(),
+      loadPlatformSettings(),
+    ])
+      .then(([reps, accs, apps, bks, cats, counts, feedbacks, pSettings]) => {
+        if (!active) return;
+        setReports(reps);
+        setAccounts(accs);
+        setApplications(apps);
+        setBookings(bks);
+        setCategories(cats);
+        setUserCounts(counts);
+        setDeletionFeedbacks(feedbacks);
+        setPlatformSettings(pSettings);
+        setLoadError(null);
+        setLoading(false);
+      })
+      .catch((err) => {
+        if (!active) return;
+        setLoadError(err instanceof Error ? err.message : String(err));
+        setLoading(false);
+      });
+    return () => {
+      active = false;
+    };
   }, [isAdminAuthorized]);
 
   const metrics: AdminPerformanceMetrics = useMemo(
@@ -205,6 +247,19 @@ export function DashboardContainer({
     setBookings(updated);
   };
 
+  
+  const handleUpdatePlatformSettings = async (
+    newSettings: Partial<PlatformSettings>,
+  ) => {
+    const updated = await updateAdminPlatformSettings(newSettings);
+    setPlatformSettings(updated);
+    setAdminNotice(
+      language === 'en'
+        ? 'Platform tax and fee settings successfully updated and saved.'
+        : 'Pengaturan pajak dan komisi platform berhasil disimpan dan diterapkan.',
+    );
+  };
+
   const handleCreateCategory = async (name: string, description: string) => {
     const updated = await addAdminServiceCategory({
       name,
@@ -236,6 +291,8 @@ export function DashboardContainer({
         return language === 'en' ? 'Bookings Management' : 'Manajemen Pesanan';
       case 'categories':
         return language === 'en' ? 'Service Categories' : 'Kategori Layanan';
+      case 'tax':
+        return language === 'en' ? 'Platform Tax & Fee' : 'Pajak & Biaya Platform';
       case 'performance':
         return language === 'en' ? 'Platform Performance' : 'Performa Platform';
     }
@@ -390,6 +447,15 @@ export function DashboardContainer({
                   <DashboardBookings
                     bookings={bookings}
                     onOverrideStatus={handleBookingOverride}
+                  />
+                )}
+
+                
+                {/* Platform Tax & Fee Tab */}
+                {activeTab === 'tax' && (
+                  <DashboardPlatformTax
+                    settings={platformSettings}
+                    onUpdateSettings={handleUpdatePlatformSettings}
                   />
                 )}
 

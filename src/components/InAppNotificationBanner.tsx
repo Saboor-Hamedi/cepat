@@ -6,23 +6,15 @@
  * - Behavior: A floating push notification toast that slides down smoothly from the top
  *   of the screen whenever a real-time event occurs (e.g., incoming chat message, booking update,
  *   technician status change), inspired by Facebook's real-time in-app banners.
- * - Auto-dismisses after 4.5 seconds or immediately when tapped or swiped.
+ * - Auto-dismisses after 4.5 seconds or immediately when swiped (left, right, or up).
  * - Respects the user's push notification preference in Settings (can be toggled on/off).
- *
- * WHY NOT IN `src/app/`?
- * - Under Expo Router's architecture, files in `src/app/` are automatically treated as app routes/screens.
- * - Reusable UI widgets, modals, and global components belong in `src/components/`.
- *
- * RELATIONSHIP TO `src/app/notifications.tsx`:
- * - `src/components/InAppNotificationBanner.tsx`: Real-time transient pop-up across any screen.
- * - `src/app/notifications.tsx`: Full-page Notification Center where users view past history,
- *   filter by All/Recent/Old, and manage alerts.
  */
 
 import { router } from 'expo-router';
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   Animated,
+  PanResponder,
   Pressable,
   StyleSheet,
   Text,
@@ -38,7 +30,6 @@ import {
   subscribeToInAppBanner,
   type CepatNotification,
 } from '../data/notifications';
-import { useLanguage } from '../i18n/locale';
 import { radii, spacing } from '../theme/tokens';
 import { ICON_SIZE, ICON_STROKE } from '../theme/icons';
 import { font } from '../theme/typography';
@@ -46,11 +37,125 @@ import { font } from '../theme/typography';
 export function InAppNotificationBanner() {
   const { user } = useAuth();
   const { palette, reduceMotion } = useAppearance();
-  const { language } = useLanguage();
 
   const [activeNotification, setActiveNotification] = useState<CepatNotification | null>(null);
-  const slideAnim = useRef(new Animated.Value(-120)).current;
+  const [slideAnim] = useState(() => new Animated.Value(-120));
+  const [panX] = useState(() => new Animated.Value(0));
+  const [opacityAnim] = useState(() => new Animated.Value(1));
   const hideTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const resetAnimations = useCallback(() => {
+    slideAnim.setValue(-120);
+    panX.setValue(0);
+    opacityAnim.setValue(1);
+    setActiveNotification(null);
+  }, [opacityAnim, panX, slideAnim]);
+
+  const dismissBanner = useCallback(() => {
+    if (reduceMotion) {
+      resetAnimations();
+    } else {
+      Animated.parallel([
+        Animated.timing(slideAnim, {
+          toValue: -120,
+          duration: 220,
+          useNativeDriver: true,
+        }),
+        Animated.timing(opacityAnim, {
+          toValue: 0,
+          duration: 200,
+          useNativeDriver: true,
+        }),
+      ]).start(() => {
+        resetAnimations();
+      });
+    }
+  }, [opacityAnim, reduceMotion, resetAnimations, slideAnim]);
+
+  const dismissHorizontal = useCallback((direction: 'left' | 'right') => {
+    const toValue = direction === 'left' ? -380 : 380;
+    if (reduceMotion) {
+      resetAnimations();
+    } else {
+      Animated.parallel([
+        Animated.timing(panX, {
+          toValue,
+          duration: 200,
+          useNativeDriver: true,
+        }),
+        Animated.timing(opacityAnim, {
+          toValue: 0,
+          duration: 180,
+          useNativeDriver: true,
+        }),
+      ]).start(() => {
+        resetAnimations();
+      });
+    }
+  }, [opacityAnim, panX, reduceMotion, resetAnimations]);
+
+  const handlePressBanner = async () => {
+    if (!activeNotification) return;
+    const notif = activeNotification;
+    dismissBanner();
+
+    // Mark as read in storage
+    if (notif.userId) {
+      await markNotificationRead(notif.userId, notif.id);
+    }
+
+    // Deep link directly to the target screen
+    if (notif.data?.bookingId || notif.data?.booking_id) {
+      const bId = String(notif.data.bookingId ?? notif.data.booking_id);
+      router.push(`/booking/${bId}`);
+    } else if (notif.data?.url) {
+      router.push(String(notif.data.url) as never);
+    } else {
+      router.push('/notifications');
+    }
+  };
+
+  // PanResponder for smooth swiping left, right, or up like Facebook / iOS banner
+  const panResponder = useMemo(
+    () =>
+      PanResponder.create({
+        onStartShouldSetPanResponder: () => false,
+        onMoveShouldSetPanResponder: (_, gestureState) => {
+          return Math.abs(gestureState.dx) > 10 || gestureState.dy < -10;
+        },
+        onPanResponderMove: (_, gestureState) => {
+          panX.setValue(gestureState.dx);
+          if (gestureState.dy < 0) {
+            slideAnim.setValue(gestureState.dy);
+          }
+          const dragDistance = Math.max(Math.abs(gestureState.dx), Math.abs(gestureState.dy));
+          opacityAnim.setValue(Math.max(0.3, 1 - dragDistance / 240));
+        },
+        onPanResponderRelease: (_, gestureState) => {
+          // Swiped left
+          if (gestureState.dx < -45 || gestureState.vx < -0.4) {
+            dismissHorizontal('left');
+          }
+          // Swiped right
+          else if (gestureState.dx > 45 || gestureState.vx > 0.4) {
+            dismissHorizontal('right');
+          }
+          // Swiped up
+          else if (gestureState.dy < -25 || gestureState.vy < -0.4) {
+            dismissBanner();
+          }
+          // Snapped back
+          else {
+            Animated.parallel([
+              Animated.spring(panX, { toValue: 0, useNativeDriver: true }),
+              Animated.spring(slideAnim, { toValue: 0, useNativeDriver: true }),
+              Animated.timing(opacityAnim, { toValue: 1, duration: 150, useNativeDriver: true }),
+            ]).start();
+          }
+        },
+      }),
+    [dismissBanner, dismissHorizontal, opacityAnim, panX, slideAnim],
+  );
 
   useEffect(() => {
     const unsubscribe = subscribeToInAppBanner(async (notif) => {
@@ -63,6 +168,8 @@ export function InAppNotificationBanner() {
 
       // Display banner
       setActiveNotification(notif);
+      panX.setValue(0);
+      opacityAnim.setValue(1);
 
       if (hideTimeoutRef.current) clearTimeout(hideTimeoutRef.current);
 
@@ -87,43 +194,7 @@ export function InAppNotificationBanner() {
       unsubscribe();
       if (hideTimeoutRef.current) clearTimeout(hideTimeoutRef.current);
     };
-  }, [user, reduceMotion, slideAnim]);
-
-  const dismissBanner = () => {
-    if (reduceMotion) {
-      slideAnim.setValue(-120);
-      setActiveNotification(null);
-    } else {
-      Animated.timing(slideAnim, {
-        toValue: -120,
-        duration: 250,
-        useNativeDriver: true,
-      }).start(() => {
-        setActiveNotification(null);
-      });
-    }
-  };
-
-  const handlePressBanner = async () => {
-    if (!activeNotification) return;
-    const notif = activeNotification;
-    dismissBanner();
-
-    // Mark as read in storage
-    if (notif.userId) {
-      await markNotificationRead(notif.userId, notif.id);
-    }
-
-    // Deep link directly to the target screen
-    if (notif.data?.bookingId || notif.data?.booking_id) {
-      const bId = String(notif.data.bookingId ?? notif.data.booking_id);
-      router.push(`/booking/${bId}`);
-    } else if (notif.data?.url) {
-      router.push(String(notif.data.url) as any);
-    } else {
-      router.push('/notifications');
-    }
-  };
+  }, [user, reduceMotion, slideAnim, panX, opacityAnim, dismissBanner]);
 
   if (!activeNotification) {
     return null;
@@ -137,10 +208,15 @@ export function InAppNotificationBanner() {
       style={[
         styles.bannerWrapper,
         {
-          transform: [{ translateY: slideAnim }],
+          opacity: opacityAnim,
+          transform: [
+            { translateY: slideAnim },
+            { translateX: panX },
+          ],
         },
       ]}
       testID="in-app-push-banner"
+      {...panResponder.panHandlers}
     >
       <Pressable
         accessibilityRole="button"
@@ -220,10 +296,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     padding: spacing.xs,
   },
-  closeBtnText: {
-    fontSize: font.subtitle,
-    fontWeight: '700',
-  },
   contentWrap: {
     flex: 1,
   },
@@ -231,9 +303,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     width: 32,
-  },
-  iconText: {
-    fontSize: font.section,
   },
   titleText: {
     fontSize: font.subtitle,

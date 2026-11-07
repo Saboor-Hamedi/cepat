@@ -4,6 +4,7 @@ import {
   Pressable,
   StyleSheet,
   Text,
+  useWindowDimensions,
   View,
   type ViewStyle,
 } from 'react-native';
@@ -13,6 +14,23 @@ import { useAppearance } from '../context/AppearanceContext';
 import { layoutTokens } from '../theme/designSystem';
 import { spacing } from '../theme/tokens';
 import { font } from '../theme/typography';
+
+export function useResponsiveLayout() {
+  const { width, height } = useWindowDimensions();
+  const isTablet = width >= 768;
+  const isLandscape = width > height;
+  const numColumns = width >= 1024 ? 3 : width >= 768 ? 2 : 1;
+  const maxContentWidth = isTablet ? 768 : undefined;
+
+  return {
+    width,
+    height,
+    isTablet,
+    isLandscape,
+    numColumns,
+    maxContentWidth,
+  };
+}
 
 export interface ScreenWrapperProps extends PropsWithChildren {
   padded?: boolean;
@@ -37,6 +55,9 @@ export function ScreenWrapper({
   children,
 }: ScreenWrapperProps) {
   const { palette } = useAppearance();
+  const { width } = useWindowDimensions();
+  const isTablet = width >= 768;
+  const shouldCenter = centered || isTablet;
 
   return (
     <SafeAreaView
@@ -51,7 +72,7 @@ export function ScreenWrapper({
         style={[
           styles.content,
           padded && styles.padded,
-          centered && { alignSelf: 'center', maxWidth },
+          shouldCenter && { alignSelf: 'center', maxWidth },
           typeof gap === 'number' ? { gap } : null,
           style,
         ]}

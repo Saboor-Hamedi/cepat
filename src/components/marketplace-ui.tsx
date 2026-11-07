@@ -208,7 +208,7 @@ export function TechnicianCard({
     >
       <View style={styles.avatarColumn}>
         <View style={styles.avatarWrap}>
-          <Avatar uri={technician.avatarUri} name={technician.displayName} size={64} />
+          <Avatar uri={technician.avatarUri} name={technician.displayName} size={56} />
           {technician.available && (
             <View
               style={[
@@ -235,18 +235,6 @@ export function TechnicianCard({
           {technician.verified && (
             <View style={[styles.verifiedBadge, { backgroundColor: 'transparent' }]}>
               <BadgeCheck size={ICON_SIZE} color={palette.primary} strokeWidth={ICON_STROKE} />
-            </View>
-          )}
-          {technician.services.length > 0 && (
-            <View style={styles.bookableBadgeInline}>
-              <Text
-                style={[
-                  styles.bookableBadgeTextInline,
-                  { color: palette.primary },
-                ]}
-              >
-                {language === "en" ? "Bookable Service" : "Layanan Dapat Dipesan"}
-              </Text>
             </View>
           )}
         </View>
@@ -671,12 +659,17 @@ const styles = StyleSheet.create({
     alignItems: 'flex-start',
     backgroundColor: colors.surface,
     borderColor: colors.line,
-    borderRadius: radii.md,
+    borderRadius: 14,
     borderWidth: 1,
+    elevation: 1.5,
     flexDirection: 'row',
-    gap: spacing.lg,
+    gap: spacing.md,
     marginBottom: spacing.md,
-    padding: spacing.lg,
+    padding: spacing.md + 2,
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 1.5 },
+    shadowOpacity: 0.04,
+    shadowRadius: 5,
   },
   avatarColumn: { alignItems: 'center' },
   avatarWrap: {

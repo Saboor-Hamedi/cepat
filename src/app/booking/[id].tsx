@@ -1,6 +1,7 @@
 import { router, useFocusEffect, useLocalSearchParams } from "expo-router";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
+  Image,
   KeyboardAvoidingView,
   Platform,
   Pressable,
@@ -12,7 +13,7 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
-import { AlertTriangle, MapPin } from "lucide-react-native";
+import { AlertTriangle, ChevronRight, MapPin } from "lucide-react-native";
 import { useAuth } from "../../auth/AuthProvider";
 import { BackHeader } from "../../components/BackHeader";
 import { BookingLifecyclePanel } from "../../components/BookingLifecyclePanel";
@@ -282,6 +283,7 @@ export default function BookingEntryScreen() {
         categoryName: effectiveCategory,
         categorySlug: effectiveCategory,
         description: effectivePostCaption || undefined,
+        startingPrice: loadedPost?.servicePrice ?? technician?.services[0]?.startingPrice,
         isActive: true,
       }
     : undefined;
@@ -372,6 +374,8 @@ export default function BookingEntryScreen() {
         serviceArea,
         requestedStartAt,
         customerNotes,
+        servicePrice: selectedService.startingPrice ?? loadedPost?.servicePrice,
+        postId: postId ? String(postId) : undefined,
       });
       setActiveBooking(created);
     } catch (error) {
@@ -549,32 +553,45 @@ export default function BookingEntryScreen() {
                         styles.postContextCard,
                         pressed && { opacity: 0.85 },
                       ]}
+                      testID="booking-post-context-card"
                     >
-                      <Text style={styles.postContextEyebrow}>
-                        {language === "en"
-                          ? "SELECTED WORK POST (TAP TO VIEW)"
-                          : "POSTINGAN LAYANAN TERPILIH (KETUK UNTUK LIHAT)"}
-                      </Text>
-                      <Text numberOfLines={3} style={styles.postContextCaption}>
-                        &quot;{effectivePostCaption}&quot;
-                      </Text>
-                      {selectedService && (
-                        <View style={styles.postContextServiceRow}>
-                          <Text style={styles.postContextServiceName}>
-                            {language === "en"
-                              ? selectedService.nameEn || selectedService.name
-                              : selectedService.name}
-                          </Text>
-                          {selectedService.startingPrice !== undefined && (
-                            <Text style={styles.postContextServicePrice}>
-                              {formatRupiah(
-                                selectedService.startingPrice,
-                                language,
-                              )}
+                      <View style={styles.postContextInnerRow}>
+                        {(loadedPost?.mediaUrls?.[0] || loadedPost?.imageUri) ? (
+                          <Image
+                            source={{ uri: loadedPost?.mediaUrls?.[0] || loadedPost?.imageUri }}
+                            style={styles.postContextThumb}
+                            resizeMode="cover"
+                          />
+                        ) : null}
+                        <View style={styles.postContextBody}>
+                          <View style={styles.postContextServiceRow}>
+                            <Text style={styles.postContextEyebrow}>
+                              {language === "en"
+                                ? "BOOKED SERVICE POST"
+                                : "POSTINGAN LAYANAN"}
                             </Text>
-                          )}
+                            {(loadedPost?.servicePrice ?? selectedService?.startingPrice) !== undefined && (
+                              <Text style={styles.postContextServicePrice}>
+                                {formatRupiah(
+                                  (loadedPost?.servicePrice ?? selectedService?.startingPrice) || 0,
+                                  language,
+                                )}
+                              </Text>
+                            )}
+                          </View>
+                          <Text numberOfLines={2} style={styles.postContextCaption}>
+                            {effectivePostCaption}
+                          </Text>
+                          {selectedService ? (
+                            <Text numberOfLines={1} style={styles.postContextServiceName}>
+                              {language === "en"
+                                ? selectedService.nameEn || selectedService.name
+                                : selectedService.name}
+                            </Text>
+                          ) : null}
                         </View>
-                      )}
+                        <ChevronRight color={palette.primary} size={18} strokeWidth={ICON_STROKE} />
+                      </View>
                       {/* Hidden radio options for automated test compatibility */}
                       <View style={styles.srOnly}>
                         {technician?.services.map((svc) => (
@@ -919,12 +936,26 @@ function createStyles(palette: ThemePalette) {
     marginTop: 4,
   },
   postContextCard: {
-    backgroundColor: palette.primarySoft,
+    backgroundColor: palette.surfaceElevated,
     borderColor: palette.border,
-    borderRadius: 5,
+    borderRadius: 10,
     borderWidth: 1,
     marginBottom: spacing.lg,
     padding: spacing.md,
+  },
+  postContextInnerRow: {
+    alignItems: "center",
+    flexDirection: "row",
+    gap: 12,
+  },
+  postContextThumb: {
+    borderRadius: 8,
+    height: 54,
+    width: 54,
+  },
+  postContextBody: {
+    flex: 1,
+    minWidth: 0,
   },
   selectedAddressCard: {
     alignItems: "center",

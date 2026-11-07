@@ -21,6 +21,7 @@ export interface Post {
   imageUri?: string;
   mediaUrls?: string[];
   isServicePost?: boolean;
+  servicePrice?: number;
   likeCount?: number;
   likedByMe?: boolean;
   viewCount?: number;
@@ -47,6 +48,7 @@ export interface CreatePostInput {
   imageUri?: string;
   mediaUrls?: string[];
   isServicePost?: boolean;
+  servicePrice?: number;
   likeCount?: number;
   likedByMe?: boolean;
   viewCount?: number;
@@ -63,6 +65,7 @@ export interface UpdatePostInput {
   imageUri?: string;
   mediaUrls?: string[];
   isServicePost?: boolean;
+  servicePrice?: number;
   likeCount?: number;
   likedByMe?: boolean;
   viewCount?: number;

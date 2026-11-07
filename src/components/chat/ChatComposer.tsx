@@ -1,7 +1,8 @@
 import { ArrowUp, Check, RotateCcw } from 'lucide-react-native';
 import { ICON_SIZE, ICON_STROKE } from '../../theme/icons';
-import { useMemo } from 'react';
-import { Platform, Pressable, Text, TextInput, View } from 'react-native';
+import { useEffect, useMemo, useState } from 'react';
+import { Keyboard, Platform, Pressable, Text, TextInput, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { useAppearance } from '../../context/AppearanceContext';
 import { useLanguage } from '../../i18n/locale';
@@ -35,7 +36,24 @@ export function ChatComposer({
 }: ChatComposerProps) {
   const { language } = useLanguage();
   const { palette } = useAppearance();
+  const insets = useSafeAreaInsets();
   const styles = useMemo(() => createChatComposerStyles(palette), [palette]);
+  const [isKeyboardVisible, setIsKeyboardVisible] = useState(false);
+
+  useEffect(() => {
+    const showSub = Keyboard.addListener(
+      Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow',
+      () => setIsKeyboardVisible(true),
+    );
+    const hideSub = Keyboard.addListener(
+      Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide',
+      () => setIsKeyboardVisible(false),
+    );
+    return () => {
+      showSub.remove();
+      hideSub.remove();
+    };
+  }, []);
 
   // When task is completed, replace the composer with "Task has completed" and "Book Again" action
   if (isCompleted) {
@@ -46,6 +64,7 @@ export function ChatComposer({
           {
             backgroundColor: palette.surface,
             borderTopColor: palette.border,
+            paddingBottom: Math.max(insets.bottom, 14),
           },
         ]}
       >
@@ -87,7 +106,11 @@ export function ChatComposer({
     <View
       style={[
         styles.inputBar,
-        { backgroundColor: palette.surface, borderTopColor: palette.border },
+        {
+          backgroundColor: palette.surface,
+          borderTopColor: palette.border,
+          paddingBottom: isKeyboardVisible ? 10 : Math.max(insets.bottom, 10),
+        },
       ]}
     >
       <View
